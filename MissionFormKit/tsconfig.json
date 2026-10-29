@@ -1,0 +1,9 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/form-schema" },
+    { "path": "packages/form-tokens" },
+    { "path": "packages/form-renderer" },
+    { "path": "apps/form-shell" }
+  ]
+}

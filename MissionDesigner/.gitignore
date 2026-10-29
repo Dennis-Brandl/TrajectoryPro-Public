@@ -1,0 +1,92 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+packages/*/dist/
+
+# Local env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS files
+.DS_Store
+Thumbs.db
+nul
+
+# E2E persisted auth state (storageState; the e2e DB is disposable Postgres — see docker-compose.e2e.yml)
+e2e/.auth/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Testing
+coverage/
+
+# Phase 35 cutover: dev database backups
+.dev-backups/
+
+# Phase 35 §5.4 G8: perf test seed DB (large, regenerable)
+test-data/perf.db
+test-data/perf.db-shm
+test-data/perf.db-wal
+
+# Local git worktrees for feature development
+.worktrees/
+
+# Browser-automation scratch (Playwright MCP, screenshots, accessibility snapshots)
+.playwright-mcp/
+test-results/
+playwright-report/
+/admin-dark-*.png
+/canvas-dark-*.png
+/dark-*.png
+/form-designer-*.png
+/ux-*.png
+/verify-*.png
+/wf-e2e-*.png
+/dark-snap-*.yml
+/snap-after-*.yml
+/verify-*.yml
+
+# Graphify scratch output and trace scripts
+graphify-out/
+/.graphify_*.py
+
+# Claude runtime artifacts (lockfile, docs scratch)
+.claude/scheduled_tasks.lock
+docs/.claude/
+
+# --- Public-release hygiene (internal-only; not shipped publicly) ---
+.planning/
+.claude/
+tasks/
+docs/superpowers/
+.superpowers/
+*.docx
+*.pptx
+*.continue-here.md
+
+# Generated at build time (build:help); not tracked
+public/help.html
+
+# Visual Studio workspace state (excluded from Pro)
+.vs/

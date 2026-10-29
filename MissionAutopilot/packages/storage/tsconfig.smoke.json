@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": true,
+    "rootDir": "../.."
+  },
+  // `extends` also inherits tsconfig.json's `exclude`, which deliberately
+  // excludes `src/**/*.smoke.test.ts` from the normal build (see the comment
+  // there) — that would silently exclude the ONE file this config exists to
+  // typecheck. Override it back open here.
+  "exclude": ["node_modules", "dist"],
+  "include": [
+    "src/__tests__/real-pg.smoke.test.ts",
+    "../../scripts/*.ts",
+    "../../scripts/__tests__/**/*.ts"
+  ]
+}

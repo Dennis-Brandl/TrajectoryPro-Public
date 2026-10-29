@@ -1,0 +1,116 @@
+{
+  "test_id": "res-sync-003",
+  "name": "Send/Receive: source is a parent group key (grouped property serializes as JSON array)",
+  "category": "execution",
+  "tags": [
+    "resource",
+    "sync"
+  ],
+  "workflow": {
+    "local_id": "wf",
+    "oid": "wf",
+    "version": "1.0.0",
+    "last_modified_date": "2026-04-30",
+    "resource_property_specifications": [
+      {
+        "name": "Chan",
+        "resource_type": "sync"
+      }
+    ],
+    "value_property_specifications": [
+      {
+        "name": "TransferData",
+        "entries": [
+          { "name": "Name", "value": "Alice" },
+          { "name": "Address", "value": "123 Main St" },
+          { "name": "PhoneNumber", "value": "555-1234" }
+        ]
+      }
+    ],
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "start",
+        "version": "1.0.0",
+        "last_modified_date": "2026-04-30",
+        "step_type": "START"
+      },
+      {
+        "local_id": "parallel",
+        "oid": "parallel",
+        "version": "1.0.0",
+        "last_modified_date": "2026-04-30",
+        "step_type": "PARALLEL"
+      },
+      {
+        "local_id": "sender",
+        "oid": "sender",
+        "version": "1.0.0",
+        "last_modified_date": "2026-04-30",
+        "step_type": "SCRIPT",
+        "script_config": {
+          "language": "javascript",
+          "source": ";"
+        },
+        "resource_command_specifications": [
+          {
+            "command_type": "Send",
+            "resource_name": "Chan",
+            "source": "TransferData",
+            "resource_source_type": "workflow",
+            "resource_source_oid": "wf"
+          }
+        ]
+      },
+      {
+        "local_id": "receiver",
+        "oid": "receiver",
+        "version": "1.0.0",
+        "last_modified_date": "2026-04-30",
+        "step_type": "SCRIPT",
+        "script_config": {
+          "language": "javascript",
+          "source": ";"
+        },
+        "resource_command_specifications": [
+          {
+            "command_type": "Receive",
+            "resource_name": "Chan",
+            "target": "Result.Received",
+            "resource_source_type": "workflow",
+            "resource_source_oid": "wf"
+          }
+        ]
+      },
+      {
+        "local_id": "wait",
+        "oid": "wait",
+        "version": "1.0.0",
+        "last_modified_date": "2026-04-30",
+        "step_type": "WAIT ALL"
+      },
+      {
+        "local_id": "end",
+        "oid": "end",
+        "version": "1.0.0",
+        "last_modified_date": "2026-04-30",
+        "step_type": "END"
+      }
+    ],
+    "connections": [
+      { "from_step_id": "start", "to_step_id": "parallel" },
+      { "from_step_id": "parallel", "to_step_id": "sender" },
+      { "from_step_id": "parallel", "to_step_id": "receiver" },
+      { "from_step_id": "sender", "to_step_id": "wait" },
+      { "from_step_id": "receiver", "to_step_id": "wait" },
+      { "from_step_id": "wait", "to_step_id": "end" }
+    ]
+  },
+  "expected": {
+    "valid": true,
+    "workflow_state": "COMPLETED",
+    "final_properties": {
+      "Result.Received": "[{\"name\":\"Name\",\"value\":\"Alice\"},{\"name\":\"Address\",\"value\":\"123 Main St\"},{\"name\":\"PhoneNumber\",\"value\":\"555-1234\"}]"
+    }
+  }
+}

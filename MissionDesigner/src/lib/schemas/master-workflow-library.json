@@ -1,0 +1,1055 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://trajectorypro.io/schemas/master-workflow-library.json",
+  "title": "Master Workflow Library",
+  "description": "A collection of Master Workflow Specifications.",
+  "allOf": [{ "$ref": "managed-element.json" }],
+  "type": "object",
+  "required": ["workflow_specifications"],
+  "properties": {
+    "parent_library_oid": {
+      "type": "string",
+      "description": "OID of this library's parent library (self-describing hierarchy; provenance only, not consumed on import)."
+    },
+    "workflow_specifications": {
+      "type": "array",
+      "description": "The list of Master Workflow Specifications within this library.",
+      "items": {
+        "type": "object",
+        "allOf": [{ "$ref": "managed-element.json" }],
+        "required": ["steps", "connections"],
+        "properties": {
+          "version": {
+            "type": "string",
+            "description": "Semver version string for the root specification (e.g. '1.0.0'). Optional — runtime should default to '1.0.0' when absent."
+          },
+          "state": {
+            "type": "string",
+            "description": "Lifecycle state of the root specification: Draft | InTest | InReview | Approved | Effective | Superseded | Obsolete. Optional — runtime should default to 'Draft' when absent."
+          },
+          "library_name": {
+            "type": "string",
+            "description": "Name of the library this spec lives in (self-describing provenance)."
+          },
+          "library_oid": {
+            "type": "string",
+            "description": "OID of the library this spec lives in (self-describing provenance)."
+          },
+          "display_style": {
+            "type": "string",
+            "enum": ["flowchart", "bpmn", "isa88"],
+            "description": "The diagram notation style used when authoring this workflow. Flowchart (top-to-bottom), BPMN (left-to-right), or ISA-88 PFC (top-to-bottom)."
+          },
+          "steps": {
+            "type": "array",
+            "description": "The workflow steps in this specification.",
+            "items": {
+              "type": "object",
+              "allOf": [{ "$ref": "managed-element.json" }],
+              "required": ["step_type"],
+              "properties": {
+                "step_type": {
+                  "type": "string",
+                  "enum": [
+                    "START",
+                    "END",
+                    "ACTION PROXY",
+                    "WORKFLOW PROXY",
+                    "SELECT 1",
+                    "WAIT ANY",
+                    "PARALLEL",
+                    "WAIT ALL",
+                    "SCRIPT",
+                    "GATE",
+                    "YES_NO",
+                    "USER_INTERACTION",
+                    "CATCH",
+                    "RETURN"
+                  ],
+                  "description": "The functional type of the workflow step."
+                },
+                "output_parameter_name": {
+                  "type": "string",
+                  "description": "Output parameter name for UI steps that capture user input."
+                },
+                "ui_parameter_specifications": {
+                  "type": "array",
+                  "description": "UI parameters for user interaction steps defining content to display.",
+                  "items": {
+                    "type": "object",
+                    "required": ["type", "value"],
+                    "properties": {
+                      "oid": {
+                        "type": "string",
+                        "description": "Snowflake OID for this UI parameter."
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "Button",
+                          "Header",
+                          "Text",
+                          "SmallText",
+                          "Image",
+                          "Video",
+                          "TextInput",
+                          "YesNoButtons",
+                          "PickList",
+                          "CheckboxList",
+                          "FormField",
+                          "FormFieldMultiline",
+                          "FormFieldNumeric",
+                          "FormFieldPhone",
+                          "FormFieldEmail",
+                          "Divider"
+                        ],
+                        "description": "The UI element type."
+                      },
+                      "value": {
+                        "type": "string",
+                        "description": "The content value for this UI element."
+                      },
+                      "font_size": {
+                        "type": "number",
+                        "description": "Font size for text elements (Header, Text, SmallText)."
+                      },
+                      "color": {
+                        "type": "string",
+                        "description": "Text color for text elements."
+                      },
+                      "lines": {
+                        "type": "integer",
+                        "description": "Number of lines for TextInput or FormFieldMultiline."
+                      },
+                      "align": {
+                        "type": "string",
+                        "enum": ["left", "center", "right"],
+                        "description": "Text alignment for text elements."
+                      },
+                      "value2": {
+                        "type": "string",
+                        "description": "Secondary value (e.g. No label for YesNoButtons)."
+                      }
+                    }
+                  }
+                },
+                "yes_no_config": {
+                  "type": "object",
+                  "description": "Configuration for YES_NO step type.",
+                  "properties": {
+                    "yes_label": {
+                      "type": "string",
+                      "description": "Custom label for Yes button (default: 'Yes')."
+                    },
+                    "no_label": {
+                      "type": "string",
+                      "description": "Custom label for No button (default: 'No')."
+                    },
+                    "yes_value": {
+                      "type": "string",
+                      "description": "Output value when Yes is selected (default: 'true')."
+                    },
+                    "no_value": {
+                      "type": "string",
+                      "description": "Output value when No is selected (default: 'false')."
+                    },
+                    "default_selection": {
+                      "type": "string",
+                      "enum": ["yes", "no", "none"],
+                      "description": "Default selection state."
+                    }
+                  }
+                },
+                "script_config": {
+                  "type": "object",
+                  "description": "Configuration for SCRIPT step type.",
+                  "properties": {
+                    "language": { "type": "string", "description": "Script language (e.g. 'python')." },
+                    "source": { "type": "string", "description": "Script source code." },
+                    "repeat": {
+                      "type": "object",
+                      "description": "Present = a repeating script: it runs every cycle_seconds, keeping `state` between runs, until it returns true.",
+                      "properties": {
+                        "cycle_seconds": {
+                          "type": "number",
+                          "minimum": 1,
+                          "maximum": 31449600,
+                          "description": "Seconds between runs (default 5)."
+                        },
+                        "time_limit_seconds": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 31449600,
+                          "description": "Optional whole seconds (1 to 52 weeks) after which the script stops repeating."
+                        },
+                        "on_time_limit": {
+                          "type": "string",
+                          "enum": ["error", "complete"],
+                          "description": "What the time limit does: 'error' (default) fails the step; 'complete' completes it with its current outputs."
+                        }
+                      }
+                    }
+                  }
+                },
+                "gate_config": {
+                  "type": "object",
+                  "description": "Configuration for GATE step type (cyclically-evaluated boolean transition).",
+                  "properties": {
+                    "cycle_seconds": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 31449600,
+                      "description": "Evaluation cycle in seconds (default 5)."
+                    },
+                    "language": { "type": "string" },
+                    "source": {
+                      "type": "string",
+                      "description": "Script returning TRUE (open the gate) or FALSE (repeat next cycle)."
+                    },
+                    "control_previous_action": {
+                      "type": "boolean",
+                      "description": "Opt into armed behavior: the gate starts concurrently with the preceding Environment Action and stops it when the gate returns TRUE. Absent/false (default) = the gate waits for the previous step to complete."
+                    },
+                    "mode": {
+                      "type": "string",
+                      "enum": ["condition", "timer", "condition_or_timer"],
+                      "description": "Absent = condition. 'timer' opens after delay_seconds; 'condition_or_timer' opens on TRUE or after delay_seconds, whichever comes first."
+                    },
+                    "delay_seconds": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 31449600,
+                      "description": "Whole seconds (1 to 52 weeks). Required when mode is timer or condition_or_timer."
+                    },
+                    "action_property_bindings": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["parameter_id", "property"],
+                        "properties": {
+                          "parameter_id": { "type": "string" },
+                          "environment_oid": { "type": "string" },
+                          "environment_name": { "type": "string" },
+                          "property": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                },
+                "select1_config": {
+                  "type": "object",
+                  "description": "Configuration for SELECT 1 step type.",
+                  "properties": {
+                    "input_name": { "type": "string" },
+                    "input_value_type": { "type": "string", "enum": ["literal", "property"] },
+                    "options": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["id", "label", "operator", "value", "value_type", "is_default"],
+                        "properties": {
+                          "id": { "type": "string" },
+                          "label": { "type": "string" },
+                          "operator": { "type": "string" },
+                          "value": { "type": "string" },
+                          "value_type": { "type": "string", "enum": ["literal", "property"] },
+                          "is_default": { "type": "boolean" }
+                        }
+                      }
+                    }
+                  }
+                },
+                "form_document": {
+                  "$ref": "form-document.json",
+                  "description": "v2 Form Document for USER_INTERACTION and YES_NO steps (package format 5.0+). The canonical FormDocument, verbatim — replaces form_layout_config."
+                },
+                "form_layout_config": {
+                  "type": "array",
+                  "description": "DEPRECATED (package format ≤4.0) — v1 WYSIWYG form layout triplet. Still accepted on import (converted to form_document); no longer emitted.",
+                  "items": {
+                    "type": "object",
+                    "required": ["deviceType", "canvasWidth", "canvasHeight", "elements"],
+                    "properties": {
+                      "deviceType": { "type": "string", "enum": ["phone", "tablet", "desktop"] },
+                      "canvasWidth": { "type": "number" },
+                      "canvasHeight": { "type": "number" },
+                      "elements": {
+                        "type": "array",
+                        "description": "Form elements placed on this device layout canvas.",
+                        "items": {
+                          "type": "object",
+                          "required": ["type", "x", "y", "width", "height"],
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "button",
+                                "text",
+                                "textInput",
+                                "image",
+                                "header",
+                                "textarea",
+                                "checkbox",
+                                "radio",
+                                "video",
+                                "divider",
+                                "timer"
+                              ],
+                              "description": "Discriminant tag identifying the form element type. The 'textarea' value renders as the 'Multi Line Text' element in the form designer palette; see docs/schema-change-multi-line-text.md for runtime rendering rules, including the Android 3-line floor."
+                            },
+                            "x": { "type": "number", "description": "Horizontal position in logical pixels." },
+                            "y": { "type": "number", "description": "Vertical position in logical pixels." },
+                            "width": { "type": "number", "description": "Element width in logical pixels." },
+                            "height": { "type": "number", "description": "Element height in logical pixels." },
+                            "zIndex": {
+                              "type": "number",
+                              "description": "Z-order for overlapping elements. Higher = on top."
+                            },
+                            "label": {
+                              "type": "string",
+                              "description": "Display label (textInput, textarea, checkbox, radio, button, timer)."
+                            },
+                            "placeholder": {
+                              "type": "string",
+                              "description": "Placeholder text (textInput, textarea)."
+                            },
+                            "fieldName": {
+                              "type": "string",
+                              "description": "JSON key for captured value in step output (textInput, textarea, checkbox, radio, timer)."
+                            },
+                            "required": {
+                              "type": "boolean",
+                              "description": "Whether the field must be filled before submission."
+                            },
+                            "outputParameter": {
+                              "type": "string",
+                              "description": "Value Property reference where this element's value is captured at runtime."
+                            },
+                            "fontSize": { "type": "number", "description": "Font size in logical pixels." },
+                            "content": {
+                              "description": "Text/header content. String (Phase 23+ HTML) or {content,plainText} legacy wrapper.",
+                              "oneOf": [
+                                { "type": "string" },
+                                {
+                                  "type": "object",
+                                  "required": ["content", "plainText"],
+                                  "properties": {
+                                    "content": { "type": "string" },
+                                    "plainText": { "type": "string" }
+                                  }
+                                }
+                              ]
+                            },
+                            "fontWeight": { "type": "string", "enum": ["normal", "bold"] },
+                            "color": { "type": "string", "description": "CSS color string." },
+                            "align": { "type": "string", "enum": ["left", "center", "right"] },
+                            "src": {
+                              "type": "string",
+                              "description": "Image filename or https URL (image), or video URL (video)."
+                            },
+                            "imageOid": {
+                              "type": "string",
+                              "description": "Stable OID for image element, used as namespace prefix in ZIP."
+                            },
+                            "objectFit": { "type": "string", "enum": ["contain", "cover", "fill"] },
+                            "posterUrl": { "type": "string", "description": "Video thumbnail URL." },
+                            "outputValue": { "type": "string", "description": "Value emitted when button is tapped." },
+                            "deletable": {
+                              "type": "boolean",
+                              "description": "Whether this element can be deleted in the designer."
+                            },
+                            "thickness": {
+                              "type": "number",
+                              "description": "Divider line thickness in logical pixels."
+                            },
+                            "rows": {
+                              "type": "integer",
+                              "description": "Author-requested visible-row count for textarea (Multi Line Text) elements. The runtime may enforce a platform-specific minimum — Android requires at least 3 visible lines (see docs/schema-change-multi-line-text.md). When absent, the runtime defaults to 4."
+                            },
+                            "options": {
+                              "type": "array",
+                              "description": "Selectable options for checkbox, radio, dropdown, or combobox.",
+                              "items": {
+                                "type": "object",
+                                "required": ["label", "value"],
+                                "properties": {
+                                  "label": { "type": "string", "description": "Display text shown to the user." },
+                                  "value": {
+                                    "type": "string",
+                                    "description": "Value stored in step output when selected."
+                                  }
+                                }
+                              }
+                            },
+                            "defaultSource": {
+                              "type": "object",
+                              "description": "Default value source: static text, value property, or input parameter.",
+                              "required": ["mode", "value"],
+                              "properties": {
+                                "mode": { "type": "string", "enum": ["static", "property", "input"] },
+                                "value": { "type": "string" }
+                              }
+                            },
+                            "placeholderSource": {
+                              "type": "object",
+                              "description": "Placeholder source: static text or input parameter reference.",
+                              "required": ["mode", "value"],
+                              "properties": {
+                                "mode": { "type": "string", "enum": ["static", "property", "input"] },
+                                "value": { "type": "string" }
+                              }
+                            },
+                            "durationSeconds": { "type": "integer", "description": "Timer duration in seconds." },
+                            "direction": {
+                              "type": "string",
+                              "enum": ["countdown", "countup"],
+                              "description": "Timer direction."
+                            },
+                            "blockDone": {
+                              "type": "boolean",
+                              "description": "When true, Done button is disabled until timer expires."
+                            },
+                            "inputMode": {
+                              "type": "string",
+                              "enum": ["text", "number", "phone", "password", "dropdown", "combobox"],
+                              "description": "Controls the type of data this textInput accepts. Defaults to 'text'. 'text'=any free-form text, 'number'=digits and +-., only, 'phone'=digits and +-() space, 'password'=masked input, 'dropdown'=read-only pick list, 'combobox'=editable pick list."
+                            },
+                            "listItems": {
+                              "type": "array",
+                              "description": "Fixed list of selectable options. Used by textInput (dropdown/combobox modes) as the static source. checkbox/radio use the element's `options` array as their static list instead of `listItems`. Each entry has a display label and output value.",
+                              "items": {
+                                "type": "object",
+                                "required": ["label", "value"],
+                                "properties": {
+                                  "label": { "type": "string", "description": "Display text shown to the user." },
+                                  "value": {
+                                    "type": "string",
+                                    "description": "Value stored in step output when selected."
+                                  }
+                                }
+                              }
+                            },
+                            "listSource": {
+                              "type": "object",
+                              "description": "Source of list items for textInput (dropdown/combobox), checkbox, and radio. 'static'=use the static items array (listItems for textInput, options for checkbox/radio). 'input'=populate from the named step input parameter at runtime (expected: JSON string array). Absent or `{ mode: 'static' }` means static.",
+                              "required": ["mode"],
+                              "properties": {
+                                "mode": { "type": "string", "enum": ["static", "input"] },
+                                "value": {
+                                  "type": "string",
+                                  "description": "Input parameter name when mode is 'input'."
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "form_element_images": {
+                  "type": "array",
+                  "description": "Stable image references for form elements. Maps imageOid to filename for runtime resolution.",
+                  "items": {
+                    "type": "object",
+                    "required": ["image_oid", "filename"],
+                    "properties": {
+                      "image_oid": {
+                        "type": "string",
+                        "description": "Snowflake OID uniquely identifying this image element."
+                      },
+                      "filename": {
+                        "type": "string",
+                        "description": "Image filename within the images/ folder of the ZIP package."
+                      }
+                    }
+                  }
+                },
+                "resource_command_specifications": {
+                  "type": "array",
+                  "description": "Commands to acquire or release resources during step execution.",
+                  "items": {
+                    "type": "object",
+                    "required": ["command_type", "resource_name"],
+                    "properties": {
+                      "oid": { "type": "string" },
+                      "command_type": {
+                        "type": "string",
+                        "enum": [
+                          "Acquire",
+                          "Release",
+                          "Acquire Pool Amount",
+                          "Release Pool Amount",
+                          "Send",
+                          "Receive",
+                          "Synchronize"
+                        ]
+                      },
+                      "resource_name": { "type": "string" },
+                      "resource_source_type": {
+                        "type": "string",
+                        "enum": ["workflow", "environment"],
+                        "description": "Whether the resource is defined on a workflow or an environment."
+                      },
+                      "resource_source_oid": {
+                        "type": "string",
+                        "description": "OID of the workflow or environment that defines the resource."
+                      },
+                      "amount": { "type": "integer" },
+                      "target": {
+                        "type": "string",
+                        "description": "Value property name to store acquired resource handle."
+                      },
+                      "source": { "type": "string", "description": "Value property ref for sync send data." }
+                    }
+                  }
+                },
+                "value_property_specifications": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["name"],
+                    "properties": {
+                      "name": { "type": "string" },
+                      "oid": { "type": "string" },
+                      "entries": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": ["name", "value"],
+                          "properties": {
+                            "name": { "type": "string" },
+                            "value": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "input_parameter_specifications": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "default_value"],
+                    "properties": {
+                      "id": { "type": "string" },
+                      "oid": { "type": "string" },
+                      "description": { "type": "string" },
+                      "default_value": { "type": "string" },
+                      "json_schema": { "type": "string" },
+                      "value_type": {
+                        "type": "string",
+                        "enum": ["literal", "property"],
+                        "description": "Whether value is a literal string or a value property reference."
+                      },
+                      "entries": {
+                        "type": "array",
+                        "description": "Structured entries defining the parameter data shape.",
+                        "items": {
+                          "type": "object",
+                          "required": ["name", "value"],
+                          "properties": {
+                            "name": { "type": "string" },
+                            "value": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "output_parameter_specifications": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id"],
+                    "properties": {
+                      "id": { "type": "string" },
+                      "oid": { "type": "string" },
+                      "description": { "type": "string" },
+                      "target": {
+                        "type": "string",
+                        "description": "Value property name where this output is stored."
+                      },
+                      "entries": {
+                        "type": "array",
+                        "description": "Structured entries defining the parameter data shape.",
+                        "items": {
+                          "type": "object",
+                          "required": ["name", "value"],
+                          "properties": {
+                            "name": { "type": "string" },
+                            "value": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "connection_references": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "position": {
+                  "type": "object",
+                  "description": "Optional canvas position of this step.",
+                  "properties": {
+                    "x": { "type": "number" },
+                    "y": { "type": "number" }
+                  }
+                },
+                "action_visibility": {
+                  "type": "string",
+                  "enum": ["opaque", "observable"],
+                  "description": "Visibility of environment action: opaque (internal) or observable (visible to caller)."
+                },
+                "try_specifications": {
+                  "type": "array",
+                  "description": "TRY/CATCH fault handlers attached to an ACTION PROXY step.",
+                  "items": {
+                    "type": "object",
+                    "required": ["mode", "catch_id"],
+                    "properties": {
+                      "mode": {
+                        "type": "string",
+                        "enum": ["ERROR", "ABORT", "TIMEOUT"],
+                        "description": "The fault condition that triggers this catch branch."
+                      },
+                      "catch_id": {
+                        "type": "string",
+                        "description": "Author-chosen workflow-unique id of the CATCH step that handles this fault."
+                      },
+                      "release_on_catch": {
+                        "type": "boolean",
+                        "description": "When true, release held resources before entering the catch branch."
+                      }
+                    }
+                  }
+                },
+                "catch_id": {
+                  "type": "string",
+                  "description": "Author-chosen workflow-unique id of this CATCH step (referenced by TRY rows)."
+                },
+                "return_config": {
+                  "type": "object",
+                  "description": "Disposition configuration for a RETURN step.",
+                  "required": ["command"],
+                  "properties": {
+                    "command": {
+                      "type": "string",
+                      "enum": ["ABANDON", "RESTART", "GOTO", "RETRY", "COMPLETE"],
+                      "description": "What the runtime should do after exiting the catch branch."
+                    },
+                    "restart_mode": {
+                      "type": "string",
+                      "enum": ["CLEAN", "KEEP"],
+                      "description": "Whether to clear runtime state on RESTART."
+                    },
+                    "goto_step_oid": {
+                      "type": "string",
+                      "description": "Target step OID when command is GOTO."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "connections": {
+            "type": "array",
+            "description": "Defines the execution order by connecting steps into a network.",
+            "items": {
+              "type": "object",
+              "required": ["from_step_id", "to_step_id"],
+              "properties": {
+                "from_step_id": { "type": "string" },
+                "to_step_id": { "type": "string" },
+                "connection_id": { "type": "string", "description": "Unique identifier for this connection." },
+                "source_handle_id": {
+                  "type": "string",
+                  "description": "Source handle identifier for SELECT 1 routing."
+                },
+                "condition": {
+                  "type": "string",
+                  "description": "Optional condition expression for SELECT 1 connections."
+                },
+                "waypoints": {
+                  "type": "array",
+                  "description": "Optional edge routing waypoints as offsets from default positions.",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "x": { "type": "number" },
+                      "y": { "type": "number" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "viewport": {
+            "type": "object",
+            "description": "Optional canvas viewport state (pan and zoom).",
+            "properties": {
+              "x": { "type": "number" },
+              "y": { "type": "number" },
+              "zoom": { "type": "number" }
+            }
+          },
+          "resource_command_specifications": {
+            "type": "array",
+            "description": "Workflow-level resource commands.",
+            "items": {
+              "type": "object",
+              "required": ["command_type", "resource_name"],
+              "properties": {
+                "oid": { "type": "string" },
+                "command_type": {
+                  "type": "string",
+                  "enum": [
+                    "Acquire",
+                    "Release",
+                    "Acquire Pool Amount",
+                    "Release Pool Amount",
+                    "Send",
+                    "Receive",
+                    "Synchronize"
+                  ]
+                },
+                "resource_name": { "type": "string" },
+                "resource_source_type": {
+                  "type": "string",
+                  "enum": ["workflow", "environment"],
+                  "description": "Whether the resource is defined on a workflow or an environment."
+                },
+                "resource_source_oid": {
+                  "type": "string",
+                  "description": "OID of the workflow or environment that defines the resource."
+                },
+                "amount": { "type": "integer" },
+                "target": { "type": "string", "description": "Value property name to store acquired resource handle." },
+                "source": { "type": "string", "description": "Value property ref for sync send data." }
+              }
+            }
+          },
+          "value_property_specifications": {
+            "type": "array",
+            "description": "Workflow-level named values.",
+            "items": {
+              "type": "object",
+              "required": ["name"],
+              "properties": {
+                "name": { "type": "string" },
+                "oid": { "type": "string" },
+                "entries": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["name", "value"],
+                    "properties": {
+                      "name": { "type": "string" },
+                      "value": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "starting_parameter_specifications": {
+            "type": "array",
+            "description": "Optional set of starting parameter specifications.",
+            "items": {
+              "type": "object",
+              "required": ["id", "default_value"],
+              "properties": {
+                "id": { "type": "string" },
+                "oid": { "type": "string" },
+                "description": { "type": "string" },
+                "default_value": { "type": "string" },
+                "json_schema": { "type": "string" },
+                "value_type": {
+                  "type": "string",
+                  "enum": ["literal", "property"]
+                },
+                "entries": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["name", "value"],
+                    "properties": {
+                      "name": { "type": "string" },
+                      "value": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "try_specifications": {
+            "type": "array",
+            "description": "Workflow-level TRY fallback handlers: consulted when a failing step has no matching step-level TRY (spec 2026-08-22).",
+            "items": {
+              "type": "object",
+              "required": ["mode", "catch_id"],
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "enum": ["ERROR", "ABORT", "TIMEOUT"],
+                  "description": "The fault condition this row handles."
+                },
+                "catch_id": {
+                  "type": "string",
+                  "description": "Author-chosen workflow-unique id of the CATCH step that handles this fault."
+                },
+                "release_on_catch": {
+                  "type": "boolean",
+                  "description": "When true (default), run the failing step's Release resource commands before entering the catch branch."
+                }
+              }
+            }
+          },
+          "output_parameter_specifications": {
+            "type": "array",
+            "description": "Optional set of output parameter specifications.",
+            "items": {
+              "type": "object",
+              "required": ["id"],
+              "properties": {
+                "id": { "type": "string" },
+                "oid": { "type": "string" },
+                "description": { "type": "string" },
+                "target": { "type": "string" },
+                "entries": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["name", "value"],
+                    "properties": {
+                      "name": { "type": "string" },
+                      "value": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "resource_property_specifications": {
+            "type": "array",
+            "description": "Workflow-level resource property specifications.",
+            "items": {
+              "type": "object",
+              "required": ["name", "resource_type"],
+              "properties": {
+                "name": { "type": "string" },
+                "resource_type": {
+                  "type": "string",
+                  "enum": [
+                    "binary exclusive use",
+                    "binary shared use with pool limits",
+                    "countable use with pool limits",
+                    "named pool",
+                    "sync"
+                  ],
+                  "description": "The specific logic for resource access control."
+                },
+                "use_limit": {
+                  "type": "integer",
+                  "description": "Optional limit for shared or countable resources."
+                },
+                "description": { "type": "string" },
+                "names": {
+                  "type": "array",
+                  "description": "Named identifiers for named pool resources.",
+                  "items": { "type": "string" }
+                }
+              }
+            }
+          },
+          "environment_specifications": {
+            "type": "array",
+            "description": "Embedded environment specifications referenced by this workflow.",
+            "items": {
+              "type": "object",
+              "allOf": [{ "$ref": "managed-element.json" }],
+              "required": ["included_actions"],
+              "properties": {
+                "library_name": {
+                  "type": "string",
+                  "description": "Name of the environment library this specification belongs to. Used for weak matching on import."
+                },
+                "library_oid": {
+                  "type": "string",
+                  "description": "OID of the environment library this specification belongs to."
+                },
+                "included_actions": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["action_name", "action_library"],
+                    "properties": {
+                      "action_name": { "type": "string" },
+                      "action_library": { "type": "string" }
+                    }
+                  }
+                },
+                "value_property_specifications": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["name"],
+                    "properties": {
+                      "name": { "type": "string" },
+                      "oid": { "type": "string" },
+                      "entries": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": ["name", "value"],
+                          "properties": {
+                            "name": { "type": "string" },
+                            "value": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "action_property_specifications": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["name"],
+                    "properties": {
+                      "name": { "type": "string" },
+                      "oid": { "type": "string" },
+                      "entries": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": ["name", "value"],
+                          "properties": {
+                            "name": { "type": "string" },
+                            "value": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "value_type_specifications": {
+                  "type": "array",
+                  "description": "Designer-only Value Type templates (authoring convenience; omitted from runtime packages).",
+                  "items": {
+                    "type": "object",
+                    "required": ["name"],
+                    "properties": {
+                      "name": { "type": "string" },
+                      "oid": { "type": "string" },
+                      "description": { "type": "string" },
+                      "entries": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": ["name"],
+                          "properties": {
+                            "name": { "type": "string" },
+                            "value": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "resource_property_specifications": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["name", "resource_type"],
+                    "properties": {
+                      "name": { "type": "string" },
+                      "resource_type": {
+                        "type": "string",
+                        "enum": [
+                          "binary exclusive use",
+                          "binary shared use with pool limits",
+                          "countable use with pool limits",
+                          "named pool",
+                          "sync"
+                        ]
+                      },
+                      "use_limit": { "type": "integer" },
+                      "description": { "type": "string" },
+                      "names": {
+                        "type": "array",
+                        "description": "Named identifiers for named pool resources.",
+                        "items": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "children": {
+            "type": "array",
+            "description": "Nested child workflow specifications (v7.0+). Entries are ChildWorkflowExport with required parentChildSpecId/version/state and recursive children.",
+            "items": { "$ref": "#/definitions/child_workflow" }
+          }
+        }
+      }
+    },
+    "child_libraries": {
+      "type": "array",
+      "description": "Nested child libraries.",
+      "items": { "$ref": "#" }
+    }
+  },
+  "definitions": {
+    "child_workflow": {
+      "type": "object",
+      "allOf": [{ "$ref": "managed-element.json" }],
+      "required": ["parentChildSpecId", "version", "state", "steps", "connections"],
+      "description": "ChildWorkflowExport (v7.0+): a child workflow with explicit parent linkage and required lifecycle fields.",
+      "properties": {
+        "parentChildSpecId": {
+          "type": ["string", "null"],
+          "description": "OID of the parent child spec in the same 'children' tree. null = direct child of the root workflow. When non-null, value equals the 'oid' of the parent ChildWorkflowExport one level up."
+        },
+        "version": {
+          "type": "string",
+          "description": "Semver version string for this child spec. REQUIRED on child exports (unlike optional on root)."
+        },
+        "state": {
+          "type": "string",
+          "description": "Lifecycle state (Draft | InTest | InReview | Approved | Effective | Superseded | Obsolete). REQUIRED on child exports."
+        },
+        "display_style": {
+          "type": "string",
+          "enum": ["flowchart", "bpmn", "isa88"]
+        },
+        "steps": { "type": "array", "items": { "type": "object" } },
+        "connections": { "type": "array", "items": { "type": "object" } },
+        "resource_command_specifications": { "type": "array", "items": { "type": "object" } },
+        "resource_property_specifications": { "type": "array", "items": { "type": "object" } },
+        "value_property_specifications": { "type": "array", "items": { "type": "object" } },
+        "starting_parameter_specifications": { "type": "array", "items": { "type": "object" } },
+        "try_specifications": { "type": "array", "items": { "type": "object" } },
+        "output_parameter_specifications": { "type": "array", "items": { "type": "object" } },
+        "environment_specifications": { "type": "array", "items": { "type": "object" } },
+        "viewport": {
+          "type": "object",
+          "properties": {
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "zoom": { "type": "number" }
+          }
+        },
+        "children": {
+          "type": "array",
+          "description": "Recursive grandchildren. parentChildSpecId of each entry points to the OID of its parent ChildWorkflowExport.",
+          "items": { "$ref": "#/definitions/child_workflow" }
+        }
+      }
+    }
+  }
+}

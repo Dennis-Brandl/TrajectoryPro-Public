@@ -1,0 +1,300 @@
+{
+  "local_id": "Decision and Control Steps",
+  "oid": "1000000003926",
+  "version": "1.4.4",
+  "last_modified_date": "2026-01-21T21:35:00.000Z",
+  "description": "Step library: Decision and Control Steps.",
+  "library_steps": [
+    {
+      "local_id": "WAIT ALL Step 275",
+      "oid": "1000000003886",
+      "version": "3.9.2",
+      "last_modified_date": "2026-02-14T00:23:00.000Z",
+      "step_type": "WAIT ALL"
+    },
+    {
+      "local_id": "WAIT ALL Step 566",
+      "oid": "1000000003925",
+      "version": "3.9.7",
+      "last_modified_date": "2026-01-08T01:05:00.000Z",
+      "step_type": "WAIT ALL"
+    },
+    {
+      "local_id": "WORKFLOW PROXY Step 236",
+      "oid": "1000000003884",
+      "version": "3.9.0",
+      "last_modified_date": "2026-02-01T05:48:00.000Z",
+      "step_type": "WORKFLOW PROXY"
+    },
+    {
+      "local_id": "ACTION PROXY Step 607",
+      "oid": "1000000003888",
+      "version": "1.7.8",
+      "last_modified_date": "2026-02-25T01:52:00.000Z",
+      "step_type": "ACTION PROXY",
+      "input_parameter_specifications": [
+        {
+          "id": "Address_576",
+          "oid": "1000000003889",
+          "description": "Parameter for flow control",
+          "default_value": "595",
+          "value_type": "literal"
+        }
+      ],
+      "output_parameter_specifications": [
+        {
+          "id": "Variance_129",
+          "oid": "1000000003890",
+          "description": "Output from position reading"
+        }
+      ],
+      "action_visibility": "observable"
+    },
+    {
+      "local_id": "YES_NO Step 526",
+      "oid": "1000000003921",
+      "version": "1.4.3",
+      "last_modified_date": "2026-01-17T05:03:00.000Z",
+      "step_type": "YES_NO",
+      "output_parameter_name": "user_confirm_3",
+      "ui_parameter_specifications": [
+        {
+          "oid": "1000000003922",
+          "type": "Header",
+          "value": "Confirmation Required",
+          "font_size": 16
+        },
+        {
+          "oid": "1000000003923",
+          "type": "Text",
+          "value": "Is the gauge ready for operation?"
+        },
+        {
+          "oid": "1000000003924",
+          "type": "YesNoButtons",
+          "value": "Confirm",
+          "value2": "Reject"
+        }
+      ],
+      "yes_no_config": {
+        "yes_label": "Yes",
+        "no_label": "Decline",
+        "yes_value": "true",
+        "no_value": "false",
+        "default_selection": "yes"
+      }
+    },
+    {
+      "local_id": "PARALLEL Step 729",
+      "oid": "1000000003885",
+      "version": "1.0.2",
+      "last_modified_date": "2026-02-10T01:25:00.000Z",
+      "step_type": "PARALLEL"
+    },
+    {
+      "local_id": "WAIT ANY Step 137",
+      "oid": "1000000003887",
+      "version": "2.0.8",
+      "last_modified_date": "2026-02-10T05:02:00.000Z",
+      "step_type": "WAIT ANY"
+    },
+    {
+      "local_id": "PICK_ONE Step 934",
+      "oid": "1000000003896",
+      "version": "1.7.0",
+      "last_modified_date": "2026-01-16T14:39:00.000Z",
+      "step_type": "PICK_ONE",
+      "output_parameter_name": "user_selection_89",
+      "ui_parameter_specifications": [
+        {
+          "oid": "1000000003897",
+          "type": "Header",
+          "value": "Select Option",
+          "font_size": 16
+        },
+        {
+          "oid": "1000000003898",
+          "type": "Text",
+          "value": "Choose the appropriate operating mode."
+        },
+        {
+          "oid": "1000000003899",
+          "type": "PickList",
+          "value": "Options"
+        }
+      ],
+      "pick_one_config": {
+        "options": [
+          {
+            "id": "opt_1000000003900",
+            "label": "Manual",
+            "value": "manual"
+          },
+          {
+            "id": "opt_1000000003901",
+            "label": "Automatic",
+            "value": "automatic"
+          },
+          {
+            "id": "opt_1000000003902",
+            "label": "Semi-Auto",
+            "value": "semi_auto"
+          },
+          {
+            "id": "opt_1000000003903",
+            "label": "Override",
+            "value": "override"
+          }
+        ],
+        "default_option_id": "opt_1000000003900"
+      }
+    },
+    {
+      "local_id": "INSTRUCTION Step 832",
+      "oid": "1000000003891",
+      "version": "2.8.7",
+      "last_modified_date": "2026-03-01T00:53:00.000Z",
+      "step_type": "INSTRUCTION",
+      "ui_parameter_specifications": [
+        {
+          "oid": "1000000003892",
+          "type": "Header",
+          "value": "Step: INSTRUCTION Step 832",
+          "font_size": 18,
+          "align": "center"
+        },
+        {
+          "oid": "1000000003893",
+          "type": "Text",
+          "value": "Perform the validate operation on speed.",
+          "font_size": 14
+        },
+        {
+          "oid": "1000000003894",
+          "type": "Divider",
+          "value": ""
+        },
+        {
+          "oid": "1000000003895",
+          "type": "SmallText",
+          "value": "Ensure safety protocols are followed.",
+          "color": "#666666"
+        }
+      ]
+    },
+    {
+      "local_id": "CHECKBOX Step 926",
+      "oid": "1000000003904",
+      "version": "3.4.9",
+      "last_modified_date": "2026-01-14T05:25:00.000Z",
+      "step_type": "CHECKBOX",
+      "output_parameter_name": "user_checks_93",
+      "ui_parameter_specifications": [
+        {
+          "oid": "1000000003905",
+          "type": "Header",
+          "value": "Select Items",
+          "font_size": 16
+        },
+        {
+          "oid": "1000000003906",
+          "type": "Text",
+          "value": "Check all applicable safety conditions."
+        },
+        {
+          "oid": "1000000003907",
+          "type": "CheckboxList",
+          "value": "Safety Checks"
+        }
+      ],
+      "checkbox_config": {
+        "options": [
+          {
+            "id": "cb_1000000003908",
+            "label": "PPE Worn",
+            "value": "ppe_worn",
+            "default_checked": false
+          },
+          {
+            "id": "cb_1000000003909",
+            "label": "Area Clear",
+            "value": "area_clear",
+            "default_checked": false
+          },
+          {
+            "id": "cb_1000000003910",
+            "label": "Guards in Place",
+            "value": "guards_in_place",
+            "default_checked": false
+          },
+          {
+            "id": "cb_1000000003911",
+            "label": "Lockout Active",
+            "value": "lockout_active",
+            "default_checked": false
+          },
+          {
+            "id": "cb_1000000003912",
+            "label": "Pressure Released",
+            "value": "pressure_released",
+            "default_checked": true
+          }
+        ],
+        "output_format": "csv",
+        "min_selections": 1,
+        "max_selections": 5
+      }
+    },
+    {
+      "local_id": "PICK_ONE Step 639",
+      "oid": "1000000003913",
+      "version": "3.2.1",
+      "last_modified_date": "2026-01-22T09:48:00.000Z",
+      "step_type": "PICK_ONE",
+      "output_parameter_name": "user_selection_51",
+      "ui_parameter_specifications": [
+        {
+          "oid": "1000000003914",
+          "type": "Header",
+          "value": "Select Option",
+          "font_size": 16
+        },
+        {
+          "oid": "1000000003915",
+          "type": "Text",
+          "value": "Choose the appropriate operating mode."
+        },
+        {
+          "oid": "1000000003916",
+          "type": "PickList",
+          "value": "Options"
+        }
+      ],
+      "pick_one_config": {
+        "options": [
+          {
+            "id": "opt_1000000003917",
+            "label": "Manual",
+            "value": "manual"
+          },
+          {
+            "id": "opt_1000000003918",
+            "label": "Automatic",
+            "value": "automatic"
+          },
+          {
+            "id": "opt_1000000003919",
+            "label": "Semi-Auto",
+            "value": "semi_auto"
+          },
+          {
+            "id": "opt_1000000003920",
+            "label": "Override",
+            "value": "override"
+          }
+        ],
+        "default_option_id": "opt_1000000003917"
+      }
+    }
+  ]
+}

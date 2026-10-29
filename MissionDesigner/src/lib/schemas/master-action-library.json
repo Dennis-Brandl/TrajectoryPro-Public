@@ -1,0 +1,155 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://trajectorypro.io/schemas/master-action-library.json",
+  "title": "Master Action Library",
+  "description": "A collection of Master Actions Specifications.",
+  "allOf": [{ "$ref": "managed-element.json" }],
+  "type": "object",
+  "required": ["action_specifications"],
+  "properties": {
+    "parent_library_oid": {
+      "type": "string",
+      "description": "OID of this library's parent library (self-describing hierarchy; provenance only, not consumed on import)."
+    },
+    "action_specifications": {
+      "type": "array",
+      "description": "List of action specifications contained in the library.",
+      "items": {
+        "type": "object",
+        "allOf": [{ "$ref": "managed-element.json" }],
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": ["Draft", "InTest", "InReview", "Approved", "Effective", "Superseded", "Obsolete"],
+            "description": "Lifecycle state of the specification. Defaults to 'Draft' when absent."
+          },
+          "input_parameter_specifications": {
+            "type": "array",
+            "description": "Parameters passed as strings with optional schema validation.",
+            "items": {
+              "type": "object",
+              "required": ["id", "default_value"],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "The parameter name identifier."
+                },
+                "oid": {
+                  "type": "string",
+                  "description": "Snowflake OID for this parameter."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Human-readable description of the parameter."
+                },
+                "default_value": {
+                  "type": "string",
+                  "description": "The default value for this parameter."
+                },
+                "json_schema": {
+                  "type": "string",
+                  "description": "Optional JSON Schema string for value validation."
+                },
+                "value_type": {
+                  "type": "string",
+                  "enum": ["literal", "property"],
+                  "description": "Whether value is a literal string or a value property reference."
+                },
+                "entries": {
+                  "type": "array",
+                  "description": "Structured entries defining the parameter data shape.",
+                  "items": {
+                    "type": "object",
+                    "required": ["name", "value"],
+                    "properties": {
+                      "name": { "type": "string" },
+                      "value": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "output_parameter_specifications": {
+            "type": "array",
+            "description": "Named output placeholders produced by the action.",
+            "items": {
+              "type": "object",
+              "required": ["id"],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "The output parameter name identifier."
+                },
+                "oid": {
+                  "type": "string",
+                  "description": "Snowflake OID for this output parameter."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Human-readable description of the output."
+                },
+                "target": {
+                  "type": "string",
+                  "description": "Value property name where this output is stored."
+                },
+                "entries": {
+                  "type": "array",
+                  "description": "Structured entries defining the parameter data shape.",
+                  "items": {
+                    "type": "object",
+                    "required": ["name", "value"],
+                    "properties": {
+                      "name": { "type": "string" },
+                      "value": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "action_visibility": {
+            "type": "string",
+            "enum": ["opaque", "observable"],
+            "description": "Visibility of action: opaque (internal) or observable (visible to caller)."
+          },
+          "property_specifications": {
+            "type": "array",
+            "description": "Named value properties used to configure the action.",
+            "items": {
+              "type": "object",
+              "required": ["name"],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "The property name."
+                },
+                "oid": {
+                  "type": "string",
+                  "description": "Snowflake OID for this property."
+                },
+                "entries": {
+                  "type": "array",
+                  "description": "Name/value pair entries for this property.",
+                  "items": {
+                    "type": "object",
+                    "required": ["name", "value"],
+                    "properties": {
+                      "name": { "type": "string" },
+                      "value": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "child_libraries": {
+      "type": "array",
+      "description": "Nested child libraries.",
+      "items": { "$ref": "#" }
+    }
+  }
+}

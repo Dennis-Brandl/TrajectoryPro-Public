@@ -1,0 +1,101 @@
+{
+  "test_id": "res-named-001",
+  "name": "Named pool assigns available name, writes to target property",
+  "category": "execution",
+  "tags": [
+    "resource",
+    "named-pool"
+  ],
+  "workflow": {
+    "local_id": "wf",
+    "oid": "wf",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-11",
+    "resource_property_specifications": [
+      {
+        "name": "Docks",
+        "resource_type": "named pool",
+        "names": [
+          "Dock 1",
+          "Dock 2"
+        ]
+      }
+    ],
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "start",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "START"
+      },
+      {
+        "local_id": "use-dock",
+        "oid": "use-dock",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "SCRIPT",
+        "script_config": {
+          "language": "javascript",
+          "source": ";"
+        },
+        "resource_command_specifications": [
+          {
+            "command_type": "Acquire",
+            "resource_name": "Docks",
+            "target": "Assigned.Dock",
+            "resource_source_type": "workflow",
+            "resource_source_oid": "wf"
+          }
+        ]
+      },
+      {
+        "local_id": "release-dock",
+        "oid": "release-dock",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "SCRIPT",
+        "script_config": {
+          "language": "javascript",
+          "source": ";"
+        },
+        "resource_command_specifications": [
+          {
+            "command_type": "Release",
+            "resource_name": "Docks",
+            "resource_source_type": "workflow",
+            "resource_source_oid": "wf"
+          }
+        ]
+      },
+      {
+        "local_id": "end",
+        "oid": "end",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "END"
+      }
+    ],
+    "connections": [
+      {
+        "from_step_id": "start",
+        "to_step_id": "use-dock"
+      },
+      {
+        "from_step_id": "use-dock",
+        "to_step_id": "release-dock"
+      },
+      {
+        "from_step_id": "release-dock",
+        "to_step_id": "end"
+      }
+    ]
+  },
+  "expected": {
+    "valid": true,
+    "workflow_state": "COMPLETED",
+    "final_properties": {
+      "Assigned.Dock": "Dock 1"
+    }
+  }
+}

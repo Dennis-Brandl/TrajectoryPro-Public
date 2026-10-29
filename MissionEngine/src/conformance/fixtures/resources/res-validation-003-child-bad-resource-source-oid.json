@@ -1,0 +1,70 @@
+{
+  "test_id": "res-validation-003",
+  "name": "Child workflow step references resource_source_oid that doesn't match any workflow or environment in the package",
+  "category": "validation",
+  "tags": [
+    "resource",
+    "validation",
+    "child"
+  ],
+  "workflow": {
+    "local_id": "parent-wf",
+    "oid": "parent-wf",
+    "version": "1.0.0",
+    "last_modified_date": "2026-04-30",
+    "steps": [
+      { "local_id": "start", "oid": "start", "version": "1.0.0", "last_modified_date": "2026-04-30", "step_type": "START" },
+      { "local_id": "child-wf", "oid": "proxy", "version": "1.0.0", "last_modified_date": "2026-04-30", "step_type": "WORKFLOW PROXY" },
+      { "local_id": "end", "oid": "end", "version": "1.0.0", "last_modified_date": "2026-04-30", "step_type": "END" }
+    ],
+    "connections": [
+      { "from_step_id": "start", "to_step_id": "proxy" },
+      { "from_step_id": "proxy", "to_step_id": "end" }
+    ],
+    "children": [
+      {
+        "schemaVersion": "4.0",
+        "local_id": "child-wf",
+        "oid": "child-wf-actual-oid",
+        "version": "1.0.0",
+        "state": "Effective",
+        "last_modified_date": "2026-04-30",
+        "parentChildSpecId": null,
+        "resource_property_specifications": [
+          {
+            "name": "ChildLock",
+            "resource_type": "binary exclusive use",
+            "scope": "workflow"
+          }
+        ],
+        "steps": [
+          { "local_id": "c-start", "oid": "c-start", "version": "1.0.0", "last_modified_date": "2026-04-30", "step_type": "START" },
+          {
+            "local_id": "c-acquire",
+            "oid": "c-acquire",
+            "version": "1.0.0",
+            "last_modified_date": "2026-04-30",
+            "step_type": "USER_INTERACTION",
+            "resource_command_specifications": [
+              {
+                "command_type": "Acquire",
+                "resource_name": "ChildLock",
+                "resource_source_type": "workflow",
+                "resource_source_oid": "phantom-stale-oid-from-editor"
+              }
+            ]
+          },
+          { "local_id": "c-end", "oid": "c-end", "version": "1.0.0", "last_modified_date": "2026-04-30", "step_type": "END" }
+        ],
+        "connections": [
+          { "from_step_id": "c-start", "to_step_id": "c-acquire" },
+          { "from_step_id": "c-acquire", "to_step_id": "c-end" }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "valid": false,
+    "error_code": "INVALID_RESOURCE_COMMAND"
+  }
+}

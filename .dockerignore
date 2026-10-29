@@ -1,0 +1,71 @@
+# Build-context filter for all images built with THIS directory (the workspace
+# root) as context:
+#   - Mission Designer  : MissionDesigner/docker-compose.yml (context: ..) -> MissionDesigner/Dockerfile
+#   - Mission Autopilot : docker-compose.yml `mission-autopilot-*`           -> MissionAutopilot/Dockerfile
+#   - Mission Commander : docker-compose.yml `mission-commander`              -> MissionCommander/Dockerfile
+#   - Mission Engine    : docker-compose.yml `mission-engine`              -> MissionEngine/Dockerfile
+#   - Mission Broker    : docker-compose.yml `mission-broker`              -> MissionBroker/Dockerfile
+#
+# The Designer build reproduces the dev sibling layout (MissionDesigner +
+# MissionFormKit) so its `file:` deps on @mission/form-* resolve as TS source.
+# The Autopilot console build reaches into MissionDesigner for @mission/ui +
+# @mission/tokens. Ignore everything, re-include only the repos those builds
+# need, then drop heavy/irrelevant contents.
+#
+# (The Tester image builds from its OWN subdirectory context with its own
+# .dockerignore — this file does not affect it.)
+
+# Ignore everything by default...
+*
+
+# ...re-include only the repos the workspace-context builds need.
+!MissionDesigner
+!MissionFormKit
+!MissionAutopilot
+# Command Module (docker-compose.yml `mission-commander`) + Mission Engine
+# (docker-compose.yml `mission-engine`) + the mission-control-db package both
+# consume as TypeScript source via a file: dep.
+# NOTE the capital T: .dockerignore matching is CASE-SENSITIVE even though Windows
+# resolves the path either way, so a lowercase spelling here silently excludes the
+# whole directory and the build fails with "not found" on the first COPY.
+!MissionCommander
+!MissionEngine
+# Mission Broker (docker-compose.yml `mission-broker`).
+!MissionBroker
+!mission-control-db
+# Mission Pilot (phase 4b): built inside the Mission Engine image (vite outDir
+# targets ../MissionEngine/public) and served by the engine at /. It
+# consumes MissionFormKit's form-renderer/form-schema/form-tokens as `file:`
+# deps — MissionFormKit is already re-included above.
+!MissionPilot
+
+# Drop heavy / irrelevant content inside the re-included repos.
+**/node_modules
+**/dist
+# TypeScript incremental-build state. MUST be excluded: with **/dist stripped
+# above, a stale tsbuildinfo makes `tsc --build` skip re-emitting .d.ts files.
+**/*.tsbuildinfo
+**/.git
+**/.claude
+**/.planning
+**/.superpowers
+**/coverage
+**/test-results
+**/playwright-report
+**/.vs
+**/*.log
+**/*.db
+**/*.db-wal
+**/*.db-shm
+
+# Generated secrets must never enter a build layer or cache. The last matching
+# pattern wins, so these sit after the re-includes above; examples stay.
+**/.env
+**/.env.*
+!**/.env.example
+MissionDesigner/Trajectory-dist
+MissionDesigner/Trajectory-dist.zip
+MissionDesigner/.dev-backups
+MissionDesigner/test-data
+MissionDesigner/e2e
+MissionDesigner/docs

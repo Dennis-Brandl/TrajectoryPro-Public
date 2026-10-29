@@ -1,0 +1,6 @@
+# Shell scripts must use LF line endings: they run as entrypoints inside Linux
+# (Alpine) containers, and CRLF breaks the shebang — the container fails at start
+# with `exec /app/docker-entrypoint.sh: no such file or directory` when the repo
+# is checked out on Windows with core.autocrlf=true. Forcing eol=lf here makes the
+# checkout LF on every platform. (Mirrors the MissionDesigner repo.)
+*.sh text eol=lf

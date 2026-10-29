@@ -1,0 +1,126 @@
+/*
+ * Copyright 2026 Dennis L. Brandl
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/* Scoped reset + deterministic grid layout for form documents (spec §4). */
+
+.tfk-viewport,
+.tfk-viewport * {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.tfk-viewport {
+  container-type: inline-size;
+  container-name: tfk;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-family: var(--form-type-font-family);
+  font-size: var(--form-type-size-md);
+  line-height: var(--form-type-line-height-body);
+  color: var(--form-color-text);
+  background: var(--form-color-surface);
+}
+
+.tfk-scroll { flex: 1 1 auto; overflow-y: auto; }
+.tfk-footer { flex: 0 0 auto; border-top: 1px solid var(--form-color-border); }
+
+.tfk-section { padding: var(--form-space-md); }
+.tfk-section + .tfk-section { padding-top: 0; }
+
+.tfk-row { display: grid; grid-template-columns: repeat(12, 1fr); }
+.tfk-row + .tfk-row { margin-top: var(--form-space-md); }
+.tfk-gap-none { gap: 0; }
+.tfk-gap-xs { gap: var(--form-space-xs); }
+.tfk-gap-sm { gap: var(--form-space-sm); }
+.tfk-gap-md { gap: var(--form-space-md); }
+.tfk-gap-lg { gap: var(--form-space-lg); }
+.tfk-gap-xl { gap: var(--form-space-xl); }
+
+.tfk-block { min-width: 0; }
+.tfk-align-start { align-self: start; }
+.tfk-align-center { align-self: center; }
+.tfk-align-end { align-self: end; }
+/* A button's Align also places it across its cell (spec 2026-10-28, user decision): what an
+   author means by "center" on a button. The v1 converter never sets align, so no existing
+   converted form moves. */
+[data-block-type='button'].tfk-align-start { text-align: left; }
+[data-block-type='button'].tfk-align-center { text-align: center; }
+[data-block-type='button'].tfk-align-end { text-align: right; }
+
+/* base (desktop, container >= 1024px) spans — also the default */
+.tfk-span-base-1 { grid-column: span 1; }
+.tfk-span-base-2 { grid-column: span 2; }
+.tfk-span-base-3 { grid-column: span 3; }
+.tfk-span-base-4 { grid-column: span 4; }
+.tfk-span-base-5 { grid-column: span 5; }
+.tfk-span-base-6 { grid-column: span 6; }
+.tfk-span-base-7 { grid-column: span 7; }
+.tfk-span-base-8 { grid-column: span 8; }
+.tfk-span-base-9 { grid-column: span 9; }
+.tfk-span-base-10 { grid-column: span 10; }
+.tfk-span-base-11 { grid-column: span 11; }
+.tfk-span-base-12 { grid-column: span 12; }
+.tfk-order-base-1 { order: 1; } .tfk-order-base-2 { order: 2; } .tfk-order-base-3 { order: 3; }
+.tfk-order-base-4 { order: 4; } .tfk-order-base-5 { order: 5; } .tfk-order-base-6 { order: 6; }
+.tfk-order-base-7 { order: 7; } .tfk-order-base-8 { order: 8; } .tfk-order-base-9 { order: 9; }
+.tfk-order-base-10 { order: 10; } .tfk-order-base-11 { order: 11; } .tfk-order-base-12 { order: 12; }
+.tfk-hide-base { display: none; }
+
+/* tablet and below (container <= 1023px) — overlap with the phone tier is REQUIRED: the hide/revert cascade depends on this tier still applying at phone widths */
+@container tfk (max-width: 1023px) {
+  .tfk-span-tablet-1 { grid-column: span 1; }
+  .tfk-span-tablet-2 { grid-column: span 2; }
+  .tfk-span-tablet-3 { grid-column: span 3; }
+  .tfk-span-tablet-4 { grid-column: span 4; }
+  .tfk-span-tablet-5 { grid-column: span 5; }
+  .tfk-span-tablet-6 { grid-column: span 6; }
+  .tfk-span-tablet-7 { grid-column: span 7; }
+  .tfk-span-tablet-8 { grid-column: span 8; }
+  .tfk-span-tablet-9 { grid-column: span 9; }
+  .tfk-span-tablet-10 { grid-column: span 10; }
+  .tfk-span-tablet-11 { grid-column: span 11; }
+  .tfk-span-tablet-12 { grid-column: span 12; }
+  .tfk-order-tablet-1 { order: 1; } .tfk-order-tablet-2 { order: 2; } .tfk-order-tablet-3 { order: 3; }
+  .tfk-order-tablet-4 { order: 4; } .tfk-order-tablet-5 { order: 5; } .tfk-order-tablet-6 { order: 6; }
+  .tfk-order-tablet-7 { order: 7; } .tfk-order-tablet-8 { order: 8; } .tfk-order-tablet-9 { order: 9; }
+  .tfk-order-tablet-10 { order: 10; } .tfk-order-tablet-11 { order: 11; } .tfk-order-tablet-12 { order: 12; }
+  .tfk-hide-base { display: revert; }
+  .tfk-hide-tablet { display: none; }
+}
+
+/* phone (container <= 599px) — applies on top of the tablet tier */
+@container tfk (max-width: 599px) {
+  .tfk-span-phone-1 { grid-column: span 1; }
+  .tfk-span-phone-2 { grid-column: span 2; }
+  .tfk-span-phone-3 { grid-column: span 3; }
+  .tfk-span-phone-4 { grid-column: span 4; }
+  .tfk-span-phone-5 { grid-column: span 5; }
+  .tfk-span-phone-6 { grid-column: span 6; }
+  .tfk-span-phone-7 { grid-column: span 7; }
+  .tfk-span-phone-8 { grid-column: span 8; }
+  .tfk-span-phone-9 { grid-column: span 9; }
+  .tfk-span-phone-10 { grid-column: span 10; }
+  .tfk-span-phone-11 { grid-column: span 11; }
+  .tfk-span-phone-12 { grid-column: span 12; }
+  .tfk-order-phone-1 { order: 1; } .tfk-order-phone-2 { order: 2; } .tfk-order-phone-3 { order: 3; }
+  .tfk-order-phone-4 { order: 4; } .tfk-order-phone-5 { order: 5; } .tfk-order-phone-6 { order: 6; }
+  .tfk-order-phone-7 { order: 7; } .tfk-order-phone-8 { order: 8; } .tfk-order-phone-9 { order: 9; }
+  .tfk-order-phone-10 { order: 10; } .tfk-order-phone-11 { order: 11; } .tfk-order-phone-12 { order: 12; }
+  .tfk-hide-base { display: revert; }
+  .tfk-hide-tablet { display: revert; }
+  .tfk-hide-phone { display: none; }
+}

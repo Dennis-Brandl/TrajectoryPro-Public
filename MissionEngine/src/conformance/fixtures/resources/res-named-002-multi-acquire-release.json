@@ -1,0 +1,95 @@
+{
+  "test_id": "res-named-002",
+  "name": "Named pool: multiple Acquires from same workflow, Release out-of-order via cmd.target",
+  "category": "execution",
+  "tags": [
+    "resource",
+    "named-pool"
+  ],
+  "workflow": {
+    "local_id": "wf",
+    "oid": "wf",
+    "version": "1.0.0",
+    "last_modified_date": "2026-04-30",
+    "resource_property_specifications": [
+      {
+        "name": "Pool",
+        "resource_type": "named pool",
+        "names": ["A", "B", "C"]
+      }
+    ],
+    "steps": [
+      { "local_id": "start", "oid": "start", "version": "1.0.0", "last_modified_date": "2026-04-30", "step_type": "START" },
+      {
+        "local_id": "acq1", "oid": "acq1", "version": "1.0.0", "last_modified_date": "2026-04-30",
+        "step_type": "SCRIPT",
+        "script_config": { "language": "javascript", "source": ";" },
+        "resource_command_specifications": [
+          { "command_type": "Acquire", "resource_name": "Pool", "target": "Held.First", "resource_source_type": "workflow", "resource_source_oid": "wf" }
+        ]
+      },
+      {
+        "local_id": "acq2", "oid": "acq2", "version": "1.0.0", "last_modified_date": "2026-04-30",
+        "step_type": "SCRIPT",
+        "script_config": { "language": "javascript", "source": ";" },
+        "resource_command_specifications": [
+          { "command_type": "Acquire", "resource_name": "Pool", "target": "Held.Second", "resource_source_type": "workflow", "resource_source_oid": "wf" }
+        ]
+      },
+      {
+        "local_id": "acq3", "oid": "acq3", "version": "1.0.0", "last_modified_date": "2026-04-30",
+        "step_type": "SCRIPT",
+        "script_config": { "language": "javascript", "source": ";" },
+        "resource_command_specifications": [
+          { "command_type": "Acquire", "resource_name": "Pool", "target": "Held.Third", "resource_source_type": "workflow", "resource_source_oid": "wf" }
+        ]
+      },
+      {
+        "local_id": "rel1", "oid": "rel1", "version": "1.0.0", "last_modified_date": "2026-04-30",
+        "step_type": "SCRIPT",
+        "script_config": { "language": "javascript", "source": ";" },
+        "resource_command_specifications": [
+          { "command_type": "Release", "resource_name": "Pool", "target": "Held.First", "resource_source_type": "workflow", "resource_source_oid": "wf" }
+        ]
+      },
+      {
+        "local_id": "acq4", "oid": "acq4", "version": "1.0.0", "last_modified_date": "2026-04-30",
+        "step_type": "SCRIPT",
+        "script_config": { "language": "javascript", "source": ";" },
+        "resource_command_specifications": [
+          { "command_type": "Acquire", "resource_name": "Pool", "target": "Held.Fourth", "resource_source_type": "workflow", "resource_source_oid": "wf" }
+        ]
+      },
+      {
+        "local_id": "rel-rest", "oid": "rel-rest", "version": "1.0.0", "last_modified_date": "2026-04-30",
+        "step_type": "SCRIPT",
+        "script_config": { "language": "javascript", "source": ";" },
+        "resource_command_specifications": [
+          { "command_type": "Release", "resource_name": "Pool", "target": "Held.Second", "resource_source_type": "workflow", "resource_source_oid": "wf" },
+          { "command_type": "Release", "resource_name": "Pool", "target": "Held.Third", "resource_source_type": "workflow", "resource_source_oid": "wf" },
+          { "command_type": "Release", "resource_name": "Pool", "target": "Held.Fourth", "resource_source_type": "workflow", "resource_source_oid": "wf" }
+        ]
+      },
+      { "local_id": "end", "oid": "end", "version": "1.0.0", "last_modified_date": "2026-04-30", "step_type": "END" }
+    ],
+    "connections": [
+      { "from_step_id": "start", "to_step_id": "acq1" },
+      { "from_step_id": "acq1", "to_step_id": "acq2" },
+      { "from_step_id": "acq2", "to_step_id": "acq3" },
+      { "from_step_id": "acq3", "to_step_id": "rel1" },
+      { "from_step_id": "rel1", "to_step_id": "acq4" },
+      { "from_step_id": "acq4", "to_step_id": "rel-rest" },
+      { "from_step_id": "rel-rest", "to_step_id": "end" }
+    ]
+  },
+  "expected": {
+    "valid": true,
+    "workflow_state": "COMPLETED",
+    "final_properties": {
+      "Held.First":  "A",
+      "Held.Second": "B",
+      "Held.Third":  "C",
+      "Held.Fourth": "A"
+    }
+  }
+}

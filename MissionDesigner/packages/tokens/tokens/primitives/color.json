@@ -1,0 +1,27 @@
+{
+  "color": {
+    "brand": {
+      "blue": { "$value": "#007aff", "$type": "color" },
+      "blue-hi": { "$value": "#0066dd", "$type": "color" },
+      "gold": { "$value": "#D4AF37", "$type": "color" },
+      "gold-hi": { "$value": "hsl(46 70% 58%)", "$type": "color" },
+      "deep-blue": { "$value": "hsl(220 80% 5%)", "$type": "color" }
+    },
+    "neutral": {
+      "0": { "$value": "oklch(1 0 0)", "$type": "color" },
+      "50": { "$value": "oklch(0.985 0 0)", "$type": "color" },
+      "100": { "$value": "oklch(0.97 0 0)", "$type": "color" },
+      "200": { "$value": "oklch(0.922 0 0)", "$type": "color" },
+      "300": { "$value": "oklch(0.708 0 0)", "$type": "color" },
+      "400": { "$value": "oklch(0.556 0 0)", "$type": "color" },
+      "600": { "$value": "oklch(0.269 0 0)", "$type": "color" },
+      "700": { "$value": "oklch(0.205 0 0)", "$type": "color" },
+      "800": { "$value": "oklch(0.145 0 0)", "$type": "color" },
+      "900": { "$value": "oklch(0.115 0 0)", "$type": "color" }
+    },
+    "support": {
+      "danger": { "$value": "oklch(0.577 0.245 27.325)", "$type": "color" },
+      "danger-dark": { "$value": "oklch(0.704 0.191 22.216)", "$type": "color" }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "sidebar": { "$value": "{color.neutral.50}", "$type": "color" },
+  "sidebar-foreground": { "$value": "{color.neutral.800}", "$type": "color" },
+  "sidebar-primary": { "$value": "{color.neutral.700}", "$type": "color" },
+  "sidebar-primary-foreground": { "$value": "{color.neutral.50}", "$type": "color" },
+  "sidebar-accent": { "$value": "{color.neutral.100}", "$type": "color" },
+  "sidebar-accent-foreground": { "$value": "{color.neutral.700}", "$type": "color" },
+  "sidebar-border": { "$value": "{color.neutral.200}", "$type": "color" },
+  "sidebar-ring": { "$value": "{color.neutral.300}", "$type": "color" }
+}

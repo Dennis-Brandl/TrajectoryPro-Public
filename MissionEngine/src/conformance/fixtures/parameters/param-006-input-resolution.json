@@ -1,0 +1,107 @@
+{
+  "test_id": "param-006",
+  "name": "Step input parameter resolves from Value Property",
+  "category": "parameters",
+  "tags": ["input", "resolution", "property"],
+  "workflow": {
+    "local_id": "wf-param-006",
+    "oid": "wf-param-006-oid",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-04T00:00:00Z",
+    "schemaVersion": "4.0",
+    "value_property_specifications": [
+      {
+        "name": "Config",
+        "entries": [{ "name": "Greeting", "value": "Welcome" }]
+      },
+      {
+        "name": "Result",
+        "entries": [{ "name": "Value", "value": "" }]
+      }
+    ],
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "step-start",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "START",
+        "position": { "x": 100, "y": 100 }
+      },
+      {
+        "local_id": "ui",
+        "oid": "step-ui",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "USER_INTERACTION",
+        "position": { "x": 100, "y": 200 },
+        "input_parameter_specifications": [
+          {
+            "id": "greeting_param",
+            "default_value": "Config.Greeting",
+            "value_type": "property"
+          }
+        ],
+        "form_layout_config": [
+          {
+            "deviceType": "phone",
+            "canvasWidth": 390,
+            "canvasHeight": 844,
+            "elements": [
+              {
+                "type": "textInput",
+                "x": 20,
+                "y": 100,
+                "width": 350,
+                "height": 50,
+                "fieldName": "message",
+                "label": "Message",
+                "outputParameter": "Result.Value",
+                "defaultSource": { "mode": "property", "value": "Config.Greeting" }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "local_id": "end",
+        "oid": "step-end",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 100, "y": 300 }
+      }
+    ],
+    "connections": [
+      {
+        "from_step_id": "step-start",
+        "to_step_id": "step-ui"
+      },
+      {
+        "from_step_id": "step-ui",
+        "to_step_id": "step-end"
+      }
+    ]
+  },
+  "user_actions": [
+    {
+      "step_oid": "step-ui",
+      "action": "submit",
+      "form_values": { "message": "Welcome" }
+    }
+  ],
+  "expected": {
+    "valid": true,
+    "execution_trace": [
+      { "step_oid": "step-start", "state": "COMPLETED", "order": 1 },
+      { "step_oid": "step-ui", "state": "EXECUTING", "order": 2 },
+      { "step_oid": "step-ui", "state": "COMPLETED", "order": 3, "after_action": 0 },
+      { "step_oid": "step-end", "state": "COMPLETED", "order": 4 }
+    ],
+    "final_properties": {
+      "Config.Greeting": "Welcome",
+      "Result.Value": "Welcome"
+    },
+    "workflow_state": "COMPLETED"
+  }
+}

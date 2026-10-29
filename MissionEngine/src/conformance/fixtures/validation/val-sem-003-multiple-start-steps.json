@@ -1,0 +1,53 @@
+{
+  "test_id": "val-sem-003",
+  "name": "Multiple START steps",
+  "category": "validation",
+  "tags": ["semantic", "invalid", "start"],
+  "workflow": {
+    "local_id": "multiple-start-workflow",
+    "oid": "7000000000003001",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-04T00:00:00Z",
+    "schemaVersion": "4.0",
+    "steps": [
+      {
+        "local_id": "start-1",
+        "oid": "7000000000003010",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "START",
+        "position": { "x": 100, "y": 100 }
+      },
+      {
+        "local_id": "start-2",
+        "oid": "7000000000003011",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "START",
+        "position": { "x": 300, "y": 100 }
+      },
+      {
+        "local_id": "end",
+        "oid": "7000000000003012",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 200, "y": 300 }
+      }
+    ],
+    "connections": [
+      {
+        "from_step_id": "7000000000003010",
+        "to_step_id": "7000000000003012"
+      },
+      {
+        "from_step_id": "7000000000003011",
+        "to_step_id": "7000000000003012"
+      }
+    ]
+  },
+  "expected": {
+    "valid": false,
+    "error_code": "MULTIPLE_START_STEPS"
+  }
+}

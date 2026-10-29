@@ -1,0 +1,15 @@
+{
+  "name": "@mission/form-tokens",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./css/light": "./dist/form-tokens.light.css",
+    "./css/dark": "./dist/form-tokens.dark.css"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs"
+  }
+}

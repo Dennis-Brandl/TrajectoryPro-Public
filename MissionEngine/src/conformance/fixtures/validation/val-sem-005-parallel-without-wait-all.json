@@ -1,0 +1,121 @@
+{
+  "test_id": "val-sem-005",
+  "name": "PARALLEL step without matching WAIT ALL",
+  "category": "validation",
+  "tags": ["semantic", "invalid", "parallel"],
+  "workflow": {
+    "local_id": "parallel-no-wait-all",
+    "oid": "8000000000000005",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-04T00:00:00Z",
+    "schemaVersion": "4.0",
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "step-start",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "START",
+        "position": { "x": 200, "y": 50 }
+      },
+      {
+        "local_id": "parallel-fork",
+        "oid": "step-parallel",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "PARALLEL",
+        "position": { "x": 200, "y": 200 }
+      },
+      {
+        "local_id": "ui-a",
+        "oid": "step-ui-a",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "USER_INTERACTION",
+        "position": { "x": 100, "y": 350 },
+        "form_layout_config": [
+          {
+            "deviceType": "phone",
+            "canvasWidth": 390,
+            "canvasHeight": 844,
+            "elements": [
+              {
+                "type": "button",
+                "x": 20,
+                "y": 40,
+                "width": 350,
+                "height": 44
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "local_id": "ui-b",
+        "oid": "step-ui-b",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "USER_INTERACTION",
+        "position": { "x": 300, "y": 350 },
+        "form_layout_config": [
+          {
+            "deviceType": "phone",
+            "canvasWidth": 390,
+            "canvasHeight": 844,
+            "elements": [
+              {
+                "type": "button",
+                "x": 20,
+                "y": 40,
+                "width": 350,
+                "height": 44
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "local_id": "end-a",
+        "oid": "step-end-a",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 100, "y": 500 }
+      },
+      {
+        "local_id": "end-b",
+        "oid": "step-end-b",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 300, "y": 500 }
+      }
+    ],
+    "connections": [
+      {
+        "from_step_id": "step-start",
+        "to_step_id": "step-parallel"
+      },
+      {
+        "from_step_id": "step-parallel",
+        "to_step_id": "step-ui-a"
+      },
+      {
+        "from_step_id": "step-parallel",
+        "to_step_id": "step-ui-b"
+      },
+      {
+        "from_step_id": "step-ui-a",
+        "to_step_id": "step-end-a"
+      },
+      {
+        "from_step_id": "step-ui-b",
+        "to_step_id": "step-end-b"
+      }
+    ]
+  },
+  "expected": {
+    "valid": false,
+    "error_code": "UNMATCHED_PARALLEL"
+  }
+}

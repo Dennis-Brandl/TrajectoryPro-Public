@@ -1,0 +1,631 @@
+/*
+ * Copyright 2026 Dennis L. Brandl
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/* Mission Pilot frame (spec 2026-10-09 §4, §5.1–5.3): app shell, top bar, claim tabs,
+   context bar and the shared sheet. Same layer as pilot.css, loaded after it, tokens
+   only (theme/__tests__/no-raw-colors.test.ts). */
+
+@layer pilot.components {
+  /* ---------- Shell: the chrome stays put, only the panes scroll ---------- */
+  .app-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .app-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: var(--pilot-space-4);
+  }
+
+  .work-view,
+  .work-main {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .work-panes {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 0 var(--pilot-space-4) var(--pilot-space-4);
+    /* Keep a Tab-focused or keyboard-revealed field clear of the sticky action footer. */
+    scroll-padding-bottom: calc(var(--pilot-control-h-lg) + 4 * var(--pilot-space-3));
+  }
+
+  /* ---------- Workstation (spec §16): the inbox in a left column beside the task ---------- */
+  .work-view-split {
+    display: grid;
+    grid-template-columns: 24rem minmax(0, 1fr);
+  }
+
+  .work-rail {
+    min-height: 0;
+    overflow: auto;
+    border-right: var(--pilot-border-w) solid var(--pilot-border);
+    background: var(--pilot-surface-raised);
+  }
+
+  .work-rail-note {
+    margin: var(--pilot-space-4) 0;
+    color: var(--pilot-text-muted);
+  }
+
+  /* The rail is narrow at every width, so its rows stay cards (pilot.css switches them
+     to wide rows from 1024 px of viewport). Same layer and later file, so equal
+     specificity wins by order. */
+  .work-rail .inbox-list {
+    gap: var(--pilot-space-2);
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    overflow: visible;
+  }
+
+  .work-rail .inbox-row,
+  .work-rail .inbox-row:last-child {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'step action'
+      'workflow action'
+      'runtime age';
+    border: var(--pilot-border-w) solid var(--pilot-border);
+    border-radius: var(--pilot-radius-panel);
+  }
+
+  .work-rail .inbox-age {
+    justify-self: end;
+  }
+
+  /* After the card border above, which would otherwise erase the paused indicator. */
+  /* :last-child too: the card rule above lists it, which makes that selector (0,3,0). */
+  .work-rail .inbox-row-paused,
+  .work-rail .inbox-row-paused:last-child {
+    border-left: var(--pilot-indicator-w) solid var(--pilot-paused);
+  }
+
+  /* The task column is 24 rem narrower: "Where you are" joins it only from 1680 px and
+     opens from its button as a sheet below that (pilot.css shows it from 1280 px). */
+  .work-view-split .task-body {
+    grid-template-columns: minmax(0, var(--pilot-form-max));
+  }
+
+  .work-view-split .task-where {
+    display: none;
+  }
+
+  .work-view-split .where-toggle {
+    display: inline-block;
+  }
+
+  @media (min-width: 1680px) {
+    .work-view-split .task-body {
+      grid-template-columns: minmax(0, var(--pilot-form-max)) minmax(14rem, 18rem);
+    }
+
+    .work-view-split .task-where {
+      display: block;
+    }
+
+    .work-view-split .where-toggle {
+      display: none;
+    }
+  }
+
+  #panel-workflows {
+    height: 100%;
+  }
+
+  /* ---------- Top bar (§5.1) ---------- */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--pilot-space-4);
+    min-height: var(--pilot-header-h);
+    padding: var(--pilot-space-1) var(--pilot-space-4);
+    background: var(--pilot-header-bg);
+    color: var(--pilot-header-fg);
+    border-bottom: var(--pilot-indicator-w) solid var(--pilot-header-accent);
+  }
+
+  .top-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--pilot-space-2);
+    flex-shrink: 0;
+  }
+
+  /* A wide wordmark is capped (final review): the bar's controls must stay on screen. */
+  .top-logo {
+    display: block;
+    width: auto;
+    max-width: 12rem;
+    height: 2rem;
+    object-fit: contain;
+    object-position: left center;
+  }
+
+  .top-title {
+    font-size: var(--pilot-text-lg);
+    white-space: nowrap;
+  }
+
+  /* Spec §12: a dark-mode logo swaps in by mode (brand-logo.tsx). Later in the layer than
+     .top-logo and pilot.css's .login-logo, so these win the display. */
+  .brand-when-dark {
+    display: none;
+  }
+
+  [data-pilot-mode='dark'] .brand-when-light {
+    display: none;
+  }
+
+  [data-pilot-mode='dark'] .brand-when-dark {
+    display: block;
+  }
+
+  .top-bar button {
+    min-height: var(--pilot-touch-min);
+    border-color: var(--pilot-header-divider);
+    background: transparent;
+    color: var(--pilot-header-fg);
+  }
+
+  .top-bar button:hover:not(:disabled) {
+    background: var(--pilot-header-hover);
+  }
+
+  .top-bar .wc-switch {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    min-width: 0;
+    max-width: 22rem;
+    padding: var(--pilot-space-1) var(--pilot-space-3);
+    border-left: var(--pilot-stripe-w) solid var(--pilot-wc-accent);
+    line-height: var(--pilot-line-height-tight);
+    text-align: left;
+  }
+
+  .wc-switch-label {
+    font-size: var(--pilot-text-xs);
+    font-weight: var(--pilot-weight-medium);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--pilot-header-fg-muted);
+  }
+
+  .wc-switch-label::after {
+    content: ' \25BE';
+  }
+
+  .wc-switch-name {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: var(--pilot-weight-strong);
+  }
+
+  .conn {
+    display: flex;
+    align-items: center;
+    gap: var(--pilot-space-1);
+    margin-left: auto;
+    color: var(--pilot-header-fg-muted);
+    font-size: var(--pilot-text-sm);
+    white-space: nowrap;
+  }
+
+  .conn-word {
+    color: var(--pilot-header-fg);
+    font-weight: var(--pilot-weight-medium);
+  }
+
+  .conn-ok .conn-icon {
+    color: var(--pilot-header-ok);
+  }
+
+  .conn-warn .conn-icon,
+  .conn-warn .conn-word {
+    color: var(--pilot-header-warn);
+  }
+
+  .conn-wait .conn-icon {
+    color: var(--pilot-header-fg-muted);
+  }
+
+  .conn-time {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .top-bar .op-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--pilot-space-2);
+    min-width: 0;
+    max-width: 16rem;
+  }
+
+  .top-bar .op-btn::after {
+    content: '\25BE';
+    color: var(--pilot-header-fg-muted);
+  }
+
+  .op-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .op-away {
+    padding: 0 var(--pilot-space-2);
+    border-radius: var(--pilot-radius-pill);
+    background: var(--pilot-paused-bg);
+    color: var(--pilot-paused-fg);
+    font-size: var(--pilot-text-xs);
+  }
+
+  .op-who {
+    margin: 0;
+    color: var(--pilot-text-muted);
+  }
+
+  .op-hint {
+    margin: 0;
+    color: var(--pilot-text-muted);
+    font-size: var(--pilot-text-sm);
+  }
+
+  /* ---------- Sheet: switcher, operator menu, "N open" ---------- */
+  .sheet-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: var(--pilot-z-sheet);
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding: var(--pilot-space-4);
+    background: var(--pilot-scrim);
+  }
+
+  .sheet {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pilot-space-3);
+    width: min(24rem, 100%);
+    max-height: 100%;
+    overflow: auto;
+    padding: var(--pilot-space-4);
+    border: var(--pilot-border-w) solid var(--pilot-border);
+    border-radius: var(--pilot-radius-panel);
+    background: var(--pilot-surface-raised);
+    color: var(--pilot-text);
+    box-shadow: var(--pilot-shadow-2);
+  }
+
+  .sheet-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--pilot-space-2);
+  }
+
+  .sheet-title {
+    margin: 0;
+    font-size: var(--pilot-text-lg);
+  }
+
+  .sheet-close {
+    border: none;
+    background: transparent;
+    font-size: var(--pilot-text-xl);
+  }
+
+  .sheet ul {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pilot-space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .sheet li > button {
+    width: 100%;
+    text-align: left;
+  }
+
+  .sheet li > button[aria-current='true'] {
+    border-color: var(--pilot-accent);
+    background: var(--pilot-accent-subtle);
+  }
+
+  .sheet label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--pilot-space-3);
+  }
+
+  /* ---------- Claim tabs (§5.2) ---------- */
+  .work-tabs .claim-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    max-width: 18rem;
+    min-height: var(--pilot-touch-min);
+    padding: var(--pilot-space-1) var(--pilot-space-3) var(--pilot-space-1) calc(var(--pilot-space-3) + var(--pilot-stripe-w));
+    box-shadow: inset var(--pilot-stripe-w) 0 0 var(--tab-stripe, var(--pilot-instance-6));
+    line-height: var(--pilot-line-height-tight);
+    text-align: left;
+  }
+
+  .work-tabs .claim-tab[aria-selected='true'] {
+    box-shadow:
+      inset var(--pilot-stripe-w) 0 0 var(--tab-stripe, var(--pilot-instance-6)),
+      inset 0 var(--pilot-indicator-w) 0 var(--pilot-tab-active-indicator);
+  }
+
+  .claim-tab-step {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: var(--pilot-weight-strong);
+  }
+
+  .claim-tab-meta {
+    display: flex;
+    align-items: baseline;
+    min-width: 0;
+    max-width: 100%;
+    color: var(--pilot-text-muted);
+    font-size: var(--pilot-text-xs);
+    font-weight: var(--pilot-weight-regular);
+  }
+
+  .claim-tab-meta .rid {
+    flex: 0 1 auto;
+  }
+
+  /* The workflow name gives way long before the runtime ID does. */
+  .claim-tab-wf {
+    flex: 0 10 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* A leading space at the start of a flex item collapses; a preserved separator does not. */
+  .sep {
+    white-space: pre;
+  }
+
+  .claims-open-btn {
+    display: none;
+  }
+
+  .claims-sheet-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--pilot-space-1);
+    padding-block: var(--pilot-space-2);
+  }
+
+  /* ---------- Middle elision and runtime IDs (§4) ---------- */
+  .elide {
+    display: inline-flex;
+    min-width: 0;
+    max-width: 100%;
+    white-space: nowrap;
+    vertical-align: bottom;
+  }
+
+  .elide-head {
+    min-width: 1ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .elide-head:empty {
+    display: none;
+  }
+
+  .elide-tail {
+    flex-shrink: 0;
+  }
+
+  .rid {
+    font-family: var(--pilot-font-mono);
+  }
+
+  .rid .elide-tail {
+    font-weight: var(--pilot-weight-strong);
+  }
+
+  /* ---------- Context bar (§5.3) ---------- */
+  .context-bar {
+    display: flex;
+    align-items: stretch;
+    gap: var(--pilot-space-5);
+    margin: 0;
+    padding: var(--pilot-space-2) var(--pilot-space-4);
+    border-bottom: var(--pilot-border-w) solid var(--pilot-border);
+    background: var(--pilot-surface-raised);
+  }
+
+  /* Spec §5.6 item 2: the next pane's context bar flashes for 1.5 s after a Submit. */
+  .context-bar-arrived {
+    animation: pilot-arrive 1.5s ease-out;
+  }
+
+  @keyframes pilot-arrive {
+    from {
+      background: var(--pilot-accent-subtle);
+      box-shadow: inset 0 0 0 2px var(--pilot-accent);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .context-bar-arrived {
+      animation: none;
+      box-shadow: inset 0 0 0 2px var(--pilot-accent);
+    }
+  }
+
+  .ctx-field {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .ctx-step {
+    flex: 0 1 auto;
+  }
+
+  .ctx-workflow {
+    flex: 1 1 0;
+  }
+
+  .ctx-runtime {
+    flex: 0 0 auto;
+    max-width: 24rem;
+  }
+
+  .ctx-wc {
+    flex: 0 1 auto;
+    padding-left: var(--pilot-space-2);
+    border-left: var(--pilot-stripe-w) solid var(--pilot-wc-accent);
+  }
+
+  .context-bar dt {
+    color: var(--pilot-text-muted);
+    font-size: var(--pilot-text-xs);
+    font-weight: var(--pilot-weight-medium);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+
+  .context-bar dd {
+    margin: 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: var(--pilot-weight-medium);
+  }
+
+  .ctx-runtime dd {
+    display: flex;
+    align-items: center;
+    gap: var(--pilot-space-2);
+    overflow: visible;
+  }
+
+  .ctx-copy {
+    flex-shrink: 0;
+    padding: 0;
+  }
+
+  .ctx-copy-status {
+    color: var(--pilot-text-muted);
+    font-size: var(--pilot-text-xs);
+    font-weight: var(--pilot-weight-regular);
+  }
+
+  /* ---------- Tablet (§4: below 1024 px) ---------- */
+  @media (max-width: 1023.98px) {
+    .top-bar {
+      gap: var(--pilot-space-2);
+      padding-inline: var(--pilot-space-2);
+    }
+
+    /* Visually hidden, still read out: the bar keeps mark + WC chip + status icon. */
+    .top-title,
+    .conn-word,
+    .conn-time,
+    .context-bar dt {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .top-logo {
+      max-width: 6rem;
+    }
+
+    .claims-open-btn {
+      display: inline-flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .context-bar {
+      gap: var(--pilot-space-3);
+      padding-inline: var(--pilot-space-2);
+    }
+
+    .ctx-workflow {
+      display: none;
+    }
+
+    .ctx-runtime {
+      order: -1;
+    }
+  }
+
+  /* ---------- Keyboard shortcuts sheet (§15) ---------- */
+  .shortcuts-sheet {
+    max-width: 28rem;
+  }
+
+  .shortcuts-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--pilot-text-sm);
+  }
+
+  .shortcuts-table th,
+  .shortcuts-table td {
+    padding: var(--pilot-space-2) var(--pilot-space-3);
+    border-bottom: var(--pilot-border-w) solid var(--pilot-border);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .shortcuts-table th {
+    white-space: nowrap;
+    font-weight: var(--pilot-weight-medium);
+  }
+
+  .shortcuts-table kbd {
+    font-family: var(--pilot-font-mono);
+  }
+}

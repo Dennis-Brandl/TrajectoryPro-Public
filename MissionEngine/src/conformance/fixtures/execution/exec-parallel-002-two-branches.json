@@ -1,0 +1,92 @@
+{
+  "test_id": "exec-parallel-002",
+  "name": "Parallel with two auto-completing branches",
+  "category": "execution",
+  "tags": ["parallel", "auto-complete"],
+  "workflow": {
+    "local_id": "wf-parallel-002",
+    "oid": "wf-parallel-002-oid",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-04T00:00:00Z",
+    "schemaVersion": "4.0",
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "step-start",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "START",
+        "position": { "x": 200, "y": 100 }
+      },
+      {
+        "local_id": "parallel",
+        "oid": "step-parallel",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "PARALLEL",
+        "position": { "x": 200, "y": 200 }
+      },
+      {
+        "local_id": "script-a",
+        "oid": "step-script-a",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "SCRIPT",
+        "position": { "x": 100, "y": 300 },
+        "script_config": {
+          "language": "javascript",
+          "source": "// Branch A auto-complete"
+        }
+      },
+      {
+        "local_id": "script-b",
+        "oid": "step-script-b",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "SCRIPT",
+        "position": { "x": 300, "y": 300 },
+        "script_config": {
+          "language": "javascript",
+          "source": "// Branch B auto-complete"
+        }
+      },
+      {
+        "local_id": "wait-all",
+        "oid": "step-wait-all",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "WAIT ALL",
+        "position": { "x": 200, "y": 400 }
+      },
+      {
+        "local_id": "end",
+        "oid": "step-end",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 200, "y": 500 }
+      }
+    ],
+    "connections": [
+      { "from_step_id": "step-start", "to_step_id": "step-parallel" },
+      { "from_step_id": "step-parallel", "to_step_id": "step-script-a" },
+      { "from_step_id": "step-parallel", "to_step_id": "step-script-b" },
+      { "from_step_id": "step-script-a", "to_step_id": "step-wait-all" },
+      { "from_step_id": "step-script-b", "to_step_id": "step-wait-all" },
+      { "from_step_id": "step-wait-all", "to_step_id": "step-end" }
+    ]
+  },
+  "user_actions": [],
+  "expected": {
+    "valid": true,
+    "execution_trace": [
+      { "step_oid": "step-start", "state": "COMPLETED", "order": 1 },
+      { "step_oid": "step-parallel", "state": "COMPLETED", "order": 2 },
+      { "step_oid": "step-script-a", "state": "COMPLETED", "order": 3 },
+      { "step_oid": "step-script-b", "state": "COMPLETED", "order": 4 },
+      { "step_oid": "step-wait-all", "state": "COMPLETED", "order": 5 },
+      { "step_oid": "step-end", "state": "COMPLETED", "order": 6 }
+    ],
+    "workflow_state": "COMPLETED"
+  }
+}

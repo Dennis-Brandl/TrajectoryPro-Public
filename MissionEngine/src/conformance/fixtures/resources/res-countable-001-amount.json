@@ -1,0 +1,105 @@
+{
+  "test_id": "res-countable-001",
+  "name": "Countable pool: acquire amount then release",
+  "category": "execution",
+  "tags": [
+    "resource",
+    "countable"
+  ],
+  "workflow": {
+    "local_id": "wf",
+    "oid": "wf",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-11",
+    "resource_property_specifications": [
+      {
+        "name": "Slots",
+        "resource_type": "countable use with pool limits",
+        "use_limit": 10
+      }
+    ],
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "start",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "START"
+      },
+      {
+        "local_id": "use",
+        "oid": "use",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "SCRIPT",
+        "script_config": {
+          "language": "javascript",
+          "source": "output.status = 'used';"
+        },
+        "output_parameter_specifications": [
+          {
+            "id": "status",
+            "target": "Result.Status"
+          }
+        ],
+        "resource_command_specifications": [
+          {
+            "command_type": "Acquire Pool Amount",
+            "resource_name": "Slots",
+            "amount": 5,
+            "resource_source_type": "workflow",
+            "resource_source_oid": "wf"
+          }
+        ]
+      },
+      {
+        "local_id": "release",
+        "oid": "release",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "SCRIPT",
+        "script_config": {
+          "language": "javascript",
+          "source": ";"
+        },
+        "resource_command_specifications": [
+          {
+            "command_type": "Release Pool Amount",
+            "resource_name": "Slots",
+            "amount": 5,
+            "resource_source_type": "workflow",
+            "resource_source_oid": "wf"
+          }
+        ]
+      },
+      {
+        "local_id": "end",
+        "oid": "end",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "END"
+      }
+    ],
+    "connections": [
+      {
+        "from_step_id": "start",
+        "to_step_id": "use"
+      },
+      {
+        "from_step_id": "use",
+        "to_step_id": "release"
+      },
+      {
+        "from_step_id": "release",
+        "to_step_id": "end"
+      }
+    ]
+  },
+  "expected": {
+    "valid": true,
+    "workflow_state": "COMPLETED",
+    "final_properties": {
+      "Result.Status": "used"
+    }
+  }
+}

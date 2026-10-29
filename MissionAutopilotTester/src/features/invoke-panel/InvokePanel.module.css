@@ -1,0 +1,85 @@
+/*
+ * Copyright 2026 Dennis L. Brandl
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--acT-pad);
+  max-width: 640px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--acT-pad-sm);
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--acT-text);
+  margin: 0;
+}
+
+.description {
+  color: var(--acT-text-subtle);
+  font-size: var(--acT-fs-base);
+  margin: 0;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--acT-pad);
+  margin-top: var(--acT-pad-sm);
+}
+
+.muted {
+  color: var(--acT-text-muted);
+  font-size: var(--acT-fs-sm);
+}
+
+.simToggleRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.simToggleLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--acT-pad-sm);
+  color: var(--acT-text);
+  font-size: var(--acT-fs-sm);
+  cursor: pointer;
+  user-select: none;
+}
+
+.simToggleHelper {
+  color: var(--acT-text-muted);
+  font-size: var(--acT-fs-xs, 11px);
+  margin-left: calc(var(--acT-pad-sm) + 14px);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.error {
+  color: var(--acT-error);
+  font-size: var(--acT-fs-sm);
+}

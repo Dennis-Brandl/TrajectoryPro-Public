@@ -1,0 +1,231 @@
+{
+  "test_id": "exec-parallel-004",
+  "name": "Nested parallel execution",
+  "category": "execution",
+  "tags": ["parallel", "nested"],
+  "workflow": {
+    "local_id": "wf-parallel-004",
+    "oid": "wf-parallel-004-oid",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-04T00:00:00Z",
+    "schemaVersion": "4.0",
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "step-start",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "START",
+        "position": { "x": 250, "y": 100 }
+      },
+      {
+        "local_id": "parallel-outer",
+        "oid": "step-parallel-outer",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "PARALLEL",
+        "position": { "x": 250, "y": 200 }
+      },
+      {
+        "local_id": "parallel-inner",
+        "oid": "step-parallel-inner",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "PARALLEL",
+        "position": { "x": 150, "y": 300 }
+      },
+      {
+        "local_id": "ui-a1",
+        "oid": "step-ui-a1",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "USER_INTERACTION",
+        "position": { "x": 50, "y": 400 },
+        "form_layout_config": [
+          {
+            "deviceType": "phone",
+            "canvasWidth": 390,
+            "canvasHeight": 844,
+            "elements": [
+              {
+                "type": "textInput",
+                "x": 10,
+                "y": 10,
+                "width": 370,
+                "height": 50,
+                "label": "Inner Branch A1",
+                "placeholder": "Enter A1 value",
+                "fieldName": "field_a1",
+                "required": true,
+                "outputParameter": "InnerA1.Value"
+              },
+              {
+                "type": "button",
+                "x": 10,
+                "y": 80,
+                "width": 370,
+                "height": 50,
+                "label": "Submit",
+                "outputValue": "done"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "local_id": "ui-a2",
+        "oid": "step-ui-a2",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "USER_INTERACTION",
+        "position": { "x": 250, "y": 400 },
+        "form_layout_config": [
+          {
+            "deviceType": "phone",
+            "canvasWidth": 390,
+            "canvasHeight": 844,
+            "elements": [
+              {
+                "type": "textInput",
+                "x": 10,
+                "y": 10,
+                "width": 370,
+                "height": 50,
+                "label": "Inner Branch A2",
+                "placeholder": "Enter A2 value",
+                "fieldName": "field_a2",
+                "required": true,
+                "outputParameter": "InnerA2.Value"
+              },
+              {
+                "type": "button",
+                "x": 10,
+                "y": 80,
+                "width": 370,
+                "height": 50,
+                "label": "Submit",
+                "outputValue": "done"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "local_id": "wait-inner",
+        "oid": "step-wait-inner",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "WAIT ALL",
+        "position": { "x": 150, "y": 500 }
+      },
+      {
+        "local_id": "ui-b",
+        "oid": "step-ui-b",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "USER_INTERACTION",
+        "position": { "x": 400, "y": 350 },
+        "form_layout_config": [
+          {
+            "deviceType": "phone",
+            "canvasWidth": 390,
+            "canvasHeight": 844,
+            "elements": [
+              {
+                "type": "textInput",
+                "x": 10,
+                "y": 10,
+                "width": 370,
+                "height": 50,
+                "label": "Outer Branch B",
+                "placeholder": "Enter B value",
+                "fieldName": "field_b",
+                "required": true,
+                "outputParameter": "OuterB.Value"
+              },
+              {
+                "type": "button",
+                "x": 10,
+                "y": 80,
+                "width": 370,
+                "height": 50,
+                "label": "Submit",
+                "outputValue": "done"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "local_id": "wait-outer",
+        "oid": "step-wait-outer",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "WAIT ALL",
+        "position": { "x": 250, "y": 600 }
+      },
+      {
+        "local_id": "end",
+        "oid": "step-end",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 250, "y": 700 }
+      }
+    ],
+    "connections": [
+      { "from_step_id": "step-start", "to_step_id": "step-parallel-outer" },
+      { "from_step_id": "step-parallel-outer", "to_step_id": "step-parallel-inner" },
+      { "from_step_id": "step-parallel-outer", "to_step_id": "step-ui-b" },
+      { "from_step_id": "step-parallel-inner", "to_step_id": "step-ui-a1" },
+      { "from_step_id": "step-parallel-inner", "to_step_id": "step-ui-a2" },
+      { "from_step_id": "step-ui-a1", "to_step_id": "step-wait-inner" },
+      { "from_step_id": "step-ui-a2", "to_step_id": "step-wait-inner" },
+      { "from_step_id": "step-wait-inner", "to_step_id": "step-wait-outer" },
+      { "from_step_id": "step-ui-b", "to_step_id": "step-wait-outer" },
+      { "from_step_id": "step-wait-outer", "to_step_id": "step-end" }
+    ]
+  },
+  "user_actions": [
+    {
+      "step_oid": "step-ui-a1",
+      "action": "submit",
+      "form_values": { "field_a1": "Inner A1 done" }
+    },
+    {
+      "step_oid": "step-ui-a2",
+      "action": "submit",
+      "form_values": { "field_a2": "Inner A2 done" }
+    },
+    {
+      "step_oid": "step-ui-b",
+      "action": "submit",
+      "form_values": { "field_b": "Outer B done" }
+    }
+  ],
+  "expected": {
+    "valid": true,
+    "execution_trace": [
+      { "step_oid": "step-start", "state": "COMPLETED", "order": 1 },
+      { "step_oid": "step-parallel-outer", "state": "COMPLETED", "order": 2 },
+      { "step_oid": "step-parallel-inner", "state": "COMPLETED", "order": 3 },
+      { "step_oid": "step-ui-b", "state": "EXECUTING", "order": 4 },
+      { "step_oid": "step-ui-a1", "state": "EXECUTING", "order": 5 },
+      { "step_oid": "step-ui-a2", "state": "EXECUTING", "order": 6 },
+      { "step_oid": "step-wait-inner", "state": "EXECUTING", "order": 7 },
+      { "step_oid": "step-wait-outer", "state": "EXECUTING", "order": 8 },
+      { "step_oid": "step-ui-a1", "state": "COMPLETED", "order": 9, "after_action": 0 },
+      { "step_oid": "step-ui-a2", "state": "COMPLETED", "order": 10, "after_action": 1 },
+      { "step_oid": "step-wait-inner", "state": "COMPLETED", "order": 11 },
+      { "step_oid": "step-ui-b", "state": "COMPLETED", "order": 12, "after_action": 2 },
+      { "step_oid": "step-wait-outer", "state": "COMPLETED", "order": 13 },
+      { "step_oid": "step-end", "state": "COMPLETED", "order": 14 }
+    ],
+    "final_properties": {
+      "InnerA1.Value": "Inner A1 done",
+      "InnerA2.Value": "Inner A2 done",
+      "OuterB.Value": "Outer B done"
+    },
+    "workflow_state": "COMPLETED"
+  }
+}

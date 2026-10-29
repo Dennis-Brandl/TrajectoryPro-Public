@@ -1,0 +1,2 @@
+ALTER TABLE "step_instance" DROP CONSTRAINT "step_instance_state_ck";--> statement-breakpoint
+ALTER TABLE "step_instance" ADD CONSTRAINT "step_instance_state_ck" CHECK ("step_instance"."state" in ('READY','EXECUTING','WAITING_ACTION','WAITING_USER','WAITING_GATE','WAITING_PROPERTIES','PAUSED','COMPLETED','ERRORED','ABORTED','CANCELLED'));

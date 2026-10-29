@@ -1,0 +1,5 @@
+{
+  "activity-bar": { "$value": "oklch(0.96 0 0)", "$type": "color" },
+  "side-panel": { "$value": "oklch(0.975 0 0)", "$type": "color" },
+  "status-bar": { "$value": "oklch(0.96 0 0)", "$type": "color" }
+}

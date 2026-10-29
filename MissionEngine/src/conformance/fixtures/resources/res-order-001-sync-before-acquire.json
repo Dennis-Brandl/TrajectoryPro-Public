@@ -1,0 +1,168 @@
+{
+  "test_id": "res-order-001",
+  "name": "Sync command processed before Acquire commands",
+  "category": "execution",
+  "tags": [
+    "resource",
+    "ordering"
+  ],
+  "workflow": {
+    "local_id": "wf",
+    "oid": "wf",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-11",
+    "resource_property_specifications": [
+      {
+        "name": "Chan",
+        "resource_type": "sync"
+      },
+      {
+        "name": "Lock",
+        "resource_type": "binary exclusive use"
+      }
+    ],
+    "value_property_specifications": [
+      {
+        "name": "Data",
+        "entries": [
+          {
+            "name": "Value",
+            "value": "hello"
+          }
+        ]
+      }
+    ],
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "start",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "START"
+      },
+      {
+        "local_id": "parallel",
+        "oid": "parallel",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "PARALLEL"
+      },
+      {
+        "local_id": "sender",
+        "oid": "sender",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "SCRIPT",
+        "script_config": {
+          "language": "javascript",
+          "source": ";"
+        },
+        "resource_command_specifications": [
+          {
+            "command_type": "Send",
+            "resource_name": "Chan",
+            "source": "Data.Value",
+            "resource_source_type": "workflow",
+            "resource_source_oid": "wf"
+          }
+        ]
+      },
+      {
+        "local_id": "receiver",
+        "oid": "receiver",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "SCRIPT",
+        "script_config": {
+          "language": "javascript",
+          "source": ";"
+        },
+        "resource_command_specifications": [
+          {
+            "command_type": "Receive",
+            "resource_name": "Chan",
+            "target": "Result.Received",
+            "resource_source_type": "workflow",
+            "resource_source_oid": "wf"
+          },
+          {
+            "command_type": "Acquire",
+            "resource_name": "Lock",
+            "resource_source_type": "workflow",
+            "resource_source_oid": "wf"
+          }
+        ]
+      },
+      {
+        "local_id": "release",
+        "oid": "release",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "SCRIPT",
+        "script_config": {
+          "language": "javascript",
+          "source": ";"
+        },
+        "resource_command_specifications": [
+          {
+            "command_type": "Release",
+            "resource_name": "Lock",
+            "resource_source_type": "workflow",
+            "resource_source_oid": "wf"
+          }
+        ]
+      },
+      {
+        "local_id": "wait",
+        "oid": "wait",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "WAIT ALL"
+      },
+      {
+        "local_id": "end",
+        "oid": "end",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "END"
+      }
+    ],
+    "connections": [
+      {
+        "from_step_id": "start",
+        "to_step_id": "parallel"
+      },
+      {
+        "from_step_id": "parallel",
+        "to_step_id": "sender"
+      },
+      {
+        "from_step_id": "parallel",
+        "to_step_id": "receiver"
+      },
+      {
+        "from_step_id": "sender",
+        "to_step_id": "wait"
+      },
+      {
+        "from_step_id": "receiver",
+        "to_step_id": "release"
+      },
+      {
+        "from_step_id": "release",
+        "to_step_id": "wait"
+      },
+      {
+        "from_step_id": "wait",
+        "to_step_id": "end"
+      }
+    ]
+  },
+  "expected": {
+    "valid": true,
+    "workflow_state": "COMPLETED",
+    "final_properties": {
+      "Result.Received": "hello"
+    }
+  }
+}

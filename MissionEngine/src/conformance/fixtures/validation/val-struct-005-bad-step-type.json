@@ -1,0 +1,53 @@
+{
+  "test_id": "val-struct-005",
+  "name": "Invalid step type enum value",
+  "category": "validation",
+  "tags": ["structural", "invalid", "enum"],
+  "workflow": {
+    "local_id": "bad-step-type-workflow",
+    "oid": "7000000000000005",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-04T00:00:00Z",
+    "schemaVersion": "4.0",
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "7000000000000050",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "START",
+        "position": { "x": 100, "y": 100 }
+      },
+      {
+        "local_id": "bad-step",
+        "oid": "7000000000000051",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "INVALID_TYPE",
+        "position": { "x": 100, "y": 250 }
+      },
+      {
+        "local_id": "end",
+        "oid": "7000000000000052",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 100, "y": 400 }
+      }
+    ],
+    "connections": [
+      {
+        "from_step_id": "7000000000000050",
+        "to_step_id": "7000000000000051"
+      },
+      {
+        "from_step_id": "7000000000000051",
+        "to_step_id": "7000000000000052"
+      }
+    ]
+  },
+  "expected": {
+    "valid": false,
+    "error_code": "INVALID_STEP_TYPE"
+  }
+}

@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trajectory.com/schemas/conformance/test-fixture.json",
+  "title": "Trajectory Conformance Test Fixture",
+  "description": "Defines the structure of conformance test fixture files consumed by engine implementations.",
+  "type": "object",
+  "properties": {
+    "test_id": {
+      "type": "string",
+      "pattern": "^(val|exec|param)-",
+      "description": "Unique test identifier. Prefix: val- (validation), exec- (execution), param- (parameters)."
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable test name."
+    },
+    "category": {
+      "type": "string",
+      "enum": ["validation", "execution", "parameters"],
+      "description": "Test category determines which engine subsystem is under test."
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Tags for filtering tests (e.g., 'structural', 'semantic', 'linear', 'branching')."
+    },
+    "workflow": {
+      "type": "object",
+      "description": "Embedded MasterWorkflowSpecification document under test."
+    },
+    "setup": {
+      "type": "object",
+      "description": "Initial state before execution begins.",
+      "properties": {
+        "starting_parameters": {
+          "type": "object",
+          "description": "Key-value pairs passed as workflow starting parameters."
+        },
+        "initial_properties": {
+          "type": "object",
+          "description": "Key-value pairs pre-loaded into the Value Property store."
+        }
+      }
+    },
+    "user_actions": {
+      "type": "array",
+      "description": "Ordered list of user interactions to simulate during execution.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "step_oid": {
+            "type": "string",
+            "description": "OID of the step receiving the user action."
+          },
+          "action": {
+            "type": "string",
+            "enum": ["submit", "button_press", "yes", "no", "fail"],
+            "description": "Type of user action."
+          },
+          "form_values": {
+            "type": "object",
+            "description": "Key-value pairs submitted from form fields (fieldName → value)."
+          },
+          "button_output": {
+            "type": "string",
+            "description": "The outputValue of the button pressed (for button_press action)."
+          },
+          "failure_mode": {
+            "type": "string",
+            "description": "Failure mode for the 'fail' action (e.g., ERROR, TIMEOUT, ABORT); matched against a step's try_specifications."
+          },
+          "error": {
+            "type": "string",
+            "description": "Optional human-readable error message accompanying a 'fail' action."
+          }
+        },
+        "required": ["step_oid", "action"]
+      }
+    },
+    "expected": {
+      "type": "object",
+      "description": "Expected outcomes after validation or execution.",
+      "properties": {
+        "valid": {
+          "type": "boolean",
+          "description": "Whether the workflow document should pass validation."
+        },
+        "error_code": {
+          "type": "string",
+          "description": "Expected error code when valid is false."
+        },
+        "execution_trace": {
+          "type": "array",
+          "description": "Expected sequence of step state transitions.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "step_oid": {
+                "type": "string",
+                "description": "OID of the step."
+              },
+              "state": {
+                "type": "string",
+                "description": "Expected state (IDLE, WAITING, STARTING, EXECUTING, COMPLETING, COMPLETED)."
+              },
+              "order": {
+                "type": "integer",
+                "description": "Sequence number in the trace."
+              },
+              "after_action": {
+                "type": "integer",
+                "description": "Index into user_actions that triggered this transition."
+              }
+            },
+            "required": ["step_oid", "state"]
+          }
+        },
+        "final_properties": {
+          "type": "object",
+          "description": "Expected Value Property store state after execution completes."
+        },
+        "workflow_state": {
+          "type": "string",
+          "enum": ["IDLE", "RUNNING", "COMPLETED", "ABORTED", "STOPPED", "ERRORED"],
+          "description": "Expected final workflow instance state."
+        }
+      },
+      "required": ["valid"]
+    }
+  },
+  "required": ["test_id", "name", "category", "tags", "workflow", "expected"]
+}

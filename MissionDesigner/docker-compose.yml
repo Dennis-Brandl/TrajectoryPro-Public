@@ -1,0 +1,82 @@
+##############################################################################
+# Mission Designer — Docker Compose
+#
+# Usage:
+#   docker compose up --build -d    # build and start
+#   docker compose up -d            # start (image already built)
+#   docker compose down             # stop
+#   docker compose down -v          # stop and delete ALL volumes (database + auth secret)
+#
+# Access (loopback-only by default):
+#   Local:   http://localhost:3000
+#
+# Exposing beyond localhost (deliberate opt-in):
+#   1. Change the port mapping below to "0.0.0.0:3000:3000".
+#   2. Set BASE_URL=https://<your-host> and run behind a TLS-terminating reverse
+#      proxy (secure cookies engage under HTTPS; public sign-up is open only
+#      during first-run setup and closes automatically once the setup wizard
+#      completes — accounts are admin-created thereafter).
+#   3. Set ALLOWED_ORIGINS to your origin, e.g. https://workflows.example.com.
+#   4. Set TRUSTED_PROXIES to the proxy's IP (or CIDR range) so rate limits count
+#      each user's own IP rather than the proxy's.
+#   BETTER_AUTH_SECRET auto-generates into the /data volume if unset; set it to pin.
+#
+# Database:
+#   The PostgreSQL database lives in the 'missiondesigner-pgdata' named volume
+#   and survives container restarts. To start fresh, use `down -v`.
+#   The 'missiondesigner-data' volume persists only the auth signing secret
+#   (/data/.auth-secret); without it the secret regenerates on every recreate
+#   and invalidates all user sessions.
+#
+# Managed Postgres:
+#   To use an external/managed Postgres instead of the bundled service, set
+#   DATABASE_URL to your connection string and do not start the 'mission-designer-postgres' service:
+#     docker compose up mission-designer -d
+##############################################################################
+
+name: missiondesigner
+
+services:
+  mission-designer-postgres:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_USER=mission
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Run scripts/setup-secrets.sh}
+      - POSTGRES_DB=mission_designer
+    volumes:
+      - missiondesigner-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mission -d mission_designer']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  mission-designer:
+    build:
+      context: ..
+      dockerfile: MissionDesigner/Dockerfile
+    depends_on:
+      mission-designer-postgres:
+        condition: service_healthy
+    ports:
+      # Loopback-only by default; see the "Exposing" note in the header to publish.
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - missiondesigner-data:/data
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgres://mission:${POSTGRES_PASSWORD:?Run scripts/setup-secrets.sh}@mission-designer-postgres:5432/mission_designer
+      # Set a secret for signing auth sessions (auto-generated if omitted)
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-}
+      # Set to your server IP for remote/network access (comma-separated)
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-}
+      # Behind a reverse proxy: its IPs or CIDR ranges (comma-separated), so the sign-in rate
+      # limit keys on each user's real IP from X-Forwarded-For instead of the proxy's. Unset =
+      # trust no proxy; a bad entry stops startup.
+      - TRUSTED_PROXIES=${TRUSTED_PROXIES:-}
+    restart: unless-stopped
+
+volumes:
+  missiondesigner-pgdata:
+  missiondesigner-data:

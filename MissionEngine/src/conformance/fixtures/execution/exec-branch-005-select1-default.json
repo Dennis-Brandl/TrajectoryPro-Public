@@ -1,0 +1,114 @@
+{
+  "test_id": "exec-branch-005",
+  "name": "SELECT 1 with default branch",
+  "category": "execution",
+  "tags": ["branching", "select1", "default"],
+  "workflow": {
+    "local_id": "wf-branch-005",
+    "oid": "wf-branch-005-oid",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-04T00:00:00Z",
+    "schemaVersion": "4.0",
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "step-start",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "START",
+        "position": { "x": 100, "y": 100 }
+      },
+      {
+        "local_id": "select1",
+        "oid": "step-sel",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "SELECT_1",
+        "position": { "x": 100, "y": 200 },
+        "select1_config": {
+          "input_name": "Status.Value",
+          "input_value_type": "property",
+          "options": [
+            { "id": "opt-open", "label": "Open", "operator": "==", "value": "open", "value_type": "literal", "is_default": false },
+            { "id": "opt-closed", "label": "Closed", "operator": "==", "value": "closed", "value_type": "literal", "is_default": false },
+            { "id": "opt-pending", "label": "Pending", "operator": "==", "value": "pending", "value_type": "literal", "is_default": false },
+            { "id": "opt-default", "label": "Default", "operator": "==", "value": "", "value_type": "literal", "is_default": true }
+          ]
+        }
+      },
+      {
+        "local_id": "end-open",
+        "oid": "step-end-open",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 0, "y": 300 }
+      },
+      {
+        "local_id": "end-closed",
+        "oid": "step-end-closed",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 100, "y": 300 }
+      },
+      {
+        "local_id": "end-pending",
+        "oid": "step-end-pending",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 200, "y": 300 }
+      },
+      {
+        "local_id": "end-default",
+        "oid": "step-end-default",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 300, "y": 300 }
+      }
+    ],
+    "connections": [
+      {
+        "from_step_id": "step-start",
+        "to_step_id": "step-sel"
+      },
+      {
+        "from_step_id": "step-sel",
+        "to_step_id": "step-end-open",
+        "connection_id": "opt-open"
+      },
+      {
+        "from_step_id": "step-sel",
+        "to_step_id": "step-end-closed",
+        "connection_id": "opt-closed"
+      },
+      {
+        "from_step_id": "step-sel",
+        "to_step_id": "step-end-pending",
+        "connection_id": "opt-pending"
+      },
+      {
+        "from_step_id": "step-sel",
+        "to_step_id": "step-end-default",
+        "connection_id": "opt-default"
+      }
+    ]
+  },
+  "setup": {
+    "initial_properties": {
+      "Status.Value": "unknown"
+    }
+  },
+  "user_actions": [],
+  "expected": {
+    "valid": true,
+    "execution_trace": [
+      { "step_oid": "step-start", "state": "COMPLETED", "order": 1 },
+      { "step_oid": "step-sel", "state": "COMPLETED", "order": 2 },
+      { "step_oid": "step-end-default", "state": "COMPLETED", "order": 3 }
+    ],
+    "workflow_state": "COMPLETED"
+  }
+}

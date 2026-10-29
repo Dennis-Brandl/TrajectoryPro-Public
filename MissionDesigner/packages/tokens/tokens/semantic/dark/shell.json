@@ -1,0 +1,5 @@
+{
+  "activity-bar": { "$value": "{color.neutral.900}", "$type": "color" },
+  "side-panel": { "$value": "{color.neutral.800}", "$type": "color" },
+  "status-bar": { "$value": "{color.neutral.900}", "$type": "color" }
+}

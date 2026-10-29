@@ -1,0 +1,433 @@
+{
+  "local_id": "Common Process Steps",
+  "oid": "1000000003849",
+  "version": "2.8.2",
+  "last_modified_date": "2026-02-10T18:43:00.000Z",
+  "description": "Step library: Common Process Steps.",
+  "library_steps": [
+    {
+      "local_id": "SCRIPT Step 585",
+      "oid": "1000000003828",
+      "version": "3.6.1",
+      "last_modified_date": "2026-02-21T22:24:00.000Z",
+      "step_type": "SCRIPT",
+      "script_config": {
+        "language": "python",
+        "source": "# Auto-generated test script\nimport math\n\ndef calculate_reset():\n    value = 53 * 8\n    threshold = 180\n    if value > threshold:\n        return \"PASS\"\n    return \"FAIL\"\n\nresult = calculate_disable()\nprint(f\"Result: {result}\")"
+      },
+      "input_parameter_specifications": [
+        {
+          "id": "Delay_464",
+          "oid": "1000000003829",
+          "description": "Parameter for conveyor control",
+          "default_value": "301",
+          "value_type": "literal"
+        }
+      ],
+      "output_parameter_specifications": [
+        {
+          "id": "ErrorCode_791",
+          "oid": "1000000003830",
+          "description": "Output from speed reading",
+          "target": "ElapsedTime"
+        }
+      ]
+    },
+    {
+      "local_id": "ACTION PROXY Step 885",
+      "oid": "1000000003794",
+      "version": "1.4.4",
+      "last_modified_date": "2026-02-24T21:54:00.000Z",
+      "step_type": "ACTION PROXY",
+      "input_parameter_specifications": [
+        {
+          "id": "Interval_13",
+          "oid": "1000000003795",
+          "description": "Parameter for cooler control",
+          "default_value": "771",
+          "value_type": "property"
+        },
+        {
+          "id": "Timeout_101",
+          "oid": "1000000003796",
+          "description": "Parameter for switch control",
+          "default_value": "110",
+          "value_type": "property"
+        },
+        {
+          "id": "Mode_953",
+          "oid": "1000000003797",
+          "description": "Parameter for hopper control",
+          "default_value": "725",
+          "value_type": "literal"
+        },
+        {
+          "id": "Rate_828",
+          "oid": "1000000003798",
+          "description": "Parameter for controller control",
+          "default_value": "923",
+          "value_type": "literal"
+        }
+      ],
+      "output_parameter_specifications": [
+        {
+          "id": "Delta_835",
+          "oid": "1000000003799",
+          "description": "Output from temperature reading"
+        },
+        {
+          "id": "ErrorCode_707",
+          "oid": "1000000003800",
+          "description": "Output from hopper reading"
+        },
+        {
+          "id": "Average_59",
+          "oid": "1000000003801",
+          "description": "Output from alarm reading"
+        }
+      ],
+      "action_visibility": "observable"
+    },
+    {
+      "local_id": "INSTRUCTION Step 142",
+      "oid": "1000000003802",
+      "version": "1.1.8",
+      "last_modified_date": "2026-02-27T00:54:00.000Z",
+      "step_type": "INSTRUCTION",
+      "ui_parameter_specifications": [
+        {
+          "oid": "1000000003803",
+          "type": "Header",
+          "value": "Step: INSTRUCTION Step 142",
+          "font_size": 18,
+          "align": "center"
+        },
+        {
+          "oid": "1000000003804",
+          "type": "Text",
+          "value": "Perform the monitor operation on nozzle.",
+          "font_size": 14
+        },
+        {
+          "oid": "1000000003805",
+          "type": "Divider",
+          "value": ""
+        },
+        {
+          "oid": "1000000003806",
+          "type": "SmallText",
+          "value": "Ensure safety protocols are followed.",
+          "color": "#666666"
+        }
+      ]
+    },
+    {
+      "local_id": "TEXT_INPUT Step 470",
+      "oid": "1000000003807",
+      "version": "2.8.9",
+      "last_modified_date": "2026-02-12T10:04:00.000Z",
+      "step_type": "TEXT_INPUT",
+      "output_parameter_name": "user_text_54",
+      "ui_parameter_specifications": [
+        {
+          "oid": "1000000003808",
+          "type": "Header",
+          "value": "Enter Value",
+          "font_size": 16
+        },
+        {
+          "oid": "1000000003809",
+          "type": "Text",
+          "value": "Please enter the index."
+        },
+        {
+          "oid": "1000000003810",
+          "type": "TextInput",
+          "value": "Enter here...",
+          "lines": 1
+        }
+      ],
+      "text_input_config": {
+        "required": true,
+        "validation_type": "alphanumeric",
+        "default_value": "4"
+      }
+    },
+    {
+      "local_id": "TEXT_INPUT Step 15",
+      "oid": "1000000003824",
+      "version": "3.9.8",
+      "last_modified_date": "2026-01-03T01:16:00.000Z",
+      "step_type": "TEXT_INPUT",
+      "output_parameter_name": "user_text_91",
+      "ui_parameter_specifications": [
+        {
+          "oid": "1000000003825",
+          "type": "Header",
+          "value": "Enter Value",
+          "font_size": 16
+        },
+        {
+          "oid": "1000000003826",
+          "type": "Text",
+          "value": "Please enter the address."
+        },
+        {
+          "oid": "1000000003827",
+          "type": "TextInput",
+          "value": "Enter here...",
+          "lines": 2
+        }
+      ],
+      "text_input_config": {
+        "required": true,
+        "validation_type": "number",
+        "default_value": "46"
+      }
+    },
+    {
+      "local_id": "SELECT 1 Step 868",
+      "oid": "1000000003831",
+      "version": "1.2.1",
+      "last_modified_date": "2026-02-09T01:18:00.000Z",
+      "step_type": "SELECT 1",
+      "select1_config": {
+        "input_name": "FlowRate",
+        "input_value_type": "property",
+        "options": [
+          {
+            "id": "sel_1000000003832",
+            "label": "Branch A",
+            "operator": "<",
+            "value": "7",
+            "value_type": "literal",
+            "is_default": false
+          },
+          {
+            "id": "sel_1000000003833",
+            "label": "Branch B",
+            "operator": "<",
+            "value": "32",
+            "value_type": "literal",
+            "is_default": true
+          }
+        ]
+      }
+    },
+    {
+      "local_id": "SELECT 1 Step 701",
+      "oid": "1000000003820",
+      "version": "1.0.0",
+      "last_modified_date": "2026-02-03T00:30:00.000Z",
+      "step_type": "SELECT 1",
+      "select1_config": {
+        "input_name": "StepResult",
+        "input_value_type": "property",
+        "options": [
+          {
+            "id": "sel_1000000003821",
+            "label": "Branch A",
+            "operator": ">",
+            "value": "33",
+            "value_type": "literal",
+            "is_default": false
+          },
+          {
+            "id": "sel_1000000003822",
+            "label": "Branch B",
+            "operator": "==",
+            "value": "0",
+            "value_type": "literal",
+            "is_default": false
+          },
+          {
+            "id": "sel_1000000003823",
+            "label": "Branch C",
+            "operator": "<=",
+            "value": "61",
+            "value_type": "literal",
+            "is_default": true
+          }
+        ]
+      }
+    },
+    {
+      "local_id": "ACTION PROXY Step 710",
+      "oid": "1000000003843",
+      "version": "3.1.1",
+      "last_modified_date": "2026-01-13T14:17:00.000Z",
+      "step_type": "ACTION PROXY",
+      "input_parameter_specifications": [
+        {
+          "id": "Tag_788",
+          "oid": "1000000003844",
+          "description": "Parameter for mixer control",
+          "default_value": "150",
+          "value_type": "property"
+        },
+        {
+          "id": "Gain_398",
+          "oid": "1000000003845",
+          "description": "Parameter for mixer control",
+          "default_value": "138",
+          "value_type": "property"
+        }
+      ],
+      "output_parameter_specifications": [
+        {
+          "id": "Measurement_249",
+          "oid": "1000000003846",
+          "description": "Output from mixer reading",
+          "target": "LotNumber"
+        },
+        {
+          "id": "Maximum_702",
+          "oid": "1000000003847",
+          "description": "Output from switch reading"
+        },
+        {
+          "id": "FinalValue_784",
+          "oid": "1000000003848",
+          "description": "Output from level reading"
+        }
+      ],
+      "action_visibility": "opaque"
+    },
+    {
+      "local_id": "TEXT_INPUT Step 920",
+      "oid": "1000000003815",
+      "version": "1.9.0",
+      "last_modified_date": "2026-02-26T17:23:00.000Z",
+      "step_type": "TEXT_INPUT",
+      "output_parameter_name": "user_text_40",
+      "ui_parameter_specifications": [
+        {
+          "oid": "1000000003816",
+          "type": "Header",
+          "value": "Enter Value",
+          "font_size": 16
+        },
+        {
+          "oid": "1000000003817",
+          "type": "Text",
+          "value": "Please enter the limit."
+        },
+        {
+          "oid": "1000000003818",
+          "type": "TextInput",
+          "value": "Enter here...",
+          "lines": 1
+        }
+      ],
+      "text_input_config": {
+        "required": true,
+        "validation_type": "email",
+        "default_value": ""
+      }
+    },
+    {
+      "local_id": "YES_NO Step 448",
+      "oid": "1000000003811",
+      "version": "1.0.4",
+      "last_modified_date": "2026-01-11T18:44:00.000Z",
+      "step_type": "YES_NO",
+      "output_parameter_name": "user_confirm_57",
+      "ui_parameter_specifications": [
+        {
+          "oid": "1000000003812",
+          "type": "Header",
+          "value": "Confirmation Required",
+          "font_size": 16
+        },
+        {
+          "oid": "1000000003813",
+          "type": "Text",
+          "value": "Is the level ready for operation?"
+        },
+        {
+          "oid": "1000000003814",
+          "type": "YesNoButtons",
+          "value": "Confirm",
+          "value2": "Reject"
+        }
+      ],
+      "yes_no_config": {
+        "yes_label": "Accept",
+        "no_label": "Decline",
+        "yes_value": "true",
+        "no_value": "false",
+        "default_selection": "yes"
+      }
+    },
+    {
+      "local_id": "PARALLEL Step 473",
+      "oid": "1000000003819",
+      "version": "3.0.8",
+      "last_modified_date": "2026-02-22T12:29:00.000Z",
+      "step_type": "PARALLEL"
+    },
+    {
+      "local_id": "CHECKBOX Step 52",
+      "oid": "1000000003834",
+      "version": "2.7.7",
+      "last_modified_date": "2026-02-17T03:54:00.000Z",
+      "step_type": "CHECKBOX",
+      "output_parameter_name": "user_checks_60",
+      "ui_parameter_specifications": [
+        {
+          "oid": "1000000003835",
+          "type": "Header",
+          "value": "Select Items",
+          "font_size": 16
+        },
+        {
+          "oid": "1000000003836",
+          "type": "Text",
+          "value": "Check all applicable safety conditions."
+        },
+        {
+          "oid": "1000000003837",
+          "type": "CheckboxList",
+          "value": "Safety Checks"
+        }
+      ],
+      "checkbox_config": {
+        "options": [
+          {
+            "id": "cb_1000000003838",
+            "label": "PPE Worn",
+            "value": "ppe_worn",
+            "default_checked": true
+          },
+          {
+            "id": "cb_1000000003839",
+            "label": "Area Clear",
+            "value": "area_clear",
+            "default_checked": false
+          },
+          {
+            "id": "cb_1000000003840",
+            "label": "Guards in Place",
+            "value": "guards_in_place",
+            "default_checked": false
+          },
+          {
+            "id": "cb_1000000003841",
+            "label": "Lockout Active",
+            "value": "lockout_active",
+            "default_checked": false
+          },
+          {
+            "id": "cb_1000000003842",
+            "label": "Pressure Released",
+            "value": "pressure_released",
+            "default_checked": true
+          }
+        ],
+        "output_format": "json",
+        "min_selections": 1,
+        "max_selections": 5
+      }
+    }
+  ]
+}

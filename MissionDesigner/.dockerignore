@@ -1,0 +1,29 @@
+node_modules
+dist
+Trajectory-dist
+Trajectory-dist.zip
+.git
+.claude
+.planning
+.superpowers
+.TrajectoryMobile
+.tanstack
+.vs
+*.exe
+test-data
+e2e
+docs
+
+# Root-level images (screenshots, icons not needed for build)
+/Home.png
+/List.png
+/Next.png
+/Overview.png
+/Previous.png
+/*.jpg
+/FixExtension.reg
+/NewMilestone.txt
+
+# Keep TypeScript incremental build state out of the image: a stale tsbuildinfo
+# plus a stripped dist makes `tsc --build` skip re-emitting .d.ts files.
+**/*.tsbuildinfo

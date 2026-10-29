@@ -1,0 +1,71 @@
+{
+  "test_id": "val-struct-010",
+  "name": "Valid workflow with resource specifications",
+  "category": "validation",
+  "tags": ["structural", "valid", "resources"],
+  "workflow": {
+    "local_id": "wf-010",
+    "oid": "wf-010-oid",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-04T00:00:00Z",
+    "schemaVersion": "4.0",
+    "resource_property_specifications": [
+      {
+        "name": "Oven",
+        "resource_type": "binary exclusive use",
+        "description": "Exclusive-use oven resource"
+      },
+      {
+        "name": "Trays",
+        "resource_type": "countable use with pool limits",
+        "use_limit": 5,
+        "description": "Shared tray pool with a maximum of 5 concurrent users"
+      }
+    ],
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "step-start-oid",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "START",
+        "position": { "x": 0, "y": 0 }
+      },
+      {
+        "local_id": "interaction",
+        "oid": "step-interaction-oid",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "USER_INTERACTION",
+        "position": { "x": 200, "y": 0 },
+        "resource_command_specifications": [
+          {
+            "command_type": "Acquire",
+            "resource_name": "Oven"
+          }
+        ]
+      },
+      {
+        "local_id": "end",
+        "oid": "step-end-oid",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 400, "y": 0 }
+      }
+    ],
+    "connections": [
+      {
+        "from_step_id": "step-start-oid",
+        "to_step_id": "step-interaction-oid"
+      },
+      {
+        "from_step_id": "step-interaction-oid",
+        "to_step_id": "step-end-oid"
+      }
+    ]
+  },
+  "expected": {
+    "valid": true
+  }
+}

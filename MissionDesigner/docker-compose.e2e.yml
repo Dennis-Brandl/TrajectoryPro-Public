@@ -1,0 +1,33 @@
+# Disposable PostgreSQL for the Playwright e2e suite.
+#
+# The e2e tests run against a REAL Postgres (the fidelity gate — not PGlite) at
+#   postgres://postgres:postgres@localhost:5433/mission_designer_e2e
+# (configured in playwright.config.ts). This one-service compose provisions
+# exactly that: postgres:17-alpine on host port 5433, database `mission_designer_e2e`,
+# with tmpfs-backed storage for speed. Durability is never needed — every run
+# drops and recreates the `public` schema (scripts/e2e-reset-db.mjs) and the app
+# re-bootstraps the schema + triggers on boot.
+#
+# Usage:
+#   docker compose -f docker-compose.e2e.yml up -d     # start (leave running)
+#   npx playwright test                                # run the suite
+#   docker compose -f docker-compose.e2e.yml down      # stop + remove
+services:
+  postgres-e2e:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mission_designer_e2e
+      # Point PGDATA at a subdirectory so the tmpfs mount point itself isn't the
+      # data dir (avoids initdb permission issues on the bare tmpfs root).
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - '127.0.0.1:5433:5432'
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d mission_designer_e2e']
+      interval: 3s
+      timeout: 3s
+      retries: 20

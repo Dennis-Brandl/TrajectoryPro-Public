@@ -1,0 +1,38 @@
+{
+  "test_id": "exec-try-catch-006",
+  "name": "Uncaught failure on ACTION PROXY with no TRY errors the workflow",
+  "category": "execution",
+  "tags": ["try-catch", "errored"],
+  "workflow": {
+    "local_id": "wf",
+    "oid": "wf-1",
+    "version": "1.0.0",
+    "last_modified_date": "2026-05-31T12:00:00.000Z",
+    "schemaVersion": "4.0",
+    "environment_specifications": [
+      {
+        "local_id": "env",
+        "oid": "env-1",
+        "version": "1.0.0",
+        "last_modified_date": "2026-05-31T12:00:00.000Z",
+        "included_actions": [{ "action_oid": "act-1", "action_name": "DoThing", "action_library": "lib-1" }]
+      }
+    ],
+    "steps": [
+      { "local_id": "Start", "oid": "s1", "version": "1.0.0", "last_modified_date": "2026-05-31T12:00:00.000Z", "step_type": "START" },
+      { "local_id": "Action", "oid": "s2", "version": "1.0.0", "last_modified_date": "2026-05-31T12:00:00.000Z", "step_type": "ACTION PROXY", "action_proxy_config": { "action_oid": "act-1", "environment_oid": "env-1" } },
+      { "local_id": "End", "oid": "s3", "version": "1.0.0", "last_modified_date": "2026-05-31T12:00:00.000Z", "step_type": "END" }
+    ],
+    "connections": [
+      { "from_step_id": "s1", "to_step_id": "s2" },
+      { "from_step_id": "s2", "to_step_id": "s3" }
+    ]
+  },
+  "user_actions": [
+    { "step_oid": "s2", "action": "fail", "failure_mode": "ERROR", "error": "unrecoverable failure" }
+  ],
+  "expected": {
+    "valid": true,
+    "workflow_state": "ERRORED"
+  }
+}

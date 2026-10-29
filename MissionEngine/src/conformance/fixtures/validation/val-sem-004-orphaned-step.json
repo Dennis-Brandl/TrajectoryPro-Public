@@ -1,0 +1,52 @@
+{
+  "test_id": "val-sem-004",
+  "name": "Orphaned step with no incoming connection",
+  "category": "validation",
+  "tags": ["semantic", "invalid", "orphaned"],
+  "workflow": {
+    "local_id": "orphaned-step-workflow",
+    "oid": "7000000000004001",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-04T00:00:00Z",
+    "schemaVersion": "4.0",
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "7000000000004010",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "START",
+        "position": { "x": 100, "y": 100 }
+      },
+      {
+        "local_id": "end",
+        "oid": "7000000000004011",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 100, "y": 300 }
+      },
+      {
+        "local_id": "orphan",
+        "oid": "step-orphan",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "USER_INTERACTION",
+        "position": { "x": 400, "y": 200 },
+        "form_layout_config": {
+          "elements": []
+        }
+      }
+    ],
+    "connections": [
+      {
+        "from_step_id": "7000000000004010",
+        "to_step_id": "7000000000004011"
+      }
+    ]
+  },
+  "expected": {
+    "valid": false,
+    "error_code": "ORPHANED_STEP"
+  }
+}

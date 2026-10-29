@@ -1,0 +1,17 @@
+#!/usr/bin/env sh
+
+# Phase 35 cutover: refuse to push any ref under refs/tags/local/cutover-phase-*
+# These are local-only checkpoint tags. Pushing them would leak scratch state
+# (possibly including a seeded dev.db scratch commit) to the remote.
+
+while read local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/tags/local/cutover-phase-*)
+      echo "pre-push: refusing to push local-namespace cutover phase tag: $remote_ref"
+      echo "          (these tags must remain local; see spec §5.1 / B4)"
+      exit 1
+      ;;
+  esac
+done
+
+exit 0

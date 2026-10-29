@@ -1,0 +1,133 @@
+{
+  "test_id": "param-004",
+  "name": "Parameter chaining across steps",
+  "category": "parameters",
+  "tags": ["chaining", "property"],
+  "workflow": {
+    "local_id": "wf-param-004",
+    "oid": "wf-param-004-oid",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-04T00:00:00Z",
+    "schemaVersion": "4.0",
+    "value_property_specifications": [
+      {
+        "name": "Shared",
+        "entries": [{ "name": "Data", "value": "" }]
+      }
+    ],
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "step-start",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "START",
+        "position": { "x": 100, "y": 100 }
+      },
+      {
+        "local_id": "ui-a",
+        "oid": "step-ui-a",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "USER_INTERACTION",
+        "position": { "x": 100, "y": 200 },
+        "form_layout_config": [
+          {
+            "deviceType": "phone",
+            "canvasWidth": 390,
+            "canvasHeight": 844,
+            "elements": [
+              {
+                "type": "textInput",
+                "x": 20,
+                "y": 100,
+                "width": 350,
+                "height": 50,
+                "fieldName": "input_a",
+                "label": "Input A",
+                "outputParameter": "Shared.Data"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "local_id": "ui-b",
+        "oid": "step-ui-b",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "USER_INTERACTION",
+        "position": { "x": 100, "y": 300 },
+        "form_layout_config": [
+          {
+            "deviceType": "phone",
+            "canvasWidth": 390,
+            "canvasHeight": 844,
+            "elements": [
+              {
+                "type": "textInput",
+                "x": 20,
+                "y": 100,
+                "width": 350,
+                "height": 50,
+                "fieldName": "input_b",
+                "label": "Input B",
+                "outputParameter": "Shared.Data",
+                "defaultSource": { "mode": "property", "value": "Shared.Data" }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "local_id": "end",
+        "oid": "step-end",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 100, "y": 400 }
+      }
+    ],
+    "connections": [
+      {
+        "from_step_id": "step-start",
+        "to_step_id": "step-ui-a"
+      },
+      {
+        "from_step_id": "step-ui-a",
+        "to_step_id": "step-ui-b"
+      },
+      {
+        "from_step_id": "step-ui-b",
+        "to_step_id": "step-end"
+      }
+    ]
+  },
+  "user_actions": [
+    {
+      "step_oid": "step-ui-a",
+      "action": "submit",
+      "form_values": { "input_a": "from_step_A" }
+    },
+    {
+      "step_oid": "step-ui-b",
+      "action": "submit",
+      "form_values": { "input_b": "from_step_A" }
+    }
+  ],
+  "expected": {
+    "valid": true,
+    "execution_trace": [
+      { "step_oid": "step-start", "state": "COMPLETED", "order": 1 },
+      { "step_oid": "step-ui-a", "state": "EXECUTING", "order": 2 },
+      { "step_oid": "step-ui-a", "state": "COMPLETED", "order": 3, "after_action": 0 },
+      { "step_oid": "step-ui-b", "state": "EXECUTING", "order": 4 },
+      { "step_oid": "step-ui-b", "state": "COMPLETED", "order": 5, "after_action": 1 },
+      { "step_oid": "step-end", "state": "COMPLETED", "order": 6 }
+    ],
+    "final_properties": {
+      "Shared.Data": "from_step_A"
+    },
+    "workflow_state": "COMPLETED"
+  }
+}

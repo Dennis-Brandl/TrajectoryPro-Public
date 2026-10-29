@@ -1,0 +1,37 @@
+{
+  "_comment": "Shared by mission-control-db/src/lib/runtime-id.ts and MissionCommander/src/lib/runtime-id.ts. Both test suites assert against it so the mirror cannot drift. Spec 2026-10-07 §9.3.",
+  "render": [
+    { "template": "MIX-{YYYY}{MM}{DD}-{SEQ:3}", "now": "2026-10-07T14:35:09Z", "timeZone": "UTC", "workCenterName": "Mixing Line #1", "seq": 7, "expected": "MIX-20261007-007" },
+    { "template": "{WC}/{YY}{MM}{DD}-{SEQ}", "now": "2026-01-02T03:04:05Z", "timeZone": "UTC", "workCenterName": "Blend A", "seq": 12, "expected": "BLEND-A/260102-12" },
+    { "template": "{YYYY}{MM}{DD}T{HH}{mm}{ss}-{SEQ:2}", "now": "2026-12-31T23:59:59Z", "timeZone": "UTC", "workCenterName": "X", "seq": 5, "expected": "20261231T235959-05" },
+    { "template": null, "now": "2026-10-07T14:35:09Z", "timeZone": "UTC", "workCenterName": "Anything", "seq": 42, "expected": "RW-42" },
+    { "template": "B-{YYYY}{MM}{DD}-{SEQ:3}", "now": "2026-10-07T23:30:00Z", "timeZone": "Asia/Tokyo", "workCenterName": "X", "seq": 1, "expected": "B-20261008-001" },
+    { "template": "P#{SEQ:4}", "now": "2026-10-07T14:35:09Z", "timeZone": "UTC", "workCenterName": "X", "seq": 99999, "expected": "P#99999" }
+  ],
+  "validate": [
+    { "template": "", "workCenterName": "X", "ok": true },
+    { "template": "MIX-{SEQ}", "workCenterName": "X", "ok": true },
+    { "template": "MIX-{YYYY}{MM}{DD}-{SEQ:3}", "workCenterName": "X", "ok": true },
+    { "template": "{WC}-{SEQ}", "workCenterName": "Mixing Line #1", "ok": true },
+    { "template": "MIX-{YYYY}", "workCenterName": "X", "ok": false },
+    { "template": "{SEQ}{SEQ}", "workCenterName": "X", "ok": false },
+    { "template": "{DDD}-{SEQ}", "workCenterName": "X", "ok": false },
+    { "template": "{Month}-{SEQ}", "workCenterName": "X", "ok": false },
+    { "template": "{YYYY:2}-{SEQ}", "workCenterName": "X", "ok": false },
+    { "template": "{SEQ:0}", "workCenterName": "X", "ok": false },
+    { "template": "MIX*{SEQ}", "workCenterName": "X", "ok": false },
+    { "template": "{WC}{SEQ}", "workCenterName": "X", "ok": false },
+    { "template": "{SEQ}{WC}", "workCenterName": "X", "ok": false },
+    { "template": "{WC}{YYYY}{SEQ}", "workCenterName": "X", "ok": true },
+    { "template": "{WC}1{SEQ}", "workCenterName": "X", "ok": false },
+    { "template": "{WC}-{SEQ}", "workCenterName": "X", "ok": true },
+    { "template": "{SEQ}1{WC}", "workCenterName": "X", "ok": false }
+  ],
+  "bucket": [
+    { "template": "MIX-{YYYY}{MM}{DD}-{SEQ:3}", "now": "2026-10-07T14:35:09Z", "timeZone": "UTC", "expected": "20261007" },
+    { "template": "{YYYY}{MM}-{SEQ}", "now": "2026-10-07T14:35:09Z", "timeZone": "UTC", "expected": "202610" },
+    { "template": "RW-{SEQ}", "now": "2026-10-07T14:35:09Z", "timeZone": "UTC", "expected": "" },
+    { "template": null, "now": "2026-10-07T14:35:09Z", "timeZone": "UTC", "expected": "" },
+    { "template": "{DD}/{MM}/{YYYY} {SEQ}", "now": "2026-10-07T14:35:09Z", "timeZone": "UTC", "expected": "07102026" }
+  ]
+}

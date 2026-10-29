@@ -1,0 +1,2 @@
+-- Custom SQL migration file, put your code below! --
+ALTER TABLE "workflow_instance" ADD CONSTRAINT "workflow_instance_schedule_id_fk" FOREIGN KEY ("schedule_id") REFERENCES "schedule"("id") ON DELETE SET NULL;

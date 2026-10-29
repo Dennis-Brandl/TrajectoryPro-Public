@@ -1,0 +1,66 @@
+{
+  "test_id": "exec-child-003",
+  "name": "Child workflow with user interaction step",
+  "category": "execution",
+  "tags": ["child-workflow", "user-interaction"],
+  "workflow": {
+    "local_id": "parent-wf", "oid": "parent-wf", "version": "1.0.0", "last_modified_date": "2026-03-15",
+    "steps": [
+      { "local_id": "start", "oid": "start", "version": "1.0.0", "last_modified_date": "2026-03-15", "step_type": "START" },
+      {
+        "local_id": "child-wf", "oid": "proxy", "version": "1.0.0", "last_modified_date": "2026-03-15",
+        "step_type": "WORKFLOW PROXY",
+        "output_parameter_specifications": [
+          { "id": "answer", "oid": "op1", "target": "Result.Answer" }
+        ]
+      },
+      { "local_id": "end", "oid": "end", "version": "1.0.0", "last_modified_date": "2026-03-15", "step_type": "END" }
+    ],
+    "connections": [
+      { "from_step_id": "start", "to_step_id": "proxy" },
+      { "from_step_id": "proxy", "to_step_id": "end" }
+    ],
+    "children": [
+      {
+        "local_id": "child-wf", "oid": "child-wf", "version": "1.0.0", "last_modified_date": "2026-03-15",
+        "parentChildSpecId": null,
+        "state": "Effective",
+        "output_parameter_specifications": [
+          { "id": "answer", "oid": "cop1", "target": "answer" }
+        ],
+        "steps": [
+          { "local_id": "c-start", "oid": "c-start", "version": "1.0.0", "last_modified_date": "2026-03-15", "step_type": "START" },
+          {
+            "local_id": "c-form", "oid": "c-form", "version": "1.0.0", "last_modified_date": "2026-03-15",
+            "step_type": "USER_INTERACTION",
+            "form_layout_config": [
+              {
+                "elements": [
+                  { "type": "textInput", "fieldName": "response", "outputParameter": "answer" }
+                ]
+              }
+            ],
+            "output_parameter_specifications": [
+              { "id": "answer", "oid": "cop1", "target": "answer" }
+            ]
+          },
+          { "local_id": "c-end", "oid": "c-end", "version": "1.0.0", "last_modified_date": "2026-03-15", "step_type": "END" }
+        ],
+        "connections": [
+          { "from_step_id": "c-start", "to_step_id": "c-form" },
+          { "from_step_id": "c-form", "to_step_id": "c-end" }
+        ]
+      }
+    ]
+  },
+  "user_actions": [
+    { "step_oid": "c-form", "action": "submit", "form_values": { "response": "user-typed-this" } }
+  ],
+  "expected": {
+    "valid": true,
+    "workflow_state": "COMPLETED",
+    "final_properties": {
+      "Result.Answer": "user-typed-this"
+    }
+  }
+}

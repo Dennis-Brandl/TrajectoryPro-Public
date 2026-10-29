@@ -1,0 +1,742 @@
+{
+  "local_id": "Reactor Vessel Environment Library",
+  "oid": "1000000003417",
+  "version": "2.9.1",
+  "last_modified_date": "2026-01-23T01:20:00.000Z",
+  "description": "Environment library covering Reactor Vessel, Heat Exchanger, Condenser.",
+  "environment_specifications": [
+    {
+      "local_id": "Reactor Vessel",
+      "oid": "1000000003366",
+      "version": "3.7.6",
+      "last_modified_date": "2026-01-18T09:20:00.000Z",
+      "description": "Environment specification for reactor vessel.",
+      "included_actions": [
+        {
+          "action_name": "Dose Motor",
+          "action_library": "Safety Interlocks",
+          "action_oid": "1000000003091",
+          "action_version": "3.8.0",
+          "action_last_modified_date": "2026-02-25T06:13:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Timeout_467",
+              "oid": "1000000003353",
+              "description": "Parameter for switch control",
+              "default_value": "22",
+              "value_type": "property"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "CurrentValue_173",
+              "oid": "1000000003354",
+              "description": "Output from speed reading",
+              "target": "ProductCode"
+            }
+          ]
+        },
+        {
+          "action_name": "Stop Cooler",
+          "action_library": "Valve Operations",
+          "action_oid": "1000000000997",
+          "action_version": "2.6.0",
+          "action_last_modified_date": "2026-01-14T23:11:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Interval_599",
+              "oid": "1000000003355",
+              "description": "Parameter for controller control",
+              "default_value": "731",
+              "value_type": "property"
+            },
+            {
+              "id": "Rate_70",
+              "oid": "1000000003356",
+              "description": "Parameter for flow control",
+              "default_value": "218",
+              "value_type": "literal"
+            },
+            {
+              "id": "Rate_433",
+              "oid": "1000000003357",
+              "description": "Parameter for tank control",
+              "default_value": "914",
+              "value_type": "property"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "Quality_557",
+              "oid": "1000000003358",
+              "description": "Output from cooler reading"
+            }
+          ]
+        },
+        {
+          "action_name": "Calibrate Actuator",
+          "action_library": "Level Monitoring",
+          "action_oid": "1000000000895",
+          "action_version": "2.0.0",
+          "action_last_modified_date": "2026-01-06T02:11:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Setpoint_565",
+              "oid": "1000000003359",
+              "description": "Parameter for valve control",
+              "default_value": "496",
+              "value_type": "literal"
+            },
+            {
+              "id": "Tolerance_25",
+              "oid": "1000000003360",
+              "description": "Parameter for mixer control",
+              "default_value": "986",
+              "value_type": "property"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "Result_808",
+              "oid": "1000000003361",
+              "description": "Output from alarm reading",
+              "target": "OperatorName"
+            },
+            {
+              "id": "Measurement_548",
+              "oid": "1000000003362",
+              "description": "Output from alarm reading"
+            }
+          ]
+        },
+        {
+          "action_name": "Read Vessel",
+          "action_library": "Quality Checks",
+          "action_oid": "1000000002841",
+          "action_version": "2.2.0",
+          "action_last_modified_date": "2026-02-24T03:02:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Count_689",
+              "oid": "1000000003363",
+              "description": "Parameter for sensor control",
+              "default_value": "23",
+              "value_type": "property"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "Result_943",
+              "oid": "1000000003364",
+              "description": "Output from tank reading"
+            },
+            {
+              "id": "Minimum_779",
+              "oid": "1000000003365",
+              "description": "Output from heater reading",
+              "target": "MeasuredTemp"
+            }
+          ]
+        }
+      ],
+      "value_property_specifications": [
+        {
+          "name": "PressureReading_79",
+          "oid": "1000000003367",
+          "entries": [
+            {
+              "name": "initial",
+              "value": "68"
+            },
+            {
+              "name": "unit",
+              "value": "bar"
+            }
+          ]
+        },
+        {
+          "name": "LotNumber_22",
+          "oid": "1000000003368",
+          "entries": [
+            {
+              "name": "initial",
+              "value": "92"
+            },
+            {
+              "name": "unit",
+              "value": "s"
+            }
+          ]
+        },
+        {
+          "name": "TotalVolume_57",
+          "oid": "1000000003369",
+          "entries": [
+            {
+              "name": "initial",
+              "value": "5"
+            },
+            {
+              "name": "unit",
+              "value": "s"
+            }
+          ]
+        }
+      ],
+      "resource_property_specifications": [
+        {
+          "name": "Conveyor_64",
+          "resource_type": "binary exclusive use",
+          "description": "binary exclusive use resource"
+        },
+        {
+          "name": "Centrifuge_63",
+          "resource_type": "named pool",
+          "description": "named pool resource",
+          "names": [
+            "Centrifuge_63-A",
+            "Centrifuge_63-B",
+            "Centrifuge_63-C"
+          ]
+        },
+        {
+          "name": "Centrifuge_57",
+          "resource_type": "countable use with pool limits",
+          "description": "countable use with pool limits resource",
+          "use_limit": 12
+        },
+        {
+          "name": "Controller_15",
+          "resource_type": "countable use with pool limits",
+          "description": "countable use with pool limits resource",
+          "use_limit": 9
+        }
+      ]
+    },
+    {
+      "local_id": "Heat Exchanger",
+      "oid": "1000000003387",
+      "version": "3.0.8",
+      "last_modified_date": "2026-02-07T15:14:00.000Z",
+      "description": "Environment specification for heat exchanger.",
+      "included_actions": [
+        {
+          "action_name": "Validate Controller",
+          "action_library": "Pump Management",
+          "action_oid": "1000000001217",
+          "action_version": "2.8.0",
+          "action_last_modified_date": "2026-01-18T06:30:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Gain_733",
+              "oid": "1000000003370",
+              "description": "Parameter for pump control",
+              "default_value": "689",
+              "value_type": "literal"
+            },
+            {
+              "id": "Tolerance_374",
+              "oid": "1000000003371",
+              "description": "Parameter for cooler control",
+              "default_value": "170",
+              "value_type": "property"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "Status_701",
+              "oid": "1000000003372",
+              "description": "Output from level reading",
+              "target": "FlowRate"
+            },
+            {
+              "id": "Delta_913",
+              "oid": "1000000003373",
+              "description": "Output from conveyor reading",
+              "target": "ProductCode"
+            }
+          ]
+        },
+        {
+          "action_name": "Configure Nozzle",
+          "action_library": "Inspection Control",
+          "action_oid": "1000000002595",
+          "action_version": "1.5.0",
+          "action_last_modified_date": "2026-01-02T02:06:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Duration_923",
+              "oid": "1000000003374",
+              "description": "Parameter for actuator control",
+              "default_value": "623",
+              "value_type": "property"
+            },
+            {
+              "id": "Factor_318",
+              "oid": "1000000003375",
+              "description": "Parameter for actuator control",
+              "default_value": "856",
+              "value_type": "literal"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "Variance_669",
+              "oid": "1000000003376",
+              "description": "Output from tank reading",
+              "target": "StepResult"
+            }
+          ]
+        },
+        {
+          "action_name": "Initialize Pressure",
+          "action_library": "Packaging Operations",
+          "action_oid": "1000000002278",
+          "action_version": "2.0.0",
+          "action_last_modified_date": "2026-02-12T03:23:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Ratio_220",
+              "oid": "1000000003377",
+              "description": "Parameter for controller control",
+              "default_value": "783",
+              "value_type": "literal"
+            },
+            {
+              "id": "Threshold_236",
+              "oid": "1000000003378",
+              "description": "Parameter for pump control",
+              "default_value": "305",
+              "value_type": "property"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "Quality_607",
+              "oid": "1000000003379",
+              "description": "Output from heater reading"
+            }
+          ]
+        },
+        {
+          "action_name": "Configure Nozzle",
+          "action_library": "Inspection Control",
+          "action_oid": "1000000002595",
+          "action_version": "3.0.0",
+          "action_last_modified_date": "2026-02-08T12:53:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Index_875",
+              "oid": "1000000003380",
+              "description": "Parameter for conveyor control",
+              "default_value": "561",
+              "value_type": "property"
+            },
+            {
+              "id": "Index_469",
+              "oid": "1000000003381",
+              "description": "Parameter for speed control",
+              "default_value": "390",
+              "value_type": "literal"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "Minimum_373",
+              "oid": "1000000003382",
+              "description": "Output from temperature reading"
+            }
+          ]
+        },
+        {
+          "action_name": "Start Temperature",
+          "action_library": "Safety Interlocks",
+          "action_oid": "1000000003215",
+          "action_version": "1.9.0",
+          "action_last_modified_date": "2026-02-03T05:54:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Threshold_24",
+              "oid": "1000000003383",
+              "description": "Parameter for gauge control",
+              "default_value": "174",
+              "value_type": "literal"
+            },
+            {
+              "id": "Index_937",
+              "oid": "1000000003384",
+              "description": "Parameter for controller control",
+              "default_value": "828",
+              "value_type": "property"
+            },
+            {
+              "id": "Limit_569",
+              "oid": "1000000003385",
+              "description": "Parameter for heater control",
+              "default_value": "6",
+              "value_type": "literal"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "Status_345",
+              "oid": "1000000003386",
+              "description": "Output from sensor reading",
+              "target": "ProductCode"
+            }
+          ]
+        }
+      ],
+      "value_property_specifications": [
+        {
+          "name": "BatchID_33",
+          "oid": "1000000003388",
+          "entries": [
+            {
+              "name": "initial",
+              "value": "42"
+            },
+            {
+              "name": "unit",
+              "value": "kg"
+            }
+          ]
+        },
+        {
+          "name": "FlowRate_90",
+          "oid": "1000000003389",
+          "entries": [
+            {
+              "name": "initial",
+              "value": "56"
+            },
+            {
+              "name": "unit",
+              "value": "bar"
+            }
+          ]
+        }
+      ],
+      "resource_property_specifications": [
+        {
+          "name": "Cooler_16",
+          "resource_type": "binary shared use with pool limits",
+          "description": "binary shared use with pool limits resource",
+          "use_limit": 2
+        },
+        {
+          "name": "Scale_13",
+          "resource_type": "countable use with pool limits",
+          "description": "countable use with pool limits resource",
+          "use_limit": 19
+        },
+        {
+          "name": "Controller_53",
+          "resource_type": "countable use with pool limits",
+          "description": "countable use with pool limits resource",
+          "use_limit": 13
+        }
+      ]
+    },
+    {
+      "local_id": "Condenser",
+      "oid": "1000000003412",
+      "version": "3.4.2",
+      "last_modified_date": "2026-02-27T16:45:00.000Z",
+      "description": "Environment specification for condenser.",
+      "included_actions": [
+        {
+          "action_name": "Cool Pressure",
+          "action_library": "Quality Checks",
+          "action_oid": "1000000002692",
+          "action_version": "1.2.0",
+          "action_last_modified_date": "2026-02-14T20:27:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Delay_57",
+              "oid": "1000000003390",
+              "description": "Parameter for speed control",
+              "default_value": "349",
+              "value_type": "property"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "FinalValue_829",
+              "oid": "1000000003391",
+              "description": "Output from controller reading"
+            }
+          ]
+        },
+        {
+          "action_name": "Drain Mixer",
+          "action_library": "Motor Control",
+          "action_oid": "1000000001149",
+          "action_version": "1.2.0",
+          "action_last_modified_date": "2026-01-14T01:34:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Address_895",
+              "oid": "1000000003392",
+              "description": "Parameter for agitator control",
+              "default_value": "369",
+              "value_type": "literal"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "ErrorCode_818",
+              "oid": "1000000003393",
+              "description": "Output from nozzle reading"
+            }
+          ]
+        },
+        {
+          "action_name": "Fill Pipe",
+          "action_library": "Labeling Systems",
+          "action_oid": "1000000002531",
+          "action_version": "2.4.0",
+          "action_last_modified_date": "2026-02-19T02:17:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Mode_599",
+              "oid": "1000000003394",
+              "description": "Parameter for agitator control",
+              "default_value": "452",
+              "value_type": "literal"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "FinalValue_596",
+              "oid": "1000000003395",
+              "description": "Output from nozzle reading",
+              "target": "FlowRate"
+            }
+          ]
+        },
+        {
+          "action_name": "Heat Valve",
+          "action_library": "Inspection Control",
+          "action_oid": "1000000002615",
+          "action_version": "1.3.0",
+          "action_last_modified_date": "2026-02-08T06:10:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Ratio_270",
+              "oid": "1000000003396",
+              "description": "Parameter for belt control",
+              "default_value": "769",
+              "value_type": "literal"
+            },
+            {
+              "id": "Setpoint_943",
+              "oid": "1000000003397",
+              "description": "Parameter for heater control",
+              "default_value": "927",
+              "value_type": "literal"
+            },
+            {
+              "id": "Threshold_331",
+              "oid": "1000000003398",
+              "description": "Parameter for cooler control",
+              "default_value": "467",
+              "value_type": "property"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "Minimum_652",
+              "oid": "1000000003399",
+              "description": "Output from switch reading"
+            }
+          ]
+        },
+        {
+          "action_name": "Mix Pipe",
+          "action_library": "Mixing Operations",
+          "action_oid": "1000000001786",
+          "action_version": "3.8.0",
+          "action_last_modified_date": "2026-02-04T08:18:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Setpoint_666",
+              "oid": "1000000003400",
+              "description": "Parameter for conveyor control",
+              "default_value": "560",
+              "value_type": "literal"
+            },
+            {
+              "id": "Count_346",
+              "oid": "1000000003401",
+              "description": "Parameter for temperature control",
+              "default_value": "148",
+              "value_type": "property"
+            },
+            {
+              "id": "Gain_117",
+              "oid": "1000000003402",
+              "description": "Parameter for tank control",
+              "default_value": "633",
+              "value_type": "property"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "Position_95",
+              "oid": "1000000003403",
+              "description": "Output from nozzle reading"
+            },
+            {
+              "id": "Variance_328",
+              "oid": "1000000003404",
+              "description": "Output from position reading"
+            }
+          ]
+        },
+        {
+          "action_name": "Initialize Hopper",
+          "action_library": "Valve Operations",
+          "action_oid": "1000000001071",
+          "action_version": "2.9.0",
+          "action_last_modified_date": "2026-02-03T05:47:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Target_147",
+              "oid": "1000000003405",
+              "description": "Parameter for actuator control",
+              "default_value": "572",
+              "value_type": "literal"
+            },
+            {
+              "id": "Duration_632",
+              "oid": "1000000003406",
+              "description": "Parameter for flow control",
+              "default_value": "315",
+              "value_type": "property"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "Minimum_319",
+              "oid": "1000000003407",
+              "description": "Output from switch reading"
+            }
+          ]
+        },
+        {
+          "action_name": "Mix Belt",
+          "action_library": "Weighing Systems",
+          "action_oid": "1000000001983",
+          "action_version": "1.0.0",
+          "action_last_modified_date": "2026-02-07T15:35:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Ratio_112",
+              "oid": "1000000003408",
+              "description": "Parameter for controller control",
+              "default_value": "788",
+              "value_type": "literal"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "Variance_889",
+              "oid": "1000000003409",
+              "description": "Output from mixer reading"
+            }
+          ]
+        },
+        {
+          "action_name": "Disable Switch",
+          "action_library": "Temperature Management",
+          "action_oid": "1000000000336",
+          "action_version": "1.7.0",
+          "action_last_modified_date": "2026-02-21T07:51:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Tolerance_921",
+              "oid": "1000000003410",
+              "description": "Parameter for level control",
+              "default_value": "9",
+              "value_type": "literal"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "Delta_852",
+              "oid": "1000000003411",
+              "description": "Output from pressure reading"
+            }
+          ]
+        }
+      ],
+      "value_property_specifications": [
+        {
+          "name": "StepResult_31",
+          "oid": "1000000003413",
+          "entries": [
+            {
+              "name": "initial",
+              "value": "8"
+            },
+            {
+              "name": "unit",
+              "value": "rpm"
+            }
+          ]
+        },
+        {
+          "name": "MeasuredTemp_80",
+          "oid": "1000000003414",
+          "entries": [
+            {
+              "name": "initial",
+              "value": "78"
+            },
+            {
+              "name": "unit",
+              "value": "s"
+            }
+          ]
+        },
+        {
+          "name": "LotNumber_55",
+          "oid": "1000000003415",
+          "entries": [
+            {
+              "name": "initial",
+              "value": "83"
+            },
+            {
+              "name": "unit",
+              "value": "rpm"
+            }
+          ]
+        },
+        {
+          "name": "TargetWeight_67",
+          "oid": "1000000003416",
+          "entries": [
+            {
+              "name": "initial",
+              "value": "80"
+            },
+            {
+              "name": "unit",
+              "value": "mm"
+            }
+          ]
+        }
+      ],
+      "resource_property_specifications": [
+        {
+          "name": "Centrifuge_47",
+          "resource_type": "binary shared use with pool limits",
+          "description": "binary shared use with pool limits resource",
+          "use_limit": 2
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+ALTER TABLE "work_center" DROP COLUMN "dispatch_params";

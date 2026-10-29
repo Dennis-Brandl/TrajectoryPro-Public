@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en" data-pilot-theme="default" data-pilot-mode="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f1b2d" />
+    <link rel="icon" type="image/png" href="/ic_launcher_round.png" />
+    <title>Mission Pilot</title>
+    <!-- Applies the operator's light/dark and text-size preference and the cached site
+         theme before first paint (spec §13 item 1). A plain file, not inline, so a future
+         CSP holds. -->
+    <script src="/theme-boot.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./src/main.tsx"></script>
+  </body>
+</html>

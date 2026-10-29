@@ -1,0 +1,132 @@
+{
+  "nodes": [
+    {
+      "id": "S1",
+      "type": "yesNoStep",
+      "position": { "x": 100, "y": 100 },
+      "data": {
+        "label": "Confirm",
+        "stepType": "yesNoStep",
+        "uiParameters": [{ "id": "P1", "type": "YesNoButtons", "value": "Yes", "value2": "No" }],
+        "formLayouts": {
+          "phone": {
+            "canvasWidth": 390,
+            "canvasHeight": 844,
+            "elements": [
+              {
+                "id": "E1",
+                "type": "text",
+                "x": 20,
+                "y": 40,
+                "width": 350,
+                "height": 30,
+                "content": "Confirm the batch"
+              },
+              {
+                "id": "E2",
+                "type": "button",
+                "x": 60,
+                "y": 700,
+                "width": 120,
+                "height": 44,
+                "label": "Proceed",
+                "outputValue": "true",
+                "deletable": false
+              },
+              {
+                "id": "E3",
+                "type": "button",
+                "x": 210,
+                "y": 700,
+                "width": 120,
+                "height": 44,
+                "label": "Abort",
+                "outputValue": "false",
+                "deletable": false
+              }
+            ]
+          },
+          "tablet": {
+            "canvasWidth": 768,
+            "canvasHeight": 1024,
+            "elements": [
+              {
+                "id": "E1",
+                "type": "text",
+                "x": 40,
+                "y": 40,
+                "width": 400,
+                "height": 30,
+                "content": "Confirm the batch"
+              },
+              {
+                "id": "E2",
+                "type": "button",
+                "x": 200,
+                "y": 900,
+                "width": 120,
+                "height": 44,
+                "label": "Proceed",
+                "outputValue": "true",
+                "deletable": false
+              },
+              {
+                "id": "E3",
+                "type": "button",
+                "x": 340,
+                "y": 900,
+                "width": 120,
+                "height": 44,
+                "label": "Abort",
+                "outputValue": "false",
+                "deletable": false
+              }
+            ]
+          },
+          "desktop": {
+            "canvasWidth": 768,
+            "canvasHeight": 1024,
+            "elements": [
+              {
+                "id": "E1",
+                "type": "text",
+                "x": 40,
+                "y": 40,
+                "width": 400,
+                "height": 30,
+                "content": "Confirm the batch"
+              },
+              {
+                "id": "E2",
+                "type": "button",
+                "x": 200,
+                "y": 900,
+                "width": 120,
+                "height": 44,
+                "label": "Proceed",
+                "outputValue": "true",
+                "deletable": false
+              },
+              {
+                "id": "E3",
+                "type": "button",
+                "x": 340,
+                "y": 900,
+                "width": 120,
+                "height": 44,
+                "label": "Abort",
+                "outputValue": "false",
+                "deletable": false
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "edges": [],
+  "workflowInputs": [],
+  "workflowOutputs": [],
+  "workflowValues": [],
+  "workflowResources": []
+}

@@ -1,0 +1,88 @@
+##############################################################################
+# Mission Autopilot — Docker Compose
+#
+# Builds the server + console from this file, and runs a dedicated Postgres
+# for them. Run it from INSIDE the MissionAutopilot/ directory; the build
+# context is set to the parent (..) so the sibling MissionDesigner repo
+# is available to the console build. MissionDesigner MUST be present
+# alongside MissionAutopilot (superproject layout).
+#
+# Usage (from MissionAutopilot/):
+#   docker compose up --build -d
+#   docker compose down
+#   docker compose down -v        # ALSO wipes the Postgres volume + /data
+#
+# Access:
+#   Console (UI):     http://localhost:3003
+#   Server (REST):    http://localhost:3002   (the console proxies to it)
+##############################################################################
+
+# Pinned so volume and container names don't depend on the checkout folder's name
+# (scripts/setup-secrets.sh looks for the 'missionautopilot_' volumes).
+name: missionautopilot
+
+services:
+  mission-autopilot-postgres:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_USER=mission
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Run scripts/setup-secrets.sh}
+      - POSTGRES_DB=mission_autopilot
+    ports:
+      # Published for host-side dev (npm run dev), the real-PG smoke suite, and
+      # the import CLI. Loopback-only.
+      - '127.0.0.1:5434:5432'
+    volumes:
+      - missionautopilot-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mission -d mission_autopilot']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  mission-autopilot-server:
+    build:
+      context: ..
+      dockerfile: MissionAutopilot/Dockerfile
+      target: server
+    depends_on:
+      mission-autopilot-postgres:
+        condition: service_healthy
+    ports:
+      # Loopback by default — do NOT expose the API to a network without auth.
+      # To expose: set MISSION_AUTOPILOT_BIND=0.0.0.0. ACTIONS_API_KEY is always
+      # required (run ../scripts/setup-secrets.sh); the server refuses to start without it.
+      - '${MISSION_AUTOPILOT_BIND:-127.0.0.1}:3002:3002'
+    environment:
+      - DATABASE_URL=postgres://mission:${POSTGRES_PASSWORD:?Run scripts/setup-secrets.sh}@mission-autopilot-postgres:5432/mission_autopilot
+      - ACTIONS_API_KEY=${ACTIONS_API_KEY:?Run scripts/setup-secrets.sh}
+      # Mirrors the host bind above so the server knows its real exposure (inside
+      # the container it always listens on 0.0.0.0 for the port mapping).
+      - MISSION_AUTOPILOT_BIND=${MISSION_AUTOPILOT_BIND:-127.0.0.1}
+      # Extra Host names / browser Origins the server accepts (comma-separated).
+      - ACTIONS_ALLOWED_HOSTS=${ACTIONS_ALLOWED_HOSTS:-}
+      - ACTIONS_ALLOWED_ORIGINS=${ACTIONS_ALLOWED_ORIGINS:-}
+    volumes:
+      - missionautopilot-data:/data
+    restart: unless-stopped
+
+  mission-autopilot-console:
+    build:
+      context: ..
+      dockerfile: MissionAutopilot/Dockerfile
+      target: console
+    ports:
+      - '127.0.0.1:3003:80'
+    environment:
+      # The console (nginx) reverse-proxies /trajectory + /management here.
+      - ACTIONS_API_UPSTREAM=http://mission-autopilot-server:3002
+      # The console holds no key: nginx proxies the browser's own requests, and the
+      # browser asks for the key once and keeps it for the session.
+    depends_on:
+      - mission-autopilot-server
+    restart: unless-stopped
+
+volumes:
+  missionautopilot-data:
+  missionautopilot-pgdata:

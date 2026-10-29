@@ -1,0 +1,31 @@
+{
+  "name": "mission-engine",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:real-pg": "vitest run test/real-pg.engine.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.5",
+    "ajv": "^8.17.0",
+    "better-auth": "~1.7.12",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.11.7",
+    "mission-control-db": "file:../mission-control-db",
+    "pg": "^8.13.1",
+    "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.2.14",
+    "@types/node": "^22.10.0",
+    "@types/pg": "8.23.1",
+    "esbuild": "^0.28.1",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

@@ -1,0 +1,146 @@
+/*
+ * Copyright 2026 Dennis L. Brandl
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/* Control + typography styles for form blocks. Companion to layout.css.
+   Block components style ONLY their inner elements — never the .tfk-block
+   wrapper (its UA-default display is load-bearing for hide/revert). */
+
+.tfk-size-xs { font-size: var(--form-type-size-xs); }
+.tfk-size-sm { font-size: var(--form-type-size-sm); }
+.tfk-size-md { font-size: var(--form-type-size-md); }
+.tfk-size-lg { font-size: var(--form-type-size-lg); }
+.tfk-size-xl { font-size: var(--form-type-size-xl); }
+.tfk-size-2xl { font-size: var(--form-type-size-2xl); }
+.tfk-size-3xl { font-size: var(--form-type-size-3xl); }
+.tfk-bold { font-weight: 700; }
+.tfk-text-left { text-align: left; }
+.tfk-text-center { text-align: center; }
+.tfk-text-right { text-align: right; }
+
+.tfk-text { max-width: var(--form-measure-text); white-space: pre-wrap; }
+.tfk-heading { line-height: var(--form-type-line-height-heading); }
+
+.tfk-field { display: flex; flex-direction: column; gap: var(--form-space-xs); }
+.tfk-label { font-size: var(--form-type-size-sm); font-weight: 500; color: var(--form-color-text); }
+.tfk-required { color: var(--form-color-danger); }
+
+.tfk-control {
+  min-height: var(--form-touch-min-target);
+  padding: var(--form-control-padding-y) var(--form-control-padding-x);
+  border: 1px solid var(--form-color-border);
+  border-radius: var(--form-radius-control);
+  background: var(--form-color-surface);
+  color: var(--form-color-text);
+  font: inherit;
+  width: 100%;
+}
+.tfk-control:focus-visible { outline: 2px solid var(--form-color-accent); outline-offset: 1px; }
+
+.tfk-fieldset { border: 0; display: flex; flex-direction: column; gap: var(--form-space-xs); }
+/* A legend is not a flex item — it renders above the fieldset's anonymous flex box.
+   Zero its UA padding so the group label lines up with every other stacked label. */
+.tfk-fieldset > legend { padding: 0; }
+/* Visually hidden, still announced. Carries required-ness for groups, whose role
+   ('group') has no aria-required. */
+.tfk-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.tfk-option { display: flex; align-items: center; gap: var(--form-space-sm); min-height: var(--form-touch-min-target); }
+.tfk-option input { width: 1.25rem; height: 1.25rem; accent-color: var(--form-color-accent); }
+
+.tfk-button {
+  min-height: var(--form-touch-min-target);
+  min-width: var(--form-touch-min-target);
+  padding: var(--form-control-padding-y) var(--form-space-lg);
+  border-radius: var(--form-radius-control);
+  border: 1px solid transparent;
+  font-weight: 500;
+  cursor: pointer;
+}
+/* Zero specificity (:where): the button inherits its font like any control, but an authored
+   .tfk-size-* / tablet / phone class always wins regardless of source order. */
+:where(.tfk-button) { font: inherit; }
+.tfk-button-primary { background: var(--form-color-accent); color: var(--form-color-accent-text); }
+.tfk-button-secondary {
+  background: var(--form-color-surface);
+  color: var(--form-color-text);
+  border-color: var(--form-color-border);
+}
+/* Disabled (only host-gated job buttons ever are). Declared after the variants so it wins;
+   ButtonBlockView also drops the authored inline background while disabled. */
+.tfk-button:disabled {
+  background: var(--form-color-surface);
+  color: var(--form-color-text-muted);
+  border-color: var(--form-color-border);
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.tfk-media { width: 100%; overflow: hidden; border-radius: var(--form-radius-control); }
+.tfk-media > img, .tfk-media > video { width: 100%; height: 100%; display: block; }
+.tfk-fit-contain > img { object-fit: contain; }
+.tfk-fit-cover > img { object-fit: cover; }
+.tfk-fit-fill > img { object-fit: fill; }
+.tfk-media-placeholder {
+  display: flex; align-items: center; justify-content: center; height: 100%;
+  background: var(--form-color-surface); border: 1px dashed var(--form-color-border);
+  color: var(--form-color-text-muted); font-size: var(--form-type-size-sm);
+}
+
+.tfk-hr { border: 0; border-top: 1px solid var(--form-color-border); width: 100%; }
+.tfk-hr-thick { border-top-width: 3px; }
+
+.tfk-timer { display: flex; flex-direction: column; gap: var(--form-space-xs); }
+.tfk-timer-display { font-variant-numeric: tabular-nums; font-size: var(--form-type-size-2xl); }
+
+/* E-signature (spec 2026-09-06): one bordered unit — legend, meaning, hint, two inputs, error. */
+.tfk-esig {
+  border: 1px solid var(--form-color-border);
+  border-radius: var(--form-radius-control);
+  padding: var(--form-space-md);
+  gap: var(--form-space-sm);
+}
+.tfk-esig > legend { font-weight: 600; padding: 0 var(--form-space-xs); }
+.tfk-esig-meaning { margin: 0; }
+.tfk-hint { margin: 0; font-size: var(--form-type-size-sm); color: var(--form-color-text-muted); }
+.tfk-error { margin: 0; font-size: var(--form-type-size-sm); color: var(--form-color-danger); }
+
+/* Per-device text size overrides (sizeAt). Phone after tablet so phone wins when both match. */
+@container tfk (max-width: 1023px) {
+  .tfk-size-tablet-xs { font-size: var(--form-type-size-xs); }
+  .tfk-size-tablet-sm { font-size: var(--form-type-size-sm); }
+  .tfk-size-tablet-md { font-size: var(--form-type-size-md); }
+  .tfk-size-tablet-lg { font-size: var(--form-type-size-lg); }
+  .tfk-size-tablet-xl { font-size: var(--form-type-size-xl); }
+  .tfk-size-tablet-2xl { font-size: var(--form-type-size-2xl); }
+  .tfk-size-tablet-3xl { font-size: var(--form-type-size-3xl); }
+}
+@container tfk (max-width: 599px) {
+  .tfk-size-phone-xs { font-size: var(--form-type-size-xs); }
+  .tfk-size-phone-sm { font-size: var(--form-type-size-sm); }
+  .tfk-size-phone-md { font-size: var(--form-type-size-md); }
+  .tfk-size-phone-lg { font-size: var(--form-type-size-lg); }
+  .tfk-size-phone-xl { font-size: var(--form-type-size-xl); }
+  .tfk-size-phone-2xl { font-size: var(--form-type-size-2xl); }
+  .tfk-size-phone-3xl { font-size: var(--form-type-size-3xl); }
+}

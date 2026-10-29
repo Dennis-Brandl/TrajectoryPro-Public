@@ -1,0 +1,162 @@
+{
+  "test_id": "exec-parallel-001",
+  "name": "Basic parallel fork and join",
+  "category": "execution",
+  "tags": ["parallel", "fork-join", "user-interaction"],
+  "workflow": {
+    "local_id": "wf-parallel-001",
+    "oid": "wf-parallel-001-oid",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-04T00:00:00Z",
+    "schemaVersion": "4.0",
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "step-start",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "START",
+        "position": { "x": 200, "y": 100 }
+      },
+      {
+        "local_id": "parallel",
+        "oid": "step-parallel",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "PARALLEL",
+        "position": { "x": 200, "y": 200 }
+      },
+      {
+        "local_id": "ui-a",
+        "oid": "step-ui-a",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "USER_INTERACTION",
+        "position": { "x": 100, "y": 300 },
+        "form_layout_config": [
+          {
+            "deviceType": "phone",
+            "canvasWidth": 390,
+            "canvasHeight": 844,
+            "elements": [
+              {
+                "type": "textInput",
+                "x": 10,
+                "y": 10,
+                "width": 370,
+                "height": 50,
+                "label": "Branch A Input",
+                "placeholder": "Enter branch A value",
+                "fieldName": "branch_a",
+                "required": true,
+                "outputParameter": "BranchA.Value"
+              },
+              {
+                "type": "button",
+                "x": 10,
+                "y": 80,
+                "width": 370,
+                "height": 50,
+                "label": "Submit",
+                "outputValue": "done"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "local_id": "ui-b",
+        "oid": "step-ui-b",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "USER_INTERACTION",
+        "position": { "x": 300, "y": 300 },
+        "form_layout_config": [
+          {
+            "deviceType": "phone",
+            "canvasWidth": 390,
+            "canvasHeight": 844,
+            "elements": [
+              {
+                "type": "textInput",
+                "x": 10,
+                "y": 10,
+                "width": 370,
+                "height": 50,
+                "label": "Branch B Input",
+                "placeholder": "Enter branch B value",
+                "fieldName": "branch_b",
+                "required": true,
+                "outputParameter": "BranchB.Value"
+              },
+              {
+                "type": "button",
+                "x": 10,
+                "y": 80,
+                "width": 370,
+                "height": 50,
+                "label": "Submit",
+                "outputValue": "done"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "local_id": "wait-all",
+        "oid": "step-wait-all",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "WAIT ALL",
+        "position": { "x": 200, "y": 400 }
+      },
+      {
+        "local_id": "end",
+        "oid": "step-end",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 200, "y": 500 }
+      }
+    ],
+    "connections": [
+      { "from_step_id": "step-start", "to_step_id": "step-parallel" },
+      { "from_step_id": "step-parallel", "to_step_id": "step-ui-a" },
+      { "from_step_id": "step-parallel", "to_step_id": "step-ui-b" },
+      { "from_step_id": "step-ui-a", "to_step_id": "step-wait-all" },
+      { "from_step_id": "step-ui-b", "to_step_id": "step-wait-all" },
+      { "from_step_id": "step-wait-all", "to_step_id": "step-end" }
+    ]
+  },
+  "user_actions": [
+    {
+      "step_oid": "step-ui-a",
+      "action": "submit",
+      "form_values": { "branch_a": "A done" }
+    },
+    {
+      "step_oid": "step-ui-b",
+      "action": "submit",
+      "form_values": { "branch_b": "B done" }
+    }
+  ],
+  "expected": {
+    "valid": true,
+    "execution_trace": [
+      { "step_oid": "step-start", "state": "COMPLETED", "order": 1 },
+      { "step_oid": "step-parallel", "state": "COMPLETED", "order": 2 },
+      { "step_oid": "step-ui-a", "state": "EXECUTING", "order": 3 },
+      { "step_oid": "step-ui-b", "state": "EXECUTING", "order": 4 },
+      { "step_oid": "step-wait-all", "state": "EXECUTING", "order": 5 },
+      { "step_oid": "step-ui-a", "state": "COMPLETED", "order": 6, "after_action": 0 },
+      { "step_oid": "step-ui-b", "state": "COMPLETED", "order": 7, "after_action": 1 },
+      { "step_oid": "step-wait-all", "state": "COMPLETED", "order": 8 },
+      { "step_oid": "step-end", "state": "COMPLETED", "order": 9 }
+    ],
+    "final_properties": {
+      "BranchA.Value": "A done",
+      "BranchB.Value": "B done"
+    },
+    "workflow_state": "COMPLETED"
+  }
+}

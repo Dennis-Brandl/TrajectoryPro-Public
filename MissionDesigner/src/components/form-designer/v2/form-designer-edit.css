@@ -1,0 +1,51 @@
+/*
+ * Copyright 2026 Dennis L. Brandl
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/* Mission Designer's form-designer edit-mode affordances, layered on top of the shared
+   @mission/form-renderer CSS. Every rule here is scoped to the edit-mode
+   viewport ([data-mode='edit']); run/preview rendering and PDF/export are
+   never affected. */
+
+/* Divider hit target. A divider renders as a bare <hr> only a few px tall, so
+   its selection rect AND its row's hover band are nearly impossible to click —
+   which also blocks moving it (the drag grip only reveals on row hover) and
+   deleting it (delete needs a selection). Pad the wrapper in edit mode so the
+   divider and its row become comfortably selectable/hoverable; the <hr> itself
+   stays visually thin, centered in the padded box. */
+.tfk-viewport[data-mode='edit'] [data-block-type='divider'] {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+/* Bottom bar. The footer section is always a visible drop target in edit mode (an empty one is the
+   display-only placeholder), so authors can see where buttons go. */
+.tfk-viewport[data-mode='edit'] .tfk-footer .tfk-section {
+  min-height: 3rem;
+  outline: 1px dashed #94a3b8;
+  outline-offset: -1px;
+  position: relative;
+}
+.tfk-viewport[data-mode='edit'] .tfk-footer .tfk-section:empty::before {
+  content: 'Bottom bar \2014  drag buttons here';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: #64748b;
+  pointer-events: none;
+}

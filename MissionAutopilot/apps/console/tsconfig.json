@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "composite": true,
+    "verbatimModuleSyntax": false,
+    "baseUrl": ".",
+    "paths": { "@/*": ["./src/*"] },
+    "types": ["@testing-library/jest-dom"]
+  },
+  "include": ["src/**/*"]
+}

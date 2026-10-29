@@ -1,0 +1,301 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://trajectorypro.io/schemas/master-environment-library.json",
+  "title": "Master Environment Library",
+  "description": "A collection of Master Environment Specifications.",
+  "allOf": [{ "$ref": "managed-element.json" }],
+  "type": "object",
+  "required": ["environment_specifications"],
+  "properties": {
+    "parent_library_oid": {
+      "type": "string",
+      "description": "OID of this library's parent library (self-describing hierarchy; provenance only, not consumed on import)."
+    },
+    "environment_specifications": {
+      "type": "array",
+      "description": "The list of Master Environment Specifications within this library.",
+      "items": {
+        "type": "object",
+        "allOf": [{ "$ref": "managed-element.json" }],
+        "required": ["included_actions"],
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": ["Draft", "InTest", "InReview", "Approved", "Effective", "Superseded", "Obsolete"],
+            "description": "Lifecycle state of the specification. Defaults to 'Draft' when absent."
+          },
+          "library_oid": {
+            "type": "string",
+            "description": "OID of the environment library this spec lives in."
+          },
+          "included_actions": {
+            "type": "array",
+            "description": "Actions included in this environment, inlined with their full MasterActionSpecification body so the environment is self-contained for runtime/Action Server consumers. action_name + action_library are the cross-package join keys; the remaining fields mirror a .WFaction action_specifications entry.",
+            "items": {
+              "type": "object",
+              "required": ["action_name", "action_library"],
+              "properties": {
+                "action_library": {
+                  "type": "string",
+                  "description": "The local_id/name of the action library this action belongs to."
+                },
+                "action_name": {
+                  "type": "string",
+                  "description": "The action name. Mirrors local_id when the action body is resolved."
+                },
+                "local_id": {
+                  "type": "string",
+                  "description": "The action's local_id (same as action_name when resolved)."
+                },
+                "oid": {
+                  "type": "string",
+                  "description": "The OID of the action specification."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Description of the action specification."
+                },
+                "version": {
+                  "type": "string",
+                  "description": "Version of the action specification."
+                },
+                "last_modified_date": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "Last modified date of the action specification."
+                },
+                "action_visibility": {
+                  "type": "string",
+                  "enum": ["opaque", "observable"],
+                  "description": "Action visibility — opaque hides internal state, observable exposes it."
+                },
+                "input_parameter_specifications": {
+                  "type": "array",
+                  "description": "Input parameters of the action specification.",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "default_value"],
+                    "properties": {
+                      "id": { "type": "string" },
+                      "oid": { "type": "string" },
+                      "description": { "type": "string" },
+                      "default_value": { "type": "string" },
+                      "json_schema": { "type": "string" },
+                      "value_type": {
+                        "type": "string",
+                        "enum": ["literal", "property"],
+                        "description": "Whether value is a literal string or a value property reference."
+                      },
+                      "entries": {
+                        "type": "array",
+                        "description": "Structured entries defining the parameter data shape.",
+                        "items": {
+                          "type": "object",
+                          "required": ["name", "value"],
+                          "properties": {
+                            "name": { "type": "string" },
+                            "value": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "output_parameter_specifications": {
+                  "type": "array",
+                  "description": "Output parameters of the action specification.",
+                  "items": {
+                    "type": "object",
+                    "required": ["id"],
+                    "properties": {
+                      "id": { "type": "string" },
+                      "oid": { "type": "string" },
+                      "description": { "type": "string" },
+                      "target": {
+                        "type": "string",
+                        "description": "Value property name where this output is stored."
+                      },
+                      "entries": {
+                        "type": "array",
+                        "description": "Structured entries defining the parameter data shape.",
+                        "items": {
+                          "type": "object",
+                          "required": ["name", "value"],
+                          "properties": {
+                            "name": { "type": "string" },
+                            "value": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "property_specifications": {
+                  "type": "array",
+                  "description": "Property specifications of the action.",
+                  "items": {
+                    "type": "object",
+                    "required": ["name"],
+                    "properties": {
+                      "name": { "type": "string" },
+                      "oid": { "type": "string" },
+                      "entries": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": ["name", "value"],
+                          "properties": {
+                            "name": { "type": "string" },
+                            "value": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "value_property_specifications": {
+            "type": "array",
+            "description": "Definition of named values in master elements.",
+            "items": {
+              "type": "object",
+              "required": ["name"],
+              "properties": {
+                "name": { "type": "string" },
+                "oid": { "type": "string" },
+                "entries": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["name", "value"],
+                    "properties": {
+                      "name": { "type": "string" },
+                      "value": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "action_property_specifications": {
+            "type": "array",
+            "description": "Action-scoped property specifications shared across all actions in the environment.",
+            "items": {
+              "type": "object",
+              "required": ["name"],
+              "properties": {
+                "name": { "type": "string" },
+                "oid": { "type": "string" },
+                "entries": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["name", "value"],
+                    "properties": {
+                      "name": { "type": "string" },
+                      "value": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "value_type_specifications": {
+            "type": "array",
+            "description": "Designer-only Value Type templates (authoring convenience; omitted from runtime packages).",
+            "items": {
+              "type": "object",
+              "required": ["name"],
+              "properties": {
+                "name": { "type": "string" },
+                "oid": { "type": "string" },
+                "description": { "type": "string" },
+                "entries": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["name"],
+                    "properties": {
+                      "name": { "type": "string" },
+                      "value": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "resource_property_specifications": {
+            "type": "array",
+            "description": "Templates for creating resource property realizations.",
+            "items": {
+              "type": "object",
+              "required": ["name", "resource_type"],
+              "properties": {
+                "name": { "type": "string" },
+                "resource_type": {
+                  "type": "string",
+                  "enum": [
+                    "binary exclusive use",
+                    "binary shared use with pool limits",
+                    "countable use with pool limits",
+                    "named pool",
+                    "sync"
+                  ],
+                  "description": "The specific logic for resource access control."
+                },
+                "use_limit": {
+                  "type": "integer",
+                  "description": "Optional limit for shared or countable resources."
+                },
+                "description": { "type": "string" },
+                "names": {
+                  "type": "array",
+                  "description": "Named identifiers for named pool resources.",
+                  "items": { "type": "string" }
+                }
+              }
+            }
+          },
+          "action_server_specifications": {
+            "type": "array",
+            "description": "Registered action servers available in this environment.",
+            "items": {
+              "type": "object",
+              "required": ["name", "uri", "connection_type"],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Display name of the action server."
+                },
+                "uri": {
+                  "type": "string",
+                  "description": "URI endpoint of the action server."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Optional description of the action server."
+                },
+                "connection_type": {
+                  "type": "string",
+                  "enum": ["REST"],
+                  "description": "Protocol used to communicate with the action server."
+                },
+                "api_key": {
+                  "type": "string",
+                  "description": "Optional API key used to authenticate with the action server."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "child_libraries": {
+      "type": "array",
+      "description": "Nested child libraries.",
+      "items": { "$ref": "#" }
+    }
+  }
+}

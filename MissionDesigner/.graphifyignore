@@ -1,0 +1,27 @@
+# Built runtime bundle — not source of truth, duplicates src/
+MissionDesigner-dist/
+
+# Graphify's own output (prevent self-indexing)
+graphify-out/
+src/graphify-out/
+
+# Electron/desktop build outputs
+electron-dist/
+
+# Scratch files from graphify/other tools
+.graphify_trace*.py
+.graphify_query.py
+
+# Archived doc history — keep the graph focused on current work.
+# Remove this line if you want to index historical plans/specs.
+docs/archive/
+
+# Test fixture binaries (handled elsewhere)
+Tests/*.WFmasterX
+Tests/*.WFlibX
+Tests/*.WFactionX
+Tests/*.WFenvirX
+Tests/*.WFslibX
+
+# Generated TanStack route tree
+src/routeTree.gen.ts

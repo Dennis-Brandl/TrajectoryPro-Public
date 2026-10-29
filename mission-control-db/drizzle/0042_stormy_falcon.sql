@@ -1,0 +1,3 @@
+CREATE INDEX "workflow_instance_finished_idx" ON "workflow_instance" USING btree ("work_center_id","completed_at") WHERE "workflow_instance"."status" in ('completed','aborted','stopped','errored');--> statement-breakpoint
+CREATE INDEX "schedule_run_instance_idx" ON "schedule_run" USING btree ("workflow_instance_id");--> statement-breakpoint
+CREATE INDEX "wc_resource_waiter_instance_idx" ON "wc_resource_waiter" USING btree ("instance_id");

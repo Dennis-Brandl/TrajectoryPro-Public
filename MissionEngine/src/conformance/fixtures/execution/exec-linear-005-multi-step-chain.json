@@ -1,0 +1,249 @@
+{
+  "test_id": "exec-linear-005",
+  "name": "Four user steps in sequence",
+  "category": "execution",
+  "tags": ["linear", "user-interaction", "chain"],
+  "workflow": {
+    "local_id": "wf-exec-005",
+    "oid": "wf-exec-005-oid",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-04T00:00:00Z",
+    "schemaVersion": "4.0",
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "step-start",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "START",
+        "position": { "x": 100, "y": 100 }
+      },
+      {
+        "local_id": "ui1",
+        "oid": "step-ui1",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "USER_INTERACTION",
+        "position": { "x": 100, "y": 200 },
+        "form_layout_config": [
+          {
+            "deviceType": "phone",
+            "canvasWidth": 390,
+            "canvasHeight": 844,
+            "elements": [
+              {
+                "type": "textInput",
+                "x": 10,
+                "y": 10,
+                "width": 370,
+                "height": 50,
+                "label": "Field 1",
+                "placeholder": "Enter value 1",
+                "fieldName": "field_1",
+                "required": true,
+                "outputParameter": "Step_1.Value"
+              },
+              {
+                "type": "button",
+                "x": 10,
+                "y": 80,
+                "width": 370,
+                "height": 50,
+                "label": "Submit",
+                "outputValue": "done"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "local_id": "ui2",
+        "oid": "step-ui2",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "USER_INTERACTION",
+        "position": { "x": 100, "y": 300 },
+        "form_layout_config": [
+          {
+            "deviceType": "phone",
+            "canvasWidth": 390,
+            "canvasHeight": 844,
+            "elements": [
+              {
+                "type": "textInput",
+                "x": 10,
+                "y": 10,
+                "width": 370,
+                "height": 50,
+                "label": "Field 2",
+                "placeholder": "Enter value 2",
+                "fieldName": "field_2",
+                "required": true,
+                "outputParameter": "Step_2.Value"
+              },
+              {
+                "type": "button",
+                "x": 10,
+                "y": 80,
+                "width": 370,
+                "height": 50,
+                "label": "Submit",
+                "outputValue": "done"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "local_id": "ui3",
+        "oid": "step-ui3",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "USER_INTERACTION",
+        "position": { "x": 100, "y": 400 },
+        "form_layout_config": [
+          {
+            "deviceType": "phone",
+            "canvasWidth": 390,
+            "canvasHeight": 844,
+            "elements": [
+              {
+                "type": "textInput",
+                "x": 10,
+                "y": 10,
+                "width": 370,
+                "height": 50,
+                "label": "Field 3",
+                "placeholder": "Enter value 3",
+                "fieldName": "field_3",
+                "required": true,
+                "outputParameter": "Step_3.Value"
+              },
+              {
+                "type": "button",
+                "x": 10,
+                "y": 80,
+                "width": 370,
+                "height": 50,
+                "label": "Submit",
+                "outputValue": "done"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "local_id": "ui4",
+        "oid": "step-ui4",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "USER_INTERACTION",
+        "position": { "x": 100, "y": 500 },
+        "form_layout_config": [
+          {
+            "deviceType": "phone",
+            "canvasWidth": 390,
+            "canvasHeight": 844,
+            "elements": [
+              {
+                "type": "textInput",
+                "x": 10,
+                "y": 10,
+                "width": 370,
+                "height": 50,
+                "label": "Field 4",
+                "placeholder": "Enter value 4",
+                "fieldName": "field_4",
+                "required": true,
+                "outputParameter": "Step_4.Value"
+              },
+              {
+                "type": "button",
+                "x": 10,
+                "y": 80,
+                "width": 370,
+                "height": 50,
+                "label": "Submit",
+                "outputValue": "done"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "local_id": "end",
+        "oid": "step-end",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 100, "y": 600 }
+      }
+    ],
+    "connections": [
+      {
+        "from_step_id": "step-start",
+        "to_step_id": "step-ui1"
+      },
+      {
+        "from_step_id": "step-ui1",
+        "to_step_id": "step-ui2"
+      },
+      {
+        "from_step_id": "step-ui2",
+        "to_step_id": "step-ui3"
+      },
+      {
+        "from_step_id": "step-ui3",
+        "to_step_id": "step-ui4"
+      },
+      {
+        "from_step_id": "step-ui4",
+        "to_step_id": "step-end"
+      }
+    ]
+  },
+  "user_actions": [
+    {
+      "step_oid": "step-ui1",
+      "action": "submit",
+      "form_values": { "field_1": "Value1" }
+    },
+    {
+      "step_oid": "step-ui2",
+      "action": "submit",
+      "form_values": { "field_2": "Value2" }
+    },
+    {
+      "step_oid": "step-ui3",
+      "action": "submit",
+      "form_values": { "field_3": "Value3" }
+    },
+    {
+      "step_oid": "step-ui4",
+      "action": "submit",
+      "form_values": { "field_4": "Value4" }
+    }
+  ],
+  "expected": {
+    "valid": true,
+    "execution_trace": [
+      { "step_oid": "step-start", "state": "COMPLETED", "order": 1 },
+      { "step_oid": "step-ui1", "state": "EXECUTING", "order": 2 },
+      { "step_oid": "step-ui1", "state": "COMPLETED", "order": 3, "after_action": 0 },
+      { "step_oid": "step-ui2", "state": "EXECUTING", "order": 4 },
+      { "step_oid": "step-ui2", "state": "COMPLETED", "order": 5, "after_action": 1 },
+      { "step_oid": "step-ui3", "state": "EXECUTING", "order": 6 },
+      { "step_oid": "step-ui3", "state": "COMPLETED", "order": 7, "after_action": 2 },
+      { "step_oid": "step-ui4", "state": "EXECUTING", "order": 8 },
+      { "step_oid": "step-ui4", "state": "COMPLETED", "order": 9, "after_action": 3 },
+      { "step_oid": "step-end", "state": "COMPLETED", "order": 10 }
+    ],
+    "final_properties": {
+      "Step_1.Value": "Value1",
+      "Step_2.Value": "Value2",
+      "Step_3.Value": "Value3",
+      "Step_4.Value": "Value4"
+    },
+    "workflow_state": "COMPLETED"
+  }
+}

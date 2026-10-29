@@ -1,0 +1,69 @@
+{
+  "test_id": "val-struct-008",
+  "name": "Invalid form element type",
+  "category": "validation",
+  "tags": ["structural", "invalid", "enum", "form"],
+  "workflow": {
+    "local_id": "wf-008",
+    "oid": "wf-008-oid",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-04T00:00:00Z",
+    "schemaVersion": "4.0",
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "step-start-oid",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "START",
+        "position": { "x": 0, "y": 0 }
+      },
+      {
+        "local_id": "interaction",
+        "oid": "step-interaction-oid",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "USER_INTERACTION",
+        "position": { "x": 200, "y": 0 },
+        "form_layout_config": [
+          {
+            "deviceType": "phone",
+            "canvasWidth": 390,
+            "canvasHeight": 844,
+            "elements": [
+              {
+                "type": "unknown_widget",
+                "x": 10,
+                "y": 10,
+                "width": 370,
+                "height": 50
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "local_id": "end",
+        "oid": "step-end-oid",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 400, "y": 0 }
+      }
+    ],
+    "connections": [
+      {
+        "from_step_id": "step-start-oid",
+        "to_step_id": "step-interaction-oid"
+      },
+      {
+        "from_step_id": "step-interaction-oid",
+        "to_step_id": "step-end-oid"
+      }
+    ]
+  },
+  "expected": {
+    "valid": false,
+    "error_code": "INVALID_FORM_ELEMENT_TYPE"
+  }
+}

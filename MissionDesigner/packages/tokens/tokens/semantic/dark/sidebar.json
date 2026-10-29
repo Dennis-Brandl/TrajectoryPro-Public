@@ -1,0 +1,10 @@
+{
+  "sidebar": { "$value": "{color.neutral.700}", "$type": "color" },
+  "sidebar-foreground": { "$value": "{color.neutral.50}", "$type": "color" },
+  "sidebar-primary": { "$value": "oklch(0.488 0.243 264.376)", "$type": "color" },
+  "sidebar-primary-foreground": { "$value": "{color.neutral.50}", "$type": "color" },
+  "sidebar-accent": { "$value": "{color.neutral.600}", "$type": "color" },
+  "sidebar-accent-foreground": { "$value": "{color.neutral.50}", "$type": "color" },
+  "sidebar-border": { "$value": "oklch(1 0 0 / 10%)", "$type": "color" },
+  "sidebar-ring": { "$value": "{color.neutral.400}", "$type": "color" }
+}

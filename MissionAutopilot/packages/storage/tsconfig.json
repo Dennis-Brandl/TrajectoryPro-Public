@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "composite": true
+  },
+  "include": ["src/**/*"],
+  // real-pg.smoke.test.ts imports scripts/import-sqlite.ts and
+  // scripts/sqlite-fixture.ts by relative path. `scripts/` is deliberately
+  // NOT part of any tsc project reference (see root tsconfig.json — it runs
+  // via tsx, untyped by `tsc --build`), so that cross-boundary import is
+  // outside this project's rootDir ("./src"). Left in, `tsc --build` errors
+  // TS6059/TS6307 on the smoke file and the failure cascades: storage never
+  // emits dist/, so engine/server/console all lose `@mission/autopilot-storage`
+  // module resolution. Exclude it here exactly as it's excluded from the
+  // default vitest run (see vitest.config.ts) — vitest doesn't need this,
+  // it type-strips with esbuild.
+  "exclude": ["node_modules", "dist", "src/**/*.smoke.test.ts"]
+}

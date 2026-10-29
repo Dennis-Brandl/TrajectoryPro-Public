@@ -1,0 +1,44 @@
+{
+  "test_id": "val-sem-001",
+  "name": "No START step",
+  "category": "validation",
+  "tags": ["semantic", "invalid", "start"],
+  "workflow": {
+    "local_id": "no-start-workflow",
+    "oid": "7000000000001001",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-04T00:00:00Z",
+    "schemaVersion": "4.0",
+    "steps": [
+      {
+        "local_id": "user-step",
+        "oid": "7000000000001010",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "USER_INTERACTION",
+        "position": { "x": 100, "y": 100 },
+        "form_layout_config": {
+          "elements": []
+        }
+      },
+      {
+        "local_id": "end",
+        "oid": "7000000000001011",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 100, "y": 300 }
+      }
+    ],
+    "connections": [
+      {
+        "from_step_id": "7000000000001010",
+        "to_step_id": "7000000000001011"
+      }
+    ]
+  },
+  "expected": {
+    "valid": false,
+    "error_code": "NO_START_STEP"
+  }
+}

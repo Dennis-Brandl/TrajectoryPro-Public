@@ -1,0 +1,2 @@
+ALTER TABLE "broker_action_instance" ADD COLUMN "step_started_at" timestamp with time zone;--> statement-breakpoint
+CREATE UNIQUE INDEX "broker_action_instance_activation_uq" ON "broker_action_instance" USING btree ("step_instance_id","step_started_at") WHERE "broker_action_instance"."step_started_at" IS NOT NULL;

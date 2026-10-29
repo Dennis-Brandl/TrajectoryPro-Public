@@ -1,0 +1,282 @@
+##############################################################################
+# Trajectory Pro Mission Control — Docker Compose (all apps)
+#
+# Run from this directory (the workspace root that holds the app repos as
+# siblings). Brings up the whole fleet except Mission Designer:
+#
+#   docker compose up --build -d
+#   docker compose down
+#   docker compose down -v        # also delete the named volumes (Postgres + data)
+#
+# Access (all loopback-only by default — safe for local evaluation):
+#   Mission Designer                http://localhost:3000   (its own stack: MissionDesigner/docker-compose.yml)
+#   Mission Autopilot server (REST) http://localhost:3002
+#   Mission Autopilot console (UI)  http://localhost:3003
+#   Mission Autopilot Tester        http://localhost:3004
+#   Mission Commander               http://localhost:3005
+#   Mission Engine (health only)    http://localhost:3006/health
+#   Mission Broker  (action server) http://localhost:3007/health
+#
+# To expose a service, change its mapping from "127.0.0.1:PORT:..." to
+# "0.0.0.0:PORT:..." AND set that service's ALLOWED_ORIGINS (+ BASE_URL and TRUSTED_PROXIES
+# behind a TLS-terminating proxy). BEFORE THE FIRST RUN: sh scripts/setup-secrets.sh writes
+# the secrets this file requires into .env (see DOCKER-README).
+#
+# The Autopilot, Commander and Engine images build with THIS directory as
+# context so they can reach sibling packages (Autopilot console ->
+# MissionDesigner's @mission/ui; Commander and Engine -> mission-control-db;
+# Engine -> MissionFormKit + MissionPilot); .dockerignore keeps that context
+# small. The Tester builds from its own subdirectory. Mission Designer is not
+# in this file: it runs from MissionDesigner/docker-compose.yml (context: ..).
+##############################################################################
+
+# Pinned so volume and container names don't depend on the checkout folder's name
+# (scripts/setup-secrets.sh looks for the 'trajectorypro_' volumes).
+name: trajectorypro
+
+services:
+  # Mission Autopilot. Its own Postgres: the root stack has no shared database
+  # service (the dead `postgres`/`studio`/`runtime` services were deleted in
+  # rebrand wave 2b; Mission Designer runs from its own stack with its own
+  # Postgres). No published port here (unlike MissionAutopilot's own compose) —
+  # root compose keeps DBs internal.
+  mission-autopilot-postgres:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_USER=mission
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Run scripts/setup-secrets.sh}
+      - POSTGRES_DB=mission_autopilot
+    volumes:
+      - missionautopilot-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mission -d mission_autopilot']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  mission-autopilot-server:
+    build:
+      context: .
+      dockerfile: MissionAutopilot/Dockerfile
+      target: server
+    depends_on:
+      mission-autopilot-postgres:
+        condition: service_healthy
+    ports:
+      # Loopback by default. To expose: set MISSION_AUTOPILOT_BIND=0.0.0.0 and
+      # ACTIONS_ALLOWED_HOSTS=<the name or IP clients use>. ACTIONS_API_KEY is always
+      # required (see below), and the management API can run arbitrary code.
+      - "${MISSION_AUTOPILOT_BIND:-127.0.0.1}:3002:3002"
+    environment:
+      - DATABASE_URL=postgres://mission:${POSTGRES_PASSWORD:?Run scripts/setup-secrets.sh}@mission-autopilot-postgres:5432/mission_autopilot
+      - ACTIONS_API_KEY=${ACTIONS_API_KEY:?Run scripts/setup-secrets.sh}
+      # Mirrors the host bind above so the server knows its real exposure (inside
+      # the container it always listens on 0.0.0.0 for the port mapping).
+      - MISSION_AUTOPILOT_BIND=${MISSION_AUTOPILOT_BIND:-127.0.0.1}
+      # Extra Host names / browser Origins the server accepts (comma-separated); needed
+      # when clients reach it by a LAN name or IP. Loopback origins always stay allowed.
+      - ACTIONS_ALLOWED_HOSTS=${ACTIONS_ALLOWED_HOSTS:-}
+      - ACTIONS_ALLOWED_ORIGINS=${ACTIONS_ALLOWED_ORIGINS:-}
+      # The address the Mission Engine and Command Module use to reach this server from inside
+      # the compose network; the console top bar shows it as "Command Module address".
+      - FLEET_BASE_URL=http://mission-autopilot-server:3002
+    volumes:
+      # Uploads only — the server currently keeps all state in Postgres via
+      # DATABASE_URL; package archives are handled in memory and never touch disk.
+      - missionautopilot-data:/data
+    restart: unless-stopped
+
+  mission-autopilot-console:
+    build:
+      context: .
+      dockerfile: MissionAutopilot/Dockerfile
+      target: console
+    ports:
+      - "127.0.0.1:3003:80"
+    environment:
+      - ACTIONS_API_UPSTREAM=http://mission-autopilot-server:3002
+      # The console holds no key: nginx proxies the browser's own requests, and the
+      # browser asks for the key once and keeps it for the session.
+    depends_on:
+      - mission-autopilot-server
+    restart: unless-stopped
+
+  # Action Tester. Standalone single-file React app (no backend, no DB) for
+  # exercising any action-server REST implementation directly
+  # from the browser. Part of the live Pro fleet since the v2.1.2 port —
+  # multi-stage build: Vite bundles the single-file app, nginx serves the
+  # static output on 80.
+  mission-autopilot-tester:
+    build:
+      context: ./MissionAutopilotTester
+    ports:
+      - "127.0.0.1:3004:80"
+    restart: unless-stopped
+
+  # Mission Commander + Mission Engine share this Postgres (database
+  # `mission_control`); nothing else in the fleet uses it.
+  mission-commander-postgres:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_USER=mission
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Run scripts/setup-secrets.sh}
+      - POSTGRES_DB=mission_control
+    volumes:
+      - missioncommander-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mission -d mission_control']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  mission-commander:
+    build:
+      context: .
+      dockerfile: MissionCommander/Dockerfile
+    depends_on:
+      mission-commander-postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3005:3005"
+    volumes:
+      - missioncommander-data:/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3005
+      - DATABASE_URL=postgres://mission:${POSTGRES_PASSWORD:?Run scripts/setup-secrets.sh}@mission-commander-postgres:5432/mission_control
+      # The app's canonical origin. Sign-in itself works from any loopback host (the
+      # CORS layer and better-auth's trustedOrigins both admit localhost and 127.0.0.1 on
+      # any port), but the SESSION COOKIE is host-scoped and ignores the port: localhost
+      # and 127.0.0.1 are separate cookie jars. Sign in on one, come back on the other,
+      # and the browser sends no cookie — every /api call 401s and the app looks empty
+      # while the data is untouched. The server therefore redirects HTML navigations to
+      # the hostname named here (middleware/canonical-host.ts), so there is one jar.
+      - BASE_URL=${MISSION_COMMANDER_BASE_URL:-http://localhost:3005}
+      # Auto-generated into the missioncommander-data volume when unset, so restarts keep
+      # existing sessions valid. `docker compose down -v` discards it along with the
+      # database — set it explicitly to survive that.
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-}
+      # Behind a reverse proxy: its IPs or CIDR ranges (comma-separated), so the sign-in rate
+      # limit keys on each user's real IP from X-Forwarded-For instead of the proxy's. Unset =
+      # trust no proxy; a bad entry stops startup.
+      - TRUSTED_PROXIES=${MISSION_COMMANDER_TRUSTED_PROXIES:-}
+      # Phase 6: engine-client.ts's runtime-control calls (pause/resume/stop/abort/
+      # force-release) hit the Mission Engine's token-gated /internal/* API — Start and
+      # Delete deliberately stay on the DB seam (D9). Required, no default: run
+      # scripts/setup-secrets.sh. Commander refuses a token under 32 characters in
+      # production, and the engine refuses the old public dev token. The same value
+      # goes to mission-engine below.
+      - ENGINE_BASE_URL=http://mission-engine:3006
+      - ENGINE_INTERNAL_TOKEN=${ENGINE_INTERNAL_TOKEN:?Run scripts/setup-secrets.sh}
+      # OFF by default so first run matches Designer: the app shows "Create the first
+      # administrator" (/setup), and you choose the credentials. Turning this on seeds
+      # admin/steward/viewer demo logins — which CLOSES the first-run sign-up gate,
+      # because that gate keys on "does any administrator exist". You would then be
+      # asked to sign in with a password you never chose. Only enable it if you want
+      # the fixed demo accounts and know their password.
+      - SEED_DEMO=${MISSION_COMMANDER_SEED_DEMO:-false}
+    restart: unless-stopped
+
+  # Mission Control Suite worker: executes runtime-workflow instances the Command
+  # Module queues, against the SAME Postgres database — no migrations of its own,
+  # so it depends on mission-commander (not just mission-commander-postgres) being
+  # healthy first, guaranteeing the schema already exists by the time it boots.
+  # DEPLOY via scripts/deploy-mission-engine.sh — it runs the real-PG SKIP LOCKED
+  # concurrency proof (test/real-pg.engine.test.ts) against a throwaway Postgres
+  # before rebuilding this image; a bare `up -d --build mission-engine` skips it.
+  mission-engine:
+    build:
+      context: .
+      dockerfile: MissionEngine/Dockerfile
+    depends_on:
+      mission-commander-postgres:
+        condition: service_healthy
+      mission-commander:
+        condition: service_healthy
+    ports:
+      # Loopback-only by default. For LAN testing (the Pilot on a real phone/tablet), set in .env:
+      #   MISSION_ENGINE_BIND=0.0.0.0
+      #   ENGINE_BASE_URL=http://<PC-LAN-IP>:3006            (canonical-host redirect + auth baseURL)
+      #   MISSION_ENGINE_ALLOWED_ORIGINS=http://<PC-LAN-IP>:3006
+      - "${MISSION_ENGINE_BIND:-127.0.0.1}:3006:3006"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgres://mission:${POSTGRES_PASSWORD:?Run scripts/setup-secrets.sh}@mission-commander-postgres:5432/mission_control
+      # First-boot SEED of the Command Module's "Allowed action servers" list (Settings →
+      # Action server trust). Edit the list in the Command Module afterwards; this variable is
+      # ignored once the system_settings row exists.
+      - ACTION_SERVER_ALLOWLIST=${MISSION_ENGINE_ACTION_ALLOWLIST:-}
+      # Spec 2026-09-14: REST-12 property events wake a waiting bound GATE immediately. Kill
+      # switch — set MISSION_ENGINE_PROPERTY_WATCH_ENABLED=false in .env and run
+      # `docker compose up -d mission-engine` (no rebuild) to fall back to cycle-only evaluation.
+      - PROPERTY_WATCH_ENABLED=${MISSION_ENGINE_PROPERTY_WATCH_ENABLED:-true}
+      # Extra origins better-auth should trust besides loopback (comma-separated); needed for
+      # LAN testing so operator sign-in from http://<PC-LAN-IP>:3006 isn't rejected.
+      - ALLOWED_ORIGINS=${MISSION_ENGINE_ALLOWED_ORIGINS:-}
+      # Behind a reverse proxy: its IPs or CIDR ranges (comma-separated), so the sign-in rate
+      # limit keys on each user's real IP from X-Forwarded-For instead of the proxy's. Unset =
+      # trust no proxy; a bad entry stops startup.
+      - TRUSTED_PROXIES=${MISSION_ENGINE_TRUSTED_PROXIES:-}
+      # The engine's own auth secret (Pilot sign-in). NOT generated for you: in production
+      # the engine refuses to start without 32+ real characters. scripts/setup-secrets.sh
+      # writes MISSION_ENGINE_AUTH_SECRET; Commander generates its own and the two never
+      # read each other's cookies, so they need not match.
+      - BETTER_AUTH_SECRET=${MISSION_ENGINE_AUTH_SECRET:?Run scripts/setup-secrets.sh}
+      # Mission Autopilot server the engine calls; it sends ACTIONS_API_KEY to this origin only.
+      - MISSION_ACTIONS_URL=${MISSION_ACTIONS_URL:-http://mission-autopilot-server:3002}
+      - ACTIONS_API_KEY=${ACTIONS_API_KEY:?Run scripts/setup-secrets.sh}
+      - ENGINE_BASE_URL=${ENGINE_BASE_URL:-http://127.0.0.1:3006}
+      # Mirrors the host bind above so the engine knows its real exposure — it refuses
+      # the public dev token when this (or ENGINE_BASE_URL) is non-loopback.
+      - MISSION_ENGINE_BIND=${MISSION_ENGINE_BIND:-127.0.0.1}
+      # Must match mission-commander's ENGINE_INTERNAL_TOKEN above — internal.ts's fail-closed
+      # gate checks the caller's token against this same value. Required, no default;
+      # in production the engine refuses the public dev token and any placeholder.
+      - ENGINE_INTERNAL_TOKEN=${ENGINE_INTERNAL_TOKEN:?Run scripts/setup-secrets.sh}
+      # Spec 2026-10-19 §C2: the engine sends MISSION_BROKER_TOKEN only to MISSION_BROKER_URL's origin. Bind the "Distributed Workflow Management" environment to exactly that address.
+      - MISSION_BROKER_URL=${MISSION_BROKER_URL:-http://mission-broker:3007}
+      - MISSION_BROKER_TOKEN=${MISSION_BROKER_TOKEN:?Run scripts/setup-secrets.sh}
+    restart: unless-stopped
+
+  # Mission Broker (spec 2026-10-15): the action server for the GLOBAL
+  # "Distributed Workflow Action Library". Bind a work center's "Distributed Workflow Management"
+  # environment to http://mission-broker:3007 and add that origin to the action-server
+  # allowlist (Commander Settings).
+  mission-broker:
+    build:
+      context: .
+      dockerfile: MissionBroker/Dockerfile
+    depends_on:
+      mission-commander-postgres:
+        condition: service_healthy
+      mission-commander:
+        condition: service_healthy
+    # Every route except /health requires MISSION_BROKER_TOKEN (Bearer). The broker refuses to start without a token of at least 32 characters — set it once in .env (see DOCKER-README).
+    ports:
+      - "${MISSION_BROKER_BIND:-127.0.0.1}:3007:3007"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgres://mission:${POSTGRES_PASSWORD:?Run scripts/setup-secrets.sh}@mission-commander-postgres:5432/mission_control
+      - BROKER_PORT=3007
+      - MISSION_BROKER_TOKEN=${MISSION_BROKER_TOKEN:?Run scripts/setup-secrets.sh}
+      - BROKER_CORS_ORIGINS=${BROKER_CORS_ORIGINS:-}
+      - BROKER_RETENTION_DAYS=${BROKER_RETENTION_DAYS:-}
+    # The broker has no SIGTERM handler and node as PID 1 ignores SIGTERM; docker's init (tini)
+    # forwards it so `compose stop` is prompt instead of waiting out the 10 s kill timeout.
+    init: true
+    restart: unless-stopped
+
+# `trajectoryactions-data` (the pre-Postgres SQLite volume, keyed to the old
+# `actions-server` service/folder name) is no longer declared here and is now
+# orphaned — `docker volume ls` will still show it until manually removed. To
+# bring that data forward into the new `missionautopilot-*` volumes, follow the
+# import CLI walkthrough in MissionAutopilot/DOCKER-README.md
+# ("Migrating an old SQLite volume").
+volumes:
+  missionautopilot-data:
+  missionautopilot-pgdata:
+  missioncommander-pgdata:
+  missioncommander-data:

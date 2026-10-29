@@ -1,0 +1,20 @@
+##############################################################################
+# Mission Autopilot Tester — Docker Compose
+#
+# Usage:
+#   docker compose up --build -d    # build and start
+#   docker compose up -d            # start (image already built)
+#   docker compose down             # stop
+#
+# Access:  http://localhost:3004
+#
+# Standalone static app — no backend, no database. In the UI, point it at
+# your Action Container's REST URL (e.g. http://localhost:3002).
+##############################################################################
+
+services:
+  mission-autopilot-tester:
+    build: .
+    ports:
+      - "3004:80"
+    restart: unless-stopped

@@ -1,0 +1,4 @@
+{
+  "brand-accent": { "$value": "{color.brand.blue}", "$type": "color" },
+  "brand-accent-foreground": { "$value": "oklch(1 0 0)", "$type": "color" }
+}

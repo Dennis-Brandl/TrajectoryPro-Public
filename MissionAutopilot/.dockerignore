@@ -1,0 +1,27 @@
+# Build output / dependencies
+node_modules
+**/node_modules
+dist
+**/dist
+.vite
+coverage
+**/*.tsbuildinfo
+
+# VCS / tooling / internal (not shipped)
+.git
+.gitignore
+.claude
+.planning
+tasks
+docs
+
+# Local data
+data
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+
+# Internal specs
+*.docx
+*.pptx

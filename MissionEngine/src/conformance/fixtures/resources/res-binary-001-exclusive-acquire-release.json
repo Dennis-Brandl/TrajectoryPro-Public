@@ -1,0 +1,109 @@
+{
+  "test_id": "res-binary-001",
+  "name": "Single use resource: acquire on step A, release on step B",
+  "category": "execution",
+  "tags": [
+    "resource",
+    "binary"
+  ],
+  "workflow": {
+    "local_id": "wf",
+    "oid": "wf",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-11",
+    "resource_property_specifications": [
+      {
+        "name": "Lock",
+        "resource_type": "binary exclusive use"
+      }
+    ],
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "start",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "START"
+      },
+      {
+        "local_id": "acquire",
+        "oid": "acquire",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "SCRIPT",
+        "script_config": {
+          "language": "javascript",
+          "source": "output.status = 'acquired';"
+        },
+        "output_parameter_specifications": [
+          {
+            "id": "status",
+            "target": "Result.Status"
+          }
+        ],
+        "resource_command_specifications": [
+          {
+            "command_type": "Acquire",
+            "resource_name": "Lock",
+            "resource_source_type": "workflow",
+            "resource_source_oid": "wf"
+          }
+        ]
+      },
+      {
+        "local_id": "release",
+        "oid": "release",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "SCRIPT",
+        "script_config": {
+          "language": "javascript",
+          "source": "output.done = 'released';"
+        },
+        "output_parameter_specifications": [
+          {
+            "id": "done",
+            "target": "Result.Done"
+          }
+        ],
+        "resource_command_specifications": [
+          {
+            "command_type": "Release",
+            "resource_name": "Lock",
+            "resource_source_type": "workflow",
+            "resource_source_oid": "wf"
+          }
+        ]
+      },
+      {
+        "local_id": "end",
+        "oid": "end",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "END"
+      }
+    ],
+    "connections": [
+      {
+        "from_step_id": "start",
+        "to_step_id": "acquire"
+      },
+      {
+        "from_step_id": "acquire",
+        "to_step_id": "release"
+      },
+      {
+        "from_step_id": "release",
+        "to_step_id": "end"
+      }
+    ]
+  },
+  "expected": {
+    "valid": true,
+    "workflow_state": "COMPLETED",
+    "final_properties": {
+      "Result.Status": "acquired",
+      "Result.Done": "released"
+    }
+  }
+}

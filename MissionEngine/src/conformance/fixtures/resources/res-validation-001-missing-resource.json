@@ -1,0 +1,60 @@
+{
+  "test_id": "res-validation-001",
+  "name": "Resource command references nonexistent resource",
+  "category": "validation",
+  "tags": [
+    "resource",
+    "validation"
+  ],
+  "workflow": {
+    "local_id": "wf",
+    "oid": "wf",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-11",
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "start",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "START"
+      },
+      {
+        "local_id": "step1",
+        "oid": "step1",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "USER_INTERACTION",
+        "resource_command_specifications": [
+          {
+            "command_type": "Acquire",
+            "resource_name": "NoSuchResource",
+            "resource_source_type": "workflow",
+            "resource_source_oid": "wf"
+          }
+        ]
+      },
+      {
+        "local_id": "end",
+        "oid": "end",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "END"
+      }
+    ],
+    "connections": [
+      {
+        "from_step_id": "start",
+        "to_step_id": "step1"
+      },
+      {
+        "from_step_id": "step1",
+        "to_step_id": "end"
+      }
+    ]
+  },
+  "expected": {
+    "valid": false,
+    "error_code": "INVALID_RESOURCE_COMMAND"
+  }
+}

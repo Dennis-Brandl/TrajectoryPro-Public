@@ -1,0 +1,1 @@
+ALTER TABLE "wc_resource" ADD COLUMN "defined_from_name" text;

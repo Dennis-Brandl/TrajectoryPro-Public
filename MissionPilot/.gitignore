@@ -1,0 +1,5 @@
+node_modules/
+dist/
+*.tsbuildinfo
+# Copied from @fontsource packages by scripts/copy-fonts.mjs
+public/fonts/

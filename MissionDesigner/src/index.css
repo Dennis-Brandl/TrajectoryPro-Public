@@ -1,0 +1,231 @@
+/*
+ * Copyright 2026 Dennis L. Brandl
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Sansation:wght@400;700&display=swap');
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@mission/tokens/dist/tokens.light.css";
+@import "@mission/tokens/dist/tokens.dark.css";
+
+@source "../packages/ui/src";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-accent-foreground: var(--brand-accent-foreground);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Login page — Saturnis aerospace dark theme */
+.login-bg {
+  background: linear-gradient(
+    145deg,
+    var(--color-brand-deep-blue) 0%,
+    hsl(220 60% 7%) 50%,
+    hsl(220 80% 6%) 100%
+  );
+}
+
+.login-card {
+  background: linear-gradient(
+    180deg,
+    hsl(220 22% 15% / 0.6) 0%,
+    hsl(220 22% 10% / 0.6) 100%
+  );
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid hsl(220 12% 26% / 0.5);
+  border-radius: 0.75rem;
+  box-shadow:
+    inset 0 1px 0 hsl(220 20% 22% / 0.4),
+    0 20px 48px hsl(220 60% 2% / 0.6),
+    0 8px 16px hsl(220 60% 3% / 0.4);
+}
+
+/* Corner bracket decorations — Saturnis retro aerospace motif */
+.login-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  border-top: 2px solid var(--color-brand-gold);
+  border-left: 2px solid var(--color-brand-gold);
+  pointer-events: none;
+  border-top-left-radius: 0.75rem;
+}
+
+.login-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  border-bottom: 2px solid var(--color-brand-gold);
+  border-right: 2px solid var(--color-brand-gold);
+  pointer-events: none;
+  border-bottom-right-radius: 0.75rem;
+}
+
+/* Dark-themed form inputs on login page */
+.login-card input {
+  background: hsl(220 15% 10%) !important;
+  border-color: hsl(220 12% 20%) !important;
+  color: #F4F1DE !important;
+  box-shadow: inset 0 1px 3px hsl(220 60% 3% / 0.4);
+}
+
+.login-card input:focus {
+  background: hsl(220 15% 11%) !important;
+  border-color: hsl(46 65% 52% / 0.7) !important;
+  box-shadow:
+    inset 0 1px 3px hsl(220 60% 3% / 0.4),
+    0 0 0 2px hsl(46 65% 52% / 0.15) !important;
+}
+
+.login-card input::placeholder {
+  color: hsl(220 5% 50%) !important;
+}
+
+.login-card label {
+  color: #F4F1DE !important;
+  opacity: 0.8;
+}
+
+/* Gold-accented primary button on login */
+.login-card button[type="submit"],
+.login-card .bg-primary {
+  background: hsl(46 65% 52%) !important;
+  color: hsl(220 80% 8%) !important;
+  font-weight: 600;
+  border: none !important;
+}
+
+.login-card button[type="submit"]:hover,
+.login-card .bg-primary:hover {
+  background: var(--color-brand-gold-hi) !important;
+}
+
+/* Link/toggle text on login */
+.login-card button:not([type="submit"]):not(.bg-primary) {
+  color: var(--color-brand-gold) !important;
+}
+
+/* Body text and error messages on login */
+.login-card p {
+  color: hsl(44 30% 88%);
+}
+
+.login-card .text-red-500,
+.login-card .text-red-600 {
+  color: hsl(357 85% 65%) !important;
+}
+
+/* Dark mode: wider connection lines for better visibility */
+.dark .react-flow__edge path {
+  stroke-width: 3;
+}
+
+.dark .react-flow__connection path {
+  stroke-width: 3;
+}
+
+/* React Flow edge z-index fixes */
+.react-flow__edges {
+  z-index: 10 !important;
+}
+
+.react-flow__edge-labels {
+  z-index: 1000 !important;
+}
+
+/* Ensure edge labels are always clickable */
+.react-flow__edge-label {
+  pointer-events: all !important;
+}
+
+/* Dark mode: React Flow zoom/fit controls (bottom-left).
+   Library default renders white buttons with dark SVG icons; on a dark canvas
+   this leaves white-on-white. Override the button background and fill the
+   icon path so +/- and fit-view glyphs remain visible. */
+.dark .react-flow__controls {
+  background: transparent;
+  box-shadow: none;
+}
+
+.dark .react-flow__controls-button {
+  background: #1e293b;                    /* slate-800 */
+  border-bottom: 1px solid #334155;       /* slate-700 */
+  color: #e2e8f0;                         /* slate-200 */
+}
+
+.dark .react-flow__controls-button:hover {
+  background: #334155;                    /* slate-700 */
+}
+
+.dark .react-flow__controls-button svg,
+.dark .react-flow__controls-button svg path {
+  fill: #e2e8f0;                          /* slate-200 */
+}

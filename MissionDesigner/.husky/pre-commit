@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+
+# Phase 35 cutover: refuse to commit dev database files
+if git diff --cached --name-only | grep -E '\.(db|db-wal|db-shm)$'; then
+  echo "pre-commit: refusing to commit *.db / *.db-wal / *.db-shm files"
+  echo "            (these are dev databases and must never enter git)"
+  exit 1
+fi
+
+npx lint-staged

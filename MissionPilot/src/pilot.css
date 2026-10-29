@@ -1,0 +1,987 @@
+/*
+ * Copyright 2026 Dennis L. Brandl
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/* Pilot component styles (spec §6.3 layer pilot.components). Uses --pilot-* tokens
+   ONLY — raw values live in src/theme/tokens.css (enforced by
+   theme/__tests__/no-raw-colors.test.ts). Being layered, every rule here loses to
+   FormKit's unlayered form CSS, which is what keeps forms looking as Designer
+   approved them; the bare element rules also skip .tfk-viewport descendants so
+   properties FormKit leaves unset don't leak in either. */
+
+@layer pilot.components {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--pilot-surface);
+    color: var(--pilot-text);
+    font-family: var(--pilot-font-family);
+    font-size: var(--pilot-text-md);
+    line-height: var(--pilot-line-height);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* An outline, not a box-shadow: selected tabs and chips draw their indicator with
+     box-shadow, which would overwrite a shadow ring (WCAG 2.4.7). */
+  :focus-visible {
+    outline: 2px solid var(--pilot-focus);
+    outline-offset: 2px;
+  }
+
+  /* Tabs and chips sit in overflow-x scrollers, which clip an outside outline. */
+  .work-tabs [role='tab']:focus-visible { outline-offset: -4px; }
+  .wf-chip:focus-visible { outline-offset: -4px; }
+
+  /* ---------- Base elements (chrome only) ---------- */
+  :where(h1:not(.tfk-viewport *)) {
+    margin: 0;
+    font-size: var(--pilot-text-xl);
+    font-weight: var(--pilot-weight-strong);
+    line-height: var(--pilot-line-height-tight);
+  }
+
+  :where(h2:not(.tfk-viewport *)) {
+    margin: var(--pilot-space-4) 0 var(--pilot-space-2);
+    font-size: var(--pilot-text-lg);
+    font-weight: var(--pilot-weight-strong);
+    line-height: var(--pilot-line-height-tight);
+  }
+
+  :where(button:not(.tfk-viewport *)) {
+    min-height: var(--pilot-control-h);
+    min-width: var(--pilot-touch-min);
+    padding: 0 var(--pilot-space-4);
+    border: var(--pilot-border-w) solid var(--pilot-border-strong);
+    border-radius: var(--pilot-radius-control);
+    background: var(--pilot-surface-raised);
+    color: var(--pilot-text);
+    font: inherit;
+    font-weight: var(--pilot-weight-medium);
+    cursor: pointer;
+    transition: background var(--pilot-motion), border-color var(--pilot-motion);
+  }
+
+  :where(button:not(.tfk-viewport *)):hover:not(:disabled) {
+    background: var(--pilot-surface-sunken);
+  }
+
+  :where(button:not(.tfk-viewport *)):disabled {
+    opacity: var(--pilot-disabled-opacity);
+    cursor: not-allowed;
+  }
+
+  :where(select:not(.tfk-viewport *)) {
+    min-height: var(--pilot-control-h);
+    padding: 0 var(--pilot-space-2);
+    border: var(--pilot-border-w) solid var(--pilot-border-strong);
+    border-radius: var(--pilot-radius-control);
+    background: var(--pilot-surface-raised);
+    color: var(--pilot-text);
+    font: inherit;
+  }
+
+  /* ---------- Banners and toasts (spec §5.7: status tokens) ---------- */
+  .banner {
+    margin: 0;
+    padding: var(--pilot-space-2) var(--pilot-space-4);
+    border-bottom: var(--pilot-border-w) solid currentColor;
+    font-weight: var(--pilot-weight-medium);
+  }
+
+  .banner-warn {
+    background: var(--pilot-warn-bg);
+    color: var(--pilot-warn-fg);
+  }
+
+  .banner-alarm {
+    background: var(--pilot-alarm-bg);
+    color: var(--pilot-alarm-fg);
+  }
+
+  .toast-region {
+    position: fixed;
+    right: var(--pilot-space-4);
+    /* Under the top bar, clear of the sticky action footer (P1a minor: it covered Submit). */
+    top: calc(var(--pilot-header-h) + var(--pilot-space-3));
+    z-index: var(--pilot-z-toast);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--pilot-space-2);
+    pointer-events: none;
+  }
+
+  .toast {
+    margin: 0;
+    max-width: min(28rem, calc(100vw - 2 * var(--pilot-space-4)));
+    padding: var(--pilot-space-3) var(--pilot-space-4);
+    border: var(--pilot-border-w) solid var(--pilot-overlay-border);
+    border-radius: var(--pilot-radius-panel);
+    background: var(--pilot-overlay-bg);
+    color: var(--pilot-overlay-fg);
+    box-shadow: var(--pilot-shadow-2);
+  }
+
+  /* Spec §5.6 item 1: the submit confirmation in the ok colour. */
+  .toast-ok {
+    border-left: var(--pilot-stripe-w) solid var(--pilot-overlay-ok);
+  }
+
+  /* ---------- Task screen (spec §5.4, §5.6, §4 side panel) ---------- */
+  /* The step name is in the context bar; the heading stays for screen readers and as
+     the after-Submit focus target (§5.6 item 3). */
+  .task-heading {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .task-arrival {
+    margin: var(--pilot-space-3) 0 0;
+    padding: var(--pilot-space-2) var(--pilot-space-3);
+    border-left: var(--pilot-stripe-w) solid var(--pilot-accent);
+    background: var(--pilot-accent-subtle);
+    color: var(--pilot-text);
+  }
+
+  .where-toggle {
+    margin-top: var(--pilot-space-3);
+  }
+
+  /* Forms are capped at 960 px (spec §3); the "Where you are" panel joins from 1280 px. */
+  .task-body {
+    display: grid;
+    grid-template-columns: minmax(0, var(--pilot-form-max));
+    justify-content: center;
+    gap: var(--pilot-space-5);
+    padding-block: var(--pilot-space-4);
+  }
+
+  .task-form {
+    min-width: 0;
+  }
+
+  .task-where {
+    display: none;
+  }
+
+  @media (min-width: 1280px) {
+    .task-body {
+      grid-template-columns: minmax(0, var(--pilot-form-max)) minmax(14rem, 18rem);
+    }
+
+    .task-where {
+      display: block;
+    }
+
+    .where-toggle {
+      display: none;
+    }
+  }
+
+  .where {
+    font-size: var(--pilot-text-sm);
+  }
+
+  .where-title {
+    margin: 0 0 var(--pilot-space-2);
+    font-size: var(--pilot-text-md);
+  }
+
+  .where-note {
+    margin: 0;
+    color: var(--pilot-text-muted);
+  }
+
+  .where-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pilot-space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .where-step {
+    display: grid;
+    grid-template-columns: 1.5rem 1fr;
+    align-items: baseline;
+  }
+
+  .where-icon {
+    grid-row: span 2;
+    text-align: center;
+  }
+
+  .where-name {
+    min-width: 0;
+  }
+
+  .where-state {
+    grid-column: 2;
+    color: var(--pilot-text-muted);
+    font-size: var(--pilot-text-xs);
+  }
+
+  .where-done .where-icon {
+    color: var(--pilot-ok);
+  }
+
+  .where-current .where-name {
+    font-weight: var(--pilot-weight-strong);
+  }
+
+  .where-current .where-icon,
+  .where-active .where-icon {
+    color: var(--pilot-accent);
+  }
+
+  .where-problem .where-icon {
+    color: var(--pilot-alarm);
+  }
+
+  .where-todo .where-name {
+    color: var(--pilot-text-muted);
+  }
+
+  /* The action footer stays on screen at the bottom of the task (§5.4). */
+  .task-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--pilot-space-3) var(--pilot-space-4);
+    margin-inline: calc(-1 * var(--pilot-space-4));
+    padding: var(--pilot-space-3) var(--pilot-space-4);
+    border-top: var(--pilot-border-w) solid var(--pilot-border);
+    background: var(--pilot-surface-raised);
+  }
+
+  .task-status {
+    flex: 1 1 20rem;
+    min-width: 0;
+  }
+
+  .task-missing p,
+  .task-ready {
+    margin: 0;
+  }
+
+  .task-missing-fields {
+    color: var(--pilot-alarm);
+  }
+
+  .task-waiting {
+    color: var(--pilot-text-muted);
+  }
+
+  .task-ready {
+    color: var(--pilot-ok);
+    font-weight: var(--pilot-weight-strong);
+  }
+
+  /* A missing-field link: text-sized, still a full touch target tall. */
+  .link-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--pilot-touch-min);
+    min-width: var(--pilot-touch-min);
+    justify-content: center;
+    padding: 0 var(--pilot-space-1);
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-decoration: underline;
+  }
+
+  /* The base button hover is (0,2,0); a link keeps its own look (P1c minor). */
+  .link-btn:hover:not(:disabled) {
+    background: transparent;
+    text-decoration-thickness: 2px;
+  }
+
+  .task-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--pilot-space-3);
+    margin-left: auto;
+  }
+
+  .task-primary {
+    min-height: var(--pilot-control-h-lg);
+    min-width: 12rem;
+    padding: 0 var(--pilot-space-6);
+    border-color: var(--pilot-accent);
+    background: var(--pilot-accent);
+    color: var(--pilot-accent-fg);
+    font-size: var(--pilot-text-lg);
+    font-weight: var(--pilot-weight-strong);
+  }
+
+  .task-primary:hover:not(:disabled) {
+    border-color: var(--pilot-accent-hover);
+    background: var(--pilot-accent-hover);
+  }
+
+  /* A real disabled style (spec §3), not bare opacity: the reason sits beside it. */
+  .task-primary:disabled {
+    border-color: var(--pilot-border-strong);
+    background: var(--pilot-surface-sunken);
+    color: var(--pilot-text-muted);
+    opacity: 1;
+  }
+
+  .task-buttons .release-btn {
+    min-height: var(--pilot-control-h-lg);
+    padding: 0 var(--pilot-space-5);
+  }
+
+  /* A form that owns its Continue/Yes/No (spec 2026-10-28 §5.2-5.3): its bottom bar is the
+     button bar, pinned just above Pilot's strip; the strip shrinks to a quiet line holding the
+     status and Release. --task-actions-h is the strip's measured height (TaskScreen). */
+  .task-owns-buttons .tfk-footer {
+    position: sticky;
+    bottom: var(--task-actions-h, 0px);
+    z-index: 1;
+    background: inherit; /* the form's own surface, so scrolled content never shows through */
+  }
+
+  .task-actions-compact {
+    flex-wrap: nowrap;
+    padding-block: var(--pilot-space-1);
+    gap: var(--pilot-space-3);
+  }
+
+  .task-actions-compact .task-status {
+    flex: 1 1 auto;
+    font-size: var(--pilot-text-sm);
+  }
+
+  .task-actions-compact .task-buttons {
+    flex: none;
+  }
+
+  .task-actions-compact .task-ready {
+    font-weight: var(--pilot-weight-medium);
+  }
+
+  .task-actions-compact .release-btn {
+    min-height: var(--pilot-touch-min);
+    padding: 0 var(--pilot-space-3);
+    font-size: var(--pilot-text-sm);
+  }
+
+  .release-confirm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--pilot-space-2);
+  }
+
+  /* ---------- Work tabs (P1b replaces with two-line claim tabs) ---------- */
+  .work-tabs {
+    display: flex;
+    align-items: center;
+    gap: var(--pilot-space-1);
+    padding: var(--pilot-space-2) var(--pilot-space-2) 0;
+    border-bottom: var(--pilot-border-w) solid var(--pilot-border);
+    background: var(--pilot-surface);
+  }
+
+  .work-tabs [role='tablist'] {
+    display: flex;
+    flex: 1;
+    gap: var(--pilot-space-1);
+    overflow-x: auto;
+  }
+
+  .work-tabs [role='tab'] {
+    border: var(--pilot-border-w) solid var(--pilot-border);
+    border-bottom: none;
+    border-radius: var(--pilot-radius-control) var(--pilot-radius-control) 0 0;
+    background: var(--pilot-tab-bg);
+    color: var(--pilot-text);
+    padding: var(--pilot-space-2) var(--pilot-space-4);
+    white-space: nowrap;
+  }
+
+  .work-tabs [role='tab'][aria-selected='true'] {
+    background: var(--pilot-tab-active-bg);
+    box-shadow: inset 0 var(--pilot-indicator-w) 0 var(--pilot-tab-active-indicator);
+    font-weight: var(--pilot-weight-strong);
+  }
+
+  .work-tab-badge {
+    margin-left: var(--pilot-space-2);
+    padding: 0 var(--pilot-space-2);
+    border-radius: var(--pilot-radius-pill);
+    background: var(--pilot-paused-bg);
+    color: var(--pilot-paused-fg);
+    font-size: var(--pilot-text-xs);
+  }
+
+  .work-tab-arrow {
+    min-width: var(--pilot-touch-min);
+    min-height: var(--pilot-touch-min);
+    border: none;
+    background: transparent;
+    color: inherit;
+    font-size: var(--pilot-text-xl);
+  }
+
+  /* ---------- Workflows tab ---------- */
+  .wf-graph {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--pilot-surface-raised);
+  }
+
+  .wf-graph-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* P1d-R3: the diagram keeps its natural size (11 px labels) and scrolls in this box; the
+     zoom buttons sit outside it so they never scroll away. */
+  .wf-graph-scroll {
+    position: absolute;
+    inset: 0;
+    overflow: auto;
+  }
+
+  .wf-zoom {
+    position: absolute;
+    bottom: var(--pilot-space-3);
+    right: var(--pilot-space-3);
+    display: flex;
+    flex-direction: column;
+    background: var(--pilot-overlay-bg);
+    border: var(--pilot-border-w) solid var(--pilot-overlay-border);
+    border-radius: var(--pilot-radius-panel);
+    box-shadow: var(--pilot-shadow-2);
+    overflow: hidden;
+    z-index: 5;
+  }
+
+  .wf-zoom-btn {
+    min-width: var(--pilot-touch-min);
+    min-height: var(--pilot-touch-min);
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    color: var(--pilot-overlay-fg-muted);
+    font-size: var(--pilot-text-lg);
+    font-weight: var(--pilot-weight-strong);
+  }
+
+  .wf-zoom-btn:hover:not(:disabled) {
+    background: transparent;
+    color: var(--pilot-overlay-fg);
+  }
+
+  .wf-zoom-btn + .wf-zoom-btn {
+    border-top: var(--pilot-border-w) solid var(--pilot-overlay-border);
+  }
+
+  .wf-screen {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: var(--pilot-space-2);
+    gap: var(--pilot-space-2);
+  }
+
+  .wf-picker {
+    display: flex;
+    gap: var(--pilot-space-2);
+    overflow-x: auto;
+    padding-bottom: var(--pilot-space-1);
+  }
+
+  .wf-chip {
+    border-color: var(--pilot-border);
+    white-space: nowrap;
+  }
+
+  .wf-chip[aria-selected='true'] {
+    border-color: var(--pilot-accent);
+    background: var(--pilot-accent-subtle);
+    box-shadow: inset 0 calc(-1 * var(--pilot-indicator-w)) 0 var(--pilot-accent);
+  }
+
+  .wf-chip-status {
+    margin-left: var(--pilot-space-2);
+    color: var(--pilot-text-muted);
+    font-size: var(--pilot-text-xs);
+    text-transform: capitalize;
+  }
+
+  .wf-chip-mine {
+    margin-left: var(--pilot-space-1);
+    color: var(--pilot-accent);
+  }
+
+  .wf-crumbs button {
+    border: none;
+    background: transparent;
+    color: var(--pilot-link);
+  }
+
+  .wf-crumbs button:disabled {
+    color: inherit;
+    opacity: 1;
+    cursor: default;
+  }
+
+  .wf-graph-wrap {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    border: var(--pilot-border-w) solid var(--pilot-border);
+    border-radius: var(--pilot-radius-panel);
+    overflow: hidden;
+  }
+
+  .wf-tooltip {
+    position: absolute;
+    transform: translate(-50%, -100%);
+    background: var(--pilot-overlay-bg);
+    color: var(--pilot-overlay-fg);
+    border: var(--pilot-border-w) solid var(--pilot-overlay-border);
+    border-radius: var(--pilot-radius-control);
+    box-shadow: var(--pilot-shadow-2);
+    padding: var(--pilot-space-2) var(--pilot-space-3);
+    z-index: 5;
+    white-space: nowrap;
+    font-size: var(--pilot-text-sm);
+  }
+
+  .wf-tooltip-name { font-weight: var(--pilot-weight-strong); }
+  .wf-tooltip-meta { font-size: var(--pilot-text-xs); color: var(--pilot-overlay-fg-muted); }
+  .wf-tooltip-error { font-size: var(--pilot-text-xs); color: var(--pilot-overlay-alarm); max-width: 16rem; white-space: normal; }
+
+  .wf-tooltip-actions {
+    display: flex;
+    gap: var(--pilot-space-2);
+    margin-top: var(--pilot-space-2);
+  }
+
+  /* 44px like every other control (was 36px). */
+  .wf-tooltip-actions button {
+    min-height: var(--pilot-touch-min);
+    min-width: var(--pilot-touch-min);
+    border-color: var(--pilot-accent);
+    background: var(--pilot-accent);
+    color: var(--pilot-accent-fg);
+  }
+
+  .wf-tooltip-actions button[aria-label='Close'] {
+    border-color: var(--pilot-overlay-border);
+    background: transparent;
+    color: var(--pilot-overlay-fg-muted);
+  }
+
+  .wf-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--pilot-space-1) var(--pilot-space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--pilot-text-xs);
+    color: var(--pilot-text-muted);
+  }
+
+  .wf-legend li {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--pilot-space-1);
+  }
+
+  .wf-legend-glyph {
+    color: var(--pilot-text);
+    font-weight: var(--pilot-weight-strong);
+  }
+
+  .wf-swatch {
+    display: inline-block;
+    width: .7rem;
+    height: .7rem;
+    border-radius: var(--pilot-radius-sm);
+    vertical-align: baseline;
+  }
+
+  .wf-swatch-ring {
+    background: transparent;
+    border: 2px solid var(--pilot-mine-ring);
+  }
+
+  /* ---------- Inbox (spec §5.5): cards below 1024 px, full-width rows from 1024 px ---------- */
+  .inbox {
+    padding: var(--pilot-space-4);
+  }
+
+  .inbox-toolbar {
+    display: flex;
+    margin-bottom: var(--pilot-space-2);
+  }
+
+  .inbox-filter {
+    flex: 1;
+    max-width: 32rem;
+    min-height: var(--pilot-control-h);
+    padding: 0 var(--pilot-space-3);
+    border: var(--pilot-border-w) solid var(--pilot-border-strong);
+    border-radius: var(--pilot-radius-control);
+    background: var(--pilot-surface-raised);
+    color: var(--pilot-text);
+    font: inherit;
+  }
+
+  .inbox-filter::placeholder {
+    color: var(--pilot-text-muted);
+  }
+
+  .inbox-section {
+    margin-bottom: var(--pilot-space-4);
+  }
+
+  .inbox-section-head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--pilot-space-2);
+  }
+
+  .inbox-count {
+    padding: 0 var(--pilot-space-2);
+    border-radius: var(--pilot-radius-pill);
+    background: var(--pilot-surface-sunken);
+    color: var(--pilot-text-muted);
+    font-size: var(--pilot-text-sm);
+    font-weight: var(--pilot-weight-medium);
+  }
+
+  .inbox-empty {
+    margin: 0;
+    color: var(--pilot-text-muted);
+  }
+
+  .inbox-list {
+    display: grid;
+    gap: var(--pilot-space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .inbox-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'step action'
+      'workflow action'
+      'runtime age';
+    align-items: center;
+    gap: var(--pilot-space-1) var(--pilot-space-3);
+    padding: var(--pilot-space-3);
+    border: var(--pilot-border-w) solid var(--pilot-border);
+    border-radius: var(--pilot-radius-panel);
+    background: var(--pilot-surface-raised);
+  }
+
+  .inbox-step {
+    grid-area: step;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--pilot-space-2);
+    min-width: 0;
+    font-weight: var(--pilot-weight-strong);
+  }
+
+  .inbox-step-name {
+    overflow-wrap: anywhere;
+  }
+
+  .inbox-open {
+    min-width: var(--pilot-touch-min);
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--pilot-link);
+    font-weight: var(--pilot-weight-strong);
+    text-align: left;
+    text-decoration: underline;
+    overflow-wrap: anywhere;
+  }
+
+  .inbox-open:hover:not(:disabled) {
+    background: transparent;
+    text-decoration-thickness: 2px;
+  }
+
+  .inbox-badge {
+    padding: 0 var(--pilot-space-2);
+    border-radius: var(--pilot-radius-sm);
+    background: var(--pilot-accent-subtle);
+    color: var(--pilot-text);
+    font-size: var(--pilot-text-xs);
+    font-weight: var(--pilot-weight-medium);
+  }
+
+  .inbox-badge-paused {
+    background: var(--pilot-surface-sunken);
+  }
+
+  .inbox-workflow {
+    grid-area: workflow;
+    min-width: 0;
+    color: var(--pilot-text-muted);
+    overflow-wrap: anywhere;
+  }
+
+  .inbox-runtime {
+    grid-area: runtime;
+    min-width: 0;
+  }
+
+  .inbox-age {
+    grid-area: age;
+    justify-self: end;
+    color: var(--pilot-text-muted);
+    font-size: var(--pilot-text-sm);
+    white-space: nowrap;
+  }
+
+  .inbox-action {
+    grid-area: action;
+    display: flex;
+    gap: var(--pilot-space-2);
+    justify-self: end;
+  }
+
+  .inbox-claim {
+    border-color: var(--pilot-accent);
+    background: var(--pilot-accent);
+    color: var(--pilot-accent-fg);
+  }
+
+  .inbox-claim:hover:not(:disabled) {
+    background: var(--pilot-accent-hover);
+  }
+
+  @media (min-width: 1024px) {
+    .inbox-list {
+      gap: 0;
+      border: var(--pilot-border-w) solid var(--pilot-border);
+      border-radius: var(--pilot-radius-panel);
+      background: var(--pilot-surface-raised);
+      overflow: hidden;
+    }
+
+    .inbox-row {
+      grid-template-columns: minmax(10rem, 2fr) minmax(10rem, 2fr) minmax(8rem, 1.5fr) 5rem auto;
+      grid-template-areas: 'step workflow runtime age action';
+      border: none;
+      border-bottom: var(--pilot-border-w) solid var(--pilot-border);
+      border-radius: 0;
+    }
+
+    .inbox-row:last-child {
+      border-bottom: none;
+    }
+
+    .inbox-age {
+      justify-self: start;
+    }
+  }
+
+  /* After the media block so the wide-row `border: none` cannot remove it. */
+  .inbox-row-paused {
+    border-left: var(--pilot-indicator-w) solid var(--pilot-paused);
+  }
+
+  /* ---------- Work-center picker and switcher cards (spec §5.5) ---------- */
+  .picker {
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: var(--pilot-space-5) var(--pilot-space-4);
+  }
+
+  .picker-title {
+    margin-bottom: var(--pilot-space-4);
+  }
+
+  .wc-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: var(--pilot-space-3);
+    margin: 0 0 var(--pilot-space-4);
+    padding: 0;
+    list-style: none;
+  }
+
+  .wc-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--pilot-space-1);
+    width: 100%;
+    min-height: 5rem;
+    padding: var(--pilot-space-3) var(--pilot-space-4);
+    border-color: var(--pilot-border);
+    border-radius: var(--pilot-radius-panel);
+    text-align: left;
+  }
+
+  .wc-card[aria-current='true'] {
+    border-color: var(--pilot-accent);
+    box-shadow: inset var(--pilot-indicator-w) 0 0 var(--pilot-accent);
+  }
+
+  .wc-card-name {
+    font-size: var(--pilot-text-lg);
+    font-weight: var(--pilot-weight-strong);
+  }
+
+  .wc-card-meta {
+    display: flex;
+    flex-direction: column;
+    color: var(--pilot-text-muted);
+    font-size: var(--pilot-text-sm);
+    font-weight: var(--pilot-weight-regular);
+  }
+
+  .wc-card-path {
+    overflow-wrap: anywhere;
+  }
+
+  .wc-card-count {
+    color: var(--pilot-text);
+  }
+
+  .wc-list-error {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--pilot-space-3);
+  }
+
+  .wc-list-empty {
+    color: var(--pilot-text-muted);
+  }
+
+  /* ---------- Login (spec §12: the site logo, 4 rem high; the splash until there is one) ---------- */
+  .login-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--pilot-space-1);
+    min-height: 100vh;
+    padding: var(--pilot-space-5);
+  }
+
+  .login-splash {
+    display: block;
+    width: 100%;
+    max-width: var(--pilot-login-w);
+    height: auto;
+    border-radius: var(--pilot-radius-panel);
+  }
+
+  .login-logo {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    height: 4rem;
+    object-fit: contain;
+  }
+
+  .login-copyright {
+    margin: var(--pilot-space-3) 0 var(--pilot-space-5);
+    font-size: var(--pilot-text-xs);
+    color: var(--pilot-text-muted);
+    text-align: center;
+  }
+
+  .login-screen form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pilot-space-1);
+    width: 100%;
+    max-width: 20rem;
+  }
+
+  .login-screen form label {
+    font-size: var(--pilot-text-sm);
+    color: var(--pilot-text-muted);
+  }
+
+  .login-screen form label + input {
+    margin-bottom: var(--pilot-space-3);
+  }
+
+  .login-screen form input {
+    min-height: var(--pilot-control-h);
+    padding: 0 var(--pilot-space-3);
+    font: inherit;
+    color: var(--pilot-text);
+    background: var(--pilot-surface-raised);
+    border: var(--pilot-border-w) solid var(--pilot-border-strong);
+    border-radius: var(--pilot-radius-control);
+  }
+
+  .login-screen form button {
+    margin-top: var(--pilot-space-3);
+    border-color: var(--pilot-accent);
+    background: var(--pilot-accent);
+    color: var(--pilot-accent-fg);
+    font-weight: var(--pilot-weight-strong);
+  }
+
+  .login-screen form button:hover:not(:disabled) {
+    border-color: var(--pilot-accent-hover);
+    background: var(--pilot-accent-hover);
+  }
+
+  .login-screen form [role='alert'] {
+    margin: var(--pilot-space-1) 0 0;
+    font-size: var(--pilot-text-sm);
+    color: var(--pilot-alarm);
+  }
+
+  /* Spec 2026-10-13 §5.3: Continue now's inline confirm. */
+  .continue-confirm { display: inline-flex; gap: var(--pilot-space-1); align-items: center; flex-wrap: wrap; }
+  .continue-confirm input {
+    min-width: 10rem;
+    padding: var(--pilot-space-1) var(--pilot-space-2);
+    border: var(--pilot-border-w) solid var(--pilot-border);
+    background: var(--pilot-surface);
+    color: var(--pilot-text);
+  }
+}

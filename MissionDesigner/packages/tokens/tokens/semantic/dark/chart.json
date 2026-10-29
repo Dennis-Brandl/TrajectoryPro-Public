@@ -1,0 +1,7 @@
+{
+  "chart-1": { "$value": "oklch(0.488 0.243 264.376)", "$type": "color" },
+  "chart-2": { "$value": "oklch(0.696 0.17 162.48)", "$type": "color" },
+  "chart-3": { "$value": "oklch(0.769 0.188 70.08)", "$type": "color" },
+  "chart-4": { "$value": "oklch(0.627 0.265 303.9)", "$type": "color" },
+  "chart-5": { "$value": "oklch(0.645 0.246 16.439)", "$type": "color" }
+}

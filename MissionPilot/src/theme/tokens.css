@@ -1,0 +1,215 @@
+/*
+ * Copyright 2026 Dennis L. Brandl
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/* Mission Pilot token layer (spec §6). The ONLY place raw colour values live.
+   Kinds: T themeable (P2 theme field) · D derived · A auto-chosen for contrast ·
+   F fixed, never themeable (status and diagram states, ISA-101) · O operator pref ·
+   L internal layout. Every Pilot rule elsewhere uses var(--pilot-*) only. */
+
+@layer pilot.defaults, pilot.theme, pilot.prefs, pilot.components;
+
+@layer pilot.defaults {
+  :root {
+    color-scheme: light;
+    /* Surfaces */
+    --pilot-surface: #f4f6f9;                                                                     /* T */
+    --pilot-surface-raised: #ffffff;                                                              /* T */
+    --pilot-surface-sunken: color-mix(in oklab, var(--pilot-surface) 91%, var(--pilot-text));     /* D */
+    --pilot-overlay-bg: #1f2937;                                                                  /* D: overlays are dark in both modes */
+    --pilot-overlay-ok: #4ade80;                                                                  /* F: ok mark on the dark overlay (submit toast) */
+    --pilot-overlay-fg: #f9fafb;
+    --pilot-overlay-fg-muted: #cbd5e1;
+    --pilot-overlay-border: #374151;
+    --pilot-overlay-alarm: #fca5a5;                                                               /* F: error text on an overlay */
+    --pilot-scrim: rgb(15 23 42 / .45);                                                           /* F */
+    /* Text and lines */
+    --pilot-text: #111827;                                                                        /* T */
+    --pilot-text-muted: #4b5563;                                                                  /* T */
+    --pilot-text-disabled: #9ca3af;                                                               /* D */
+    --pilot-border: #d0d7e0;                                                                      /* T */
+    --pilot-border-strong: #848e9d;                                                               /* D: 3.31:1 on raised (spec §11) */
+    /* Brand and accent */
+    --pilot-brand: #1d4ed8;                                                                       /* T */
+    --pilot-accent: var(--pilot-brand);                                                           /* T, defaults to brand */
+    --pilot-accent-fg: #ffffff;                                                                   /* A: 6.70:1 */
+    --pilot-accent-hover: color-mix(in oklab, var(--pilot-accent) 85%, black);                    /* D */
+    --pilot-accent-subtle: color-mix(in oklab, var(--pilot-accent) 12%, var(--pilot-surface-raised)); /* D */
+    --pilot-link: var(--pilot-accent);                                                            /* D */
+    --pilot-focus: #2563eb;                                                                       /* A */
+    --pilot-focus-ring: 0 0 0 2px var(--pilot-surface-raised), 0 0 0 4px var(--pilot-focus);      /* D */
+    /* Top bar and context bar */
+    --pilot-header-bg: #0f1b2d;                                                                   /* T */
+    --pilot-header-fg: #ffffff;                                                                   /* A */
+    --pilot-header-fg-muted: color-mix(in oklab, var(--pilot-header-fg) 68%, var(--pilot-header-bg)); /* D */
+    --pilot-header-accent: color-mix(in oklab, var(--pilot-brand) 45%, white);                    /* D: >= 3:1 on header-bg */
+    --pilot-header-divider: color-mix(in oklab, var(--pilot-header-fg) 18%, var(--pilot-header-bg)); /* D */
+    --pilot-header-hover: color-mix(in oklab, var(--pilot-header-fg) 10%, var(--pilot-header-bg));   /* D */
+    --pilot-wc-accent: var(--pilot-header-accent);                                                /* T (work center, P3) */
+    --pilot-header-ok: #4ade80;                                                                  /* F: status on the dark top bar, 9.92:1 */
+    --pilot-header-warn: #fbbf24;                                                                 /* F: 10.35:1 — the surface warn fails here */
+    --pilot-header-h: 3.5rem;                                                                     /* L */
+    /* Tabs and runtimes */
+    --pilot-tab-bg: var(--pilot-surface-sunken);                                                  /* D */
+    --pilot-tab-active-bg: var(--pilot-surface-raised);                                           /* D */
+    --pilot-tab-active-indicator: var(--pilot-accent);                                            /* D */
+    --pilot-instance-1: #6d28d9;                                                                  /* F: runtime stripes (P1b) */
+    --pilot-instance-2: #0e7490;
+    --pilot-instance-3: #be185d;
+    --pilot-instance-4: #4d7c0f;
+    --pilot-instance-5: #9a3412;
+    --pilot-instance-6: #475569;
+    /* Status (F): base / tinted background / text on the tint */
+    --pilot-ok: #15803d;      --pilot-ok-bg: #dcfce7;      --pilot-ok-fg: #14532d;
+    --pilot-warn: #b45309;    --pilot-warn-bg: #fef3c7;    --pilot-warn-fg: #78350f;
+    --pilot-alarm: #b91c1c;   --pilot-alarm-bg: #fee2e2;   --pilot-alarm-fg: #7f1d1d;
+    --pilot-info: #1d4ed8;    --pilot-info-bg: #dbeafe;    --pilot-info-fg: #1e3a8a;
+    --pilot-paused: #a16207;  --pilot-paused-bg: #fef9c3;  --pilot-paused-fg: #713f12;
+    /* Diagram states (F) */
+    --pilot-state-idle: #9ca3af;
+    --pilot-state-waiting: #93c5fd;
+    --pilot-state-executing: #2563eb;
+    --pilot-state-executing-ring: #93c5fd;
+    --pilot-state-paused: #eab308;
+    --pilot-state-gate: #f59e0b;
+    --pilot-state-properties: #fbbf24;
+    --pilot-state-completed: #22c55e;
+    --pilot-state-errored: #dc2626;
+    --pilot-state-cancelled: #6b7280;
+    --pilot-diagram-edge: #64748b;                                                                /* D */
+    --pilot-diagram-glyph: #1e293b;                                                               /* F: drawn on the fixed state fills, so dark in both modes */
+    --pilot-diagram-highlight: var(--pilot-text);                                                 /* D: was #000, invisible on dark */
+    --pilot-mine-ring: var(--pilot-accent);                                                       /* D */
+    /* Typography */
+    --pilot-font-family: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;                      /* T */
+    --pilot-font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;      /* F: runtime IDs only */
+    --pilot-text-scale: 1;                                                                        /* O: set inline on <html> by prefs */
+    --pilot-text-xs: calc(.75rem * var(--pilot-text-scale));
+    --pilot-text-sm: calc(.875rem * var(--pilot-text-scale));
+    --pilot-text-md: calc(1rem * var(--pilot-text-scale));
+    --pilot-text-lg: calc(1.125rem * var(--pilot-text-scale));
+    --pilot-text-xl: calc(1.5rem * var(--pilot-text-scale));
+    --pilot-text-2xl: calc(2rem * var(--pilot-text-scale));
+    --pilot-weight-regular: 400;
+    --pilot-weight-medium: 500;
+    --pilot-weight-strong: 600;
+    --pilot-line-height: 1.45;
+    --pilot-line-height-tight: 1.2;
+    /* Density and spacing */
+    --pilot-density-k: 1;                                                                         /* T: compact .85 / comfortable 1 / touch 1.2 */
+    --pilot-space-1: calc(.25rem * var(--pilot-density-k));
+    --pilot-space-2: calc(.5rem * var(--pilot-density-k));
+    --pilot-space-3: calc(.75rem * var(--pilot-density-k));
+    --pilot-space-4: calc(1rem * var(--pilot-density-k));
+    --pilot-space-5: calc(1.5rem * var(--pilot-density-k));
+    --pilot-space-6: calc(2.5rem * var(--pilot-density-k));
+    --pilot-touch-min: 2.75rem;                                                                   /* F: 44px, never reduced */
+    --pilot-control-h: max(var(--pilot-touch-min), calc(2.75rem * var(--pilot-density-k)));
+    --pilot-control-h-lg: max(3.5rem, calc(3.5rem * var(--pilot-density-k)));
+    /* Shape and elevation */
+    --pilot-radius: .5rem;                                                                        /* T: 0 / .25 / .5 / .75rem */
+    --pilot-radius-sm: calc(var(--pilot-radius) * .5);
+    --pilot-radius-control: var(--pilot-radius);
+    --pilot-radius-panel: calc(var(--pilot-radius) * 1.5);
+    --pilot-radius-pill: 999px;
+    --pilot-shadow-1: 0 1px 2px rgb(15 23 42 / .08), 0 1px 3px rgb(15 23 42 / .06);             /* F */
+    --pilot-shadow-2: 0 4px 12px rgb(15 23 42 / .12);                                             /* F */
+    --pilot-disabled-opacity: .45;                                                                /* F */
+    /* Internal layout (L) */
+    --pilot-border-w: 1px;
+    --pilot-stripe-w: 4px;
+    --pilot-indicator-w: 3px;
+    --pilot-icon: 1.25rem;
+    --pilot-form-max: 60rem;                                                                      /* 960px (spec §3) */
+    --pilot-login-w: 24rem;
+    --pilot-motion: 160ms ease;
+    --pilot-z-chrome: 20;
+    --pilot-z-sheet: 30;
+    --pilot-z-toast: 40;
+  }
+
+  @media (pointer: coarse) {
+    :root { --pilot-header-h: 4rem; }
+  }
+
+  :root[data-pilot-mode="dark"] {
+    color-scheme: dark;
+    --pilot-surface: #0b1220;
+    --pilot-surface-raised: #131c2e;
+    --pilot-surface-sunken: color-mix(in oklab, var(--pilot-surface) 70%, black);
+    --pilot-overlay-bg: #1e293b;
+    --pilot-overlay-fg: #e2e8f0;
+    --pilot-overlay-fg-muted: #94a3b8;
+    --pilot-overlay-border: #334155;
+    --pilot-scrim: rgb(0 0 0 / .6);
+    --pilot-text: #e5e9f0;
+    --pilot-text-muted: #9aa7ba;
+    --pilot-text-disabled: #5b6678;
+    --pilot-border: #2a3548;
+    --pilot-border-strong: #5f6e87;                                                               /* 3.30:1 on raised */
+    --pilot-brand: #60a5fa;
+    --pilot-accent-fg: #0b1220;
+    --pilot-accent-hover: color-mix(in oklab, var(--pilot-accent) 85%, white);
+    --pilot-focus: #93c5fd;
+    --pilot-header-bg: #070c16;
+    --pilot-header-fg: #e5e9f0;
+    --pilot-header-accent: var(--pilot-brand);
+    --pilot-instance-1: #a78bfa;
+    --pilot-instance-2: #22d3ee;
+    --pilot-instance-3: #f472b6;
+    --pilot-instance-4: #a3e635;
+    --pilot-instance-5: #fb923c;
+    --pilot-instance-6: #94a3b8;
+    --pilot-ok: #4ade80;     --pilot-ok-bg: #052e16;     --pilot-ok-fg: #bbf7d0;
+    --pilot-warn: #fbbf24;   --pilot-warn-bg: #3a2a06;   --pilot-warn-fg: #fde68a;
+    --pilot-alarm: #f87171;  --pilot-alarm-bg: #3b0d0d;  --pilot-alarm-fg: #fecaca;
+    --pilot-info: #60a5fa;   --pilot-info-bg: #0c1f3f;   --pilot-info-fg: #bfdbfe;
+    --pilot-paused: #facc15; --pilot-paused-bg: #3a3005; --pilot-paused-fg: #fef08a;
+    --pilot-state-idle: #6b7280;
+    --pilot-state-executing: #3b82f6;
+    --pilot-state-executing-ring: #bfdbfe;
+    --pilot-state-completed: #4ade80;
+    --pilot-state-errored: #ef4444;
+    --pilot-shadow-1: 0 1px 2px rgb(0 0 0 / .5);
+    --pilot-shadow-2: 0 4px 12px rgb(0 0 0 / .6);
+  }
+}
+
+/* FormKit bridge (spec §6.3) — deliberately NOT in a layer. form-tokens.light.css
+   declares --form-* unlayered on :root, and an unlayered declaration beats every
+   layered one whatever its specificity, so a layered bridge would lose and forms
+   would stay light in dark mode. Unlayered, this attribute-qualified selector
+   (0,2,0) beats FormKit's :root (0,1,0) regardless of import order. index.html
+   sets data-pilot-theme. Spacing, padding, measure and line heights are left to
+   FormKit on purpose: forms keep the layout approved in Designer. */
+:root[data-pilot-theme] {
+  --form-color-surface: var(--pilot-surface-raised);
+  --form-color-text: var(--pilot-text);
+  --form-color-text-muted: var(--pilot-text-muted);
+  --form-color-border: var(--pilot-border-strong);
+  --form-color-accent: var(--pilot-accent);
+  --form-color-accent-text: var(--pilot-accent-fg);
+  --form-color-danger: var(--pilot-alarm);
+  --form-type-font-family: var(--pilot-font-family);
+  --form-type-size-xs: var(--pilot-text-xs);
+  --form-type-size-sm: var(--pilot-text-sm);
+  --form-type-size-md: var(--pilot-text-md);
+  --form-type-size-lg: var(--pilot-text-lg);
+  --form-type-size-xl: var(--pilot-text-xl);
+  --form-type-size-2xl: var(--pilot-text-2xl);
+  --form-type-size-3xl: calc(2.5rem * var(--pilot-text-scale));
+  --form-radius-control: var(--pilot-radius-control);
+  --form-touch-min-target: var(--pilot-touch-min);
+}

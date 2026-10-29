@@ -1,0 +1,2 @@
+ALTER TABLE "app_user" ADD COLUMN "access_level" text DEFAULT 'viewer' NOT NULL;--> statement-breakpoint
+ALTER TABLE "app_user" ADD CONSTRAINT "app_user_access_level_ck" CHECK ("app_user"."access_level" in ('administrator','steward','viewer'));

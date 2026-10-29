@@ -1,0 +1,148 @@
+{
+  "test_id": "res-binary-002",
+  "name": "Two parallel steps compete for single use resource, second enters WAITING",
+  "category": "execution",
+  "tags": [
+    "resource",
+    "binary",
+    "waiting"
+  ],
+  "workflow": {
+    "local_id": "wf",
+    "oid": "wf",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-11",
+    "resource_property_specifications": [
+      {
+        "name": "Lock",
+        "resource_type": "binary exclusive use"
+      }
+    ],
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "start",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "START"
+      },
+      {
+        "local_id": "parallel",
+        "oid": "parallel",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "PARALLEL"
+      },
+      {
+        "local_id": "branch-a",
+        "oid": "branch-a",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "SCRIPT",
+        "script_config": {
+          "language": "javascript",
+          "source": "output.a = 'done';"
+        },
+        "output_parameter_specifications": [
+          {
+            "id": "a",
+            "target": "Result.A"
+          }
+        ],
+        "resource_command_specifications": [
+          {
+            "command_type": "Acquire",
+            "resource_name": "Lock",
+            "resource_source_type": "workflow",
+            "resource_source_oid": "wf"
+          },
+          {
+            "command_type": "Release",
+            "resource_name": "Lock",
+            "resource_source_type": "workflow",
+            "resource_source_oid": "wf"
+          }
+        ]
+      },
+      {
+        "local_id": "branch-b",
+        "oid": "branch-b",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "SCRIPT",
+        "script_config": {
+          "language": "javascript",
+          "source": "output.b = 'done';"
+        },
+        "output_parameter_specifications": [
+          {
+            "id": "b",
+            "target": "Result.B"
+          }
+        ],
+        "resource_command_specifications": [
+          {
+            "command_type": "Acquire",
+            "resource_name": "Lock",
+            "resource_source_type": "workflow",
+            "resource_source_oid": "wf"
+          },
+          {
+            "command_type": "Release",
+            "resource_name": "Lock",
+            "resource_source_type": "workflow",
+            "resource_source_oid": "wf"
+          }
+        ]
+      },
+      {
+        "local_id": "wait",
+        "oid": "wait",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "WAIT ALL"
+      },
+      {
+        "local_id": "end",
+        "oid": "end",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-11",
+        "step_type": "END"
+      }
+    ],
+    "connections": [
+      {
+        "from_step_id": "start",
+        "to_step_id": "parallel"
+      },
+      {
+        "from_step_id": "parallel",
+        "to_step_id": "branch-a"
+      },
+      {
+        "from_step_id": "parallel",
+        "to_step_id": "branch-b"
+      },
+      {
+        "from_step_id": "branch-a",
+        "to_step_id": "wait"
+      },
+      {
+        "from_step_id": "branch-b",
+        "to_step_id": "wait"
+      },
+      {
+        "from_step_id": "wait",
+        "to_step_id": "end"
+      }
+    ]
+  },
+  "expected": {
+    "valid": true,
+    "workflow_state": "COMPLETED",
+    "final_properties": {
+      "Result.A": "done",
+      "Result.B": "done"
+    }
+  }
+}

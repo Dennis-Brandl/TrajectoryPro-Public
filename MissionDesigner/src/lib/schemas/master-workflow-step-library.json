@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://trajectorypro.io/schemas/master-workflow-step-library.json",
+  "title": "Master Workflow Step Library",
+  "description": "A collection of workflow specifications in a step library. Uses the same workflow_specifications format as the Workflow Library.",
+  "allOf": [{ "$ref": "managed-element.json" }],
+  "type": "object",
+  "required": ["workflow_specifications"],
+  "properties": {
+    "parent_library_oid": {
+      "type": "string",
+      "description": "OID of this library's parent library (self-describing hierarchy; provenance only, not consumed on import)."
+    },
+    "workflow_specifications": {
+      "type": "array",
+      "description": "The list of workflow specifications within this step library.",
+      "items": {
+        "type": "object",
+        "allOf": [{ "$ref": "managed-element.json" }],
+        "required": ["steps", "connections"]
+      }
+    },
+    "child_libraries": {
+      "type": "array",
+      "description": "Nested child step libraries.",
+      "items": { "$ref": "#" }
+    }
+  }
+}

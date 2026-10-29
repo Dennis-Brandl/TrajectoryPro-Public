@@ -1,0 +1,14 @@
+{
+  "name": "@mission/tokens",
+  "version": "0.0.1",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "description": "Design tokens for the Trajectory product family (W3C DTCG sourced)",
+  "scripts": {
+    "build": "node scripts/build.mjs"
+  },
+  "devDependencies": {
+    "style-dictionary": "^4.4.0"
+  }
+}

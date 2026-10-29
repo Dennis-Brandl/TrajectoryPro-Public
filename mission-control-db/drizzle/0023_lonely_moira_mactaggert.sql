@@ -1,0 +1,2 @@
+ALTER TABLE "instance_assignment" ADD COLUMN "released_from_user_id" uuid;--> statement-breakpoint
+ALTER TABLE "instance_assignment" ADD CONSTRAINT "instance_assignment_released_from_user_id_app_user_id_fk" FOREIGN KEY ("released_from_user_id") REFERENCES "public"."app_user"("id") ON DELETE set null ON UPDATE no action;

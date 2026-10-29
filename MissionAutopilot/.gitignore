@@ -1,0 +1,44 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.env.*
+coverage/
+.vite/
+*.db
+*.db-journal
+*.db-wal
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+data/
+__pycache__/
+*.pyc
+~$*
+.worktrees/
+.superpowers/
+
+# Scenario generator output
+scripts/scenarios/dist/
+# Stale TS-compiled artifacts (cli.ts runs via tsx; no compile step needed)
+scripts/scenarios/lib/*.js
+scripts/scenarios/lib/*.js.map
+scripts/scenarios/lib/*.d.ts
+scripts/scenarios/lib/*.d.ts.map
+scripts/scenarios/warehouse/*.js
+scripts/scenarios/warehouse/*.js.map
+scripts/scenarios/warehouse/*.d.ts
+scripts/scenarios/warehouse/*.d.ts.map
+
+# --- Public-release hygiene (internal-only; not shipped publicly) ---
+.planning/
+.claude/
+tasks/
+docs/superpowers/
+*.docx
+*.pptx
+*.continue-here.md
+
+# Generated at build time (build:help); not tracked
+apps/console/public/help.html

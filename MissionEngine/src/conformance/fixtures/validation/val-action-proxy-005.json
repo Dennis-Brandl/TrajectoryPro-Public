@@ -1,0 +1,26 @@
+{
+  "test_id": "val-action-proxy-005",
+  "name": "ACTION PROXY dangling environment_oid is accepted when config carries environment_name",
+  "category": "validation",
+  "tags": ["action-proxy", "valid", "name-binding"],
+  "workflow": {
+    "local_id": "wf-ap-005",
+    "oid": "wf-ap-005-oid",
+    "version": "1.0.0",
+    "last_modified_date": "2026-08-21T00:00:00Z",
+    "schemaVersion": "5.0",
+    "steps": [
+      { "local_id": "start", "oid": "step-start", "version": "1.0.0", "last_modified_date": "2026-08-21T00:00:00Z", "step_type": "START" },
+      { "local_id": "act", "oid": "step-act", "version": "1.0.0", "last_modified_date": "2026-08-21T00:00:00Z", "step_type": "ACTION PROXY", "action_proxy_config": { "action_oid": "act-missing", "environment_oid": "env-missing", "action_name": "PickAndPlace", "environment_name": "env" } },
+      { "local_id": "end", "oid": "step-end", "version": "1.0.0", "last_modified_date": "2026-08-21T00:00:00Z", "step_type": "END" }
+    ],
+    "connections": [
+      { "from_step_id": "step-start", "to_step_id": "step-act" },
+      { "from_step_id": "step-act", "to_step_id": "step-end" }
+    ],
+    "environment_specifications": [
+      { "local_id": "env", "oid": "env-1", "version": "1.0.0", "last_modified_date": "2026-08-21T00:00:00Z", "included_actions": [{ "action_oid": "act-1", "action_name": "PickAndPlace", "action_library": "lib-1" }] }
+    ]
+  },
+  "expected": { "valid": true }
+}

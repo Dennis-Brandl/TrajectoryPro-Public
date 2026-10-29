@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://trajectorypro.io/schemas/managed-element.json",
+  "title": "Managed Workflow Element",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "enum": ["3.0", "4.0", "5.0"],
+      "description": "Trajectory workflow schema version"
+    },
+    "local_id": { "type": "string" },
+    "oid": { "type": "string" },
+    "description": { "type": "string" },
+    "version": { "type": "string" },
+    "last_modified_date": { "type": "string", "format": "date-time" }
+  },
+  "required": ["local_id", "oid", "version", "last_modified_date"]
+}

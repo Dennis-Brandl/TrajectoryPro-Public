@@ -1,0 +1,86 @@
+{
+  "test_id": "exec-branch-001",
+  "name": "YES_NO step — user selects Yes",
+  "category": "execution",
+  "tags": ["branching", "yes-no"],
+  "workflow": {
+    "local_id": "wf-branch-001",
+    "oid": "wf-branch-001-oid",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-04T00:00:00Z",
+    "schemaVersion": "4.0",
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "step-start",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "START",
+        "position": { "x": 100, "y": 100 }
+      },
+      {
+        "local_id": "yesno",
+        "oid": "step-yn",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "YES_NO",
+        "position": { "x": 100, "y": 200 },
+        "yes_no_config": {
+          "yes_label": "Yes",
+          "no_label": "No",
+          "yes_value": "true",
+          "no_value": "false"
+        }
+      },
+      {
+        "local_id": "end-yes",
+        "oid": "step-end-yes",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 50, "y": 300 }
+      },
+      {
+        "local_id": "end-no",
+        "oid": "step-end-no",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 200, "y": 300 }
+      }
+    ],
+    "connections": [
+      {
+        "from_step_id": "step-start",
+        "to_step_id": "step-yn"
+      },
+      {
+        "from_step_id": "step-yn",
+        "to_step_id": "step-end-yes",
+        "condition": "True"
+      },
+      {
+        "from_step_id": "step-yn",
+        "to_step_id": "step-end-no",
+        "condition": "False"
+      }
+    ]
+  },
+  "user_actions": [
+    {
+      "step_oid": "step-yn",
+      "action": "button_press",
+      "button_output": "true"
+    }
+  ],
+  "expected": {
+    "valid": true,
+    "execution_trace": [
+      { "step_oid": "step-start", "state": "COMPLETED", "order": 1 },
+      { "step_oid": "step-yn", "state": "EXECUTING", "order": 2 },
+      { "step_oid": "step-yn", "state": "COMPLETED", "order": 3, "after_action": 0 },
+      { "step_oid": "step-end-yes", "state": "COMPLETED", "order": 4 }
+    ],
+    "workflow_state": "COMPLETED"
+  }
+}

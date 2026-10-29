@@ -1,0 +1,522 @@
+{
+  "local_id": "Mixing Unit Environment Library",
+  "oid": "1000000003352",
+  "version": "1.4.8",
+  "last_modified_date": "2026-02-23T20:05:00.000Z",
+  "description": "Environment library covering Mixing Unit, Blending Station.",
+  "environment_specifications": [
+    {
+      "local_id": "Mixing Unit",
+      "oid": "1000000003317",
+      "version": "1.5.6",
+      "last_modified_date": "2026-02-03T01:38:00.000Z",
+      "description": "Environment specification for mixing unit.",
+      "included_actions": [
+        {
+          "action_name": "Monitor Flow",
+          "action_library": "Level Monitoring",
+          "action_oid": "1000000000858",
+          "action_version": "2.7.0",
+          "action_last_modified_date": "2026-02-15T02:53:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Gain_269",
+              "oid": "1000000003305",
+              "description": "Parameter for motor control",
+              "default_value": "554",
+              "value_type": "property"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "Result_537",
+              "oid": "1000000003306",
+              "description": "Output from switch reading"
+            }
+          ]
+        },
+        {
+          "action_name": "Disable Tank",
+          "action_library": "Temperature Management",
+          "action_oid": "1000000000295",
+          "action_version": "2.7.0",
+          "action_last_modified_date": "2026-01-15T04:16:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Duration_206",
+              "oid": "1000000003307",
+              "description": "Parameter for sensor control",
+              "default_value": "299",
+              "value_type": "property"
+            },
+            {
+              "id": "Count_422",
+              "oid": "1000000003308",
+              "description": "Parameter for gauge control",
+              "default_value": "293",
+              "value_type": "literal"
+            },
+            {
+              "id": "Count_900",
+              "oid": "1000000003309",
+              "description": "Parameter for alarm control",
+              "default_value": "161",
+              "value_type": "literal"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "Result_200",
+              "oid": "1000000003310",
+              "description": "Output from vessel reading"
+            },
+            {
+              "id": "Delta_20",
+              "oid": "1000000003311",
+              "description": "Output from pipe reading",
+              "target": "ProductCode"
+            }
+          ]
+        },
+        {
+          "action_name": "Flush Tank",
+          "action_library": "Motor Control",
+          "action_oid": "1000000001094",
+          "action_version": "2.4.0",
+          "action_last_modified_date": "2026-01-06T06:18:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Factor_596",
+              "oid": "1000000003312",
+              "description": "Parameter for level control",
+              "default_value": "190",
+              "value_type": "property"
+            },
+            {
+              "id": "Rate_234",
+              "oid": "1000000003313",
+              "description": "Parameter for belt control",
+              "default_value": "420",
+              "value_type": "literal"
+            },
+            {
+              "id": "Threshold_333",
+              "oid": "1000000003314",
+              "description": "Parameter for actuator control",
+              "default_value": "683",
+              "value_type": "literal"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "FinalValue_781",
+              "oid": "1000000003315",
+              "description": "Output from switch reading",
+              "target": "ProductCode"
+            },
+            {
+              "id": "Position_569",
+              "oid": "1000000003316",
+              "description": "Output from nozzle reading",
+              "target": "ProductCode"
+            }
+          ]
+        }
+      ],
+      "value_property_specifications": [
+        {
+          "name": "RecipeVersion_99",
+          "oid": "1000000003318",
+          "entries": [
+            {
+              "name": "initial",
+              "value": "30"
+            },
+            {
+              "name": "unit",
+              "value": "C"
+            }
+          ]
+        },
+        {
+          "name": "PressureReading_32",
+          "oid": "1000000003319",
+          "entries": [
+            {
+              "name": "initial",
+              "value": "75"
+            },
+            {
+              "name": "unit",
+              "value": "kg"
+            }
+          ]
+        },
+        {
+          "name": "TotalVolume_91",
+          "oid": "1000000003320",
+          "entries": [
+            {
+              "name": "initial",
+              "value": "8"
+            },
+            {
+              "name": "unit",
+              "value": "s"
+            }
+          ]
+        },
+        {
+          "name": "TotalVolume_36",
+          "oid": "1000000003321",
+          "entries": [
+            {
+              "name": "initial",
+              "value": "17"
+            },
+            {
+              "name": "unit",
+              "value": "bar"
+            }
+          ]
+        },
+        {
+          "name": "LotNumber_36",
+          "oid": "1000000003322",
+          "entries": [
+            {
+              "name": "initial",
+              "value": "54"
+            },
+            {
+              "name": "unit",
+              "value": "mm"
+            }
+          ]
+        }
+      ],
+      "resource_property_specifications": [
+        {
+          "name": "Press_52",
+          "resource_type": "binary exclusive use",
+          "description": "binary exclusive use resource"
+        },
+        {
+          "name": "Boiler_2",
+          "resource_type": "named pool",
+          "description": "named pool resource",
+          "names": [
+            "Boiler_2-A",
+            "Boiler_2-B",
+            "Boiler_2-C"
+          ]
+        }
+      ]
+    },
+    {
+      "local_id": "Blending Station",
+      "oid": "1000000003348",
+      "version": "3.7.7",
+      "last_modified_date": "2026-02-25T15:29:00.000Z",
+      "description": "Environment specification for blending station.",
+      "included_actions": [
+        {
+          "action_name": "Stop Flow",
+          "action_library": "Weighing Systems",
+          "action_oid": "1000000002036",
+          "action_version": "1.7.0",
+          "action_last_modified_date": "2026-01-20T17:06:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Tag_485",
+              "oid": "1000000003323",
+              "description": "Parameter for sensor control",
+              "default_value": "677",
+              "value_type": "property"
+            },
+            {
+              "id": "Duration_728",
+              "oid": "1000000003324",
+              "description": "Parameter for vessel control",
+              "default_value": "670",
+              "value_type": "literal"
+            },
+            {
+              "id": "Timeout_559",
+              "oid": "1000000003325",
+              "description": "Parameter for position control",
+              "default_value": "695",
+              "value_type": "property"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "CurrentValue_815",
+              "oid": "1000000003326",
+              "description": "Output from speed reading",
+              "target": "FlowRate"
+            },
+            {
+              "id": "Status_651",
+              "oid": "1000000003327",
+              "description": "Output from heater reading"
+            }
+          ]
+        },
+        {
+          "action_name": "Test Sensor",
+          "action_library": "Dosing Control",
+          "action_oid": "1000000002058",
+          "action_version": "2.9.0",
+          "action_last_modified_date": "2026-01-09T10:35:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Index_361",
+              "oid": "1000000003328",
+              "description": "Parameter for agitator control",
+              "default_value": "829",
+              "value_type": "property"
+            },
+            {
+              "id": "Tag_638",
+              "oid": "1000000003329",
+              "description": "Parameter for temperature control",
+              "default_value": "289",
+              "value_type": "property"
+            },
+            {
+              "id": "Address_46",
+              "oid": "1000000003330",
+              "description": "Parameter for level control",
+              "default_value": "794",
+              "value_type": "property"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "Variance_620",
+              "oid": "1000000003331",
+              "description": "Output from position reading"
+            }
+          ]
+        },
+        {
+          "action_name": "Agitate Pump",
+          "action_library": "Inspection Control",
+          "action_oid": "1000000002565",
+          "action_version": "1.4.0",
+          "action_last_modified_date": "2026-01-03T17:58:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Gain_835",
+              "oid": "1000000003332",
+              "description": "Parameter for motor control",
+              "default_value": "632",
+              "value_type": "literal"
+            },
+            {
+              "id": "Setpoint_901",
+              "oid": "1000000003333",
+              "description": "Parameter for conveyor control",
+              "default_value": "667",
+              "value_type": "literal"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "Reading_218",
+              "oid": "1000000003334",
+              "description": "Output from agitator reading"
+            }
+          ]
+        },
+        {
+          "action_name": "Inspect Conveyor",
+          "action_library": "Temperature Management",
+          "action_oid": "1000000000262",
+          "action_version": "1.7.0",
+          "action_last_modified_date": "2026-02-17T13:36:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Rate_205",
+              "oid": "1000000003335",
+              "description": "Parameter for switch control",
+              "default_value": "661",
+              "value_type": "property"
+            },
+            {
+              "id": "Factor_251",
+              "oid": "1000000003336",
+              "description": "Parameter for level control",
+              "default_value": "484",
+              "value_type": "literal"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "Variance_476",
+              "oid": "1000000003337",
+              "description": "Output from nozzle reading",
+              "target": "RecipeVersion"
+            },
+            {
+              "id": "Maximum_536",
+              "oid": "1000000003338",
+              "description": "Output from tank reading",
+              "target": "OperatorName"
+            }
+          ]
+        },
+        {
+          "action_name": "Heat Pressure",
+          "action_library": "Flow Regulation",
+          "action_oid": "1000000000667",
+          "action_version": "3.6.0",
+          "action_last_modified_date": "2026-02-13T20:47:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Factor_398",
+              "oid": "1000000003339",
+              "description": "Parameter for flow control",
+              "default_value": "809",
+              "value_type": "literal"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "Timestamp_620",
+              "oid": "1000000003340",
+              "description": "Output from controller reading",
+              "target": "BatchID"
+            }
+          ]
+        },
+        {
+          "action_name": "Agitate Gauge",
+          "action_library": "Level Monitoring",
+          "action_oid": "1000000000807",
+          "action_version": "3.7.0",
+          "action_last_modified_date": "2026-01-13T09:42:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Tag_183",
+              "oid": "1000000003341",
+              "description": "Parameter for switch control",
+              "default_value": "602",
+              "value_type": "literal"
+            },
+            {
+              "id": "Target_869",
+              "oid": "1000000003342",
+              "description": "Parameter for vessel control",
+              "default_value": "509",
+              "value_type": "property"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "Minimum_135",
+              "oid": "1000000003343",
+              "description": "Output from motor reading"
+            }
+          ]
+        },
+        {
+          "action_name": "Enable Mixer",
+          "action_library": "Weighing Systems",
+          "action_oid": "1000000002033",
+          "action_version": "3.1.0",
+          "action_last_modified_date": "2026-02-03T07:06:00.000Z",
+          "input_parameter_specifications": [
+            {
+              "id": "Setpoint_184",
+              "oid": "1000000003344",
+              "description": "Parameter for pressure control",
+              "default_value": "190",
+              "value_type": "literal"
+            },
+            {
+              "id": "Index_25",
+              "oid": "1000000003345",
+              "description": "Parameter for heater control",
+              "default_value": "379",
+              "value_type": "literal"
+            },
+            {
+              "id": "Tolerance_838",
+              "oid": "1000000003346",
+              "description": "Parameter for vessel control",
+              "default_value": "355",
+              "value_type": "property"
+            }
+          ],
+          "output_parameter_specifications": [
+            {
+              "id": "State_560",
+              "oid": "1000000003347",
+              "description": "Output from belt reading"
+            }
+          ]
+        }
+      ],
+      "value_property_specifications": [
+        {
+          "name": "OperatorName_25",
+          "oid": "1000000003349",
+          "entries": [
+            {
+              "name": "initial",
+              "value": "33"
+            },
+            {
+              "name": "unit",
+              "value": "rpm"
+            }
+          ]
+        },
+        {
+          "name": "PressureReading_10",
+          "oid": "1000000003350",
+          "entries": [
+            {
+              "name": "initial",
+              "value": "59"
+            },
+            {
+              "name": "unit",
+              "value": "rpm"
+            }
+          ]
+        },
+        {
+          "name": "BatchID_12",
+          "oid": "1000000003351",
+          "entries": [
+            {
+              "name": "initial",
+              "value": "67"
+            },
+            {
+              "name": "unit",
+              "value": "kg"
+            }
+          ]
+        }
+      ],
+      "resource_property_specifications": [
+        {
+          "name": "Reactor_3",
+          "resource_type": "binary shared use with pool limits",
+          "description": "binary shared use with pool limits resource",
+          "use_limit": 4
+        },
+        {
+          "name": "Centrifuge_82",
+          "resource_type": "countable use with pool limits",
+          "description": "countable use with pool limits resource",
+          "use_limit": 18
+        }
+      ]
+    }
+  ]
+}

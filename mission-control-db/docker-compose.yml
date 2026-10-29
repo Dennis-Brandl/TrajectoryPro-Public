@@ -1,0 +1,20 @@
+# Pinned so volume and container names don't depend on the checkout folder's name
+# (scripts/setup-secrets.sh looks for the 'mission-control-db_' volumes).
+name: mission-control-db
+
+services:
+  mission-control-postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: mission
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run scripts/setup-secrets.sh}
+      POSTGRES_DB: mission_control
+    ports: ["127.0.0.1:5433:5432"]
+    volumes: ["mission_control_pg:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mission -d mission_control"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  mission_control_pg:

@@ -1,0 +1,62 @@
+{
+  "name": "mission-autopilot",
+  "version": "3.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "dev": "concurrently --kill-others-on-fail --names \"server,console\" -c \"blue,green\" \"npm run dev:server\" \"npm run dev:console\"",
+    "dev:server": "tsx watch --env-file=.env packages/server/src/index.ts",
+    "dev:console": "npm run dev --workspace=apps/console",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:pg": "tsc -p packages/storage/tsconfig.smoke.json && vitest run --config packages/storage/vitest.smoke.config.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "import-sqlite": "tsx scripts/import-sqlite.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.4",
+    "@eslint/js": "^10.0.1",
+    "@types/better-sqlite3": "^9.6.0",
+    "@vitest/coverage-v8": "^4.1.12",
+    "better-sqlite3": "^13.0.2",
+    "concurrently": "^9.2.1",
+    "eslint": "^10.0.2",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "jszip": "^3.10.1",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.8.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.56.1",
+    "vitest": "^4.1.12"
+  },
+  "overrides": {
+    "hono": "^4.13.13",
+    "@hono/node-server": "^1.19.17",
+    "fast-uri": "^3.1.9",
+    "dompurify": "^3.4.17"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml,css,html}": [
+      "prettier --write"
+    ]
+  }
+}

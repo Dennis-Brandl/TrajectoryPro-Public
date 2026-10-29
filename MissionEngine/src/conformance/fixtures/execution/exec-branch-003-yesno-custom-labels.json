@@ -1,0 +1,86 @@
+{
+  "test_id": "exec-branch-003",
+  "name": "YES_NO step with custom labels and values",
+  "category": "execution",
+  "tags": ["branching", "yes-no", "custom-labels"],
+  "workflow": {
+    "local_id": "wf-branch-003",
+    "oid": "wf-branch-003-oid",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-04T00:00:00Z",
+    "schemaVersion": "4.0",
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "step-start",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "START",
+        "position": { "x": 100, "y": 100 }
+      },
+      {
+        "local_id": "yesno",
+        "oid": "step-yn",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "YES_NO",
+        "position": { "x": 100, "y": 200 },
+        "yes_no_config": {
+          "yes_label": "Approve",
+          "no_label": "Reject",
+          "yes_value": "approved",
+          "no_value": "rejected"
+        }
+      },
+      {
+        "local_id": "end-approve",
+        "oid": "step-end-approve",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 50, "y": 300 }
+      },
+      {
+        "local_id": "end-reject",
+        "oid": "step-end-reject",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 200, "y": 300 }
+      }
+    ],
+    "connections": [
+      {
+        "from_step_id": "step-start",
+        "to_step_id": "step-yn"
+      },
+      {
+        "from_step_id": "step-yn",
+        "to_step_id": "step-end-approve",
+        "condition": "approved"
+      },
+      {
+        "from_step_id": "step-yn",
+        "to_step_id": "step-end-reject",
+        "condition": "rejected"
+      }
+    ]
+  },
+  "user_actions": [
+    {
+      "step_oid": "step-yn",
+      "action": "button_press",
+      "button_output": "approved"
+    }
+  ],
+  "expected": {
+    "valid": true,
+    "execution_trace": [
+      { "step_oid": "step-start", "state": "COMPLETED", "order": 1 },
+      { "step_oid": "step-yn", "state": "EXECUTING", "order": 2 },
+      { "step_oid": "step-yn", "state": "COMPLETED", "order": 3, "after_action": 0 },
+      { "step_oid": "step-end-approve", "state": "COMPLETED", "order": 4 }
+    ],
+    "workflow_state": "COMPLETED"
+  }
+}

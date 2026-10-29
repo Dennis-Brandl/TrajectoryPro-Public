@@ -1,0 +1,595 @@
+{
+  "local_id": "Motor Control",
+  "oid": "1000000001173",
+  "version": "3.3.1",
+  "last_modified_date": "2026-02-05T19:15:00.000Z",
+  "description": "Action library for motor control operations in manufacturing environments.",
+  "action_specifications": [
+    {
+      "local_id": "Flush Tank",
+      "oid": "1000000001094",
+      "version": "3.0.6",
+      "last_modified_date": "2026-02-02T00:21:00.000Z",
+      "input_parameter_specifications": [
+        {
+          "id": "Mode_509",
+          "oid": "1000000001095",
+          "description": "Parameter for vessel control",
+          "default_value": "687",
+          "value_type": "property"
+        },
+        {
+          "id": "Factor_495",
+          "oid": "1000000001096",
+          "description": "Parameter for vessel control",
+          "default_value": "746",
+          "value_type": "literal"
+        }
+      ],
+      "output_parameter_specifications": [
+        {
+          "id": "Position_696",
+          "oid": "1000000001097",
+          "description": "Output from level reading"
+        },
+        {
+          "id": "State_839",
+          "oid": "1000000001098",
+          "description": "Output from temperature reading"
+        },
+        {
+          "id": "Measurement_57",
+          "oid": "1000000001099",
+          "description": "Output from sensor reading"
+        },
+        {
+          "id": "Quality_263",
+          "oid": "1000000001100",
+          "description": "Output from level reading"
+        },
+        {
+          "id": "Reading_687",
+          "oid": "1000000001101",
+          "description": "Output from hopper reading"
+        },
+        {
+          "id": "Measurement_520",
+          "oid": "1000000001102",
+          "description": "Output from temperature reading"
+        }
+      ],
+      "action_visibility": "observable",
+      "property_specifications": [
+        {
+          "name": "TankConfig",
+          "oid": "1000000001103",
+          "entries": [
+            {
+              "name": "mode",
+              "value": "manual"
+            },
+            {
+              "name": "priority",
+              "value": "5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "local_id": "Fill Vessel",
+      "oid": "1000000001104",
+      "version": "2.9.0",
+      "last_modified_date": "2026-02-04T01:12:00.000Z",
+      "input_parameter_specifications": [
+        {
+          "id": "Factor_373",
+          "oid": "1000000001105",
+          "description": "Parameter for level control",
+          "default_value": "345",
+          "value_type": "property"
+        },
+        {
+          "id": "Interval_147",
+          "oid": "1000000001106",
+          "description": "Parameter for level control",
+          "default_value": "203",
+          "value_type": "literal"
+        },
+        {
+          "id": "Timeout_660",
+          "oid": "1000000001107",
+          "description": "Parameter for flow control",
+          "default_value": "221",
+          "value_type": "property"
+        },
+        {
+          "id": "Timeout_175",
+          "oid": "1000000001108",
+          "description": "Parameter for flow control",
+          "default_value": "384",
+          "value_type": "literal"
+        },
+        {
+          "id": "Interval_977",
+          "oid": "1000000001109",
+          "description": "Parameter for temperature control",
+          "default_value": "684",
+          "value_type": "literal"
+        }
+      ],
+      "output_parameter_specifications": [
+        {
+          "id": "Position_354",
+          "oid": "1000000001110",
+          "description": "Output from motor reading",
+          "target": "BatchID"
+        },
+        {
+          "id": "Measurement_821",
+          "oid": "1000000001111",
+          "description": "Output from actuator reading",
+          "target": "TotalVolume"
+        },
+        {
+          "id": "ErrorCode_264",
+          "oid": "1000000001112",
+          "description": "Output from valve reading",
+          "target": "ElapsedTime"
+        }
+      ],
+      "action_visibility": "opaque",
+      "property_specifications": [
+        {
+          "name": "VesselConfig",
+          "oid": "1000000001113",
+          "entries": [
+            {
+              "name": "mode",
+              "value": "auto"
+            },
+            {
+              "name": "priority",
+              "value": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "local_id": "Start Level",
+      "oid": "1000000001114",
+      "version": "3.1.3",
+      "last_modified_date": "2026-01-25T05:01:00.000Z",
+      "input_parameter_specifications": [
+        {
+          "id": "Count_643",
+          "oid": "1000000001115",
+          "description": "Parameter for vessel control",
+          "default_value": "841",
+          "value_type": "property"
+        },
+        {
+          "id": "Duration_197",
+          "oid": "1000000001116",
+          "description": "Parameter for alarm control",
+          "default_value": "497",
+          "value_type": "literal"
+        },
+        {
+          "id": "Limit_142",
+          "oid": "1000000001117",
+          "description": "Parameter for motor control",
+          "default_value": "634",
+          "value_type": "property"
+        }
+      ],
+      "output_parameter_specifications": [
+        {
+          "id": "Delta_370",
+          "oid": "1000000001118",
+          "description": "Output from pipe reading",
+          "target": "OperatorName"
+        },
+        {
+          "id": "Measurement_523",
+          "oid": "1000000001119",
+          "description": "Output from speed reading"
+        },
+        {
+          "id": "Reading_479",
+          "oid": "1000000001120",
+          "description": "Output from flow reading"
+        }
+      ],
+      "action_visibility": "opaque",
+      "property_specifications": [
+        {
+          "name": "LevelConfig",
+          "oid": "1000000001121",
+          "entries": [
+            {
+              "name": "mode",
+              "value": "semi-auto"
+            },
+            {
+              "name": "priority",
+              "value": "7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "local_id": "Write Flow",
+      "oid": "1000000001122",
+      "version": "1.7.2",
+      "last_modified_date": "2026-01-23T01:08:00.000Z",
+      "input_parameter_specifications": [
+        {
+          "id": "Mode_736",
+          "oid": "1000000001123",
+          "description": "Parameter for controller control",
+          "default_value": "383",
+          "value_type": "literal"
+        },
+        {
+          "id": "Rate_384",
+          "oid": "1000000001124",
+          "description": "Parameter for pipe control",
+          "default_value": "231",
+          "value_type": "literal"
+        },
+        {
+          "id": "Gain_659",
+          "oid": "1000000001125",
+          "description": "Parameter for vessel control",
+          "default_value": "784",
+          "value_type": "literal"
+        },
+        {
+          "id": "Setpoint_38",
+          "oid": "1000000001126",
+          "description": "Parameter for conveyor control",
+          "default_value": "377",
+          "value_type": "literal"
+        }
+      ],
+      "output_parameter_specifications": [
+        {
+          "id": "ErrorCode_363",
+          "oid": "1000000001127",
+          "description": "Output from valve reading"
+        },
+        {
+          "id": "Average_368",
+          "oid": "1000000001128",
+          "description": "Output from gauge reading"
+        }
+      ],
+      "action_visibility": "opaque"
+    },
+    {
+      "local_id": "Adjust Actuator",
+      "oid": "1000000001129",
+      "version": "2.1.4",
+      "last_modified_date": "2026-01-25T04:25:00.000Z",
+      "input_parameter_specifications": [
+        {
+          "id": "Limit_882",
+          "oid": "1000000001130",
+          "description": "Parameter for actuator control",
+          "default_value": "715",
+          "value_type": "literal"
+        },
+        {
+          "id": "Count_579",
+          "oid": "1000000001131",
+          "description": "Parameter for tank control",
+          "default_value": "622",
+          "value_type": "property"
+        }
+      ],
+      "output_parameter_specifications": [
+        {
+          "id": "Average_528",
+          "oid": "1000000001132",
+          "description": "Output from temperature reading",
+          "target": "StepResult"
+        },
+        {
+          "id": "Variance_407",
+          "oid": "1000000001133",
+          "description": "Output from vessel reading"
+        },
+        {
+          "id": "Maximum_968",
+          "oid": "1000000001134",
+          "description": "Output from alarm reading"
+        }
+      ],
+      "action_visibility": "observable",
+      "property_specifications": [
+        {
+          "name": "ActuatorConfig",
+          "oid": "1000000001135",
+          "entries": [
+            {
+              "name": "mode",
+              "value": "manual"
+            },
+            {
+              "name": "priority",
+              "value": "2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "local_id": "Drain Sensor",
+      "oid": "1000000001136",
+      "version": "2.8.1",
+      "last_modified_date": "2026-02-27T08:36:00.000Z",
+      "input_parameter_specifications": [
+        {
+          "id": "Setpoint_956",
+          "oid": "1000000001137",
+          "description": "Parameter for conveyor control",
+          "default_value": "118",
+          "value_type": "literal"
+        },
+        {
+          "id": "Gain_86",
+          "oid": "1000000001138",
+          "description": "Parameter for nozzle control",
+          "default_value": "545",
+          "value_type": "literal"
+        },
+        {
+          "id": "Tag_957",
+          "oid": "1000000001139",
+          "description": "Parameter for position control",
+          "default_value": "794",
+          "value_type": "property"
+        }
+      ],
+      "output_parameter_specifications": [
+        {
+          "id": "Maximum_729",
+          "oid": "1000000001140",
+          "description": "Output from belt reading"
+        },
+        {
+          "id": "State_421",
+          "oid": "1000000001141",
+          "description": "Output from motor reading"
+        }
+      ],
+      "action_visibility": "opaque"
+    },
+    {
+      "local_id": "Calibrate Valve",
+      "oid": "1000000001142",
+      "version": "1.6.4",
+      "last_modified_date": "2026-01-14T00:06:00.000Z",
+      "input_parameter_specifications": [
+        {
+          "id": "Offset_169",
+          "oid": "1000000001143",
+          "description": "Parameter for position control",
+          "default_value": "696",
+          "value_type": "literal"
+        },
+        {
+          "id": "Setpoint_801",
+          "oid": "1000000001144",
+          "description": "Parameter for pump control",
+          "default_value": "295",
+          "value_type": "property"
+        }
+      ],
+      "output_parameter_specifications": [
+        {
+          "id": "FinalValue_377",
+          "oid": "1000000001145",
+          "description": "Output from temperature reading",
+          "target": "LotNumber"
+        },
+        {
+          "id": "CurrentValue_762",
+          "oid": "1000000001146",
+          "description": "Output from switch reading"
+        },
+        {
+          "id": "State_434",
+          "oid": "1000000001147",
+          "description": "Output from gauge reading",
+          "target": "LotNumber"
+        },
+        {
+          "id": "CurrentValue_464",
+          "oid": "1000000001148",
+          "description": "Output from sensor reading",
+          "target": "ElapsedTime"
+        }
+      ],
+      "action_visibility": "opaque"
+    },
+    {
+      "local_id": "Drain Mixer",
+      "oid": "1000000001149",
+      "version": "3.3.8",
+      "last_modified_date": "2026-02-07T17:04:00.000Z",
+      "input_parameter_specifications": [
+        {
+          "id": "Interval_555",
+          "oid": "1000000001150",
+          "description": "Parameter for belt control",
+          "default_value": "910",
+          "value_type": "property"
+        },
+        {
+          "id": "Rate_533",
+          "oid": "1000000001151",
+          "description": "Parameter for flow control",
+          "default_value": "38",
+          "value_type": "literal"
+        },
+        {
+          "id": "Offset_811",
+          "oid": "1000000001152",
+          "description": "Parameter for heater control",
+          "default_value": "333",
+          "value_type": "property"
+        },
+        {
+          "id": "Tag_30",
+          "oid": "1000000001153",
+          "description": "Parameter for alarm control",
+          "default_value": "466",
+          "value_type": "literal"
+        }
+      ],
+      "output_parameter_specifications": [
+        {
+          "id": "Result_926",
+          "oid": "1000000001154",
+          "description": "Output from conveyor reading"
+        },
+        {
+          "id": "Status_825",
+          "oid": "1000000001155",
+          "description": "Output from alarm reading",
+          "target": "OperatorName"
+        }
+      ],
+      "action_visibility": "opaque"
+    },
+    {
+      "local_id": "Package Position",
+      "oid": "1000000001156",
+      "version": "1.0.9",
+      "last_modified_date": "2026-01-22T04:54:00.000Z",
+      "input_parameter_specifications": [
+        {
+          "id": "Ratio_244",
+          "oid": "1000000001157",
+          "description": "Parameter for motor control",
+          "default_value": "785",
+          "value_type": "literal"
+        },
+        {
+          "id": "Index_461",
+          "oid": "1000000001158",
+          "description": "Parameter for vessel control",
+          "default_value": "591",
+          "value_type": "property"
+        },
+        {
+          "id": "Mode_559",
+          "oid": "1000000001159",
+          "description": "Parameter for speed control",
+          "default_value": "206",
+          "value_type": "literal"
+        },
+        {
+          "id": "Gain_783",
+          "oid": "1000000001160",
+          "description": "Parameter for mixer control",
+          "default_value": "836",
+          "value_type": "literal"
+        },
+        {
+          "id": "Timeout_976",
+          "oid": "1000000001161",
+          "description": "Parameter for position control",
+          "default_value": "103",
+          "value_type": "literal"
+        }
+      ],
+      "output_parameter_specifications": [
+        {
+          "id": "Reading_224",
+          "oid": "1000000001162",
+          "description": "Output from valve reading",
+          "target": "BatchID"
+        },
+        {
+          "id": "Reading_83",
+          "oid": "1000000001163",
+          "description": "Output from switch reading",
+          "target": "OperatorName"
+        },
+        {
+          "id": "State_513",
+          "oid": "1000000001164",
+          "description": "Output from pipe reading",
+          "target": "FlowRate"
+        }
+      ],
+      "action_visibility": "observable"
+    },
+    {
+      "local_id": "Write Sensor",
+      "oid": "1000000001165",
+      "version": "2.4.3",
+      "last_modified_date": "2026-01-22T17:10:00.000Z",
+      "input_parameter_specifications": [
+        {
+          "id": "Tolerance_218",
+          "oid": "1000000001166",
+          "description": "Parameter for controller control",
+          "default_value": "224",
+          "value_type": "property"
+        },
+        {
+          "id": "Tolerance_119",
+          "oid": "1000000001167",
+          "description": "Parameter for valve control",
+          "default_value": "27",
+          "value_type": "property"
+        }
+      ],
+      "output_parameter_specifications": [
+        {
+          "id": "CurrentValue_18",
+          "oid": "1000000001168",
+          "description": "Output from pressure reading"
+        },
+        {
+          "id": "FinalValue_392",
+          "oid": "1000000001169",
+          "description": "Output from controller reading"
+        },
+        {
+          "id": "Variance_422",
+          "oid": "1000000001170",
+          "description": "Output from heater reading"
+        },
+        {
+          "id": "Maximum_621",
+          "oid": "1000000001171",
+          "description": "Output from alarm reading"
+        }
+      ],
+      "action_visibility": "opaque",
+      "property_specifications": [
+        {
+          "name": "SensorConfig",
+          "oid": "1000000001172",
+          "entries": [
+            {
+              "name": "mode",
+              "value": "manual"
+            },
+            {
+              "name": "priority",
+              "value": "1"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

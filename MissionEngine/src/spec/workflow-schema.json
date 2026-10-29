@@ -1,0 +1,774 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trajectory.com/schemas/workflow/v4.0/workflow-schema.json",
+  "title": "Trajectory Workflow Specification v4.0",
+  "description": "JSON Schema for MasterWorkflowSpecification (.WFmaster files)",
+  "type": "object",
+  "$defs": {
+    "ManagedElement": {
+      "type": "object",
+      "properties": {
+        "local_id": { "type": "string" },
+        "oid": { "type": "string" },
+        "description": { "type": "string" },
+        "version": { "type": "string" },
+        "last_modified_date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["local_id", "oid", "version", "last_modified_date"]
+    },
+    "StepType": {
+      "type": "string",
+      "enum": [
+        "START", "END", "ACTION PROXY", "WORKFLOW PROXY", "SELECT 1",
+        "WAIT ANY", "PARALLEL", "WAIT ALL", "MATH", "SCRIPT", "GATE",
+        "YES_NO", "USER_INTERACTION", "CATCH", "RETURN"
+      ]
+    },
+    "ActionServerSpecification": {
+      "type": "object",
+      "required": ["name", "uri", "connection_type"],
+      "properties": {
+        "name": { "type": "string" },
+        "uri": { "type": "string" },
+        "description": { "type": "string" },
+        "connection_type": { "type": "string", "enum": ["REST"] }
+      }
+    },
+    "WorkflowConnection": {
+      "type": "object",
+      "properties": {
+        "from_step_id": { "type": "string" },
+        "to_step_id": { "type": "string" },
+        "condition": { "type": "string" },
+        "connection_id": { "type": "string" },
+        "source_handle_id": { "type": "string" },
+        "waypoints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "x": { "type": "number" },
+              "y": { "type": "number" }
+            },
+            "required": ["x", "y"]
+          }
+        }
+      },
+      "required": ["from_step_id", "to_step_id"]
+    },
+    "PropertyEntrySpecification": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "value": { "type": "string" }
+      },
+      "required": ["name", "value"]
+    },
+    "ParameterSpecification": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "oid": { "type": "string" },
+        "description": { "type": "string" },
+        "default_value": { "type": "string" },
+        "value_type": { "type": "string", "enum": ["literal", "property"] },
+        "json_schema": { "type": "string" },
+        "entries": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/PropertyEntrySpecification" }
+        }
+      },
+      "required": ["id", "default_value"]
+    },
+    "OutputParameterSpecification": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "oid": { "type": "string" },
+        "description": { "type": "string" },
+        "target": { "type": "string" },
+        "entries": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/PropertyEntrySpecification" }
+        }
+      },
+      "required": ["id"]
+    },
+    "PropertySpecification": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "oid": { "type": "string" },
+        "entries": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/PropertyEntrySpecification" }
+        }
+      },
+      "required": ["name", "entries"]
+    },
+    "ParameterDefaultSource": {
+      "type": "object",
+      "oneOf": [
+        {
+          "properties": {
+            "mode": { "const": "static" },
+            "value": { "type": "string" }
+          },
+          "required": ["mode", "value"]
+        },
+        {
+          "properties": {
+            "mode": { "const": "property" },
+            "value": { "type": "string" }
+          },
+          "required": ["mode", "value"]
+        },
+        {
+          "properties": {
+            "mode": { "const": "parameter" },
+            "value": { "type": "string" }
+          },
+          "required": ["mode", "value"]
+        },
+        {
+          "properties": {
+            "mode": { "const": "input" },
+            "value": { "type": "string" }
+          },
+          "required": ["mode", "value"]
+        }
+      ]
+    },
+    "RichTextContent": {
+      "type": "object",
+      "properties": {
+        "content": { "type": "string" },
+        "plainText": { "type": "string" }
+      },
+      "required": ["content", "plainText"]
+    },
+    "FormElementBase": {
+      "type": "object",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number" },
+        "height": { "type": "number" },
+        "zIndex": { "type": "number" }
+      },
+      "required": ["x", "y", "width", "height"]
+    },
+    "FormElementButton": {
+      "allOf": [
+        { "$ref": "#/$defs/FormElementBase" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "button" },
+            "label": { "type": "string" },
+            "outputValue": { "type": "string" },
+            "deletable": { "type": "boolean" }
+          },
+          "required": ["type", "label", "outputValue"]
+        }
+      ]
+    },
+    "FormElementText": {
+      "allOf": [
+        { "$ref": "#/$defs/FormElementBase" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "text" },
+            "content": { "$ref": "#/$defs/RichTextContent" },
+            "fontSize": { "type": "number" },
+            "fontWeight": { "type": "string", "enum": ["normal", "bold"] },
+            "color": { "type": "string" },
+            "align": { "type": "string", "enum": ["left", "center", "right"] }
+          },
+          "required": ["type", "content"]
+        }
+      ]
+    },
+    "FormElementHeader": {
+      "allOf": [
+        { "$ref": "#/$defs/FormElementBase" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "header" },
+            "content": { "$ref": "#/$defs/RichTextContent" },
+            "fontSize": { "type": "number" },
+            "fontWeight": { "type": "string", "enum": ["normal", "bold"] },
+            "color": { "type": "string" },
+            "align": { "type": "string", "enum": ["left", "center", "right"] }
+          },
+          "required": ["type", "content"]
+        }
+      ]
+    },
+    "FormElementTextInput": {
+      "allOf": [
+        { "$ref": "#/$defs/FormElementBase" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "textInput" },
+            "label": { "type": "string" },
+            "placeholder": { "type": "string" },
+            "fieldName": { "type": "string" },
+            "required": { "type": "boolean" },
+            "outputParameter": { "type": "string" },
+            "defaultSource": { "$ref": "#/$defs/ParameterDefaultSource" },
+            "placeholderSource": { "$ref": "#/$defs/ParameterDefaultSource" }
+          },
+          "required": ["type", "fieldName"]
+        }
+      ]
+    },
+    "FormElementTextarea": {
+      "allOf": [
+        { "$ref": "#/$defs/FormElementBase" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "textarea" },
+            "label": { "type": "string" },
+            "placeholder": { "type": "string" },
+            "fieldName": { "type": "string" },
+            "required": { "type": "boolean" },
+            "rows": { "type": "number" },
+            "outputParameter": { "type": "string" },
+            "defaultSource": { "$ref": "#/$defs/ParameterDefaultSource" },
+            "placeholderSource": { "$ref": "#/$defs/ParameterDefaultSource" }
+          },
+          "required": ["type", "fieldName"]
+        }
+      ]
+    },
+    "FormElementImage": {
+      "allOf": [
+        { "$ref": "#/$defs/FormElementBase" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "image" },
+            "src": { "type": "string" },
+            "objectFit": { "type": "string", "enum": ["contain", "cover", "fill"] }
+          },
+          "required": ["type", "src"]
+        }
+      ]
+    },
+    "FormElementVideo": {
+      "allOf": [
+        { "$ref": "#/$defs/FormElementBase" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "video" },
+            "src": { "type": "string" },
+            "posterUrl": { "type": "string" }
+          },
+          "required": ["type", "src"]
+        }
+      ]
+    },
+    "FormElementCheckbox": {
+      "allOf": [
+        { "$ref": "#/$defs/FormElementBase" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "checkbox" },
+            "label": { "type": "string" },
+            "fieldName": { "type": "string" },
+            "options": { "type": "array", "items": { "oneOf": [{ "type": "string" }, { "type": "object", "properties": { "label": { "type": "string" }, "value": { "type": "string" } }, "required": ["label", "value"] }] } },
+            "fontSize": { "type": "number" },
+            "required": { "type": "boolean" },
+            "outputParameter": { "type": "string" }
+          },
+          "required": ["type", "fieldName", "options"]
+        }
+      ]
+    },
+    "FormElementRadio": {
+      "allOf": [
+        { "$ref": "#/$defs/FormElementBase" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "radio" },
+            "label": { "type": "string" },
+            "fieldName": { "type": "string" },
+            "options": { "type": "array", "items": { "oneOf": [{ "type": "string" }, { "type": "object", "properties": { "label": { "type": "string" }, "value": { "type": "string" } }, "required": ["label", "value"] }] } },
+            "fontSize": { "type": "number" },
+            "required": { "type": "boolean" },
+            "outputParameter": { "type": "string" }
+          },
+          "required": ["type", "fieldName", "options"]
+        }
+      ]
+    },
+    "FormElementDivider": {
+      "allOf": [
+        { "$ref": "#/$defs/FormElementBase" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "divider" },
+            "thickness": { "type": "number" },
+            "color": { "type": "string" }
+          },
+          "required": ["type"]
+        }
+      ]
+    },
+    "FormElementTimer": {
+      "allOf": [
+        { "$ref": "#/$defs/FormElementBase" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "timer" },
+            "label": { "type": "string" },
+            "fieldName": { "type": "string" },
+            "durationSeconds": { "type": "number", "minimum": 1 },
+            "direction": { "type": "string", "enum": ["countdown", "countup"] },
+            "blockDone": { "type": "boolean" },
+            "outputParameter": { "type": "string" },
+            "defaultSource": { "$ref": "#/$defs/ParameterDefaultSource" }
+          },
+          "required": ["type", "label", "fieldName", "durationSeconds", "direction"]
+        }
+      ]
+    },
+    "FormElement": {
+      "oneOf": [
+        { "$ref": "#/$defs/FormElementButton" },
+        { "$ref": "#/$defs/FormElementText" },
+        { "$ref": "#/$defs/FormElementHeader" },
+        { "$ref": "#/$defs/FormElementTextInput" },
+        { "$ref": "#/$defs/FormElementTextarea" },
+        { "$ref": "#/$defs/FormElementImage" },
+        { "$ref": "#/$defs/FormElementVideo" },
+        { "$ref": "#/$defs/FormElementCheckbox" },
+        { "$ref": "#/$defs/FormElementRadio" },
+        { "$ref": "#/$defs/FormElementDivider" },
+        { "$ref": "#/$defs/FormElementTimer" }
+      ]
+    },
+    "FormLayoutExportEntry": {
+      "type": "object",
+      "properties": {
+        "deviceType": { "type": "string", "enum": ["phone", "tablet", "desktop"] },
+        "canvasWidth": { "type": "number" },
+        "canvasHeight": { "type": "number" },
+        "elements": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/FormElement" }
+        }
+      },
+      "required": ["deviceType", "canvasWidth", "canvasHeight", "elements"]
+    },
+    "YesNoConfig": {
+      "type": "object",
+      "properties": {
+        "yes_label": { "type": "string" },
+        "no_label": { "type": "string" },
+        "yes_value": { "type": "string" },
+        "no_value": { "type": "string" },
+        "default_selection": { "type": "string", "enum": ["yes", "no", "none"] }
+      }
+    },
+    "ScriptConfig": {
+      "type": "object",
+      "properties": {
+        "language": { "type": "string" },
+        "source": { "type": "string" },
+        "repeat": {
+          "type": "object",
+          "properties": {
+            "cycle_seconds": { "type": "number", "minimum": 1, "maximum": 31449600 },
+            "time_limit_seconds": { "type": "integer", "minimum": 1, "maximum": 31449600 },
+            "on_time_limit": { "type": "string", "enum": ["error", "complete"] }
+          }
+        }
+      }
+    },
+    "ActionPropertyBinding": {
+      "type": "object",
+      "required": ["parameter_id", "property"],
+      "properties": {
+        "parameter_id": { "type": "string" },
+        "environment_oid": { "type": "string" },
+        "environment_name": { "type": "string" },
+        "property": { "type": "string" }
+      }
+    },
+    "GateConfig": {
+      "type": "object",
+      "properties": {
+        "cycle_seconds": { "type": "number", "minimum": 1, "maximum": 31449600 },
+        "language": { "type": "string" },
+        "source": { "type": "string" },
+        "control_previous_action": { "type": "boolean" },
+        "mode": { "type": "string", "enum": ["condition", "timer", "condition_or_timer"] },
+        "delay_seconds": { "type": "integer", "minimum": 1, "maximum": 31449600 },
+        "action_property_bindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ActionPropertyBinding" }
+        }
+      }
+    },
+    "TrySpecification": {
+      "type": "object",
+      "required": ["mode", "catch_id"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["ERROR", "ABORT", "TIMEOUT"] },
+        "catch_id": { "type": "string", "minLength": 1 },
+        "release_on_catch": { "type": "boolean" }
+      }
+    },
+    "ReturnConfig": {
+      "type": "object",
+      "required": ["command"],
+      "properties": {
+        "command": { "type": "string", "enum": ["ABANDON", "RESTART", "GOTO", "RETRY", "COMPLETE"] },
+        "restart_mode": { "type": "string", "enum": ["CLEAN", "KEEP"] },
+        "goto_step_oid": { "type": "string" }
+      }
+    },
+    "Select1Option": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "operator": { "type": "string", "enum": ["==", "!=", "<", ">", "<=", ">=", "Contains", "Not Contains"] },
+        "value": { "type": "string" },
+        "value_type": { "type": "string", "enum": ["literal", "property"] },
+        "is_default": { "type": "boolean" }
+      },
+      "required": ["id", "label", "operator", "value", "value_type", "is_default"]
+    },
+    "Select1Config": {
+      "type": "object",
+      "properties": {
+        "input_name": { "type": "string" },
+        "input_value_type": { "type": "string", "enum": ["literal", "property"] },
+        "options": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Select1Option" }
+        }
+      }
+    },
+    "UIParameterSpecification": {
+      "type": "object",
+      "properties": {
+        "oid": { "type": "string" },
+        "type": { "type": "string" },
+        "value": { "type": "string" },
+        "font_size": { "type": "number" },
+        "color": { "type": "string" },
+        "lines": { "type": "number" },
+        "align": { "type": "string" },
+        "value2": { "type": "string" }
+      },
+      "required": ["type", "value"]
+    },
+    "ResourcePropertySpecification": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "resource_type": {
+          "type": "string",
+          "enum": [
+            "binary exclusive use",
+            "binary shared use with pool limits",
+            "countable use with pool limits",
+            "named pool",
+            "sync"
+          ]
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["workflow", "environment"],
+          "default": "workflow"
+        },
+        "use_limit": { "type": "number" },
+        "description": { "type": "string" },
+        "names": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["name", "resource_type"]
+    },
+    "ResourceCommandSpecification": {
+      "type": "object",
+      "properties": {
+        "oid": { "type": "string" },
+        "command_type": {
+          "type": "string",
+          "enum": [
+            "Acquire", "Release",
+            "Acquire Pool Amount", "Release Pool Amount",
+            "Send", "Receive", "Synchronize"
+          ]
+        },
+        "resource_name": { "type": "string" },
+        "resource_source_type": {
+          "type": "string",
+          "enum": ["workflow", "environment"],
+          "description": "Whether the resource is defined on a workflow or an environment."
+        },
+        "resource_source_oid": {
+          "type": "string",
+          "description": "OID of the workflow or environment that defines the resource."
+        },
+        "amount": { "type": "number" },
+        "target": { "type": "string" },
+        "source": { "type": "string" }
+      },
+      "required": ["command_type", "resource_name"]
+    },
+    "IncludedAction": {
+      "type": "object",
+      "properties": {
+        "action_name": { "type": "string" },
+        "action_library": { "type": "string" },
+        "action_oid": { "type": "string" },
+        "action_version": { "type": "string" },
+        "action_last_modified_date": { "type": "string" },
+        "input_parameter_specifications": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ParameterSpecification" }
+        },
+        "output_parameter_specifications": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/OutputParameterSpecification" }
+        },
+        "property_specifications": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/PropertySpecification" }
+        }
+      },
+      "required": ["action_name", "action_library"]
+    },
+    "MasterEnvironmentSpecification": {
+      "allOf": [
+        { "$ref": "#/$defs/ManagedElement" },
+        {
+          "type": "object",
+          "properties": {
+            "library_name": { "type": "string" },
+            "included_actions": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/IncludedAction" }
+            },
+            "value_property_specifications": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/PropertySpecification" }
+            },
+            "action_property_specifications": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/PropertySpecification" }
+            },
+            "resource_property_specifications": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/ResourcePropertySpecification" }
+            },
+            "action_server_specifications": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/ActionServerSpecification" }
+            }
+          },
+          "required": ["included_actions"]
+        }
+      ]
+    },
+    "MasterWorkflowStep": {
+      "allOf": [
+        { "$ref": "#/$defs/ManagedElement" },
+        {
+          "type": "object",
+          "properties": {
+            "step_type": { "$ref": "#/$defs/StepType" },
+            "position": {
+              "type": "object",
+              "properties": {
+                "x": { "type": "number" },
+                "y": { "type": "number" }
+              },
+              "required": ["x", "y"]
+            },
+            "input_parameter_specifications": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/ParameterSpecification" }
+            },
+            "output_parameter_specifications": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/OutputParameterSpecification" }
+            },
+            "value_property_specifications": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/PropertySpecification" }
+            },
+            "resource_command_specifications": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/ResourceCommandSpecification" }
+            },
+            "ui_parameter_specifications": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/UIParameterSpecification" }
+            },
+            "form_layout_config": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/FormLayoutExportEntry" }
+            },
+            "yes_no_config": { "$ref": "#/$defs/YesNoConfig" },
+            "script_config": { "$ref": "#/$defs/ScriptConfig" },
+            "gate_config": { "$ref": "#/$defs/GateConfig" },
+            "action_property_bindings": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/ActionPropertyBinding" }
+            },
+            "select1_config": { "$ref": "#/$defs/Select1Config" },
+            "action_visibility": { "type": "string", "enum": ["opaque", "observable"] },
+            "connection_references": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "try_specifications": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/TrySpecification" }
+            },
+            "catch_id": { "type": "string", "minLength": 1 },
+            "return_config": { "$ref": "#/$defs/ReturnConfig" }
+          },
+          "required": ["step_type"]
+        }
+      ]
+    },
+    "ChildWorkflowExport": {
+      "allOf": [
+        { "$ref": "#/$defs/ManagedElement" },
+        {
+          "type": "object",
+          "properties": {
+            "schemaVersion": { "type": "string", "enum": ["3.0", "4.0", "5.0"] },
+            "parentChildSpecId": { "type": ["string", "null"] },
+            "state": { "type": "string" },
+            "display_style": { "type": "string", "enum": ["flowchart", "bpmn", "isa88"] },
+            "steps": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/MasterWorkflowStep" }
+            },
+            "connections": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/WorkflowConnection" }
+            },
+            "try_specifications": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/TrySpecification" }
+            },
+            "starting_parameter_specifications": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/ParameterSpecification" }
+            },
+            "output_parameter_specifications": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/OutputParameterSpecification" }
+            },
+            "value_property_specifications": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/PropertySpecification" }
+            },
+            "resource_command_specifications": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/ResourceCommandSpecification" }
+            },
+            "resource_property_specifications": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/ResourcePropertySpecification" }
+            },
+            "environment_specifications": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/MasterEnvironmentSpecification" }
+            },
+            "children": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/ChildWorkflowExport" }
+            },
+            "viewport": {
+              "type": "object",
+              "properties": {
+                "x": { "type": "number" },
+                "y": { "type": "number" },
+                "zoom": { "type": "number" }
+              }
+            }
+          },
+          "required": ["parentChildSpecId", "state", "steps", "connections"]
+        }
+      ]
+    }
+  },
+  "allOf": [
+    { "$ref": "#/$defs/ManagedElement" },
+    {
+      "type": "object",
+      "properties": {
+        "schemaVersion": { "type": "string", "enum": ["3.0", "4.0", "5.0"] },
+        "state": { "type": "string" },
+        "display_style": { "type": "string", "enum": ["flowchart", "bpmn", "isa88"] },
+        "steps": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/MasterWorkflowStep" }
+        },
+        "connections": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/WorkflowConnection" }
+        },
+        "try_specifications": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/TrySpecification" }
+        },
+        "starting_parameter_specifications": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ParameterSpecification" }
+        },
+        "output_parameter_specifications": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/OutputParameterSpecification" }
+        },
+        "value_property_specifications": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/PropertySpecification" }
+        },
+        "resource_command_specifications": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ResourceCommandSpecification" }
+        },
+        "resource_property_specifications": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ResourcePropertySpecification" }
+        },
+        "environment_specifications": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/MasterEnvironmentSpecification" }
+        },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ChildWorkflowExport" }
+        },
+        "viewport": {
+          "type": "object",
+          "properties": {
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "zoom": { "type": "number" }
+          }
+        }
+      },
+      "required": ["steps", "connections"]
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "test_id": "exec-branch-006",
+  "name": "SELECT 1 with Contains operator",
+  "category": "execution",
+  "tags": ["branching", "select1", "contains"],
+  "workflow": {
+    "local_id": "wf-branch-006",
+    "oid": "wf-branch-006-oid",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-04T00:00:00Z",
+    "schemaVersion": "4.0",
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "step-start",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "START",
+        "position": { "x": 100, "y": 100 }
+      },
+      {
+        "local_id": "select1",
+        "oid": "step-sel",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "SELECT_1",
+        "position": { "x": 100, "y": 200 },
+        "select1_config": {
+          "input_name": "Message.Value",
+          "input_value_type": "property",
+          "options": [
+            { "id": "opt-match", "label": "Contains Error", "operator": "Contains", "value": "error", "value_type": "literal", "is_default": false },
+            { "id": "opt-nomatch", "label": "Default", "operator": "==", "value": "", "value_type": "literal", "is_default": true }
+          ]
+        }
+      },
+      {
+        "local_id": "end-match",
+        "oid": "step-end-match",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 50, "y": 300 }
+      },
+      {
+        "local_id": "end-nomatch",
+        "oid": "step-end-nomatch",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "END",
+        "position": { "x": 200, "y": 300 }
+      }
+    ],
+    "connections": [
+      {
+        "from_step_id": "step-start",
+        "to_step_id": "step-sel"
+      },
+      {
+        "from_step_id": "step-sel",
+        "to_step_id": "step-end-match",
+        "connection_id": "opt-match"
+      },
+      {
+        "from_step_id": "step-sel",
+        "to_step_id": "step-end-nomatch",
+        "connection_id": "opt-nomatch"
+      }
+    ]
+  },
+  "setup": {
+    "initial_properties": {
+      "Message.Value": "System error occurred"
+    }
+  },
+  "user_actions": [],
+  "expected": {
+    "valid": true,
+    "execution_trace": [
+      { "step_oid": "step-start", "state": "COMPLETED", "order": 1 },
+      { "step_oid": "step-sel", "state": "COMPLETED", "order": 2 },
+      { "step_oid": "step-end-match", "state": "COMPLETED", "order": 3 }
+    ],
+    "workflow_state": "COMPLETED"
+  }
+}

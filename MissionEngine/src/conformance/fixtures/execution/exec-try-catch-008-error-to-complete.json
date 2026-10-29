@@ -1,0 +1,45 @@
+{
+  "test_id": "exec-try-catch-008",
+  "name": "ERROR routes to CATCH; RETURN COMPLETE force-completes the trigger and the workflow finishes",
+  "category": "execution",
+  "tags": ["try-catch", "complete"],
+  "workflow": {
+    "local_id": "wf",
+    "oid": "wf-1",
+    "version": "1.0.0",
+    "last_modified_date": "2026-05-31T12:00:00.000Z",
+    "schemaVersion": "4.0",
+    "value_property_specifications": [
+      { "name": "FailureContext", "entries": [{ "name": "Mode", "value": "" }] }
+    ],
+    "environment_specifications": [
+      {
+        "local_id": "env",
+        "oid": "env-1",
+        "version": "1.0.0",
+        "last_modified_date": "2026-05-31T12:00:00.000Z",
+        "included_actions": [{ "action_oid": "act-1", "action_name": "DoThing", "action_library": "lib-1" }]
+      }
+    ],
+    "steps": [
+      { "local_id": "Start", "oid": "s1", "version": "1.0.0", "last_modified_date": "2026-05-31T12:00:00.000Z", "step_type": "START" },
+      { "local_id": "Action", "oid": "s2", "version": "1.0.0", "last_modified_date": "2026-05-31T12:00:00.000Z", "step_type": "ACTION PROXY", "action_proxy_config": { "action_oid": "act-1", "environment_oid": "env-1" }, "try_specifications": [{ "mode": "ERROR", "catch_id": "C1" }] },
+      { "local_id": "End", "oid": "s3", "version": "1.0.0", "last_modified_date": "2026-05-31T12:00:00.000Z", "step_type": "END" },
+      { "local_id": "Catch", "oid": "c1", "version": "1.0.0", "last_modified_date": "2026-05-31T12:00:00.000Z", "step_type": "CATCH", "catch_id": "C1", "output_parameter_specifications": [{ "id": "Reason", "target": "FailureContext.Mode" }] },
+      { "local_id": "Ret", "oid": "r1", "version": "1.0.0", "last_modified_date": "2026-05-31T12:00:00.000Z", "step_type": "RETURN", "return_config": { "command": "COMPLETE" } }
+    ],
+    "connections": [
+      { "from_step_id": "s1", "to_step_id": "s2" },
+      { "from_step_id": "s2", "to_step_id": "s3" },
+      { "from_step_id": "c1", "to_step_id": "r1" }
+    ]
+  },
+  "user_actions": [
+    { "step_oid": "s2", "action": "fail", "failure_mode": "ERROR", "error": "thermocouple failure" }
+  ],
+  "expected": {
+    "valid": true,
+    "workflow_state": "COMPLETED",
+    "final_properties": { "FailureContext.Mode": "ERROR" }
+  }
+}

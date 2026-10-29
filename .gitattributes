@@ -1,0 +1,9 @@
+# Ensure shell scripts always use LF line endings (required for Linux containers).
+# Added 2026-09-11 after a `git checkout` under core.autocrlf=true rewrote MissionCommander/docker-entrypoint.sh
+# as CRLF and crash-looped the Commander container on the next image build. Mirrors MissionDesigner/.gitattributes.
+*.sh text eol=lf
+
+# Mission Designer / Commander packages are ZIP files: never convert line endings.
+*.WFenvirX binary
+*.WFactionLibX binary
+*.WFenvirLibX binary

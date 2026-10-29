@@ -1,0 +1,44 @@
+{
+  "test_id": "val-sem-002",
+  "name": "No END step",
+  "category": "validation",
+  "tags": ["semantic", "invalid", "end"],
+  "workflow": {
+    "local_id": "no-end-workflow",
+    "oid": "7000000000002001",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-04T00:00:00Z",
+    "schemaVersion": "4.0",
+    "steps": [
+      {
+        "local_id": "start",
+        "oid": "7000000000002010",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "START",
+        "position": { "x": 100, "y": 100 }
+      },
+      {
+        "local_id": "user-step",
+        "oid": "7000000000002011",
+        "version": "1.0.0",
+        "last_modified_date": "2026-03-04T00:00:00Z",
+        "step_type": "USER_INTERACTION",
+        "position": { "x": 100, "y": 300 },
+        "form_layout_config": {
+          "elements": []
+        }
+      }
+    ],
+    "connections": [
+      {
+        "from_step_id": "7000000000002010",
+        "to_step_id": "7000000000002011"
+      }
+    ]
+  },
+  "expected": {
+    "valid": false,
+    "error_code": "NO_END_STEP"
+  }
+}

@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+.vite/
+coverage/
+.env
+.env.local
+
+# --- Public-release hygiene ---
+*.docx
+*.pptx
+
+# Generated at build time (build:help); not tracked
+public/help.html
+
+# tsc -b incremental state
+*.tsbuildinfo

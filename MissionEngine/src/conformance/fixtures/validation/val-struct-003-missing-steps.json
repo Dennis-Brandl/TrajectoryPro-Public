@@ -1,0 +1,18 @@
+{
+  "test_id": "val-struct-003",
+  "name": "Missing steps array",
+  "category": "validation",
+  "tags": ["structural", "invalid", "missing-field"],
+  "workflow": {
+    "local_id": "missing-steps-workflow",
+    "oid": "7000000000000003",
+    "version": "1.0.0",
+    "last_modified_date": "2026-03-04T00:00:00Z",
+    "schemaVersion": "4.0",
+    "connections": []
+  },
+  "expected": {
+    "valid": false,
+    "error_code": "MISSING_REQUIRED_FIELD"
+  }
+}

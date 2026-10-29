@@ -1,0 +1,20 @@
+# .gitignore
+node_modules/
+.env
+.env.*
+!.env.example
+!.env.e2e.example
+dist/
+test-results/
+# Generated at build time (build:help); not tracked
+public/help.html
+# Copied at build time from @fontsource (scripts/copy-fonts.mjs); not tracked
+public/fonts/
+
+# design-sync (claude.ai/design) — staged scripts, build output, machine state
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
+*.tsbuildinfo

@@ -1,31 +1,25 @@
-# Trajectory — JSON Schema & Package Format Reference
+# Trajectory Pro Mission Control — JSON Schema & Package Format Reference
 
-> **⚠️ The tool names in this document are a MIX of current and retired
-> applications.** The 2026-09-09 rebrand renamed the Action Tester to **Mission
-> Autopilot Tester** throughout, but this document's owner and support tables also
-> name **Trajectory Editor**, **Trajectory Runtime** and **Trajectory Action
-> Container** — applications that no longer exist in this form, and whose source
-> paths in §18 point at repositories removed in `81965a0`. The FORMAT definitions
-> below (schemas, `.WF*` layouts, `schemaVersion`) remain authoritative and are
-> deliberately unchanged; only the producer/consumer attributions are stale. The current
-> application list is in the [README](../README.md). This document needs a rewrite of its tool attributions; it has not had one.
+**Audience.** Implementers of new tools that exchange files with the Trajectory Pro Mission Control suite: alternative editors, alternative runtimes, alternative action servers, third-party importers/exporters, conformance test harnesses.
 
-**Audience.** Implementers of new Trajectory tools: alternative editors, alternative runtimes, alternative action containers, third-party importers/exporters, conformance test harnesses.
+**Scope.** This document defines (a) the JSON object schemas the suite's applications exchange and (b) the ZIP bundle layouts that carry them between applications. It describes *what to write to disk* and *what to read from disk*. The runtime protocol between a runtime and an action server is in [REST_Protocol.md](./REST_Protocol.md).
 
-**Scope.** This document defines (a) the complete JSON object schemas the Trajectory product family exchanges and (b) the ZIP bundle layouts that carry them between tools. It is the single source of truth for *what to write to disk* and *what to read from disk*. The runtime protocol used at execution time is in [REST_Protocol.md](./REST_Protocol.md).
-
-**Status.** Schema version: **4.0** (current; v7.0 package format). Backward-compatible with 3.0. 2.0 and earlier are rejected.
+**Status.** Schema version: **5.0** (current; the "v7.0" recursive envelope with `children[]` and the v2 form document `form_document`). Mission Designer writes `"5.0"` and imports workflow packages whose `schemaVersion` is from `"4.0"` to `"5.0"`; anything older or newer is rejected. Mission Engine's schema accepts `"3.0"`, `"4.0"` and `"5.0"`. See §1.1 for the version rules.
 
 **Owners.**
 
-| Tool | Role |
-|------|------|
-| **Trajectory Editor** | Authoring. Source of truth for `.WFmaster*`, `.WFlibX`, `.WFslibX`, and the canonical `.WFenvir` / `.WFaction` JSON shapes. |
-| **Trajectory Runtime** | Execution. Consumer of `.WFmaster` and `.WFmasterX` only. Never writes packages. |
-| **Trajectory Action Container** (TrajectoryActions) | Action hosting. Consumer of `.WFenvir*` and `.WFaction*` family. Producer of `.WFenvirX`, `.WFenvirBundleX`, `.WFactionCode(X)`, `.WFsnapshot`. |
-| **Mission Autopilot Tester** | Conformance test harness. Uploads existing `.WFenvir*` / `.WFaction*` packages to a target Action Container, then drives them through the REST protocol. Does not write packages. |
+| Application | Role |
+|-------------|------|
+| **Mission Designer** | Authoring. Source of truth for every workflow, environment and action shape in this document. Writes `.WFmaster`, `.WFmasterX`, `.WFlibX`, `.WFstepLibX`, `.WFenvirLibX`, `.WFactionLibX` and `.WFenvirX`; reads the same packages back. |
+| **Mission FormKit** | Owns the v2 form document schema (`form_document`, §1.12) and the renderer Mission Designer and Mission Pilot share. Writes no files. |
+| **Mission Commander** | Loads `.WFmasterX` and `.WFenvirX` packages into work centers and creates runtime workflows from them (the ingest code is in Mission Control DB). Writes and reads `.WFcenterX` work-center packages (§2.13). |
+| **Mission Engine** | Executes runtime workflows. Reads the workflow JSON Mission Commander stored, validates it when a runtime workflow starts (§1.3), and never reads or writes a ZIP. |
+| **Mission Pilot** | Operator inbox. Renders each step's `form_document`; reads and writes no package files. |
+| **Mission Autopilot** | Action server and console. Accepts `.WFenvir*`, `.WFaction` and `.WFactionCodeX` uploads; writes `.WFenvirX`, `.WFenvirBundleX`, `.WFactionCode` and `.WFsnapshot`. |
+| **Mission Autopilot Tester** | Browser harness for an action server's REST API. Uploads existing environment and action packages to a target action server; does not write packages. |
+| **Mission Broker** | Action server for the Distributed Workflow actions. Takes no package uploads; its actions ship as Mission Designer library packages (`.WFactionLibX`, `.WFenvirLibX`, `.WFenvirX`) in `MissionBroker/designer-library/`. |
 
-A full per-tool support matrix is in §3.
+A full per-application support matrix is in Part 3.
 
 ---
 
@@ -35,14 +29,14 @@ These apply to every JSON object in this document.
 
 | Item | Rule |
 |------|------|
-| JSON Schema dialect | Draft-07 for the published `$ref`'d schemas. The runtime validator uses Draft 2020-12 internally; the two are interoperable for these shapes. |
+| JSON Schema dialect | Draft-07 for Mission Designer's published schemas (`MissionDesigner/src/lib/schemas/*.json`, base URI `https://trajectorypro.io/schemas/`). Mission Engine validates with its own schema (`MissionEngine/src/spec/workflow-schema.json`), written in Draft 2020-12 syntax; the two describe the same shapes. |
 | Encoding | UTF-8, no BOM. |
-| String IDs (`oid`) | Snowflake-style 64-bit numeric strings. Treated as opaque by every tool except the issuer — never parse, never reformat. Dashes are tolerated; UUID-with-dashes forms are accepted by the Runtime loader. |
+| String IDs (`oid`) | Opaque strings. Mission Designer issues UUIDs for library and specification oids and numeric snowflake strings for steps, parameters, properties and form blocks. Treat every oid as opaque — never parse, never reformat. |
 | Timestamps | ISO 8601 UTC with millisecond precision (`2026-04-24T12:34:56.789Z`). |
-| Semver (`version`) | Standard `MAJOR.MINOR.PATCH`. Defaults to `"1.0.0"` when absent at the root. |
-| Permanent enum keys | `step_type`, form-element `type`, `command_type`, `resource_type` — never rename after deployment. Whitespace/case is literal. |
-| Unknown fields | Forward-compatible. Implementations MUST ignore unknown top-level fields rather than fail. |
-| Empty arrays | Always permitted unless a field is marked **required**. Prefer empty arrays over omission for round-trip stability. |
+| Semver (`version`) | Standard `MAJOR.MINOR.PATCH`. Mission Designer writes `"1.0.0"` when a library or specification has no version; every step carries `"1.0.0"`. |
+| Permanent enum keys | `step_type`, form block `type`, `command_type`, `resource_type` — never rename after deployment. Whitespace/case is literal. |
+| Unknown fields | Forward-compatible. Implementations MUST ignore unknown fields rather than fail. The one exception is the form document (§1.12): its schema forbids unknown properties at every level. |
+| Empty arrays | Always permitted unless a field is marked **required**. Mission Designer omits optional arrays that would be empty. |
 
 ---
 
@@ -55,56 +49,63 @@ Every entity that can appear on disk (libraries, specifications, steps, child wo
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://saturnis.io/schemas/managed-element.json",
+  "$id": "https://trajectorypro.io/schemas/managed-element.json",
   "title": "Managed Workflow Element",
   "type": "object",
   "required": ["local_id", "oid", "version", "last_modified_date"],
   "properties": {
     "schemaVersion": {
       "type": "string",
-      "enum": ["3.0", "4.0"],
-      "description": "Trajectory workflow schema version. '4.0' is the current format (v7.0 packages); '3.0' is accepted for backward compatibility. Required on root exports."
+      "enum": ["3.0", "4.0", "5.0"],
+      "description": "Trajectory workflow schema version"
     },
-    "local_id":           { "type": "string", "description": "Human-readable name (e.g., 'Check Pressure')." },
-    "oid":                { "type": "string", "description": "Snowflake ID. Stable across export/import." },
+    "local_id":           { "type": "string" },
+    "oid":                { "type": "string" },
     "description":        { "type": "string" },
-    "version":            { "type": "string", "description": "Semantic version string (e.g., '1.0.0')." },
+    "version":            { "type": "string" },
     "last_modified_date": { "type": "string", "format": "date-time" }
   }
 }
 ```
 
 **Implementer notes.**
-- On a root document (a workflow spec, env library, action library), `schemaVersion` SHOULD be present and SHOULD equal `"4.0"`. Absent root `schemaVersion` is accepted; values below `"3.0"` are rejected.
-- On nested children (steps, included actions), `schemaVersion` is not required.
+- `local_id` is the human-readable name (e.g. `"Check Pressure"`); `oid` is stable across export and import.
+- Mission Designer writes `schemaVersion: "5.0"` on every workflow specification it exports (root and children). Library wrappers and environment and action specifications carry no `schemaVersion`.
+- Importing a `.WFmasterX` into Mission Designer requires a root `schemaVersion` from `"4.0"` to `"5.0"`: a missing value is rejected, a value below `"4.0"` or above `"5.0"` fails with `unsupported_schema_version`. Mission Designer's library importers also reject a workflow specification that has `steps` but no `schemaVersion`, or a `schemaVersion` below `"4.0"`.
+- Mission Autopilot reads `schemaVersion` on an environment upload: absent means `"4.0"`, a non-string or a value below `"3.0"` is rejected.
 
 ## 1.2 MasterWorkflowLibrary
 
-A library that wraps one or more root workflows. Editor-native; runtime ingests via the `.WFlibX` import path but does not store libraries — it extracts each root into a `.WFmasterX`.
+A library that wraps one or more root workflows. Carried by `.WFlibX` (§2.3); Mission Commander never sees it.
 
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://saturnis.io/schemas/master-workflow-library.json",
+  "$id": "https://trajectorypro.io/schemas/master-workflow-library.json",
   "title": "Master Workflow Library",
   "allOf": [{ "$ref": "managed-element.json" }],
   "type": "object",
   "required": ["workflow_specifications"],
   "properties": {
+    "parent_library_oid": {
+      "type": "string",
+      "description": "OID of this library's parent library (provenance only, not consumed on import)."
+    },
     "workflow_specifications": {
       "type": "array",
       "items": { "$ref": "#/definitions/workflow_specification" }
     },
     "child_libraries": {
       "type": "array",
-      "description": "Nested child libraries (rare; reserved).",
       "items": { "$ref": "#" }
     }
   }
 }
 ```
 
-The full definition of `workflow_specification` (the root workflow shape) is in §1.3. Step / connection / parameter sub-shapes are in §1.5 – §1.7. Form layout is in §1.12.
+The full definition of `workflow_specification` (the root workflow shape) is in §1.3. Step / connection / parameter sub-shapes are in §1.5 – §1.7. Forms are in §1.12.
+
+In a `.WFlibX`, `workflow_specifications[]` holds every root workflow of the library and of its child libraries (each with its own `library_name` / `library_oid`), and `child_libraries[]` is a one-level list of the direct child libraries' ManagedElement fields only.
 
 ## 1.3 MasterWorkflowSpecification (root)
 
@@ -112,28 +113,30 @@ The top level of every `.WFmaster` file. Exactly one per `.WFmasterX` package.
 
 ```json
 {
-  "schemaVersion": "4.0",
+  "schemaVersion":      "5.0",
+  "display_style":      "flowchart",
   "local_id":           "Test Loops and Scripts",
-  "oid":                "454cf22190644b5f8bd1c68f825cfd0c",
+  "oid":                "0d7f4b4e-6a0f-4a55-9b7e-2f1f3c1a9e10",
   "description":        "Demo workflow with loops and SCRIPT steps.",
   "version":            "1.0.0",
-  "state":              "Draft",
   "last_modified_date": "2026-04-24T12:34:56.789Z",
-  "display_style":      "flowchart",
-  "viewport":           { "x": 0, "y": 0, "zoom": 1 },
+  "type_name":          "Operation",
+  "state":              "Draft",
+  "library_name":       "Kitchen Workflows",
+  "library_oid":        "6b1e2c3d-0000-4000-8000-000000000001",
 
   "steps":       [ /* §1.5 */ ],
   "connections": [ /* §1.6 */ ],
 
+  "resource_property_specifications":  [ /* §1.7.4 */ ],
   "starting_parameter_specifications": [ /* §1.7.1 */ ],
+  "try_specifications":                [ /* §1.5.11 */ ],
   "output_parameter_specifications":   [ /* §1.7.2 */ ],
   "value_property_specifications":     [ /* §1.7.3 */ ],
-  "resource_property_specifications":  [ /* §1.7.4 */ ],
-  "resource_command_specifications":   [ /* §1.7.5 */ ],
+  "viewport":                          { "x": 0, "y": 0, "zoom": 1 },
   "environment_specifications":        [ /* §1.8 */ ],
 
-  "children":        [ /* §1.4  — v7.0 preferred */ ],
-  "child_workflows": [ /* §1.4  — deprecated v6.0 fallback */ ]
+  "children": [ /* §1.4 */ ]
 }
 ```
 
@@ -141,51 +144,67 @@ The top level of every `.WFmaster` file. Exactly one per `.WFmasterX` package.
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `local_id` | string | Non-empty. |
-| `oid` | string | Opaque Snowflake/UUID. |
-| `version` | string | Semver. Optional at root — defaults to `"1.0.0"` if missing. |
+| `local_id` | string | Non-empty. Mission Designer's importer rejects a root without it. |
+| `oid` | string | Opaque. Mission Designer's importer rejects a root without it. |
+| `version` | string | Semver. Mission Commander and Mission Designer read a missing value as `"1.0.0"`. |
 | `last_modified_date` | string | ISO 8601 UTC. |
-| `steps` | array | See §1.5. May be empty only for body-less workflows (rare). |
+| `steps` | array | See §1.5. |
 | `connections` | array | See §1.6. |
 
 ### Optional (root)
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `schemaVersion` | `"4.0"` (preferred) or `"3.0"` | Absent ≡ accepted. `"2.0"` and below → rejected. |
+| `schemaVersion` | string | `"5.0"` when written by Mission Designer. See §1.1. |
 | `description` | string | |
-| `type_name` | string | Optional ISA 88 type (e.g. `Operation`), at most 50 characters. Informational only; never affects execution. Omitted when unset. Also allowed on each child workflow. |
-| `state` | string | Free-form. Convention: `Draft` / `InTest` / `InReview` / `Approved` / `Effective` / `Superseded` / `Obsolete`. Optional on root; defaults to `"Draft"`. |
-| `display_style` | `"flowchart"` \| `"bpmn"` \| `"isa88"` | Authoring notation only; runtime ignores. |
-| `viewport` | `{ x, y, zoom }` numbers | Editor pan/zoom; runtime stores but ignores. |
+| `type_name` | string | Optional ISA 88 type (e.g. `Operation`), at most 50 characters. Informational only; never affects execution. Omitted when unset. Also allowed on each child workflow. On import, a non-string, blank or over-long value is dropped. |
+| `state` | string | Lifecycle state: `Draft` / `InTest` / `InReview` / `Approved` / `Effective` / `Superseded` / `Obsolete`. Mission Commander and Mission Designer read a missing value as `"Draft"`. Mission Commander keys a loaded workflow on (work center, `oid`, `version`, `state`). |
+| `library_name`, `library_oid` | string | Name and oid of the Mission Designer library the workflow lives in. Provenance only; Mission Commander records them. |
+| `display_style` | `"flowchart"` \| `"bpmn"` \| `"isa88"` | Authoring notation only; the engine ignores it. Mission Commander uses it to draw the workflow diagram. |
+| `viewport` | `{ x, y, zoom }` numbers | Editor pan/zoom. |
+| `resource_property_specifications` | array | Workflow-scoped resources, §1.7.4. |
+| `resource_command_specifications` | array | Allowed by the schemas; Mission Designer does not emit workflow-level resource commands. |
+| `starting_parameter_specifications` | array | Workflow inputs, §1.7.1. |
+| `output_parameter_specifications` | array | Workflow outputs, §1.7.2. |
+| `value_property_specifications` | array | Workflow Value Properties, §1.7.3. |
+| `try_specifications` | array | Workflow-level TRY fallback rows, §1.5.11. |
+| `environment_specifications` | array | The environments the workflow is attached to, each embedded in full (§1.8). |
+| `children` | array | Embedded child workflows, §1.4. |
 
-### Semantic rules (all enforced by Runtime validator)
+### Semantic rules (enforced by Mission Engine when a runtime workflow starts)
 
-1. Exactly one step with `step_type: "START"`.
-2. At least one step with `step_type: "END"`.
-3. All step `oid` values unique within the spec.
+Mission Engine's validator (`MissionEngine/src/spec/validator.ts`) applies these to the root workflow before it runs anything. Step types are compared after replacing `_` with a space, so `YES_NO` and `YES NO` are the same type.
+
+1. Every step carries `local_id`, `oid`, `version`, `last_modified_date` and `step_type`; every connection carries `from_step_id` and `to_step_id`.
+2. All step `oid` values are unique within the spec.
+3. Exactly one step with `step_type: "START"`; at least one with `step_type: "END"`.
 4. Every `connections[*].from_step_id` and `to_step_id` references an existing step `oid`.
 5. No self-referencing connections (`from_step_id === to_step_id`).
-6. Every step is reachable from the START step via BFS over `connections`.
-7. Every `PARALLEL` step has a matching `WAIT ALL` on every downstream path.
+6. Every step is reachable from the START step via BFS over `connections`, except the steps of a catch network (a CATCH step and the steps it leads to, §1.5.11).
+7. Every `PARALLEL` step reaches a `WAIT ALL` on its downstream paths.
 8. Cycles ARE allowed (used for retry loops via `WAIT ANY`).
+9. The TRY/CATCH/RETURN rules of §1.5.11, the GATE rules of §1.5.9, the repeating-SCRIPT rules of §1.5.3, the ACTION PROXY rules of §1.5.10, and the resource rules of §1.7.4 – §1.7.5 (the resource rules also walk `children[]`).
+10. Every `action_server_specifications[*].uri` that is not blank must be an `http(s)` URI.
+11. The workflow then passes the structural (JSON Schema) check.
 
-Violations surface as `NO_START_STEP`, `DUPLICATE_STEP_OID`, `DANGLING_CONNECTION`, `ORPHANED_STEP`, `UNMATCHED_PARALLEL`, `MISSING_REQUIRED_FIELD`, `INVALID_STEP_TYPE`, `INVALID_RESOURCE_COMMAND`, `INVALID_RESOURCE_SPEC`, `SELF_REFERENCING_CONNECTION`.
+Violations surface as one error code: `MISSING_REQUIRED_FIELD`, `DUPLICATE_STEP_OID`, `NO_START_STEP`, `MULTIPLE_START_STEPS`, `NO_END_STEP`, `DANGLING_CONNECTION`, `SELF_REFERENCING_CONNECTION`, `ORPHANED_STEP`, `UNMATCHED_PARALLEL`, `INVALID_STEP_TYPE`, `INVALID_FORM_ELEMENT_TYPE`, `INVALID_RESOURCE_COMMAND`, `INVALID_RESOURCE_SPEC`, `INVALID_VALIDATION` (ACTION PROXY configuration, action-server URI), and the TRY/CATCH/RETURN, GATE and SCRIPT codes listed in their sections.
+
+Non-fatal findings ride along on a successful result as `warnings` (Mission Engine records each as a `WARNING` trace row when the runtime workflow starts): `UNBOUND_FORM_INPUT` (§1.12), `ESIGNATURE_MULTIPLE_BLOCKS` (§1.12), and the binding advisories `GATE_BINDING_UNKNOWN_ENVIRONMENT`, `GATE_BINDING_UNKNOWN_PARAMETER`, `INPUT_BINDING_UNKNOWN_ENVIRONMENT`, `INPUT_BINDING_UNKNOWN_PARAMETER` and `INPUT_BINDING_ON_GATE_IGNORED` (§1.5.12).
 
 ## 1.4 ChildWorkflowExport (v7.0) and `child_workflows` (deprecated)
 
-### v7.0 `children[]` — preferred
+### v7.0 `children[]` — the only child source
 
-Each entry is identical to `MasterWorkflowSpecification` **plus** the three fields below. `version` and `state` are required (not defaulted) on every child.
+Each entry is identical to `MasterWorkflowSpecification` **plus** the fields below. `version` and `state` are required (not defaulted) on every child.
 
 ```json
 {
-  "local_id":          "Safety Check Sub-Workflow",
-  "oid":               "298928815449600000",
+  "schemaVersion":     "5.0",
+  "local_id":          "Safety Check",
+  "oid":               "2f6d1a8e-1b2c-4d3e-8f90-123456789abc",
   "version":           "1.0.0",
   "state":             "Draft",
-  "last_modified_date":"2026-04-24T12:00:00Z",
-  "schemaVersion":     "4.0",
+  "last_modified_date":"2026-04-24T12:00:00.000Z",
   "parentChildSpecId": null,
   "steps":             [ /* ... */ ],
   "connections":       [ /* ... */ ],
@@ -195,17 +214,20 @@ Each entry is identical to `MasterWorkflowSpecification` **plus** the three fiel
 
 | Field | Type | Rule |
 |-------|------|------|
-| `parentChildSpecId` | `string \| null` | `null` = direct child of the root workflow. Otherwise, the OID of the parent `ChildWorkflowExport` at the level above in the same `children` tree. |
-| `version` | string | **Required** on children. Semver. |
-| `state` | string | **Required** on children. Free-form; runtime does not validate the value. |
+| `parentChildSpecId` | `string \| null` | **Required.** `null` = direct child of the root workflow. Otherwise, the oid of the parent `ChildWorkflowExport` at the level above in the same `children` tree. |
+| `version` | string | **Required** on children. Mission Designer writes the root workflow's version on every child. |
+| `state` | string | **Required** on children. Mission Designer writes the root workflow's state on every child. |
+| `children` | array | Nested grandchildren; omitted when empty. |
 
-`WORKFLOW PROXY` steps in the parent's `steps[]` resolve to a child by **exact `local_id` match**. If multiple children share a `local_id`, behavior is undefined — keep names unique.
+In a `.WFmasterX`, Mission Designer writes no `environment_specifications` on a child: the engine resolves a child step's environment references against the root workflow's environments.
 
-### v6.0 `child_workflows[]` — deprecated fallback
+A `WORKFLOW PROXY` step resolves to a child by **exact `local_id` match** against the `children[]` of the workflow that contains the step (the step's `local_id` equals the child's `local_id`). If several children share a `local_id`, the first one wins — keep names unique.
 
-Pre-v7.0 packages stored children as a flat `MasterWorkflowSpecification[]` with implicit nesting. Tools MAY still emit this alongside `children` for backward compatibility, but when both are present the Runtime **uses `children` and ignores `child_workflows`**.
+When the proxy step runs, the child's `starting_parameter_specifications` are filled from the proxy step's resolved `input_parameter_specifications` with the same `id`. When the child finishes, each child output whose `id` matches one of the proxy step's `output_parameter_specifications` is written to that proxy output's `target`; the value read is the child's property named by the output `id`.
 
-New exporters SHOULD emit only `children`.
+### v6.0 `child_workflows[]` — no longer read
+
+Pre-v7.0 packages stored children as a flat `MasterWorkflowSpecification[]` under `child_workflows`. Mission Designer's importer drops the field (and logs a warning when it is the only child source); Mission Engine reads only `children`. New exporters MUST emit `children`.
 
 ## 1.5 MasterWorkflowStep
 
@@ -213,24 +235,28 @@ Every step inherits `ManagedElement` plus `step_type`. The `step_type` discrimin
 
 ### 1.5.1 Step type enum (case- and whitespace-literal)
 
-| Value | Semantics | Auto-completes |
-|-------|-----------|----------------|
-| `"START"` | Entry point. Exactly one per workflow. | Yes |
-| `"END"` | Terminal. At least one. | Yes |
-| `"PARALLEL"` | Fan-out to all successors. | Yes |
-| `"WAIT ALL"` | Fan-in; completes when all predecessors done. | Yes |
-| `"WAIT ANY"` | Fan-in; completes when any predecessor done. | Yes |
-| `"SELECT 1"` | Routed choice; emits one successor by condition. See §1.5.4. | No |
-| `"YES_NO"` | Binary user choice. See §1.5.5. | No |
-| `"USER_INTERACTION"` | Generic form screen. See §1.5.6 / §1.12. | No |
-| `"SCRIPT"` | Runs a script snippet. See §1.5.3. | Yes |
-| `"ACTION PROXY"` | Invokes an environment action via the Action Container. | No |
-| `"WAIT ACTION PROXY"` | Blocking variant of ACTION PROXY. | No |
-| `"WORKFLOW PROXY"` | Invokes a child workflow (matched by `local_id`). | No |
+| Value | Semantics | Operator involved |
+|-------|-----------|-------------------|
+| `"START"` | Entry point. Exactly one per workflow. | No |
+| `"END"` | Terminal. At least one. | No |
+| `"PARALLEL"` | Fan-out to all successors. | No |
+| `"WAIT ALL"` | Fan-in; completes when all predecessors are done. | No |
+| `"WAIT ANY"` | Fan-in; completes when any predecessor is done. | No |
+| `"SELECT 1"` | Routed choice; follows one outgoing connection by condition. See §1.5.4. | No |
+| `"YES_NO"` | Binary operator choice. See §1.5.5. | Yes |
+| `"USER_INTERACTION"` | Operator form screen. See §1.5.6 / §1.12. | Yes |
+| `"SCRIPT"` | Runs a script, once or repeatedly. See §1.5.3. | No |
+| `"GATE"` | Cyclic boolean transition and/or timer. See §1.5.9. | No |
+| `"ACTION PROXY"` | Invokes an environment action on an action server. See §1.5.10. | No |
+| `"WORKFLOW PROXY"` | Runs a child workflow (matched by `local_id`, §1.4). | No |
+| `"CATCH"` | Entry point of a catch network that handles a TRY. See §1.5.11. | No |
+| `"RETURN"` | Exit of a catch network; tells the engine how to continue. See §1.5.11. | No |
 
-Underscores in `"YES_NO"` and `"USER_INTERACTION"` are literal — do not convert to spaces. Spaces in `"SELECT 1"`, `"WAIT ALL"`, `"WAIT ANY"`, `"ACTION PROXY"`, `"WAIT ACTION PROXY"`, `"WORKFLOW PROXY"` are literal — do not convert to underscores.
+Underscores in `"YES_NO"` and `"USER_INTERACTION"` are literal — do not convert to spaces. Spaces in `"SELECT 1"`, `"WAIT ALL"`, `"WAIT ANY"`, `"ACTION PROXY"`, `"WORKFLOW PROXY"` are literal — do not convert to underscores.
 
-The editor's internal representation uses camelCase (`start`, `select1`, `userInteraction`, `actionProxy`, `workflowProxy`, …). Exporters MUST translate to the canonical UPPER-CASE form.
+Retired values: Mission Designer's importer still maps `"WAIT ACTION PROXY"`, `"NOWAIT ACTION PROXY"` and `"MATH"` from old packages onto an ACTION PROXY step, but never writes them. Mission Engine's schema still lists `"MATH"`; no current tool emits it.
+
+The editor's internal representation uses camelCase node types (`start`, `select1`, `userInteractionStep`, `actionProxyWait`, `workflowProxy`, …). Exporters MUST translate to the canonical form (Part 4).
 
 ### 1.5.2 Required step fields
 
@@ -239,13 +265,13 @@ The editor's internal representation uses camelCase (`start`, `select1`, `userIn
   "local_id":           "Check Pressure",
   "oid":                "7000000000011",
   "version":            "1.0.0",
-  "last_modified_date": "2026-04-24T12:00:00Z",
+  "last_modified_date": "2026-04-24T12:00:00.000Z",
   "step_type":          "USER_INTERACTION",
   "position":           { "x": 100, "y": 250 }
 }
 ```
 
-`position` is optional but recommended — editors reuse it to restore canvas layout on round-trip.
+`position` is optional but recommended — editors reuse it to restore canvas layout on round-trip. Mission Designer writes `version: "1.0.0"` and the export time as `last_modified_date` on every step.
 
 ### 1.5.3 SCRIPT → `script_config`
 
@@ -253,13 +279,28 @@ The editor's internal representation uses camelCase (`start`, `select1`, `userIn
 {
   "step_type": "SCRIPT",
   "script_config": {
-    "language": "python",
-    "source":   "output.result = input.threshold * 2"
+    "language": "javascript",
+    "source":   "output.result = String(Number(threshold) * 2)",
+    "repeat": {
+      "cycle_seconds":      5,
+      "time_limit_seconds": 600,
+      "on_time_limit":      "error"
+    }
   }
 }
 ```
 
-Languages: the web Runtime supports `"python"` via Pyodide; iOS/Android targets implement a JS-regex fallback for a constrained subset. New runtimes SHOULD support at least `"python"` for portability.
+Mission Engine runs the source as **JavaScript** in a sandbox (`node:vm`) and does not read `language`; Mission Designer writes `"javascript"`. Each input parameter is a local variable named by its `id`, holding a string. The script writes results to an `output` object; each key is stored through the step's `output_parameter_specifications` (§1.7.2).
+
+`repeat` (optional) turns the step into a repeating script: it runs every `cycle_seconds` until it returns `true`. Mission Designer writes `repeat` only when Repeat until done is on.
+
+| Field | Type | Rule |
+|-------|------|------|
+| `cycle_seconds` | number | 1 – 31,449,600. Mission Designer always writes it (default 5). |
+| `time_limit_seconds` | integer | Whole seconds, 1 – 31,449,600. Absent = no time limit. |
+| `on_time_limit` | `"error"` \| `"complete"` | Only with `time_limit_seconds`. `error` fails the step (TRY-routable); `complete` commits the outputs set so far and completes the step. |
+
+Validation codes: `INVALID_SCRIPT_REPEAT`, `INVALID_SCRIPT_CYCLE`, `INVALID_SCRIPT_TIME_LIMIT`, `INVALID_SCRIPT_TIME_LIMIT_ACTION`, `SCRIPT_TIME_LIMIT_ACTION_WITHOUT_LIMIT`.
 
 ### 1.5.4 SELECT 1 → `select1_config` + routed connections
 
@@ -270,15 +311,15 @@ Languages: the web Runtime supports `"python"` via Pyodide; iOS/Android targets 
     "input_name":       "Status.Value",
     "input_value_type": "property",
     "options": [
-      { "id": "opt-open",    "label": "Open",    "operator": "==", "value": "open",    "value_type": "literal", "is_default": false },
-      { "id": "opt-closed",  "label": "Closed",  "operator": "==", "value": "closed",  "value_type": "literal", "is_default": false },
-      { "id": "opt-pending", "label": "Pending", "operator": "!=", "value": "open",    "value_type": "literal", "is_default": true  }
+      { "id": "opt-open",    "label": "Open",    "operator": "==", "value": "open",   "value_type": "literal", "is_default": false },
+      { "id": "opt-closed",  "label": "Closed",  "operator": "==", "value": "closed", "value_type": "literal", "is_default": false },
+      { "id": "opt-pending", "label": "Pending", "operator": "!=", "value": "open",   "value_type": "literal", "is_default": true  }
     ]
   }
 }
 ```
 
-Each outgoing connection from a `SELECT 1` step MUST set `connection_id` to one of `select1_config.options[*].id`. Operators: `"=="`, `"!="`, `"<"`, `"<="`, `">"`, `">="`, `"contains"`, `"startsWith"`, `"endsWith"`, `"matches"` (regex).
+Each outgoing connection from a `SELECT 1` step MUST set `connection_id` to one of `select1_config.options[*].id`; the engine follows the connection whose `connection_id` equals the chosen option's `id`. Mission Designer also writes the option id as that connection's `source_handle_id`. Operators (Mission Engine schema): `"=="`, `"!="`, `"<"`, `">"`, `"<="`, `">="`, `"Contains"`, `"Not Contains"`.
 
 ### 1.5.5 YES_NO → `yes_no_config` + two branches
 
@@ -295,18 +336,13 @@ Each outgoing connection from a `SELECT 1` step MUST set `connection_id` to one 
 }
 ```
 
-Connections from a `YES_NO` step carry `source_handle_id ∈ {"yes", "no"}` to identify the branch. `default_selection ∈ {"yes", "no", "none"}`.
+Mission Designer takes the labels from the step's `YesNoButtons` UI parameter (§1.5.6) and always writes `yes_value: "true"` and `no_value: "false"`; it omits `yes_no_config` when the step has neither. Connections from a `YES_NO` step carry `source_handle_id ∈ {"yes", "no"}` to identify the branch; the engine matches the answer `"true"` to `"yes"` and `"false"` to `"no"`. `default_selection ∈ {"yes", "no", "none"}`.
 
-### 1.5.6 USER_INTERACTION → `ui_parameter_specifications` and/or `form_layout_config`
+### 1.5.6 USER_INTERACTION / YES_NO → `form_document` and `ui_parameter_specifications`
 
-Two formats coexist:
+A schema 5.0 operator step carries its form as a **v2 form document** in `form_document` (§1.12). Mission Designer writes `form_document` only on `USER_INTERACTION` and `YES_NO` steps, and only when the form holds at least one block. The v1 per-device layout `form_layout_config` is no longer written; it is still read from 4.0 packages (§1.12.2).
 
-1. **Legacy vertical stack** — `ui_parameter_specifications[]` rendered top-down.
-2. **WYSIWYG form** — `form_layout_config[]` keyed by `deviceType` (`phone` / `tablet` / `desktop`) with absolute-positioned elements.
-
-When both are present, the runtime prefers `form_layout_config` for the active device and falls back to `ui_parameter_specifications`. Full form layout schema is in §1.12.
-
-`ui_parameter_specifications[]` element shape (legacy):
+`ui_parameter_specifications[]` (legacy vertical-stack content) is still written for any step that has UI parameters; a `YES_NO` step's `YesNoButtons` entry supplies the yes/no labels (`value` = Yes label, `value2` = No label). Element shape:
 
 ```json
 {
@@ -321,6 +357,8 @@ When both are present, the runtime prefers `form_layout_config` for the active d
 }
 ```
 
+Mission Designer omits `lines` unless it is above 1 and `align` unless it is not `left`. An `Image` entry's `value` is a bare filename in `images/` (§2.2).
+
 ### 1.5.7 Per-step parameter & resource arrays
 
 Every step type MAY carry any of:
@@ -330,13 +368,17 @@ Every step type MAY carry any of:
 | `input_parameter_specifications` | array of §1.7.1 |
 | `output_parameter_specifications` | array of §1.7.2 |
 | `value_property_specifications` | array of §1.7.3 |
-| `resource_command_specifications` | array of §1.7.5 |
-| `connection_references` | string[] — outgoing `connection_id`s this step owns (round-trip aid for `SELECT 1` / `YES_NO`) |
-| `action_visibility` | `"opaque"` \| `"observable"` (on `ACTION PROXY` / `WAIT ACTION PROXY`) |
+| `resource_command_specifications` | array of §1.7.5 (not on a GATE, §1.5.9) |
+| `connection_references` | string[] — allowed by the schemas; Mission Designer does not write it |
+| `action_visibility` | `"opaque"` \| `"observable"` (Mission Designer writes it on every `ACTION PROXY`, default `"opaque"`) |
+| `action_property_bindings` | array of §1.5.12 (non-GATE steps) |
+| `try_specifications` | array of §1.5.11 (TRY-capable steps only) |
 
-### 1.5.8 Form-element image registry
+A `CATCH` step always exports four canonical outputs describing what was caught, even if the saved step data lacks them.
 
-When a `USER_INTERACTION` step's form layout uses image elements, the step MUST also expose a stable filename registry so the runtime can resolve the ZIP entry by `imageOid`:
+### 1.5.8 Form image registry
+
+When a step's form uses image blocks, the step also carries a stable filename registry so a consumer can resolve the ZIP entry by `imageOid`:
 
 ```json
 "form_element_images": [
@@ -344,7 +386,116 @@ When a `USER_INTERACTION` step's form layout uses image elements, the step MUST 
 ]
 ```
 
-The ZIP entry MUST be `images/{image_oid}-{filename}` (e.g. `images/7000000123456-engine-closeup.jpg`). Runtime falls back to bare `images/{filename}` if the OID-prefixed entry is missing.
+Mission Designer builds it from the `form_document` image blocks that have both an `imageOid` and a local `src` (not `http(s)://`, not `data:`, not the `"No image selected"` placeholder), one entry per `imageOid`. The ZIP entry is `images/{image_oid}-{filename}` (e.g. `images/7000000123456-engine-closeup.jpg`); a block without an `imageOid` is packaged as `images/{stepOid}-{filename}`. Mission Commander resolves a filename as: bare `images/{filename}` first, then `images/{imageOid}-{filename}`, then any entry ending in `-{filename}`; Mission Designer's importer accepts the bare name, `{specOid}-{filename}`, or any entry ending in `-{filename}`.
+
+### 1.5.9 GATE → `gate_config`
+
+A GATE holds the flow until its condition is true and/or its timer expires. Every field is optional; an absent `gate_config` means a 5-second cycle, no bindings and an immediately open gate.
+
+```json
+{
+  "step_type": "GATE",
+  "gate_config": {
+    "cycle_seconds": 5,
+    "language": "javascript",
+    "source": "return Number(temperature) >= 180",
+    "control_previous_action": true,
+    "mode": "condition_or_timer",
+    "delay_seconds": 900,
+    "action_property_bindings": [
+      { "parameter_id": "temperature", "environment_oid": "…", "environment_name": "Kitchen", "property": "Oven.Temperature" }
+    ]
+  }
+}
+```
+
+| Field | Type | Rule |
+|-------|------|------|
+| `cycle_seconds` | number | Re-evaluation interval, 1 – 31,449,600. |
+| `language`, `source` | string | Script the engine evaluates each cycle (JavaScript, inputs as in §1.5.3, no `output` object); the gate opens when it returns a truthy value. No source = open at once. |
+| `control_previous_action` | boolean | Written only as `true`. When the GATE is the sole successor of an ACTION PROXY, the two run concurrently and an opening gate STOPs the still-running action. Absent = the gate starts after its predecessor completes. |
+| `mode` | `"condition"` \| `"timer"` \| `"condition_or_timer"` | Absent = `condition`. `timer` opens after `delay_seconds` and evaluates no script; `condition_or_timer` opens on whichever comes first. Mission Designer writes `mode` only for the two timed modes. |
+| `delay_seconds` | integer | Whole seconds, 1 – 31,449,600. Required with a timed mode, forbidden otherwise. |
+| `action_property_bindings` | array | §1.5.12; re-read on every evaluation. Never written for a `timer` gate. |
+
+Rules (Mission Engine): exactly one incoming and one outgoing connection (`GATE_WRONG_DEGREE`); no `resource_command_specifications` (`GATE_RESOURCES_UNSUPPORTED`); other codes `INVALID_GATE_CYCLE`, `INVALID_GATE_MODE`, `GATE_DELAY_REQUIRED`, `GATE_DELAY_WITHOUT_TIMER`, `INVALID_GATE_DELAY`.
+
+### 1.5.10 ACTION PROXY → `action_proxy_config`
+
+Every `ACTION PROXY` step MUST carry the runtime identity of the action it invokes:
+
+```json
+{
+  "step_type": "ACTION PROXY",
+  "action_visibility": "observable",
+  "action_proxy_config": {
+    "action_oid":       "a3c1…",
+    "environment_oid":  "e7f2…",
+    "action_name":      "Preheat Oven",
+    "environment_name": "Kitchen",
+    "timeout_ms":       600000
+  }
+}
+```
+
+| Field | Required | Meaning |
+|-------|----------|---------|
+| `action_oid` | Yes | Oid of the action in the environment's `included_actions[]` roster (§1.8). |
+| `environment_oid` | Yes | Oid of one of the workflow's `environment_specifications[]`. |
+| `action_name` | No (5.0+) | The bound action's name — equal to the roster entry's `action_name`. |
+| `environment_name` | No (5.0+) | The environment's name — equal to the embedded environment's `local_id`. |
+| `timeout_ms` | No | Authored time limit in milliseconds. Absent = no time limit. |
+
+Mission Designer derives the identity on every export by name, from the same environment roster it embeds, so the oids always agree with the package; it falls back to the step's stored config only when nothing resolves by name.
+
+Mission Engine rejects (`INVALID_VALIDATION`) a step with no `action_proxy_config`, without `action_oid` or `environment_oid`, whose `environment_oid` names no embedded environment **and** that has no `environment_name`, or whose `action_oid` is not in that environment's roster **and** that has no `action_name`. A config carrying the names therefore survives a stale oid: the engine resolves the action inside the package by name, and an action server set to loose matching resolves it by name too.
+
+### 1.5.11 TRY / CATCH / RETURN
+
+TRY rows route a failing step to a catch network:
+
+```json
+"try_specifications": [
+  { "mode": "ERROR",   "catch_id": "handle-errors", "release_on_catch": true },
+  { "mode": "TIMEOUT", "catch_id": "handle-timeout" }
+]
+```
+
+| Field | Rule |
+|-------|------|
+| `mode` | `"ERROR"` \| `"ABORT"` \| `"TIMEOUT"`; at most one row per mode. |
+| `catch_id` | Must equal the `catch_id` of a CATCH step in the same workflow. |
+| `release_on_catch` | Optional boolean. |
+
+`try_specifications` is allowed on `ACTION PROXY`, `SCRIPT`, `GATE`, `USER_INTERACTION`, `YES_NO` and `WORKFLOW PROXY` steps, and at workflow level (consulted when the failing step has no matching row of its own).
+
+- **CATCH** carries a unique `catch_id` and has 0 incoming and 1 outgoing connection.
+- **RETURN** has 1 incoming and 0 outgoing connections and carries `return_config`:
+
+```json
+"return_config": { "command": "GOTO", "goto_step_oid": "7000000000011" }
+```
+
+`command ∈ {"ABANDON", "RESTART", "GOTO", "RETRY", "COMPLETE"}`; `RESTART` requires `restart_mode ∈ {"CLEAN", "KEEP"}`; `GOTO` requires `goto_step_oid`, which must name a step outside every catch network. Mission Designer writes `{ "command": "ABANDON" }` for a RETURN left at its default. No connection may cross between the main flow and a catch network.
+
+Validation codes: `CATCH_WRONG_DEGREE`, `RETURN_WRONG_DEGREE`, `TRY_ON_INVALID_STEP`, `INVALID_TRY_MODE`, `DUPLICATE_TRY_MODE`, `INVALID_RETURN_COMMAND`, `MISSING_RESTART_MODE`, `INVALID_RESTART_MODE`, `MISSING_GOTO_TARGET`, `DUPLICATE_CATCH_ID`, `UNMATCHED_TRY`, `GOTO_TARGET_NOT_FOUND`, `GOTO_TARGET_IN_CATCH`, `CROSS_NETWORK_EDGE`. A CATCH no TRY refers to is accepted.
+
+### 1.5.12 Action Property bindings
+
+An input parameter with `value_type: "property"` whose `default_value` names an environment **Action Property** (`action_property_specifications`, §1.8) is read live from that environment's action server. Mission Designer derives the bindings at export time:
+
+```json
+{ "parameter_id": "temperature", "environment_oid": "e7f2…", "environment_name": "Kitchen", "property": "Oven.Temperature" }
+```
+
+| Field | Required | Meaning |
+|-------|----------|---------|
+| `parameter_id` | Yes | An `input_parameter_specifications[].id` on the same step. |
+| `environment_oid` | No | Environment that declares the Action Property. |
+| `environment_name` | No | That environment's `local_id`; the engine tries the oid first, then the name. |
+| `property` | Yes | Dotted `Property.Entry`; the bare property name means the whole property. |
+
+On a GATE the bindings live in `gate_config.action_property_bindings` and are re-read every cycle; on any other step they live in the step's own `action_property_bindings` and are read once when the step starts. A Value Property of the same name anywhere in scope wins (no binding is written). When several environments declare the property, Mission Designer prefers the step's own ACTION PROXY environment, then the preceding ACTION PROXY's, then the first in spec order (with an export warning).
 
 ## 1.6 Connection
 
@@ -352,10 +503,10 @@ The ZIP entry MUST be `images/{image_oid}-{filename}` (e.g. `images/700000012345
 {
   "from_step_id":     "7000000000001",
   "to_step_id":       "7000000000011",
-  "connection_id":    "7000000000012",
-  "source_handle_id": "yes",
-  "condition":        "Response.Value == 'approved'",
-  "waypoints":        [ { "x": 150, "y": 200 } ]
+  "connection_id":    "opt-open",
+  "source_handle_id": "opt-open",
+  "condition":        "Status.Value == open",
+  "waypoints":        [ { "x": 0, "y": -20 } ]
 }
 ```
 
@@ -363,10 +514,10 @@ The ZIP entry MUST be `images/{image_oid}-{filename}` (e.g. `images/700000012345
 |-------|----------|---------|
 | `from_step_id` | Yes | Step `oid`. |
 | `to_step_id` | Yes | Step `oid`. Must differ from `from_step_id`. |
-| `connection_id` | No | Unique ID for this edge. **Required-by-convention** on `SELECT 1` outgoing edges (matches an option `id`). |
-| `source_handle_id` | No | `"yes"` / `"no"` on `YES_NO` outgoing edges. Reserved for future named-output handles on proxy steps. |
-| `condition` | No | Free-form condition string on `SELECT 1` edges. Authoritative routing is `select1_config`; this field is informational. |
-| `waypoints` | No | Editor bend points. `waypoints[0] = { x, y }` is an offset (delta) from the default midpoint that the editor's orthogonal router computes, not an absolute canvas point. Only `waypoints[0]` is read; longer arrays are reserved. |
+| `connection_id` | No | **Required-by-convention** on `SELECT 1` outgoing edges, where it equals an option `id`. |
+| `source_handle_id` | No | `"yes"` / `"no"` on `YES_NO` outgoing edges; the option `id` on `SELECT 1` edges. |
+| `condition` | No | Free-form condition text. Authoritative SELECT 1 routing is `select1_config` + `connection_id`; the engine also matches `condition` against a YES_NO answer or a button's value as a fallback. |
+| `waypoints` | No | Editor bend points. `waypoints[0] = { x, y }` is an offset (delta) from the default midpoint that the editor's orthogonal router computes, not an absolute canvas point. Only `waypoints[0]` is read; longer arrays are reserved. The routing algorithm is in `MissionDesigner/docs/specs/07-connection-waypoint-routing.md`. |
 
 ## 1.7 Parameters and resources
 
@@ -375,37 +526,39 @@ The ZIP entry MUST be `images/{image_oid}-{filename}` (e.g. `images/700000012345
 ```json
 {
   "id":            "greeting",
-  "oid":           "param-oid-1",
+  "oid":           "7000000000101",
   "description":   "Greeting text shown on first screen",
   "default_value": "Welcome",
-  "value_type":    "literal",
+  "value_type":    "property",
   "json_schema":   "{\"type\":\"string\"}",
   "entries":       [ { "name": "subkey", "value": "default" } ]
 }
 ```
 
-Required: `id`, `default_value`. `value_type ∈ {"literal","property"}`; absent ≡ `"literal"`. `json_schema` is a stringified JSON Schema (yes — string, not embedded object) used for input validation.
+Required: `id`, `default_value`. `value_type ∈ {"literal","property"}`; absent ≡ `"literal"`, and Mission Designer writes the key only for `"property"`. With `"property"`, `default_value` is a property reference (`Property` or `Property.Entry`) resolved when the value is needed. `json_schema` is a stringified JSON Schema (a string, not an embedded object).
+
+For `starting_parameter_specifications`: a value supplied when the runtime workflow is created (always a string) wins; otherwise the engine uses `default_value`, resolved through the property store when `value_type` is `"property"`. Each starting parameter is also stored as a property under its `id`. Mission Commander rejects values for ids the workflow does not declare, unless the caller asks it to drop them (Mission Broker's Create Runtime Workflow does so under loose matching).
 
 ### 1.7.2 OutputParameter (workflow outputs, step outputs, action outputs)
 
 ```json
 {
   "id":          "result",
-  "oid":         "param-oid-2",
+  "oid":         "7000000000102",
   "description": "Final result value",
   "target":      "Response.Value",
   "entries":     []
 }
 ```
 
-Required: `id`. `target` is a dotted Value Property reference `Property.Entry` where the runtime stores the captured value.
+Required: `id`. `target` is the property key (`Property` or `Property.Entry`) where the runtime stores the value. Mission Designer writes `target` on every output, using the output's own name when none is authored. A workflow-level output whose `target` names a whole Value Property returns that property's entries as a JSON array of `{name, value}`.
 
 ### 1.7.3 ValueProperty (workflow- or step- or env-scoped values)
 
 ```json
 {
   "name":    "Response",
-  "oid":     "vp-oid-1",
+  "oid":     "7000000000103",
   "entries": [
     { "name": "Value",  "value": ""        },
     { "name": "Status", "value": "pending" }
@@ -413,7 +566,7 @@ Required: `id`. `target` is a dotted Value Property reference `Property.Entry` w
 }
 ```
 
-Required: `name`. Addressed in expressions and `target` references as `Name.EntryName`.
+Required: `name`. Addressed in expressions and `target` references as `Name.EntryName`. Mission Engine's schema requires `entries` (Mission Designer always writes it).
 
 ### 1.7.4 ResourceProperty
 
@@ -421,31 +574,34 @@ Required: `name`. Addressed in expressions and `target` references as `Name.Entr
 {
   "name":          "Printer",
   "resource_type": "binary exclusive use",
-  "use_limit":     1,
+  "scope":         "workflow",
+  "use_limit":     2,
   "description":   "Shared printer",
   "names":         ["HP-001", "HP-002"]
 }
 ```
 
-Required: `name`, `resource_type`. `resource_type` ∈ exactly one of:
+Required: `name`, `resource_type`. `scope ∈ {"workflow", "environment"}` (Mission Designer writes it). `use_limit` is written only when the count is above 1. `resource_type` ∈ exactly one of:
 
 | Value | Purpose | Required extras |
 |-------|---------|-----------------|
 | `"binary exclusive use"` | Mutex. | — |
-| `"binary shared use with pool limits"` | Semaphore up to `use_limit`. | `use_limit` |
-| `"countable use with pool limits"` | Quantified pool. | `use_limit` |
+| `"binary shared use with pool limits"` | Semaphore up to `use_limit`. | `use_limit` > 0 |
+| `"countable use with pool limits"` | Quantified pool. | `use_limit` > 0 |
 | `"named pool"` | Named-slot pool. | `names[]` non-empty |
 | `"sync"` | Rendezvous channel (`Send`/`Receive`/`Synchronize`). | — |
+
+A missing extra fails with `INVALID_RESOURCE_SPEC`.
 
 ### 1.7.5 ResourceCommand
 
 ```json
 {
-  "oid":                  "rc-oid-1",
+  "oid":                  "7000000000104",
   "command_type":         "Acquire",
   "resource_name":        "Printer",
   "resource_source_type": "workflow",
-  "resource_source_oid":  "7000000000001",
+  "resource_source_oid":  "0d7f4b4e-6a0f-4a55-9b7e-2f1f3c1a9e10",
   "amount":               1,
   "target":               "PrinterHandle",
   "source":               "MessagePayload"
@@ -460,58 +616,70 @@ Required: `command_type`, `resource_name`.
 | `"Acquire Pool Amount"` / `"Release Pool Amount"` | countable | `amount` > 0 |
 | `"Send"` / `"Receive"` / `"Synchronize"` | sync | At most one sync command per step. |
 
-`resource_source_type ∈ {"workflow", "environment"}`; `resource_source_oid` = OID of the owning workflow or environment.
+`resource_source_type ∈ {"workflow", "environment"}`; `resource_source_oid` = oid of the workflow (root or child) or embedded environment that declares the resource. Mission Designer resolves both on export from the live tree, and rewrites Acquire/Release on a countable resource to the pool commands (with `amount` 1 when none is authored). A command naming an unknown source or resource, or an incompatible type, fails with `INVALID_RESOURCE_COMMAND`.
 
 ## 1.8 EnvironmentSpecification
 
-Embedded under a workflow's `environment_specifications[]` AND packaged as a standalone `.WFenvir` JSON inside `.WFmasterX` (§2.2). Inside a `MasterEnvironmentLibrary` (§1.9) it lives under `environment_specifications[]`.
+Embedded under a workflow's `environment_specifications[]` and, inside a `.WFmasterX`, also packaged in its environment library under `environments/` (§2.2). Inside a `MasterEnvironmentLibrary` (§1.9) it lives under `environment_specifications[]`.
 
 ```json
 {
-  "local_id":           "Kitchen Library",
-  "oid":                "env-oid-1",
+  "local_id":           "Kitchen",
+  "oid":                "e7f2…",
+  "description":        "Line 1 kitchen",
   "version":            "1.0.0",
-  "last_modified_date": "2026-04-24T00:00:00Z",
+  "last_modified_date": "2026-04-24T00:00:00.000Z",
   "library_name":       "Kitchen Library",
+  "library_oid":        "9c0d…",
+  "state":              "Approved",
   "included_actions": [
     {
-      "action_name":              "preheatOven",
-      "action_library":           "Oven Controls",
-      "action_oid":               "act-oid-1",
-      "action_version":           "1.0.0",
-      "action_last_modified_date":"2026-04-24T00:00:00Z",
+      "action_library":     "Oven Controls",
+      "action_name":        "Preheat Oven",
+      "local_id":           "Preheat Oven",
+      "oid":                "a3c1…",
+      "description":        "Heats the oven",
+      "version":            "1.0.0",
+      "last_modified_date": "2026-04-24T00:00:00.000Z",
       "input_parameter_specifications":  [ /* §1.7.1 */ ],
       "output_parameter_specifications": [ /* §1.7.2 */ ],
-      "property_specifications":         [ /* §1.7.3 */ ]
+      "property_specifications":         [ /* §1.7.3 */ ],
+      "action_visibility":  "observable"
     }
   ],
   "value_property_specifications":    [ /* §1.7.3 */ ],
   "action_property_specifications":   [ /* §1.7.3 */ ],
   "resource_property_specifications": [ /* §1.7.4 */ ],
   "action_server_specifications": [
-    { "name": "primary", "uri": "https://api.example.com", "connection_type": "REST" }
+    { "name": "primary", "uri": "https://actions.example.com", "connection_type": "REST" }
   ]
 }
 ```
 
 | Field | Required | Notes |
 |-------|----------|-------|
-| `local_id`, `oid`, `version`, `last_modified_date` | Yes | ManagedElement. |
-| `library_name` | No | Importer hint — used to weak-match against `environments/<library_name>.WFenvir` siblings inside a `.WFmasterX`. |
-| `included_actions[]` | Yes | Each entry binds an action by `action_name` + `action_library`. The triple `(filename of WFenvir, included_actions[].action_library, action library's inner local_id)` MUST agree, or importers silently drop the binding. |
-| `action_server_specifications[*].connection_type` | Yes | Always `"REST"` in v1.0. The base URL for the public Runtime↔AC protocol (REST_Protocol.md) is `<uri>/trajectory/v1/`. |
+| `local_id`, `oid`, `version`, `last_modified_date` | Yes | ManagedElement. `local_id` is the environment's name (what `action_proxy_config.environment_name` and binding `environment_name` refer to). |
+| `library_name`, `library_oid` | No | The environment library the environment lives in. Mission Designer's importer links a workflow to its environments by `library_name` (§2.2). |
+| `state` | No | Lifecycle state. Mission Commander keys a loaded environment on (work center, `oid`, `version`, `state`), reading a missing state as `"Draft"`. |
+| `included_actions[]` | Yes | The action roster. Each entry binds an action by `action_name` + `action_library` (the cross-package join keys) and, when Mission Designer could resolve the action at export time, inlines the full action body with the same field names as a `.WFaction` action (`local_id`, `oid`, `description`, `version`, `last_modified_date`, parameter and property arrays, `action_visibility`). An entry without `oid` is unresolved. Mission Engine reads the roster oid as `action_oid ?? oid`: Mission Designer writes `oid`; `action_oid` (with `action_version` / `action_last_modified_date`) is an older spelling the engine schema still accepts. |
+| `value_property_specifications` | No | Environment Value Properties. |
+| `action_property_specifications` | No | Action Properties — values held on the action server and readable live by bound inputs (§1.5.12). |
+| `value_type_specifications` | No | Mission Designer authoring templates; written **only** into Mission Designer library packages (`.WFenvirLibX`, `.WFlibX`, `.WFstepLibX`), never into `.WFmasterX` or `.WFenvirX`. Entry shape: `{ name, oid?, description?, entries: [{ name, value? }] }`, entries in authored order. |
+| `resource_property_specifications` | No | Environment resources (`scope: "environment"`). |
+| `action_server_specifications[]` | No | `{ name, uri, description?, connection_type, api_key? }`. `connection_type` is always `"REST"`. A blank `uri` is allowed — the server is then bound per work center in Mission Commander; a non-blank `uri` must be `http(s)`. The base URL for the REST protocol (REST_Protocol.md) is `<uri>/trajectory/v1/`. |
 
 ## 1.9 MasterEnvironmentLibrary
 
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://saturnis.io/schemas/master-environment-library.json",
+  "$id": "https://trajectorypro.io/schemas/master-environment-library.json",
   "title": "Master Environment Library",
   "allOf": [{ "$ref": "managed-element.json" }],
   "type": "object",
   "required": ["environment_specifications"],
   "properties": {
+    "parent_library_oid": { "type": "string" },
     "environment_specifications": {
       "type": "array",
       "items": { /* EnvironmentSpecification — §1.8 */ }
@@ -531,23 +699,24 @@ The wrapping `local_id` of a `MasterEnvironmentLibrary` is the *library* name. I
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://saturnis.io/schemas/master-action-library.json",
+  "$id": "https://trajectorypro.io/schemas/master-action-library.json",
   "title": "Master Action Library",
   "allOf": [{ "$ref": "managed-element.json" }],
   "type": "object",
   "required": ["action_specifications"],
   "properties": {
+    "parent_library_oid": { "type": "string" },
     "action_specifications": {
       "type": "array",
       "items": {
         "type": "object",
         "allOf": [{ "$ref": "managed-element.json" }],
         "properties": {
+          "state":                           { "type": "string", "enum": ["Draft", "InTest", "InReview", "Approved", "Effective", "Superseded", "Obsolete"] },
           "input_parameter_specifications":  { "type": "array", "items": { /* §1.7.1 */ } },
           "output_parameter_specifications": { "type": "array", "items": { /* §1.7.2 */ } },
           "property_specifications":         { "type": "array", "items": { /* §1.7.3 */ } },
-          "action_visibility":               { "type": "string", "enum": ["opaque", "observable"] },
-          "timeout_seconds":                 { "type": "integer", "description": "Default timeout for the action; the invoker may override." }
+          "action_visibility":               { "type": "string", "enum": ["opaque", "observable"] }
         }
       }
     },
@@ -559,27 +728,36 @@ The wrapping `local_id` of a `MasterEnvironmentLibrary` is the *library* name. I
 }
 ```
 
-`action_visibility` is the contract the Action Container honours at invoke time:
+Mission Designer writes `action_visibility` on every action (default `"opaque"`) and no `state`. Mission Autopilot's exports also carry `timeout_seconds` (the action's default time limit) on each action, and its `.WFenvirX` actions carry `state`.
 
-- `"opaque"` — the AC accepts the invoke and returns its terminal state when reached. The invoker polls or waits; no intermediate state is published. Only the `ABORT` command is accepted.
-- `"observable"` — the AC publishes an SSE stream of state transitions and may receive `PAUSE`, `RESUME`, `HOLD`, `UNHOLD`, `ABORT`, `STOP`, `CLEAR` commands.
+`action_visibility` is the contract the action server honours at invoke time:
+
+- `"opaque"` — the action runs through the opaque states (`POSTED`, `RECEIVED`, `IN_PROGRESS`, `COMPLETED`); the invoker polls or waits for the terminal state.
+- `"observable"` — the action runs through the observable state machine and publishes its state transitions; the invoker may send commands such as `PAUSE`, `RESUME`, `HOLD`, `UNHOLD`, `ABORT`, `STOP` and `CLEAR`.
+
+The commands each visibility accepts in each state are defined in [REST_Protocol.md](./REST_Protocol.md).
 
 ## 1.11 MasterWorkflowStepLibrary
 
-Reusable sub-workflows packaged for cross-workflow reuse. Same shape as a `MasterWorkflowLibrary` but distributed in `.WFslibX` ZIPs.
+Reusable workflows packaged for cross-workflow reuse (a WORKFLOW PROXY can reference one; the reference is resolved into an embedded child on `.WFmasterX` export). Same shape as a `MasterWorkflowLibrary`, distributed in `.WFstepLibX` ZIPs (§2.4).
 
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://saturnis.io/schemas/master-workflow-step-library.json",
+  "$id": "https://trajectorypro.io/schemas/master-workflow-step-library.json",
   "title": "Master Workflow Step Library",
   "allOf": [{ "$ref": "managed-element.json" }],
   "type": "object",
   "required": ["workflow_specifications"],
   "properties": {
+    "parent_library_oid": { "type": "string" },
     "workflow_specifications": {
       "type": "array",
-      "items": { /* same shape as MasterWorkflowSpecification — §1.3 */ }
+      "items": {
+        "type": "object",
+        "allOf": [{ "$ref": "managed-element.json" }],
+        "required": ["steps", "connections"]
+      }
     },
     "child_libraries": {
       "type": "array",
@@ -589,78 +767,110 @@ Reusable sub-workflows packaged for cross-workflow reuse. Same shape as a `Maste
 }
 ```
 
-## 1.12 Form layout (`form_layout_config`)
+Each `workflow_specifications[]` entry is a full `MasterWorkflowSpecification` (§1.3).
 
-`USER_INTERACTION` and `YES_NO` steps use a per-device WYSIWYG layout.
+## 1.12 Forms (`form_document`; legacy `form_layout_config`)
 
-```json
-"form_layout_config": [
-  {
-    "deviceType":   "phone",
-    "canvasWidth":  390,
-    "canvasHeight": 844,
-    "elements":     [ /* FormElement[] */ ]
-  },
-  {
-    "deviceType":   "tablet",
-    "canvasWidth":  820,
-    "canvasHeight": 1180,
-    "elements":     [ /* ... */ ]
-  },
-  {
-    "deviceType":   "desktop",
-    "canvasWidth":  1280,
-    "canvasHeight": 800,
-    "elements":     [ /* ... */ ]
-  }
-]
-```
+`USER_INTERACTION` and `YES_NO` steps carry their operator form as a **Form Document v2** in `form_document`. The schema belongs to Mission FormKit (`MissionFormKit/packages/form-schema/src/schema/form-document.json`, `$id` `https://trajectorypro.io/schemas/form-document.json`); Mission Designer keeps an identical copy in `src/lib/schemas/form-document.json` and validates every imported `form_document` against it (an invalid one fails the import with `invalid_form_document`). The document is exported verbatim: block, row and section ids are kept.
 
-Each `FormElement`:
+The schema sets `additionalProperties: false` on every object, so a writer MUST NOT add fields. Ids are non-empty strings and must be unique across the whole document (sections, rows and blocks).
 
 ```json
-{
-  "type":     "button|text|textInput|image|header|textarea|checkbox|radio|video|divider|timer",
-  "x":       20, "y": 80, "width": 350, "height": 200, "zIndex": 0,
-
-  "label":            "How many cloves?",
-  "placeholder":      "Enter number",
-  "fieldName":        "cloveCount",
-  "required":         true,
-  "outputParameter":  "GarlicResponse.Value",
-  "fontSize":         16,
-  "content":          "Mince the garlic cloves finely",
-  "fontWeight":       "normal",
-  "color":            "#333333",
-  "align":            "left",
-
-  "src":              "engine-closeup.jpg",
-  "imageOid":         "7000000123456",
-  "objectFit":        "contain",
-  "posterUrl":        "https://...",
-
-  "outputValue":      "approved",
-  "deletable":        false,
-  "thickness":        1,
-  "rows":             4,
-
-  "options":          [{ "label": "Minced", "value": "minced" }],
-  "defaultSource":    { "mode": "static",   "value": "4" },
-  "placeholderSource":{ "mode": "property", "value": "DefaultCloves.Value" },
-
-  "durationSeconds":  60,
-  "direction":        "countdown",
-  "blockDone":        false,
-
-  "inputMode":        "text",
-  "listItems":        [{ "label": "A", "value": "a" }],
-  "listSource":       { "mode": "static" }
+"form_document": {
+  "version": 2,
+  "sections": [
+    {
+      "id": "7000000200001",
+      "role": "content",
+      "rows": [
+        {
+          "id": "7000000200002",
+          "gap": "md",
+          "blocks": [
+            { "id": "7000000200003", "type": "header", "content": "<p>Voltage Check</p>", "size": "2xl", "sizeAt": { "phone": "xl" }, "fontWeight": "bold" },
+            { "id": "7000000200004", "type": "textInput", "fieldName": "voltage", "label": "Voltage", "inputMode": "number", "required": true, "outputParameter": "Voltage", "layout": { "span": { "base": 6, "phone": 12 } } }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "7000000200005",
+      "role": "footer",
+      "rows": [
+        { "id": "7000000200006", "blocks": [
+          { "id": "7000000200007", "type": "button", "job": "continue", "label": "", "outputValue": "continue", "emphasis": "primary", "layout": { "align": "end" } }
+        ] }
+      ]
+    }
+  ]
 }
 ```
 
-Universal fields: `type`, `x`, `y`, `width`, `height` (all numbers, required); `zIndex` optional.
+### 1.12.1 Document structure
 
-Per-type fields:
+| Object | Fields |
+|--------|--------|
+| Document | `version` (**required**, the constant `2`), `sections[]` (**required**). |
+| Section | `id`, `role` (`"content"` \| `"footer"`), `rows[]` — all required. A `footer` section is the form's **bottom bar**; renderers draw it below the content. Mission Designer lets an author drop only buttons there and drops empty footer sections on save. |
+| Row | `id`, `blocks[]` (at least one block) required; `gap` optional (space token). |
+| Block | `id`, `type` required; `layout` optional on every block (required on `image`). |
+
+Tokens: space `none | xs | sm | md | lg | xl`; type size `xs | sm | md | lg | xl | 2xl | 3xl`; grid span 1 – 12.
+
+**Per-breakpoint values.** `layout.span`, `layout.order` and `layout.visible` are `{ base, tablet?, phone? }`; `base` is the desktop value and resolution is `phone ?? tablet ?? base`.
+
+**Block `layout`:**
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `span` | `{ base, tablet?, phone? }` of 1 – 12 | Grid columns occupied (of 12). Default 12. |
+| `order` | `{ base, tablet?, phone? }` of integers 1 – 12 | Reflow order within the row. |
+| `visible` | `{ base, tablet?, phone? }` of booleans | Hide the block at a breakpoint. Default `true`. |
+| `minHeight` | space token \| `{ rem }` | Minimum height. |
+| `maxWidth` | `{ ch }` \| `{ rem }` | Readable-measure / media cap. |
+| `aspectRatio` | string `"W/H"` (e.g. `"16/9"`) | Required on image blocks. |
+| `align` | `"start"` \| `"center"` \| `"end"` | Alignment inside the grid cell. On a **button** it also sets the horizontal position (start = left, center = middle, end = right). |
+
+**Per-device text size.** Blocks that show text carry `size` (the desktop type token) and `sizeAt` (`{ tablet?, phone? }` overrides); resolution is `phone ?? tablet ?? size`. `sizeAt` is allowed on `text`, `header`, `textInput`, `textarea`, `checkbox`, `radio`, `timer` and `button`.
+
+**Block types** (`type` is a permanent key):
+
+| `type` | Required | Optional |
+|--------|----------|----------|
+| `text` / `header` | `content` (sanitised HTML string) | `size`, `sizeAt`, `fontWeight` (`normal`\|`bold`), `color`, `align` (`left`\|`center`\|`right`) |
+| `textInput` | `fieldName` (non-empty) | `label`, `placeholder`, `required`, `inputMode` (`text`\|`number`\|`phone`\|`password`\|`dropdown`\|`combobox`), `listItems[]` (`{label, value}`), `listSource`, `outputParameter`, `defaultSource`, `placeholderSource`, `size`, `sizeAt` |
+| `textarea` | `fieldName` | `label`, `placeholder`, `required`, `rows` (≥ 1), `outputParameter`, `defaultSource`, `placeholderSource`, `size`, `sizeAt` |
+| `checkbox` / `radio` | `fieldName`, `options[]` (`{label, value}`) | `label`, `required`, `listSource`, `outputParameter`, `size`, `sizeAt` |
+| `image` | `src` (non-empty), `layout.aspectRatio` | `imageOid`, `objectFit` (`contain`\|`cover`\|`fill`), `scalePercent` (integer 10 – 300) |
+| `video` | `src` | `posterUrl` |
+| `divider` | — | `weight` (`hairline`\|`thick`), `color` |
+| `timer` | `label`, `fieldName`, `durationSeconds` (integer ≥ 1), `direction` (`countdown`\|`countup`) | `blockDone`, `outputParameter`, `defaultSource`, `size`, `sizeAt` |
+| `button` | `label`, `outputValue` (non-empty) | `job` (`continue`\|`yes`\|`no`), `emphasis` (`primary`\|`secondary`), `color`, `deletable`, `size`, `sizeAt` |
+| `esignature` | `fieldName` | `label`, `meaning`, `roleName`, `requireDifferentUser`, `outputParameter` |
+
+`defaultSource` / `placeholderSource` are `{ mode, value }` with `mode ∈ {"static", "property", "input"}`. `listSource` is `{ "mode": "static" }` or `{ "mode": "input", "value": "<input parameter>" }`.
+
+`content` is an HTML string; v2 has no `{ content, plainText }` wrapper.
+
+**Buttons and jobs.** A button with a `job` does the step's own work: `continue` advances a USER_INTERACTION step; `yes` and `no` answer a YES_NO step. Mission Designer writes `outputValue` as `"continue"`, `"true"` or `"false"` for the three jobs. An empty `label` means the host's label for that job, else the default word (`Continue`, `Yes`, `No`). A button without a job is an ordinary action button that emits its `outputValue`. A host hides its own Continue/Yes/No buttons only when the form has job buttons and passes FormKit's never-stuck check: every breakpoint shows the jobs the step needs (`continue` for USER_INTERACTION; `yes` and `no` for YES_NO), and no button carries a job the step cannot use.
+
+**Capture and gating.** On submit, each input block's value is stored under `outputParameter`: when it equals the `id` of one of the step's `output_parameter_specifications`, the value goes to that output's `target`; otherwise `outputParameter` is used as the property key directly. List values (checkbox) are stored as JSON arrays. A step cannot be completed while a `required` input is empty, a `number`-mode text input holds text that is not a number, a `blockDone` timer has not finished, or an e-signature is incomplete.
+
+**Validation (warnings, not errors).** Every `textInput` / `textarea` / `checkbox` / `radio` / `esignature` block should have a non-empty `outputParameter`. Mission Engine reports each unbound block as an `UNBOUND_FORM_INPUT` warning and discards its value at submit; more than one `esignature` block on a step is an `ESIGNATURE_MULTIPLE_BLOCKS` warning (only the first is signed). The `roleName` of an e-signature block names a Mission Commander role; Mission Commander finds or creates the role when it loads the package.
+
+### 1.12.2 Legacy v1 layout (`form_layout_config`, ≤ 4.0, import only)
+
+Packages up to schema 4.0 carried a per-device absolute layout. Mission Designer no longer writes it; on import it converts the layout to a `form_document`. Mission Engine still reads it when present (it takes the first layout entry, in preference to `form_document`).
+
+```json
+"form_layout_config": [
+  { "deviceType": "phone",   "canvasWidth": 390,  "canvasHeight": 844,  "elements": [ /* FormElement[] */ ] },
+  { "deviceType": "tablet",  "canvasWidth": 768,  "canvasHeight": 1024, "elements": [ /* ... */ ] },
+  { "deviceType": "desktop", "canvasWidth": 1280, "canvasHeight": 800,  "elements": [ /* ... */ ] }
+]
+```
+
+Each `FormElement` has `type`, `x`, `y`, `width`, `height` (numbers, required) and optional `zIndex`. `type ∈ {button, text, textInput, image, header, textarea, checkbox, radio, video, divider, timer}`.
 
 | `type` | Distinguishing fields |
 |--------|----------------------|
@@ -674,15 +884,11 @@ Per-type fields:
 | `divider` | `thickness`, `color` |
 | `timer` | `durationSeconds`, `direction ∈ {countdown,countup}`, `blockDone`, `fieldName` |
 
-`defaultSource.mode` / `placeholderSource.mode` ∈ `{"static", "property", "input"}`. `listSource.mode` ∈ `{"static", "input"}`.
-
-**Validation rule (since 2026-05-29, downgraded 2026-08-10).** Any `textInput` / `textarea` / `checkbox` / `radio` element on a `USER_INTERACTION` step should have a non-empty `outputParameter`. From 2026-05-29 to 2026-08-10 violations were rejected with error code `UNBOUND_FORM_INPUT`; since 2026-08-10 the rule is **non-fatal everywhere** — validators return `valid: true` plus a `warnings` array (one entry per unbound element). The Pro mission engine records a `WARNING` trace row per finding at instance start; the free Runtime prints/logs them (validate-file CLI, web-ui import). Either way the captured value is discarded at submit time (`captureFormOutputs` skips unbound elements).
-
 **Round-trip migration notes for importers.**
 
 - `defaultSource.mode: "parameter"` (older exports) → migrate to `"property"`.
 - `content` may arrive as `string` or `{ content, plainText }` rich-text object. Extract the `content` field (HTML) for rendering; use `plainText` only as a no-HTML fallback.
-- Image `src` values in legacy exports use the namespacing `{stepOid}-{filename}`. Strip the `{stepOid}-` prefix on import.
+- Image `src` values in legacy exports may carry an `{oid}-` prefix. Strip it on import.
 
 ---
 
@@ -690,76 +896,81 @@ Per-type fields:
 
 ## 2.0 Extension matrix
 
-| Extension | Container | Carries | Authoritative producer | Consumers |
-|-----------|-----------|---------|------------------------|-----------|
-| `.WFmaster` | bare JSON | One `MasterWorkflowSpecification` (§1.3) | Editor | Runtime, Editor |
-| `.WFmasterX` | ZIP | One `.WFmaster` + optional sibling env/action libraries + images | Editor | Runtime, Editor |
-| `.WFlibX` | ZIP | A `MasterWorkflowLibrary` (multiple roots) + assets | Editor | Editor |
-| `.WFslibX` | ZIP | A `MasterWorkflowStepLibrary` | Editor | Editor |
-| `.WFenvir` | bare JSON | One `MasterEnvironmentLibrary` (§1.9) OR single-env (§1.8) document | Editor, Action Container | Editor, Action Container, Mission Autopilot Tester |
-| `.WFenvirX` | ZIP | One single-env `.WFenvir` + `actions/*.WFaction` | Editor, Action Container | Editor, Action Container, Mission Autopilot Tester |
-| `.WFenvirLibX` | ZIP | One library-shape `.WFenvir` + assets | Editor, Action Container | Action Container, Mission Autopilot Tester |
-| `.WFenvirBundleX` | ZIP | One env library `.WFenvir` + Python code files + manifest | Action Container | Action Container, Mission Autopilot Tester |
-| `.WFaction` | bare JSON | One `MasterActionLibrary` (§1.10) OR standalone action document | Editor, Action Container | Editor, Action Container, Mission Autopilot Tester |
-| `.WFactionLibX` | ZIP | A `MasterActionLibrary` bundle | Editor | Editor *only* (explicitly rejected by Action Container) |
-| `.WFactionCodeX` (newer) / `.WFactionCode` (legacy filename) | ZIP | One action spec + Python source code per state + manifest | Action Container | Action Container |
-| `.WFsnapshot` | ZIP | Full Action Container backup: settings + all envs + all action code + manifest | Action Container | Action Container |
-| `.WFstepLibX` | ZIP | Reserved for step library transport (accepted on AC upload; same content shape as `.WFslibX`) | Editor | Action Container (upload), Editor |
+| Extension | Container | Carries | Producer | Consumers |
+|-----------|-----------|---------|----------|-----------|
+| `.WFmaster` | bare JSON | One `MasterWorkflowSpecification` (§1.3) | Mission Designer (canvas export) | — (inner file of `.WFmasterX`) |
+| `.WFmasterX` | ZIP | One `.WFmaster` + its environment and action libraries + images | Mission Designer | Mission Commander, Mission Designer |
+| `.WFlibX` | ZIP | A `MasterWorkflowLibrary` (`.WFlib`) + step, environment and action libraries + images + manifest | Mission Designer | Mission Designer |
+| `.WFstepLibX` | ZIP | A `MasterWorkflowStepLibrary` (`.WFslib`) + its environment and action libraries + images | Mission Designer | Mission Designer |
+| `.WFslibX` | ZIP | Former name of `.WFstepLibX` | — | Mission Designer (legacy import) |
+| `.WFenvir` | bare JSON | One `MasterEnvironmentLibrary` (§1.9) OR single-environment (§1.8) document | (inner file of the packages below) | Mission Autopilot, Mission Autopilot Tester, Mission Designer |
+| `.WFenvirX` | ZIP | One single-environment `.WFenvir` + `actions/**.WFaction` + manifest | Mission Designer, Mission Autopilot | Mission Commander, Mission Autopilot, Mission Autopilot Tester, Mission Designer |
+| `.WFenvirLibX` | ZIP | One library-shape `.WFenvir` + the action libraries it uses | Mission Designer | Mission Designer, Mission Autopilot, Mission Autopilot Tester |
+| `.WFenvirBundleX` | ZIP | One library-shape `.WFenvir` + Python code files + manifest | Mission Autopilot | Mission Autopilot, Mission Autopilot Tester |
+| `.WFaction` | bare JSON | One `MasterActionLibrary` (§1.10) OR standalone action document | (inner file of the packages) | Mission Autopilot, Mission Autopilot Tester, Mission Designer |
+| `.WFactionLibX` | ZIP | A `MasterActionLibrary` | Mission Designer | Mission Designer (Mission Autopilot rejects it) |
+| `.WFactionCode` / `.WFactionCodeX` | ZIP | One action + Python source per state | Mission Autopilot | Mission Autopilot |
+| `.WFsnapshot` | ZIP | Full Mission Autopilot backup: settings + all environments + all action code + manifest | Mission Autopilot | Mission Autopilot |
+| `.WFcenterX` | ZIP | A Mission Commander work-center tree with its loaded workflows, environments, roles and grants | Mission Commander | Mission Commander |
 
 Implementer rules:
 
-- Treat the extension as advisory metadata for the user. The authoritative dispatch on import is the *content* shape (presence of `workflow_specifications` vs `environment_specifications` vs `action_specifications`).
-- `manifest.json` inside any ZIP is **advisory only** — importers MUST tolerate its absence and MUST NOT rely on its `files[]` array for routing. Walk the ZIP entries directly.
-- Filenames inside `environments/`, `actions/`, and `images/` are free-form. The importer resolves them by directory prefix and extension match.
+- Mission Designer's library importers pick the parser by the inner file's extension (`.WFaction`, `.WFenvir`, `.WFslib`, `.WFlib`) and, for `.WFenvirX`, by `manifest.packageType`. Mission Commander and Mission Autopilot tell the two `.WFenvir` shapes apart by content (§2.5).
+- `manifest.json` is advisory in `.WFmasterX` (both Mission Designer and Mission Commander ignore it) but **not** in every package: a `.WFlibX` import requires it (§2.3), a Mission Designer `.WFenvirX` is recognised by it (§2.6), and a `.WFactionCode` import reads its code list from it (§2.10).
+- Filenames inside `environments/`, `actions/` and `images/` matter: Mission Designer links a workflow to an environment library by the `environments/<name>.WFenvir` filename (§2.2).
 
 ## 2.1 `.WFmaster` — bare workflow JSON
 
-A single JSON file. Content: a `MasterWorkflowSpecification` (§1.3). No images, no embedded libraries — the workflow either has no environment references or the consumer must resolve them out-of-band.
+A single JSON file. Content: a `MasterWorkflowSpecification` (§1.3). No images, no embedded libraries beyond the environments embedded in `environment_specifications[]`.
 
-**Use case.** Smallest possible exchange unit. Suitable for diff/version-control, test fixtures, and runtimes that only need the workflow shape.
+**Use case.** Smallest possible exchange unit (Mission Designer's canvas export). Suitable for diff/version-control and test fixtures. Mission Commander loads only `.WFmasterX`.
 
 ## 2.2 `.WFmasterX` — runtime package (workflow + dependencies)
 
-The primary runtime distribution format.
+The primary runtime distribution format, built by Mission Designer (`MissionDesigner/src/server/packageFormat/buildWorkflowPackage.ts`).
 
 ```
 MyWorkflow.WFmasterX  (ZIP)
 ├── MyWorkflow.WFmaster            ← JSON: the MasterWorkflowSpecification (§1.3)
-├── manifest.json                  ← OPTIONAL: package metadata (§2.2.1)
-├── environments/                  ← OPTIONAL: one .WFenvir per embedded env library
+├── manifest.json                  ← package metadata (§2.2.1); advisory
+├── environments/                  ← one .WFenvir per environment library the workflow uses
 │     └── Kitchen Library.WFenvir  ← JSON: a MasterEnvironmentLibrary (§1.9)
-├── actions/                       ← OPTIONAL: one .WFaction per action library
-│     └── My Actions.WFaction      ← JSON: a MasterActionLibrary (§1.10)
-└── images/                        ← OPTIONAL: media referenced by form elements / UI params
-      ├── 7000000123456-photo.jpg  ← {imageOid}-{filename} for form-element images
+├── actions/                       ← one .WFaction per action library those environments use
+│     └── Oven Controls.WFaction   ← JSON: a MasterActionLibrary (§1.10)
+└── images/                        ← media referenced by forms / UI parameters
+      ├── 7000000123456-photo.jpg  ← {imageOid}-{filename} for form image blocks
       └── engine-closeup.jpg       ← bare filename for ui_parameter_specifications images
 ```
 
 Rules:
 
-- Exactly one file at the ZIP root ending in `.WFmaster`. Nested `.WFmaster` files elsewhere in the ZIP are ignored.
-- For the env-link contract to work, three names must agree on each environment library:
+- Exactly one file at the ZIP root ending in `.WFmaster`. Mission Commander reads the first root-level `.WFmaster`; Mission Designer reads the first `.WFmaster` entry.
+- Mission Designer names the root entry after the workflow with every character outside `A–Z a–z 0–9 . _ -` replaced by `_`; the downloaded file is named `<name>(<version>).WFmasterX`.
+- Every WORKFLOW PROXY that references a step library is resolved to an embedded child (`children[]`) with fresh oids before export, so the package is self-contained.
+- The environments embedded in the workflow's `environment_specifications[]` carry their action bodies inline, so a consumer can run the workflow from the `.WFmaster` alone.
+- Mission Designer's importer accepts only the entries above: any other path fails with `zip_filename_invalid` (`unknown entry type`). It recreates or reuses the environment and action libraries from `environments/` and `actions/` before importing the workflow. For the environment links to survive, three names must agree on each environment library:
   1. The ZIP entry filename: `environments/<LibName>.WFenvir`
   2. `environment_specifications[i].library_name` inside the workflow
-  3. The library's inner `local_id`
-  
-  If any one diverges, the Editor importer silently drops the env link (the workflow imports as a bare workflow with no env chip). New generators MUST validate the triple before writing the ZIP.
-- The same three-way agreement applies to action libraries: `actions/<LibName>.WFaction` ≡ env's `included_actions[].action_library` ≡ action library's inner `local_id`.
+  3. The library's inner `local_id` (the name a newly created library gets)
 
-### 2.2.1 `manifest.json` (optional)
+  When no `environments/` file matches a `library_name`, the link is dropped with an import warning. The same agreement applies to action libraries: `actions/<LibName>.WFaction` ≡ the environment's `included_actions[].action_library` ≡ the action library's inner `local_id`. A library of that name that already exists in the importing team (or in GLOBAL) is reused as it is.
+- Mission Commander reads environments from the workflow's inline `environment_specifications[]` and from every `environments/*.WFenvir` library, merged by environment `oid` (a library file wins). It ignores `actions/` and `manifest.json`, and stores each image a form or UI parameter references, resolved by bare filename first, then `{imageOid}-{filename}`, then any entry ending in `-{filename}`.
+- Missing image bytes are not an error for either importer: the image is left empty.
+
+### 2.2.1 `manifest.json`
 
 ```json
 {
   "packageVersion": "1.0",
   "workflowName":   "My Workflow",
   "environmentLibraries": ["Kitchen Library"],
-  "actionLibraries":      ["My Action Library"],
+  "actionLibraries":      ["Oven Controls"],
   "createdAt": "2026-04-24T12:00:00.000Z",
   "files": [
-    { "path": "My Workflow.WFmaster",                "type": "workflow" },
-    { "path": "environments/Kitchen Library.WFenvir","type": "environment" },
-    { "path": "actions/My Action Library.WFaction",  "type": "action" },
-    { "path": "images/7000000123456-photo.jpg",      "type": "image" }
+    { "path": "My_Workflow.WFmaster",                 "type": "workflow" },
+    { "path": "environments/Kitchen Library.WFenvir", "type": "environment" },
+    { "path": "actions/Oven Controls.WFaction",       "type": "action" },
+    { "path": "images/7000000123456-photo.jpg",       "type": "image" }
   ]
 }
 ```
@@ -768,77 +979,118 @@ Include for forward compatibility and human debugging. Importers MUST NOT rely o
 
 ## 2.3 `.WFlibX` — workflow library bundle
 
+Built by Mission Designer (`MissionDesigner/src/lib/packageFormat/workflow-library-package.ts`).
+
 ```
 MyLibrary.WFlibX  (ZIP)
-├── manifest.json
-├── workflows/
-│     ├── Bolognese.WFmaster
-│     ├── ChickenParm.WFmaster
-│     └── Risotto.WFmaster
+├── manifest.json                  ← REQUIRED (below)
+├── MyLibrary.WFlib                ← JSON: MasterWorkflowLibrary (§1.2)
+├── steps/
+│     └── Common Steps.WFslib      ← JSON: MasterWorkflowStepLibrary (§1.11), one per step library referenced
 ├── environments/
-│     └── KitchenEnv.WFenvir
+│     └── Kitchen Library.WFenvir  ← JSON: MasterEnvironmentLibrary, with value_type_specifications
 ├── actions/
-│     └── CookingActions.WFaction
+│     └── Oven Controls.WFaction   ← JSON: MasterActionLibrary
 └── images/
       └── ...
 ```
 
-**Editor-only.** Not consumed by the Runtime. The Editor unpacks it as: one `MasterWorkflowLibrary` (the outer wrapper) containing all the `workflows/*.WFmaster` roots, plus the shared environment / action / image dependencies. To run the contained workflows, the Editor splits each root into its own `.WFmasterX` for export to the Runtime.
+`manifest.json`:
 
-## 2.4 `.WFslibX` — step library bundle
+```json
+{
+  "packageType":    "workflow-library",
+  "packageVersion": "1.1",
+  "libraryName":    "MyLibrary",
+  "createdAt":      "2026-04-24T12:00:00.000Z",
+  "files": [ { "path": "MyLibrary.WFlib", "type": "workflow-library" }, { "path": "steps/Common Steps.WFslib", "type": "step-library" } ],
+  "oidIndex": {
+    "libraries":      [ { "oid": "…", "name": "MyLibrary", "entityType": "workflow", "version": "1.0.0" } ],
+    "specifications": [ { "oid": "…", "libraryOid": "…", "name": "Bolognese", "version": "1.0.0" } ]
+  }
+}
+```
+
+**Mission Designer only.** Mission Designer's import refuses a `.WFlibX` without `manifest.json` (`missing_manifest`), with a `packageType` other than `workflow-library` (`wrong_package_type`), or without `packageVersion: "1.1"` and an `oidIndex` (`unsupported_package_version`). It previews the import by oid against the target, then commits. `oidIndex.libraries[].entityType ∈ {workflow, step, environment, action}`.
+
+## 2.4 `.WFstepLibX` — step library bundle
+
+Built by Mission Designer (`MissionDesigner/src/lib/packageFormat/library-package.ts`). Called `.WFslibX` before the rename; Mission Designer still imports that name.
 
 ```
-MyStepLib.WFslibX  (ZIP)
+MyStepLib.WFstepLibX  (ZIP)
 ├── manifest.json
-├── workflows/
-│     └── SafetyCheck.WFmaster
+├── MyStepLib.WFslib               ← JSON: MasterWorkflowStepLibrary (§1.11)
+├── environments/
+│     └── Kitchen Library.WFenvir
+├── actions/
+│     └── Oven Controls.WFaction
 └── images/
 ```
 
-Same envelope as `.WFlibX` but the outer wrapper is a `MasterWorkflowStepLibrary` (§1.11). Editor-only.
+`manifest.json` carries `packageType: "step-library"`, `packageVersion: "1.0"`, `libraryName`, `environmentLibraries` and `actionLibraries` (when present), `createdAt` and `files[]`. Mission Designer only; Mission Autopilot rejects `.WFstepLibX` uploads.
 
 ## 2.5 `.WFenvir` — bare environment JSON
 
 Two shapes coexist under the same extension. Importers MUST autodetect.
 
-- **Library shape (preferred for distribution).** Top-level object is a `MasterEnvironmentLibrary` (§1.9) with `environment_specifications: [...]`.
-- **Single-env shape (used inside `.WFmasterX` `environments/`).** Top-level object is itself an `EnvironmentSpecification` (§1.8) with `included_actions: [...]`. No outer `environment_specifications` wrapper.
+- **Library shape.** Top-level object is a `MasterEnvironmentLibrary` (§1.9) with `environment_specifications: [...]`. Used inside `.WFmasterX`, `.WFlibX`, `.WFstepLibX`, `.WFenvirLibX` and `.WFenvirBundleX`.
+- **Single-environment shape.** Top-level object is itself an `EnvironmentSpecification` (§1.8). No outer `environment_specifications` wrapper. Used at the root of a `.WFenvirX`.
 
-The dispatch test is: presence of `environment_specifications` top-level → library shape; presence of `included_actions` top-level → single-env shape.
+The dispatch test is: presence of an `environment_specifications` array → library shape; otherwise single-environment shape. (Mission Autopilot's single-environment `.WFenvir` has no `included_actions` — its actions are the `actions/` files of the `.WFenvirX`.)
 
 ## 2.6 `.WFenvirX` — single environment + its actions
 
+Mission Designer's layout (`exportEnvironmentPackage`):
+
 ```
 Kitchen.WFenvirX  (ZIP)
-├── Kitchen.WFenvir            ← JSON: single-env shape (§1.8)
-└── actions/
-      ├── Oven.WFaction        ← JSON: standalone action shape
-      └── Mixer.WFaction
+├── Kitchen.WFenvir                      ← JSON: single-environment shape (§1.8), included_actions inline
+├── actions/
+│     └── Oven Controls/                 ← one folder per action library
+│           ├── Preheat Oven.WFaction    ← JSON: standalone action shape
+│           └── Mixer.WFaction
+└── manifest.json                        ← { packageType: "environment-package", formatVersion: 2, createdAt,
+                                              environmentName, actionCount, actionLibraries: [{ name, actions: [...] }] }
 ```
 
-Action Container exports a `.WFenvirX` of any environment. The inner `.WFaction` files use the standalone shape (the action spec at top level, *without* the `action_specifications` wrapper). They never carry Python source code; that's the role of `.WFenvirBundleX` (§2.8) or `.WFactionCodeX` (§2.10).
+Mission Autopilot's layout (`GET /management/v1/environments/:oid/export-envir-x`):
 
-The Action Container accepts uploads of `.WFenvirX` to populate or update environments.
+```
+Kitchen.WFenvirX  (ZIP)
+├── Kitchen.WFenvir            ← JSON: single-environment shape, without included_actions
+├── actions/
+│     └── Preheat Oven.WFaction  ← JSON: standalone action shape, with state and timeout_seconds
+└── manifest.json              ← { packageType: "environment-package", formatVersion: 1, createdAt,
+                                    environmentName, actionCount }
+```
 
-## 2.7 `.WFenvirLibX` — env library ZIP (renamed `.WFenvirX` library variant)
+The inner `.WFaction` files use the standalone shape (the action at top level, *without* the `action_specifications` wrapper). They never carry Python source; that is the role of `.WFenvirBundleX` (§2.8) or `.WFactionCode` (§2.10).
+
+Mission Commander loads a `.WFenvirX` into a work center from its first `.WFenvir` entry (either shape). Mission Designer imports it as an environment when `manifest.packageType` is `environment-package`, and as a legacy environment library otherwise. Mission Autopilot accepts `.WFenvirX` uploads.
+
+## 2.7 `.WFenvirLibX` — environment library ZIP
 
 ```
 KitchenLib.WFenvirLibX  (ZIP)
-├── KitchenLib.WFenvir         ← JSON: library shape (§1.9) — environment_specifications[] wrapper
-└── (no actions/ folder — actions are inlined per env via included_actions[])
+├── manifest.json              ← { packageType: "environment-library", packageVersion: "1.0", libraryName,
+│                                  actionLibraries?, createdAt, files[] }
+├── KitchenLib.WFenvir         ← JSON: library shape (§1.9), with value_type_specifications
+└── actions/
+      └── Oven Controls.WFaction ← JSON: MasterActionLibrary, one per action library the environments use
 ```
 
-Functionally equivalent to a library-shaped `.WFenvir` wrapped in a ZIP. The renamed extension exists so the Action Container can disambiguate library uploads from single-env uploads at the OS-extension level.
+Built by Mission Designer. Bundling the action libraries lets an importer recreate missing action libraries without a separate package. Mission Autopilot accepts `.WFenvirLibX` uploads and reads the inner `.WFenvir`.
 
-## 2.8 `.WFenvirBundleX` — env library + Python code
+## 2.8 `.WFenvirBundleX` — environment + Python code
 
-The Action Container's preferred round-trip format for shipping an environment together with its action implementations.
+Mission Autopilot's round-trip format for shipping an environment together with its action implementations (`GET /management/v1/environments/:oid/export-bundle`).
 
 ```
 Kitchen.WFenvirBundleX  (ZIP)
 ├── manifest.json             ← {format: "WFenvirBundleX", format_version: 1, exported_at, container_version,
 │                                environment_oid, environment_local_id, action_count, code_file_count}
-├── Kitchen.WFenvir           ← JSON: library shape (§1.9) carrying one env with included_actions[]
+├── Kitchen.WFenvir           ← JSON: library shape (§1.9) carrying one environment with included_actions[]
 └── code/
       ├── <action_oid_1>/
       │     ├── EXECUTING.py
@@ -847,33 +1099,35 @@ Kitchen.WFenvirBundleX  (ZIP)
             └── EXECUTING.py
 ```
 
-Python files are keyed by the action OID and the runtime state they implement. A code file named `<STATE>.py` defines the action's behaviour while the action instance is in that state. Recognised state filenames: `EXECUTING`, `STARTING`, `COMPLETING`, `PAUSING`, `PAUSED`, `RESUMING`, `HOLDING`, `HELD`, `UNHOLDING`, `STOPPING`, `STOPPED`, `ABORTING`, `ABORTED`. At minimum, `EXECUTING.py` SHOULD be present for any action that does work.
+Python files are keyed by the action oid and the state they implement: `<STATE>.py` defines the action's behaviour while an instance is in that state. Valid states are those of the action's state machine — for an observable action `STARTING`, `EXECUTING`, `COMPLETING`, `COMPLETED`, `PAUSING`, `PAUSED`, `UNPAUSING`, `HOLDING`, `HELD`, `UNHOLDING`, `ABORTING`, `ABORTED`, `CLEARING`, `STOPPING`; for an opaque action `POSTED`, `RECEIVED`, `IN_PROGRESS`, `COMPLETED`, plus any state its transition table reaches. Mission Autopilot writes `action_library` = the environment's `local_id` on every roster entry (it has no separate library concept).
 
-A new Action Container implementation that consumes `.WFenvirBundleX` MUST:
+An action server that consumes `.WFenvirBundleX` MUST:
 
-1. Parse the inner `.WFenvir` library shape to register envs and actions.
-2. For each `code/<oid>/<state>.py`, store the source against the action with that OID and mark it active for that state.
+1. Parse the inner `.WFenvir` library shape to register environments and actions.
+2. For each `code/<oid>/<state>.py`, store the source against the action with that oid and mark it active for that state.
 
 ## 2.9 `.WFaction` — bare action JSON
 
 Two shapes coexist (same autodetect pattern as `.WFenvir`):
 
-- **Library shape.** Top-level `MasterActionLibrary` (§1.10) with `action_specifications: [...]`.
-- **Standalone shape.** A single action spec at top level (ManagedElement + `input_parameter_specifications`, `output_parameter_specifications`, `property_specifications`, `action_visibility`, `timeout_seconds`).
+- **Library shape.** Top-level `MasterActionLibrary` (§1.10) with `action_specifications: [...]`. Used inside `.WFmasterX`, `.WFlibX`, `.WFstepLibX`, `.WFenvirLibX` and `.WFactionLibX`.
+- **Standalone shape.** A single action at top level (ManagedElement + `input_parameter_specifications`, `output_parameter_specifications`, `property_specifications`, `action_visibility`, and from Mission Autopilot also `state` and `timeout_seconds`). Used inside `.WFenvirX` (§2.6). Mission Autopilot requires `oid`, `local_id`, `version` and `last_modified_date` on an uploaded action.
 
-The Action Container uses the standalone shape inside `.WFenvirX` (`actions/<n>.WFaction`). The Editor uses the library shape inside `.WFmasterX` (`actions/<LibName>.WFaction`).
+## 2.10 `.WFactionCode` (download) / `.WFactionCodeX` (upload)
 
-## 2.10 `.WFactionCodeX` (current) / `.WFactionCode` (legacy filename)
+A single action's spec + Python source per state. Mission Autopilot has two shapes:
 
-A single action's spec + Python source code per state. The Action Container's per-action download/upload format.
+**Per-action download and import** (`GET` / `POST /management/v1/actions/:oid/export|import`), written as `<local_id>.WFactionCode`:
 
 ```
-HeatOven.WFactionCodeX  (ZIP)
+HeatOven.WFactionCode  (ZIP)
 ├── manifest.json             ← (§2.10.1 below)
 ├── EXECUTING.py
 ├── PAUSED.py
 └── STOPPING.py
 ```
+
+**Upload** through `POST /management/v1/upload`, which accepts the `.WFactionCodeX` extension: a ZIP with one `*.WFaction` entry (the action in standalone shape) and `code/<STATE>.py` files. This path does not read `manifest.json`.
 
 ### 2.10.1 manifest.json
 
@@ -900,79 +1154,92 @@ HeatOven.WFactionCodeX  (ZIP)
 }
 ```
 
-On import, the Action Container matches the manifest's `action.oid` against an existing action and rejects the upload if they differ. The action spec is upserted; each `code_files[i].filename` is read from the ZIP and saved+activated for the matching state.
+On per-action import, Mission Autopilot rejects the upload when the manifest's `action.oid` differs from the target action's oid, then reads each `code_files[i].filename` from the ZIP and saves and activates it for that state (a listed file missing from the ZIP is reported as skipped). The action spec itself is not changed by this route.
 
-The legacy extension `.WFactionCode` (no trailing `X`) is what the **export** route currently writes; the **import** route accepts both `.WFactionCode` and `.WFactionCodeX`. New tools SHOULD prefer `.WFactionCodeX` for parity with the other ZIP types.
+## 2.11 `.WFsnapshot` — Mission Autopilot backup
 
-## 2.11 `.WFsnapshot` — Action Container backup
-
-A full backup of a single Action Container's state. Not part of the public format universe in the strict sense — it's container-specific — but documented here for completeness because the Action Container export endpoint produces it.
+A full backup of one Mission Autopilot's state (`GET /management/v1/snapshot/export`; restore with `POST /management/v1/snapshot/import?confirm=true`). Container-specific, documented so third-party tools can introspect a snapshot without depending on Mission Autopilot's database schema.
 
 ```
 TrajectorySnapshot_2026-05-30.WFsnapshot  (ZIP)
-├── manifest.json             ← {format_version, exported_at, container_version, environment_count, action_count, code_file_count}
-├── settings.json             ← key/value pairs from the AC settings store
+├── manifest.json             ← {format_version: "1.0", exported_at, container_version, environment_count, action_count, code_file_count}
+├── settings.json             ← key/value pairs from the settings store (the API key is never included)
 ├── environments/
-│     └── <env_oid>.json      ← env-library shape JSON (one file per env)
+│     └── <env_oid>.json      ← single-environment shape with included_actions[] inline (one file per environment)
 └── code/
       └── <action_oid>/
             └── <STATE>.py
 ```
 
-Restore is implementation-defined per container. The format is documented here so third-party tools can introspect a snapshot without depending on the Action Container's internal database schema.
+## 2.12 Upload extensions accepted by Mission Autopilot
 
-## 2.12 `.WFstepLibX` — step library ZIP for AC upload
+`POST /management/v1/upload` accepts `.WFenvir`, `.WFenvirX`, `.WFenvirLibX`, `.WFenvirBundleX`, `.WFaction` and `.WFactionCodeX`. It recognises `.WFactionLibX` and `.WFstepLibX` only to refuse them: upload individual `.WFaction` files instead. Mission Autopilot Tester offers `.WFenvirX`, `.WFenvirLibX`, `.WFenvirBundleX`, `.WFactionLibX`, `.WFenvir` and `.WFaction` and forwards the bytes to this endpoint unchanged.
 
-The Action Container accepts `.WFstepLibX` uploads via `/management/v1/upload`. Content layout matches `.WFslibX` (§2.4): a `MasterWorkflowStepLibrary` wrapper with `workflows/*.WFmaster` entries. It exists so containers can host reusable step libraries alongside environments.
+## 2.13 `.WFcenterX` — Mission Commander work-center package
+
+Mission Commander exports a work center and its descendants, with the workflows and environments loaded into them, and imports the same file into another Mission Commander (`mission-control-db/src/package/`).
+
+```
+Line 1.WFcenterX  (ZIP)
+├── Line 1.WFcenter                                  ← JSON manifest
+├── workflows/<work center path>/<name>-<version>-<state>.WFmaster   ← each loaded workflow, as stored
+├── environments/<work center path>/<name>-<version>-<state>.WFenvir ← each loaded environment (single-environment shape)
+└── roles/
+      ├── roles.json                                 ← { roles: [{ name, description, isSystem }] }
+      └── allowed-roles.json                         ← { grants: [{ workCenterPath, workflow: { oid, version, state }, nodePath, role }] }
+```
+
+The manifest is `{ format: "WFcenter", formatVersion: "1.0", exportedAt, scope: "all" | "effective", warnings[], workCenters[] }`. Each work center entry lists `path`, `parentPath`, `name`, `description`, `sortOrder`, `dispatchPolicy`, `autoClaim`, `typeName`, and its `workflows[]` and `environments[]` with their `file`, `oid`, `name`, `version`, `state` and load metadata; a workflow entry also lists the environments it is linked to by (`oid`, `version`, `state`). The manifest's `file` field is authoritative: filenames are made unique with `-2`, `-3` suffixes and must not be parsed.
 
 ---
 
-# Part 3 — Per-tool import/export matrix
+# Part 3 — Per-application import/export matrix
 
-`R` = reads (imports), `W` = writes (exports), `—` = no role.
+`R` = reads (imports), `W` = writes (exports), `—` = no role. Mission Engine, Mission Pilot and Mission Broker read and write none of these files.
 
-| Format | Editor | Runtime | Action Container | Mission Autopilot Tester |
-|--------|:------:|:-------:|:----------------:|:-------------:|
-| `.WFmaster` | R/W | R | — | — |
+| Format | Mission Designer | Mission Commander | Mission Autopilot | Mission Autopilot Tester |
+|--------|:----------------:|:-----------------:|:-----------------:|:------------------------:|
+| `.WFmaster` | W *(canvas export; read inside `.WFmasterX`)* | R *(inside `.WFmasterX` / `.WFcenterX`)* | — | — |
 | `.WFmasterX` | R/W | R | — | — |
 | `.WFlibX` | R/W | — | — | — |
-| `.WFslibX` | R/W | — | — | — |
-| `.WFenvir` (library shape) | R/W | R *(only inside `.WFmasterX`)* | R/W | R (uploads it) |
-| `.WFenvir` (single-env shape) | R/W | R *(only inside `.WFmasterX`)* | R/W | R (uploads it) |
-| `.WFenvirX` | R/W | — | R/W | R (uploads it) |
-| `.WFenvirLibX` | R/W | — | R/W | R (uploads it) |
+| `.WFstepLibX` | R/W *(also reads legacy `.WFslibX`)* | — | **rejected** | — |
+| `.WFenvir` (library shape) | R/W *(inside packages)* | R *(inside `.WFmasterX` / `.WFenvirX`)* | R/W | R (uploads it) |
+| `.WFenvir` (single-environment shape) | R/W *(inside `.WFenvirX`)* | R *(inside `.WFenvirX` / `.WFcenterX`)* | R/W | R (uploads it) |
+| `.WFenvirX` | R/W | R | R/W | R (uploads it) |
+| `.WFenvirLibX` | R/W | — | R | R (uploads it) |
 | `.WFenvirBundleX` | — | — | R/W | R (uploads it) |
-| `.WFaction` (library shape) | R/W | R *(only inside `.WFmasterX`)* | R/W *(standalone shape)* | R (uploads it) |
-| `.WFactionLibX` | R/W | — | **rejected** | R (uploads it) |
-| `.WFactionCodeX` / `.WFactionCode` | — | — | R/W | — |
+| `.WFaction` | R/W *(library shape in packages; standalone in `.WFenvirX`)* | — | R/W *(standalone shape)* | R (uploads it) |
+| `.WFactionLibX` | R/W | — | **rejected** | R (uploads it; refused by Mission Autopilot) |
+| `.WFactionCode` / `.WFactionCodeX` | — | — | R/W | — |
 | `.WFsnapshot` | — | — | R/W | — |
-| `.WFstepLibX` | R (treats as `.WFslibX`) | — | R (accepts upload) | R (uploads it) |
+| `.WFcenterX` | — | R/W | — | — |
 
 Notes:
 
-- The Runtime is exclusively a *consumer*. It never writes any of these formats. New runtimes implementing this spec only need read paths for `.WFmaster` and `.WFmasterX`.
-- The Mission Autopilot Tester is a thin client over the Action Container's `/management/v1/upload` endpoint. It does not parse or transform the formats — it forwards the bytes verbatim.
-- The Editor is the only authoring tool. New editors implementing this spec should target the v7.0 envelope (`children[]`, `schemaVersion: "4.0"`) as the write format and accept v6.0 (`child_workflows[]`, `schemaVersion: "3.0"`) for backward-compatible reads.
+- Mission Commander is the only path into a runtime: it stores the workflow JSON it loads, and Mission Engine runs that JSON. A new runtime implementing this spec only needs read paths for `.WFmasterX` (and `.WFenvirX` for environment updates).
+- Mission Autopilot Tester is a thin client over Mission Autopilot's `/management/v1/upload` endpoint. It does not parse or transform the formats — it forwards the bytes verbatim.
+- Mission Designer is the only authoring tool. New editors should target the 5.0 envelope (`children[]`, `form_document`, `schemaVersion: "5.0"`) as the write format.
 
 ---
 
 # Part 4 — Editor internal envelope → runtime envelope (migration aid)
 
-The Editor's internal storage uses a library wrapper around React Flow `nodes` / `edges`. Tools that want to be drop-in editor replacements need to emit the same runtime envelope. This is the canonical mapping.
+Mission Designer stores each specification as a record whose `data` holds React Flow `nodes` / `edges`. Tools that want to be drop-in editor replacements need to emit the same runtime envelope. This is the canonical mapping (`MissionDesigner/src/lib/packageFormat/workflow-exporters.ts`).
 
 ### 4.1 Spec-level field map
 
-| Editor (`specifications[i]`) | Runtime (root or `ChildWorkflowExport`) |
+| Editor specification | Runtime (root or `ChildWorkflowExport`) |
 |------------------------------|------------------------------------------|
 | `id` | `oid` |
 | `name` | `local_id` |
 | `description` (may be null) | `description` (omit if null) |
-| `version` | `version` |
-| `state` | `state` |
+| `typeName` | `type_name` (omit if unset) |
+| `version` | `version` (children take the root's) |
+| `state` | `state` (children take the root's) |
 | `updatedAt` (epoch ms) | `last_modified_date` (ISO 8601) |
-| `parentSpecificationId` | `parentChildSpecId` (`null` for direct children of root) |
-| `rootSpecificationId` | *(not mapped — used for grouping only)* |
-| `dataSchemaVersion` | *(not mapped — derive `schemaVersion: "4.0"`)* |
+| parent child-spec id | `parentChildSpecId` (`null` for direct children of root) |
+| *(none)* | `schemaVersion: "5.0"` |
+| `data.notation` | `display_style` |
 | `data.nodes[]` | `steps[]` (see §4.2) |
 | `data.edges[]` | `connections[]` (see §4.2) |
 | `data.viewport` | `viewport` (pass through) |
@@ -980,7 +1247,9 @@ The Editor's internal storage uses a library wrapper around React Flow `nodes` /
 | `data.workflowOutputs[]` | `output_parameter_specifications[]` |
 | `data.workflowValues[]` | `value_property_specifications[]` |
 | `data.workflowResources[]` | `resource_property_specifications[]` |
-| `data.images[]` | `form_element_images[]` on the appropriate step + ZIP entries under `images/` |
+| `data.workflowTrySpecifications[]` | `try_specifications[]` |
+| `data.environmentSpecIds[]` | `environment_specifications[]` (each environment embedded in full; on the root only in a `.WFmasterX`) |
+| `data.images` (filename → data URI) | ZIP entries under `images/` |
 
 ### 4.2 Step-type normalization
 
@@ -992,42 +1261,42 @@ The Editor's internal storage uses a library wrapper around React Flow `nodes` /
 | `waitAll` | `WAIT ALL` |
 | `waitAny` | `WAIT ANY` |
 | `select1` | `SELECT 1` |
-| `yesNo` | `YES_NO` |
-| `userInteraction` | `USER_INTERACTION` |
-| `script` | `SCRIPT` |
-| `actionProxy` | `ACTION PROXY` |
-| `waitActionProxy` | `WAIT ACTION PROXY` |
+| `yesNoStep` | `YES_NO` |
+| `userInteractionStep` | `USER_INTERACTION` |
+| `scriptStep` | `SCRIPT` |
+| `gateStep` | `GATE` |
+| `actionProxyWait` | `ACTION PROXY` |
 | `workflowProxy` | `WORKFLOW PROXY` |
+| `catch` | `CATCH` |
+| `return` | `RETURN` |
 
 | Editor edge | Runtime connection |
 |-------------|--------------------|
 | `edge.source` | `from_step_id` |
 | `edge.target` | `to_step_id` |
-| `edge.id` | `connection_id` |
-| `edge.sourceHandle` | `source_handle_id` (for YES_NO) **and** `connection_id` (for SELECT 1 — set both to `edge.sourceHandle`) |
+| `edge.data.connectionId` | `connection_id` (the option id on SELECT 1 edges) |
+| `edge.sourceHandle` | `source_handle_id` |
 | `edge.data.condition` | `condition` |
+| `edge.data.waypoints` | `waypoints` |
 | `edge.type`, `markerEnd`, `style`, `animated` | *(discarded — presentation only)* |
 
 ### 4.3 Building the `children` tree from a flat editor envelope
 
-Given a library of specifications sharing one `rootSpecificationId`:
+Given a workflow's child specifications, each with the id of its parent child (or none for a direct child of the root):
 
 ```
-root = spec where parentSpecificationId === null
-rest = all other specs in the library
-
-function buildChildren(parentId):
-  entries = rest filter where parentSpecificationId === parentId
+function buildChildren(parentChildId):            // null for the root's direct children
+  entries = children filter where parentChildSpecId === parentChildId
   return entries.map(e => ({
-    ...childWorkflowExportFrom(e),
-    parentChildSpecId: (e.parentSpecificationId === root.id ? null : e.parentSpecificationId),
-    children: buildChildren(e.id)
+    ...childWorkflowExportFrom(e),                // version and state copied from the root
+    parentChildSpecId: e.parentChildSpecId,       // null for direct children of the root
+    children: buildChildren(e.id)                 // omitted when empty
   }))
 
-root_output.children = buildChildren(root.id)
+root_output.children = buildChildren(null)
 ```
 
-The remap of direct children of the root from `parentSpecificationId === root.id` to `parentChildSpecId === null` is the easy-to-miss step. Grandchildren and deeper preserve their parent OID verbatim.
+Direct children of the root carry `parentChildSpecId: null`; grandchildren and deeper carry their parent child's oid.
 
 ---
 
@@ -1035,22 +1304,27 @@ The remap of direct children of the root from `parentSpecificationId === root.id
 
 Before emitting a `.WFmasterX`, validate:
 
+- [ ] Root carries `schemaVersion` from `"4.0"` to `"5.0"` (write `"5.0"`), `local_id` and `oid`.
 - [ ] Exactly one step has `step_type === "START"`.
 - [ ] At least one step has `step_type === "END"`.
 - [ ] All step `oid` values unique within the spec.
 - [ ] Every connection references existing step `oid` values on both ends.
 - [ ] No connection has `from_step_id === to_step_id`.
-- [ ] Every step is reachable from the START step via `connections`.
-- [ ] Every `PARALLEL` step has a matching `WAIT ALL` on every downstream path.
-- [ ] Every `SELECT 1` step has at least one outgoing connection, and each such connection's `connection_id` matches one of `select1_config.options[].id`.
+- [ ] Every step outside a catch network is reachable from the START step via `connections`.
+- [ ] Every `PARALLEL` step reaches a `WAIT ALL` downstream.
+- [ ] Every `SELECT 1` step's outgoing connections have a `connection_id` matching one of `select1_config.options[].id`.
 - [ ] Every `YES_NO` step has at most two outgoing connections with `source_handle_id ∈ {"yes","no"}`.
-- [ ] Every `ChildWorkflowExport` in `children[]` has `parentChildSpecId` pointing at its parent's `oid`, or `null` for direct children of the root.
+- [ ] Every `ACTION PROXY` step has an `action_proxy_config` whose `environment_oid` and `action_oid` match an embedded environment and its roster (or that carries `environment_name` / `action_name`).
+- [ ] Every `GATE` has exactly one incoming and one outgoing connection and no resource commands; a timed gate has `delay_seconds`.
+- [ ] Every `CATCH` has 0 in / 1 out connections and a unique `catch_id`; every `RETURN` has 1 in / 0 out and a valid `return_config`; every TRY row names an existing `catch_id`.
+- [ ] Every `ChildWorkflowExport` in `children[]` has `parentChildSpecId` pointing at its parent's `oid`, or `null` for direct children of the root, and carries `version` and `state`.
 - [ ] Every managed element (root, every child, every step) has all four of `local_id`, `oid`, `version`, `last_modified_date`.
-- [ ] Every `USER_INTERACTION` step's `textInput` / `textarea` / `checkbox` / `radio` form elements have a non-empty `outputParameter`.
-- [ ] If env-libs are referenced, the triple (`environments/<name>.WFenvir`, workflow's `environment_specifications[i].library_name`, env-lib's inner `local_id`) all agree exactly.
-- [ ] If action-libs are referenced, the triple (`actions/<name>.WFaction`, env's `included_actions[].action_library`, action-lib's inner `local_id`) all agree exactly.
+- [ ] Every `form_document` validates against the Form Document v2 schema and has unique ids.
+- [ ] Every `textInput` / `textarea` / `checkbox` / `radio` / `esignature` block has a non-empty `outputParameter` (warning only).
+- [ ] If environment libraries are packaged, the triple (`environments/<name>.WFenvir`, workflow's `environment_specifications[i].library_name`, the library's inner `local_id`) agrees exactly.
+- [ ] If action libraries are packaged, the triple (`actions/<name>.WFaction`, the environment's `included_actions[].action_library`, the action library's inner `local_id`) agrees exactly.
 
-A failure on any check produces a corresponding error code at import (`NO_START_STEP`, `DUPLICATE_STEP_OID`, `DANGLING_CONNECTION`, `ORPHANED_STEP`, `UNMATCHED_PARALLEL`, `MISSING_REQUIRED_FIELD`, `INVALID_STEP_TYPE`, `INVALID_RESOURCE_COMMAND`, `INVALID_RESOURCE_SPEC`, `SELF_REFERENCING_CONNECTION`, `UNBOUND_FORM_INPUT`).
+A failure produces the corresponding error code when a runtime workflow starts (§1.3).
 
 ---
 
@@ -1060,9 +1334,9 @@ A failure on any check produces a corresponding error code at import (`NO_START_
 managed-element.json (base)
   ├── master-workflow-library.json
   │     └── workflow_specifications[].steps[]                  → step definition
+  │     │     └── steps[].form_document                        → form-document.json (Mission FormKit)
   │     └── workflow_specifications[].connections[]            → connection definition
-  │     └── workflow_specifications[].children[]               → ChildWorkflowExport (v7.0+, preferred)
-  │     └── workflow_specifications[].child_workflows[]        → DEPRECATED, pre-v7.0 fallback
+  │     └── workflow_specifications[].children[]               → ChildWorkflowExport (recursive)
   │     └── workflow_specifications[].environment_specifications[] → embedded environments
   ├── master-action-library.json
   │     └── action_specifications[]                            → inputs, outputs, properties
@@ -1074,13 +1348,14 @@ managed-element.json (base)
 
 # Appendix B — References
 
-- Trajectory Runtime spec docs: `TrajectoryRuntime/spec/docs/`
-  - `06-json-schemas.md` — full JSON Schema Draft-07 definitions
-  - `editor-export-format.md` — editor → runtime transformation, worked examples
-  - `v7.0-package-format-changes.md` — migration from v6.0 to v7.0
-  - `PackageFormatSpec.md` — ZIP layout reference
-  - `RESTProtocolSpec.md` — original protocol spec (see also [REST_Protocol.md](./REST_Protocol.md))
-- Editor canonical exporter: `TrajectoryEditor/src/server/packageFormat/buildWorkflowPackage.ts`
-- Editor canonical importer: `TrajectoryEditor/src/server/packageFormat/importLibrariesFromZip.ts`
-- Runtime canonical loader: `TrajectoryRuntime/engines/web/src/loader.ts`
-- Action Container per-action export/import: `TrajectoryActions/packages/server/src/routes/export-import.ts`
+- Mission Designer published schemas: `MissionDesigner/src/lib/schemas/` (`managed-element.json`, `master-workflow-library.json`, `master-workflow-step-library.json`, `master-environment-library.json`, `master-action-library.json`, `form-document.json`)
+- Mission Designer export types: `MissionDesigner/src/lib/packageFormat/export-types.ts`
+- Mission Designer exporters: `MissionDesigner/src/lib/packageFormat/workflow-exporters.ts`, `library-exporters.ts`, `library-package.ts`, `workflow-library-package.ts`
+- Mission Designer `.WFmasterX` builder: `MissionDesigner/src/server/packageFormat/buildWorkflowPackage.ts`
+- Mission Designer `.WFmasterX` importer: `MissionDesigner/src/server/packageFormat/safeZipReader.ts`, `parseEnvelope.ts`, `importLibrariesFromZip.ts`, `MissionDesigner/src/lib/import/workflow-importers.ts`; package routes `MissionDesigner/src/server/routes/v2/packages.ts`
+- Mission Designer `.WFmasterX` import/export reference: `MissionDesigner/docs/package-format.md`
+- Form Document v2 schema and host contract: `MissionFormKit/packages/form-schema/src/schema/form-document.json`, `MissionFormKit/packages/form-schema/src/types.ts`, `MissionFormKit/docs/HOST-CONTRACT.md`
+- Mission Commander package ingest: `mission-control-db/src/ingest/wfmasterx.ts`, `wfenvirx.ts`, `images.ts`; `.WFcenterX`: `mission-control-db/src/package/`
+- Mission Engine validator and spec types: `MissionEngine/src/spec/validator.ts`, `MissionEngine/src/spec/types.ts`, `MissionEngine/src/spec/workflow-schema.json`
+- Mission Autopilot export/import: `MissionAutopilot/packages/server/src/routes/export-import.ts`; uploads: `MissionAutopilot/packages/server/src/routes/management.ts`
+- Runtime ↔ action server protocol: [REST_Protocol.md](./REST_Protocol.md)

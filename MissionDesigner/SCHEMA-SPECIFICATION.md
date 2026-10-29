@@ -1,9 +1,9 @@
 # Mission Designer — Schema & Package Specification
 
-**Schema Version:** 4.0
+**Schema Version:** 5.0
 **JSON Schema Draft:** Draft-07
 **Base URI:** `https://trajectorypro.io/schemas/`
-**Last Updated:** 2026-03-12
+**Last Updated:** 2026-10-29
 
 This document is the complete reference for all JSON schemas and ZIP package formats used by Mission Designer for import, export, and interchange of workflow specifications.
 
@@ -25,33 +25,40 @@ This document is the complete reference for all JSON schemas and ZIP package for
 12. [ZIP Package Formats](#12-zip-package-formats)
 13. [Image Handling](#13-image-handling)
 14. [Schema Version History](#14-schema-version-history)
+15. [Form Document v2](#15-form-document-v2)
 
 ---
 
 ## 1. Introduction
 
-Trajectory is a distributed workflow system where users author workflows on a web site, then export and execute them on mobile devices or enterprise systems. This specification defines the JSON data models and ZIP packaging formats used for interchange between the authoring environment (Mission Designer) and runtime execution systems (Trajectory Pro).
+Trajectory Pro Mission Control is a distributed workflow system: users author workflows in Mission Designer, export them as packages, load them into work centers in Mission Commander, and run them on Mission Engine, with operators working in Mission Pilot. This specification defines the JSON data models and ZIP packaging formats Mission Designer uses for import, export and interchange with the rest of the suite. The suite-wide reference, covering every application's packages, is `docs/JSON_SCHEMA.md` at the root of the Trajectory Pro Mission Control repository.
 
 ### Exchangeable Artifacts
 
-| Artifact            | Extension    | Format | Description                                |
-| ------------------- | ------------ | ------ | ------------------------------------------ |
-| Workflow Package    | `.WFmasterX` | ZIP    | Workflow + images                          |
-| Runtime Package     | `.WFmasterX` | ZIP    | Workflow + environments + actions + images |
-| Library Package     | `.WFlibX`    | ZIP    | Full library tree + dependencies + images  |
-| Workflow Library    | `.WFmaster`  | JSON   | Workflow specification JSON                |
-| Step Library        | `.WFslibX`   | JSON   | Step library JSON                          |
-| Environment Library | `.WFenvir`   | JSON   | Environment library JSON                   |
-| Action Library      | `.WFaction`  | JSON   | Action library JSON                        |
+| Artifact                    | Extension       | Format | Description                                                            |
+| --------------------------- | --------------- | ------ | ---------------------------------------------------------------------- |
+| Workflow (Runtime) Package  | `.WFmasterX`    | ZIP    | Workflow + its environment and action libraries + images               |
+| Workflow Library Package    | `.WFlibX`       | ZIP    | Full workflow library tree + dependencies + images                     |
+| Step Library Package        | `.WFstepLibX`   | ZIP    | Step library + its environment and action libraries + images           |
+| Environment Library Package | `.WFenvirLibX`  | ZIP    | Environment library + the action libraries it uses                     |
+| Action Library Package      | `.WFactionLibX` | ZIP    | Action library                                                         |
+| Environment Package         | `.WFenvirX`     | ZIP    | One environment + its actions (also loads into Mission Commander)      |
+| Workflow Specification      | `.WFmaster`     | JSON   | One workflow specification (canvas export; inner file of `.WFmasterX`) |
+| Workflow Library            | `.WFlib`        | JSON   | Workflow library JSON (inner file of `.WFlibX`)                        |
+| Step Library                | `.WFslib`       | JSON   | Step library JSON (inner file of `.WFstepLibX` and `.WFlibX`)          |
+| Environment Library         | `.WFenvir`      | JSON   | Environment library JSON (a single environment inside `.WFenvirX`)     |
+| Action Library              | `.WFaction`     | JSON   | Action library JSON (a single action inside `.WFenvirX`)               |
+
+`.WFslibX` is the former name of `.WFstepLibX`; Mission Designer still imports it.
 
 ### Identification System
 
 Every entity uses dual identification:
 
 - **`local_id`** — Human-readable name (e.g., "Bake Cookies")
-- **`oid`** — Snowflake OID (globally unique, e.g., "6000000000001")
+- **`oid`** — Globally unique, opaque string
 
-OIDs are strings containing numeric snowflake identifiers. They are generated at creation time and never change. The `local_id` serves as the display name and may be renamed by users.
+Mission Designer issues UUIDs for library and specification OIDs and numeric snowflake strings (e.g. `"6000000000001"`) for steps, parameters, properties and form blocks. Treat every OID as opaque. The `local_id` serves as the display name and may be renamed by users.
 
 ### Parameters
 
@@ -67,14 +74,14 @@ OIDs are strings containing numeric snowflake identifiers. They are generated at
 
 All top-level objects and specifications inherit from this base.
 
-| Field                | Type               | Required | Description                         |
-| -------------------- | ------------------ | -------- | ----------------------------------- |
-| `local_id`           | string             | Yes      | Human-readable name                 |
-| `oid`                | string             | Yes      | Snowflake OID (globally unique)     |
-| `version`            | string             | Yes      | Version string (e.g., `"1.0"`)      |
-| `last_modified_date` | string (date-time) | Yes      | ISO 8601 timestamp                  |
-| `description`        | string             | No       | Human-readable description          |
-| `schemaVersion`      | string             | No       | Trajectory schema version (`"4.0"`) |
+| Field                | Type               | Required | Description                                                                                                                                                  |
+| -------------------- | ------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `local_id`           | string             | Yes      | Human-readable name                                                                                                                                          |
+| `oid`                | string             | Yes      | Snowflake OID (globally unique)                                                                                                                              |
+| `version`            | string             | Yes      | Version string; Mission Designer writes `"1.0.0"` when none is set, and on every step                                                                        |
+| `last_modified_date` | string (date-time) | Yes      | ISO 8601 timestamp                                                                                                                                           |
+| `description`        | string             | No       | Human-readable description                                                                                                                                   |
+| `schemaVersion`      | string             | No       | Trajectory schema version: `"3.0"`, `"4.0"` or `"5.0"`. Mission Designer writes `"5.0"` on every workflow specification (root and children) and nowhere else |
 
 ### JSON Schema
 
@@ -85,7 +92,7 @@ All top-level objects and specifications inherit from this base.
   "title": "Managed Workflow Element",
   "type": "object",
   "properties": {
-    "schemaVersion": { "type": "string", "enum": ["4.0"] },
+    "schemaVersion": { "type": "string", "enum": ["3.0", "4.0", "5.0"] },
     "local_id": { "type": "string" },
     "oid": { "type": "string" },
     "description": { "type": "string" },
@@ -108,21 +115,23 @@ A collection of action specifications that define reusable operations.
 
 Inherits all fields from [Managed Element](#2-managed-element-base-schema).
 
-| Field                   | Type  | Required | Description                               |
-| ----------------------- | ----- | -------- | ----------------------------------------- |
-| `action_specifications` | array | Yes      | List of action specifications             |
-| `child_libraries`       | array | No       | Nested child action libraries (recursive) |
+| Field                   | Type   | Required | Description                                                |
+| ----------------------- | ------ | -------- | ---------------------------------------------------------- |
+| `action_specifications` | array  | Yes      | List of action specifications                              |
+| `child_libraries`       | array  | No       | Nested child action libraries (recursive)                  |
+| `parent_library_oid`    | string | No       | OID of the parent library (provenance only; not read back) |
 
 ### Action Specification
 
 Inherits all fields from [Managed Element](#2-managed-element-base-schema).
 
-| Field                             | Type   | Required | Description                  |
-| --------------------------------- | ------ | -------- | ---------------------------- |
-| `input_parameter_specifications`  | array  | No       | Input parameters             |
-| `output_parameter_specifications` | array  | No       | Output parameters            |
-| `property_specifications`         | array  | No       | Named value properties       |
-| `action_visibility`               | string | No       | `"opaque"` or `"observable"` |
+| Field                             | Type   | Required | Description                                                                                     |
+| --------------------------------- | ------ | -------- | ----------------------------------------------------------------------------------------------- |
+| `state`                           | string | No       | Lifecycle state (`Draft` … `Obsolete`); accepted by the schema, not written by Mission Designer |
+| `input_parameter_specifications`  | array  | No       | Input parameters                                                                                |
+| `output_parameter_specifications` | array  | No       | Output parameters                                                                               |
+| `property_specifications`         | array  | No       | Named value properties                                                                          |
+| `action_visibility`               | string | No       | `"opaque"` or `"observable"`; Mission Designer always writes it (default `"opaque"`)            |
 
 ### Example
 
@@ -158,22 +167,27 @@ A collection of environment specifications that bind actions to execution contex
 
 Inherits all fields from [Managed Element](#2-managed-element-base-schema).
 
-| Field                        | Type  | Required | Description                                    |
-| ---------------------------- | ----- | -------- | ---------------------------------------------- |
-| `environment_specifications` | array | Yes      | List of environment specifications             |
-| `child_libraries`            | array | No       | Nested child environment libraries (recursive) |
+| Field                        | Type   | Required | Description                                                |
+| ---------------------------- | ------ | -------- | ---------------------------------------------------------- |
+| `environment_specifications` | array  | Yes      | List of environment specifications                         |
+| `child_libraries`            | array  | No       | Nested child environment libraries (recursive)             |
+| `parent_library_oid`         | string | No       | OID of the parent library (provenance only; not read back) |
 
 ### Environment Specification
 
 Inherits all fields from [Managed Element](#2-managed-element-base-schema).
 
-| Field                              | Type  | Required | Description                                                                                        |
-| ---------------------------------- | ----- | -------- | -------------------------------------------------------------------------------------------------- |
-| `included_actions`                 | array | Yes      | Actions included in this environment                                                               |
-| `value_property_specifications`    | array | No       | Named value properties                                                                             |
-| `value_type_specifications`        | array | No       | Designer-only Value Type templates (Designer library packages only; omitted from runtime packages) |
-| `action_property_specifications`   | array | No       | Action-scoped shared properties                                                                    |
-| `resource_property_specifications` | array | No       | Resource definitions                                                                               |
+| Field                              | Type   | Required | Description                                                                                                                                                                                       |
+| ---------------------------------- | ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `library_name`                     | string | No       | Name of the environment library; a workflow package import links a workflow to its environments by this name                                                                                      |
+| `library_oid`                      | string | No       | OID of the environment library (provenance)                                                                                                                                                       |
+| `state`                            | string | No       | Lifecycle state (`Draft` … `Obsolete`)                                                                                                                                                            |
+| `included_actions`                 | array  | Yes      | Actions included in this environment                                                                                                                                                              |
+| `value_property_specifications`    | array  | No       | Named value properties                                                                                                                                                                            |
+| `value_type_specifications`        | array  | No       | Designer-only Value Type templates (Designer library packages only; omitted from runtime packages). Entry: `{ name, oid?, description?, entries: [{ name, value? }] }`, entries in authored order |
+| `action_property_specifications`   | array  | No       | Action Properties: values held on the action server that bound step inputs read live (see [Action Property Binding](#gate-steps))                                                                 |
+| `resource_property_specifications` | array  | No       | Resource definitions                                                                                                                                                                              |
+| `action_server_specifications`     | array  | No       | `{ name, uri, description?, connection_type: "REST", api_key? }`. A blank `uri` is allowed: the server is then bound per work center in Mission Commander                                         |
 
 ### Included Action
 
@@ -193,7 +207,7 @@ An `IncludedAction` carries `action_name` + `action_library` as the cross-packag
 | `output_parameter_specifications` | array              | No       | Inlined output parameters.                                             |
 | `property_specifications`         | array              | No       | Inlined property specifications.                                       |
 
-When the action could be resolved at export time, all inlined fields are populated together. When not (legacy entries, missing library context), only `action_name` + `action_library` are emitted — consumers can detect the unresolved case by absence of `oid`.
+When the action could be resolved at export time, all inlined fields are populated together. When not (legacy entries, missing library context), only `action_name` + `action_library` are emitted — consumers can detect the unresolved case by absence of `oid`. Mission Engine reads a roster entry's OID as `action_oid ?? oid`, so packages that spell it `action_oid` still run; Mission Designer writes `oid`.
 
 ### Example
 
@@ -270,18 +284,26 @@ Inherits all fields from [Managed Element](#2-managed-element-base-schema).
 
 | Field                               | Type   | Required | Description                                                                                                                                                           |
 | ----------------------------------- | ------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `schemaVersion`                     | string | No       | `"4.0"`                                                                                                                                                               |
+| `schemaVersion`                     | string | No       | `"5.0"` (written by Mission Designer). A `.WFmasterX` import requires `"4.0"` – `"5.0"`                                                                               |
 | `type_name`                         | string | No       | Optional ISA 88 type (e.g. `Operation`), at most 50 characters. Informational only; never affects execution. Omitted when unset. Also allowed on each child workflow. |
+| `display_style`                     | string | No       | `"flowchart"`, `"bpmn"` or `"isa88"` — the authoring notation                                                                                                         |
+| `state`                             | string | No       | Lifecycle state (`Draft`, `InTest`, `InReview`, `Approved`, `Effective`, `Superseded`, `Obsolete`)                                                                    |
+| `library_name`, `library_oid`       | string | No       | Name and OID of the library the workflow lives in (provenance)                                                                                                        |
 | `steps`                             | array  | Yes      | Workflow steps                                                                                                                                                        |
 | `connections`                       | array  | Yes      | Step connections                                                                                                                                                      |
-| `resource_command_specifications`   | array  | No       | Workflow-level resource commands                                                                                                                                      |
+| `resource_command_specifications`   | array  | No       | Workflow-level resource commands (allowed; Mission Designer does not write them)                                                                                      |
 | `resource_property_specifications`  | array  | No       | Workflow-level resource definitions                                                                                                                                   |
 | `value_property_specifications`     | array  | No       | Workflow-level named values                                                                                                                                           |
 | `starting_parameter_specifications` | array  | No       | Workflow input parameters                                                                                                                                             |
 | `output_parameter_specifications`   | array  | No       | Workflow output parameters                                                                                                                                            |
-| `environment_specifications`        | array  | No       | Embedded environment specifications                                                                                                                                   |
-| `child_workflows`                   | array  | No       | Embedded sub-workflow specifications                                                                                                                                  |
+| `try_specifications`                | array  | No       | Workflow-level TRY fallback rows (see [TRY / CATCH / RETURN](#try--catch--return))                                                                                    |
+| `environment_specifications`        | array  | No       | Embedded environment specifications (in full, with inlined action bodies)                                                                                             |
+| `children`                          | array  | No       | Embedded child workflows (see [Child Workflows](#child-workflows))                                                                                                    |
 | `viewport`                          | object | No       | Canvas viewport state                                                                                                                                                 |
+
+### Child Workflows
+
+Each `children[]` entry has the same fields as a workflow specification plus `parentChildSpecId` (required; `null` for a direct child of the root, otherwise the OID of the parent child) and required `version` and `state` (Mission Designer writes the root workflow's values). Grandchildren nest under `children`. A `WORKFLOW PROXY` step runs the child whose `local_id` equals the step's `local_id`. In a `.WFmasterX`, children carry no `environment_specifications`: the engine resolves them against the root's. The pre-v7.0 flat `child_workflows` field is no longer read.
 
 ### Viewport
 
@@ -299,10 +321,10 @@ Inherits all fields from [Managed Element](#2-managed-element-base-schema).
   "last_modified_date": "2026-02-24T12:00:00.000Z",
   "workflow_specifications": [
     {
-      "schemaVersion": "4.0",
+      "schemaVersion": "5.0",
       "local_id": "Bake Cookies",
       "oid": "3000000002",
-      "version": "1.0",
+      "version": "1.0.0",
       "last_modified_date": "2026-02-24T12:00:00.000Z",
       "steps": [
         {
@@ -322,7 +344,7 @@ Inherits all fields from [Managed Element](#2-managed-element-base-schema).
           "position": { "x": 250, "y": 150 }
         }
       ],
-      "connections": [{ "from_step_id": "Start", "to_step_id": "End", "connection_id": "conn-1" }],
+      "connections": [{ "from_step_id": "3000000010", "to_step_id": "3000000012" }],
       "viewport": { "x": 0, "y": 0, "zoom": 1 }
     }
   ]
@@ -335,16 +357,17 @@ Inherits all fields from [Managed Element](#2-managed-element-base-schema).
 
 **Schema ID:** `master-workflow-step-library.json`
 
-A collection of reusable workflow steps.
+A collection of reusable workflows. A `WORKFLOW PROXY` step can reference one; the reference is resolved into an embedded child workflow when the workflow is exported as a `.WFmasterX`.
 
 ### Top Level
 
 Inherits all fields from [Managed Element](#2-managed-element-base-schema).
 
-| Field             | Type  | Required | Description                                              |
-| ----------------- | ----- | -------- | -------------------------------------------------------- |
-| `library_steps`   | array | Yes      | List of library steps (same structure as workflow steps) |
-| `child_libraries` | array | No       | Nested child step libraries (recursive)                  |
+| Field                     | Type   | Required | Description                                                                                                |
+| ------------------------- | ------ | -------- | ---------------------------------------------------------------------------------------------------------- |
+| `workflow_specifications` | array  | Yes      | Workflow specifications (same structure as in a workflow library; each requires `steps` and `connections`) |
+| `child_libraries`         | array  | No       | Nested child step libraries (recursive)                                                                    |
+| `parent_library_oid`      | string | No       | OID of the parent library (provenance only; not read back)                                                 |
 
 ### Example
 
@@ -352,22 +375,45 @@ Inherits all fields from [Managed Element](#2-managed-element-base-schema).
 {
   "local_id": "Common Steps",
   "oid": "4000000001",
-  "version": "1.0",
+  "version": "1.0.0",
   "last_modified_date": "2026-02-24T12:00:00.000Z",
-  "library_steps": [
+  "workflow_specifications": [
     {
+      "schemaVersion": "5.0",
       "local_id": "User Confirmation",
       "oid": "4000000002",
-      "version": "1.0",
+      "version": "1.0.0",
       "last_modified_date": "2026-02-24T12:00:00.000Z",
-      "step_type": "YES_NO",
-      "yes_no_config": {
-        "yes_label": "Confirm",
-        "no_label": "Cancel",
-        "yes_value": "confirmed",
-        "no_value": "cancelled",
-        "default_selection": "none"
-      }
+      "state": "Draft",
+      "steps": [
+        {
+          "local_id": "Start",
+          "oid": "4000000010",
+          "version": "1.0.0",
+          "last_modified_date": "2026-02-24T12:00:00.000Z",
+          "step_type": "START"
+        },
+        {
+          "local_id": "Confirm",
+          "oid": "4000000011",
+          "version": "1.0.0",
+          "last_modified_date": "2026-02-24T12:00:00.000Z",
+          "step_type": "YES_NO",
+          "yes_no_config": { "yes_label": "Confirm", "no_label": "Cancel", "yes_value": "true", "no_value": "false" }
+        },
+        {
+          "local_id": "End",
+          "oid": "4000000012",
+          "version": "1.0.0",
+          "last_modified_date": "2026-02-24T12:00:00.000Z",
+          "step_type": "END"
+        }
+      ],
+      "connections": [
+        { "from_step_id": "4000000010", "to_step_id": "4000000011" },
+        { "from_step_id": "4000000011", "to_step_id": "4000000012", "source_handle_id": "yes" },
+        { "from_step_id": "4000000011", "to_step_id": "4000000012", "source_handle_id": "no" }
+      ]
     }
   ]
 }
@@ -381,47 +427,53 @@ Inherits all fields from [Managed Element](#2-managed-element-base-schema).
 
 ### Common Fields
 
-| Field                             | Type             | Required | Description                                |
-| --------------------------------- | ---------------- | -------- | ------------------------------------------ |
-| `step_type`                       | string           | Yes      | Step type enum (see below)                 |
-| `position`                        | object           | No       | Canvas position `{ x: number, y: number }` |
-| `action_visibility`               | string           | No       | `"opaque"` or `"observable"`               |
-| `input_parameter_specifications`  | array            | No       | Step input parameters                      |
-| `output_parameter_specifications` | array            | No       | Step output parameters                     |
-| `output_parameter_name`           | string           | No       | Output parameter name for UI steps         |
-| `value_property_specifications`   | array            | No       | Step-level named values                    |
-| `resource_command_specifications` | array            | No       | Step-level resource commands               |
-| `connection_references`           | array of strings | No       | References to connections                  |
+| Field                             | Type             | Required | Description                                                                                                               |
+| --------------------------------- | ---------------- | -------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `step_type`                       | string           | Yes      | Step type enum (see below)                                                                                                |
+| `position`                        | object           | No       | Canvas position `{ x: number, y: number }`                                                                                |
+| `action_visibility`               | string           | No       | `"opaque"` or `"observable"` (written on every `ACTION PROXY`, default `"opaque"`)                                        |
+| `input_parameter_specifications`  | array            | No       | Step input parameters                                                                                                     |
+| `output_parameter_specifications` | array            | No       | Step output parameters                                                                                                    |
+| `output_parameter_name`           | string           | No       | Output parameter name for UI steps (allowed by the schema; not written)                                                   |
+| `value_property_specifications`   | array            | No       | Step-level named values                                                                                                   |
+| `resource_command_specifications` | array            | No       | Step-level resource commands                                                                                              |
+| `action_property_bindings`        | array            | No       | Live Action Property bindings of a non-GATE step's inputs (see [Action Property Binding](#gate-steps)); derived at export |
+| `try_specifications`              | array            | No       | TRY rows (see [TRY / CATCH / RETURN](#try--catch--return))                                                                |
+| `catch_id`                        | string           | No       | CATCH steps only                                                                                                          |
+| `return_config`                   | object           | No       | RETURN steps only                                                                                                         |
+| `connection_references`           | array of strings | No       | References to connections (allowed by the schema; not written)                                                            |
 
 ### Step Types
 
-| Value                 | Description                                                                                                                 |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `START`               | Workflow entry point                                                                                                        |
-| `END`                 | Workflow exit point                                                                                                         |
-| `ACTION PROXY`        | Execute an action (default)                                                                                                 |
-| `WAIT ACTION PROXY`   | Execute an action and wait for completion                                                                                   |
-| `NOWAIT ACTION PROXY` | Execute an action without waiting                                                                                           |
-| `WORKFLOW PROXY`      | Invoke a sub-workflow                                                                                                       |
-| `SELECT 1`            | Conditional branch (evaluate conditions)                                                                                    |
-| `WAIT ANY`            | Wait for any incoming branch to complete                                                                                    |
-| `PARALLEL`            | Fork execution into parallel branches                                                                                       |
-| `WAIT ALL`            | Wait for all incoming branches to complete                                                                                  |
-| `MATH`                | Mathematical computation step                                                                                               |
-| `SCRIPT`              | Execute a script (e.g., Python)                                                                                             |
-| `GATE`                | Cyclic boolean transition (ISA-88: Transition Step); re-evaluates a script on a cycle until it returns true, then continues |
-| `YES_NO`              | Binary user decision with configurable labels                                                                               |
-| `USER_INTERACTION`    | General user interaction with WYSIWYG form layout                                                                           |
+| Value              | Description                                                                                                                                          |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `START`            | Workflow entry point                                                                                                                                 |
+| `END`              | Workflow exit point                                                                                                                                  |
+| `ACTION PROXY`     | Execute an environment action and wait for it to finish                                                                                              |
+| `WORKFLOW PROXY`   | Run a child workflow                                                                                                                                 |
+| `SELECT 1`         | Conditional branch (evaluate conditions)                                                                                                             |
+| `WAIT ANY`         | Wait for any incoming branch to complete                                                                                                             |
+| `PARALLEL`         | Fork execution into parallel branches                                                                                                                |
+| `WAIT ALL`         | Wait for all incoming branches to complete                                                                                                           |
+| `SCRIPT`           | Execute a JavaScript script, once or repeatedly                                                                                                      |
+| `GATE`             | Cyclic boolean transition (ISA-88: Transition Step); re-evaluates a script on a cycle until it returns true and/or waits for a timer, then continues |
+| `YES_NO`           | Binary user decision with configurable labels                                                                                                        |
+| `USER_INTERACTION` | General user interaction with a form                                                                                                                 |
+| `CATCH`            | Entry point of a catch network that handles a TRY                                                                                                    |
+| `RETURN`           | Exit of a catch network; says how the workflow continues                                                                                             |
+
+Older packages may contain `WAIT ACTION PROXY`, `NOWAIT ACTION PROXY` or `MATH`; the importer maps all three to an `ACTION PROXY` step and the exporter never writes them.
 
 ### Step-Type-Specific Fields
 
 #### USER_INTERACTION / YES_NO Steps
 
-| Field                         | Type  | Description                                   |
-| ----------------------------- | ----- | --------------------------------------------- |
-| `ui_parameter_specifications` | array | UI elements defining screen content           |
-| `form_layout_config`          | array | WYSIWYG form layouts (3 device breakpoints)   |
-| `form_element_images`         | array | Image OID-to-filename mapping for form images |
+| Field                         | Type   | Description                                                                                                                              |
+| ----------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `ui_parameter_specifications` | array  | UI elements defining screen content (a YES_NO step's `YesNoButtons` entry holds its labels)                                              |
+| `form_document`               | object | The step's form as a Form Document v2 (see [§15](#15-form-document-v2)); written only when the form has at least one block               |
+| `form_layout_config`          | array  | Legacy WYSIWYG form layouts (3 device breakpoints); package format ≤ 4.0, read on import and converted to `form_document`, never written |
+| `form_element_images`         | array  | Image OID-to-filename mapping for form images                                                                                            |
 
 #### YES_NO Steps
 
@@ -431,13 +483,13 @@ Inherits all fields from [Managed Element](#2-managed-element-base-schema).
 
 **yes_no_config:**
 
-| Field               | Type   | Default   | Description                       |
-| ------------------- | ------ | --------- | --------------------------------- |
-| `yes_label`         | string | `"Yes"`   | Custom label for Yes button       |
-| `no_label`          | string | `"No"`    | Custom label for No button        |
-| `yes_value`         | string | `"true"`  | Output value when Yes is selected |
-| `no_value`          | string | `"false"` | Output value when No is selected  |
-| `default_selection` | string | `"none"`  | `"yes"`, `"no"`, or `"none"`      |
+| Field               | Type   | Default   | Description                                                                 |
+| ------------------- | ------ | --------- | --------------------------------------------------------------------------- |
+| `yes_label`         | string | `"Yes"`   | Custom label for Yes button                                                 |
+| `no_label`          | string | `"No"`    | Custom label for No button                                                  |
+| `yes_value`         | string | `"true"`  | Output value when Yes is selected (Mission Designer always writes `"true"`) |
+| `no_value`          | string | `"false"` | Output value when No is selected (Mission Designer always writes `"false"`) |
+| `default_selection` | string | `"none"`  | `"yes"`, `"no"`, or `"none"`                                                |
 
 #### SCRIPT Steps
 
@@ -447,10 +499,19 @@ Inherits all fields from [Managed Element](#2-managed-element-base-schema).
 
 **script_config:**
 
-| Field      | Type   | Description                        |
-| ---------- | ------ | ---------------------------------- |
-| `language` | string | Script language (e.g., `"python"`) |
-| `source`   | string | Script source code                 |
+| Field      | Type   | Description                                                                                                                                                                                 |
+| ---------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `language` | string | Mission Designer writes `"javascript"`; Mission Engine runs every script as JavaScript                                                                                                      |
+| `source`   | string | Script source code. Inputs are local variables named by `input_parameter_specifications[].id` (strings); results go in an `output` object, stored through `output_parameter_specifications` |
+| `repeat`   | object | Optional. Present = repeat until the script returns `true` (see below)                                                                                                                      |
+
+**script_config.repeat:**
+
+| Field                | Type    | Description                                                                                                                        |
+| -------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `cycle_seconds`      | number  | Seconds between runs, 1 – 31,449,600 (Mission Designer always writes it; default 5)                                                |
+| `time_limit_seconds` | integer | Optional whole seconds, 1 – 31,449,600; absent = no time limit                                                                     |
+| `on_time_limit`      | string  | `"error"` (fail the step) or `"complete"` (keep the outputs set so far and complete); present exactly when `time_limit_seconds` is |
 
 #### GATE Steps
 
@@ -464,11 +525,13 @@ A GATE step has exactly one incoming and one outgoing connection (validated), no
 
 | Field                      | Type    | Default           | Description                                                                                                                                                                                                                                                          |
 | -------------------------- | ------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cycle_seconds`            | number  | `5`               | Re-evaluation interval in seconds; must be `>= 1` when present                                                                                                                                                                                                       |
+| `cycle_seconds`            | number  | `5`               | Re-evaluation interval in seconds; 1 – 31,449,600 when present                                                                                                                                                                                                       |
 | `language`                 | string  | --                | Script language (mirrors `script_config.language`)                                                                                                                                                                                                                   |
 | `source`                   | string  | pass-through TRUE | Script source; must `return` a value, coerced by JS truthiness. No source means the gate opens immediately. Inputs are supplied the same way as SCRIPT steps (positional locals by `input_parameter_specifications[].id`, all strings); there is no `output` object. |
 | `control_previous_action`  | boolean | `false`           | Opt into armed behavior (see below). Absent/false = the gate waits for the previous step to complete like any other step. Never emitted as `false` -- absence and `false` are the same "off" state on the wire.                                                      |
-| `action_property_bindings` | array   | `[]`              | Bindings of gate script inputs to live Environment Action Properties (see below)                                                                                                                                                                                     |
+| `mode`                     | string  | `"condition"`     | `"condition"`, `"timer"` or `"condition_or_timer"`. `timer` opens after `delay_seconds` and evaluates no script; `condition_or_timer` opens on whichever comes first. Written only for the two timed modes.                                                          |
+| `delay_seconds`            | integer | --                | Whole seconds, 1 – 31,449,600. Present exactly when `mode` is a timed mode.                                                                                                                                                                                          |
+| `action_property_bindings` | array   | `[]`              | Bindings of gate script inputs to live Environment Action Properties (see below). Never written for a `timer` gate.                                                                                                                                                  |
 
 **Action Property Binding:**
 
@@ -479,7 +542,7 @@ A GATE step has exactly one incoming and one outgoing connection (validated), no
 | `environment_name` | string | No       | Local name of the environment, used as a fallback if `environment_oid` fails to resolve (the engine tries `environment_oid` first, then `environment_name`, so the dual binding survives a stale oid) |
 | `property`         | string | Yes      | Dotted `Property.Entry` name on the action server; the outer name alone means the whole group                                                                                                         |
 
-A binding causes that input to be re-read live from the bound environment's action server on every evaluation cycle, instead of from the workflow's own property store. When `control_previous_action` is `true` and the GATE step is the sole successor of an ACTION PROXY step, the two run concurrently: a TRUE result while the action is still running sends the action a STOP command (if supported) and opens the gate; if the action completes first, execution holds at the gate until it independently returns TRUE. When `control_previous_action` is absent or `false` (the default), the gate is an ordinary successor -- it is materialized only once the preceding step completes, the same as a gate anywhere else in the workflow.
+A binding causes that input to be re-read live from the bound environment's action server on every evaluation cycle, instead of from the workflow's own property store. Any other step type carries the same binding objects in its own top-level `action_property_bindings`; those are read once, when the step starts. Mission Designer derives every binding at export from inputs with `value_type: "property"` whose property is an environment Action Property (a Value Property of the same name in scope wins, and no binding is written). When `control_previous_action` is `true` and the GATE step is the sole successor of an ACTION PROXY step, the two run concurrently: a TRUE result while the action is still running sends the action a STOP command (if supported) and opens the gate; if the action completes first, execution holds at the gate until it independently returns TRUE. When `control_previous_action` is absent or `false` (the default), the gate is an ordinary successor -- it is materialized only once the preceding step completes, the same as a gate anywhere else in the workflow.
 
 #### SELECT 1 Steps
 
@@ -497,14 +560,44 @@ A binding causes that input to be re-read live from the bound environment's acti
 
 **Select1 Option:**
 
-| Field        | Type    | Required | Description                                                                  |
-| ------------ | ------- | -------- | ---------------------------------------------------------------------------- |
-| `id`         | string  | Yes      | Unique ID (also Handle ID and connection_id)                                 |
-| `label`      | string  | Yes      | Display label                                                                |
-| `operator`   | string  | Yes      | `"=="`, `"!="`, `"<"`, `">"`, `"<="`, `">="`, `"Contains"`, `"Not Contains"` |
-| `value`      | string  | Yes      | Comparison value                                                             |
-| `value_type` | string  | Yes      | `"literal"` or `"property"`                                                  |
-| `is_default` | boolean | Yes      | Whether this is the default branch                                           |
+| Field        | Type    | Required | Description                                                                       |
+| ------------ | ------- | -------- | --------------------------------------------------------------------------------- |
+| `id`         | string  | Yes      | Unique ID (also the outgoing connection's `connection_id` and `source_handle_id`) |
+| `label`      | string  | Yes      | Display label                                                                     |
+| `operator`   | string  | Yes      | `"=="`, `"!="`, `"<"`, `">"`, `"<="`, `">="`, `"Contains"`, `"Not Contains"`      |
+| `value`      | string  | Yes      | Comparison value                                                                  |
+| `value_type` | string  | Yes      | `"literal"` or `"property"`                                                       |
+| `is_default` | boolean | Yes      | Whether this is the default branch                                                |
+
+#### ACTION PROXY Steps
+
+| Field                 | Type   | Description                                                         |
+| --------------------- | ------ | ------------------------------------------------------------------- |
+| `action_proxy_config` | object | Runtime identity of the invoked action — required by Mission Engine |
+
+**action_proxy_config:**
+
+| Field              | Type   | Required | Description                                                         |
+| ------------------ | ------ | -------- | ------------------------------------------------------------------- |
+| `action_oid`       | string | Yes      | OID of the action in the environment's `included_actions[]`         |
+| `environment_oid`  | string | Yes      | OID of one of the workflow's `environment_specifications[]`         |
+| `action_name`      | string | No       | (5.0+) The action's name, equal to the roster entry's `action_name` |
+| `environment_name` | string | No       | (5.0+) The environment's name, equal to its `local_id`              |
+| `timeout_ms`       | number | No       | Authored time limit in milliseconds; absent = no time limit         |
+
+Mission Designer derives the OIDs and names on every export by name from the environment roster it embeds, falling back to the stored config only when nothing resolves. Mission Engine accepts a config whose OIDs do not match the package when it carries the corresponding names, and resolves the action by name.
+
+#### TRY / CATCH / RETURN
+
+`try_specifications` (on `ACTION PROXY`, `SCRIPT`, `GATE`, `USER_INTERACTION`, `YES_NO` and `WORKFLOW PROXY` steps, and at workflow level) is an array of `{ mode, catch_id, release_on_catch? }`: `mode` is `"ERROR"`, `"ABORT"` or `"TIMEOUT"` (at most one row per mode) and `catch_id` names a CATCH step. A `CATCH` step carries a unique `catch_id` and has no incoming and one outgoing connection; a `RETURN` step has one incoming and no outgoing connection and carries `return_config`:
+
+| Field           | Type   | Required | Description                                                                                                   |
+| --------------- | ------ | -------- | ------------------------------------------------------------------------------------------------------------- |
+| `command`       | string | Yes      | `"ABANDON"`, `"RESTART"`, `"GOTO"`, `"RETRY"` or `"COMPLETE"` (written as `ABANDON` when left at the default) |
+| `restart_mode`  | string | RESTART  | `"CLEAN"` or `"KEEP"`                                                                                         |
+| `goto_step_oid` | string | GOTO     | Step to continue at; must be outside every catch network                                                      |
+
+A CATCH step always exports its four canonical outputs describing what was caught.
 
 ### UI Parameter Specification
 
@@ -544,7 +637,7 @@ Used by `USER_INTERACTION` and `YES_NO` steps to define screen content.
 
 ### Legacy Step Configs (Backward Compatibility)
 
-These are retained for import compatibility with pre-v4.0 files:
+These pre-v4.0 shapes are no longer in the schema files; Mission Designer neither writes nor reads them (pre-v4.0 files are rejected on import):
 
 **text_input_config:** `{ required?, validation_type?, default_value? }`
 **pick_one_config:** `{ options?: [{ id, label, value }], default_option_id? }`
@@ -558,8 +651,8 @@ Connections define the edges between workflow steps.
 
 | Field              | Type   | Required | Description                           |
 | ------------------ | ------ | -------- | ------------------------------------- |
-| `from_step_id`     | string | Yes      | Source step `local_id`                |
-| `to_step_id`       | string | Yes      | Target step `local_id`                |
+| `from_step_id`     | string | Yes      | Source step `oid`                     |
+| `to_step_id`       | string | Yes      | Target step `oid`                     |
 | `connection_id`    | string | No       | Unique identifier for this connection |
 | `source_handle_id` | string | No       | Source handle ID (for branching)      |
 | `condition`        | string | No       | Condition expression (for SELECT 1)   |
@@ -571,17 +664,17 @@ Connections define the edges between workflow steps.
 
 - Yes path: `{ "source_handle_id": "yes" }`
 - No path: `{ "source_handle_id": "no" }`
-- Both paths must converge at a `WAIT ANY` step
+- The paths usually rejoin at a `WAIT ANY` step (not enforced)
 
 **SELECT 1 branches:**
 
-- Each option uses `source_handle_id` matching the option's `id`
+- Each option's connection carries the option's `id` as `connection_id` (which the engine routes on) and as `source_handle_id`
 - The `condition` field contains the display text
 
 **PARALLEL branches:**
 
 - Fork from `PARALLEL` step to multiple branches
-- All branches must converge at a `WAIT_ALL` step
+- The branches must reach a `WAIT ALL` step (Mission Engine rejects a `PARALLEL` that does not, with `UNMATCHED_PARALLEL`)
 
 ### Waypoints
 
@@ -610,25 +703,27 @@ For the full routing algorithm and worked examples — needed by any runtime tha
 
 ### Parameter Specification (Input)
 
-| Field           | Type   | Required | Description                           |
-| --------------- | ------ | -------- | ------------------------------------- |
-| `id`            | string | Yes      | Parameter name identifier             |
-| `oid`           | string | No       | Snowflake OID                         |
-| `description`   | string | No       | Human-readable description            |
-| `default_value` | string | Yes      | Default value                         |
-| `value_type`    | string | No       | `"literal"` (default) or `"property"` |
-| `json_schema`   | string | No       | JSON Schema string for validation     |
-| `entries`       | array  | No       | Structured `{ name, value }` entries  |
+| Field           | Type   | Required | Description                                                                                                                                                       |
+| --------------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`            | string | Yes      | Parameter name identifier                                                                                                                                         |
+| `oid`           | string | No       | Snowflake OID                                                                                                                                                     |
+| `description`   | string | No       | Human-readable description                                                                                                                                        |
+| `default_value` | string | Yes      | Default value                                                                                                                                                     |
+| `value_type`    | string | No       | `"literal"` (default) or `"property"`; written only for `"property"`, where `default_value` is a property reference (`Name` or `Name.Entry`) resolved at run time |
+| `json_schema`   | string | No       | JSON Schema string for validation                                                                                                                                 |
+| `entries`       | array  | No       | Structured `{ name, value }` entries                                                                                                                              |
+
+For a workflow's `starting_parameter_specifications`, a value supplied when the runtime workflow is created wins; otherwise the default (resolved when `value_type` is `"property"`) is used.
 
 ### Output Parameter Specification
 
-| Field         | Type   | Required | Description                                |
-| ------------- | ------ | -------- | ------------------------------------------ |
-| `id`          | string | Yes      | Output parameter name identifier           |
-| `oid`         | string | No       | Snowflake OID                              |
-| `description` | string | No       | Human-readable description                 |
-| `target`      | string | No       | Value property name where output is stored |
-| `entries`     | array  | No       | Structured `{ name, value }` entries       |
+| Field         | Type   | Required | Description                                                                                                                                       |
+| ------------- | ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`          | string | Yes      | Output parameter name identifier                                                                                                                  |
+| `oid`         | string | No       | Snowflake OID                                                                                                                                     |
+| `description` | string | No       | Human-readable description                                                                                                                        |
+| `target`      | string | No       | Property key (`Name` or `Name.Entry`) where the output is stored; Mission Designer always writes it, using the output's own name when none is set |
+| `entries`     | array  | No       | Structured `{ name, value }` entries                                                                                                              |
 
 ### Property Specification (Named Values)
 
@@ -661,14 +756,16 @@ For the full routing algorithm and worked examples — needed by any runtime tha
 
 ### Resource Command Specification
 
-| Field           | Type    | Required | Description                                 |
-| --------------- | ------- | -------- | ------------------------------------------- |
-| `oid`           | string  | No       | Snowflake OID                               |
-| `command_type`  | string  | Yes      | Command type (see below)                    |
-| `resource_name` | string  | Yes      | Target resource name                        |
-| `amount`        | integer | No       | Amount for pool commands                    |
-| `target`        | string  | No       | Value property to store acquired handle     |
-| `source`        | string  | No       | Value property reference for sync send data |
+| Field                  | Type    | Required | Description                                                                           |
+| ---------------------- | ------- | -------- | ------------------------------------------------------------------------------------- |
+| `oid`                  | string  | No       | Snowflake OID                                                                         |
+| `command_type`         | string  | Yes      | Command type (see below)                                                              |
+| `resource_name`        | string  | Yes      | Target resource name                                                                  |
+| `resource_source_type` | string  | No       | `"workflow"` or `"environment"` — where the resource is declared                      |
+| `resource_source_oid`  | string  | No       | OID of the declaring workflow or environment (resolved by Mission Designer at export) |
+| `amount`               | integer | No       | Amount for pool commands (required > 0 for the pool commands)                         |
+| `target`               | string  | No       | Value property to store acquired handle                                               |
+| `source`               | string  | No       | Value property reference for sync send data                                           |
 
 **Command Types:**
 
@@ -684,7 +781,7 @@ For the full routing algorithm and worked examples — needed by any runtime tha
 
 ### Rich Text Content
 
-Text and Header form elements use a wrapper format when exported:
+Legacy (≤ 4.0) Text and Header form elements use a wrapper format; a Form Document v2 block's `content` is a plain HTML string with no wrapper:
 
 | Field       | Type   | Description                                        |
 | ----------- | ------ | -------------------------------------------------- |
@@ -703,6 +800,8 @@ On import, the wrapper is unwrapped — only the `content` (HTML) field is store
 ---
 
 ## 10. WYSIWYG Form Layout
+
+> **Legacy (package format ≤ 4.0).** Sections 10 and 11 describe the v1 `form_layout_config` layout. Mission Designer no longer writes it: forms are exported as `form_document` (see [§15](#15-form-document-v2)). A `form_layout_config` in an imported package is converted to a `form_document`.
 
 The `form_layout_config` array on `USER_INTERACTION` and `YES_NO` steps defines the WYSIWYG form for each device breakpoint.
 
@@ -743,7 +842,7 @@ Steps with form image elements include a mapping array:
 ]
 ```
 
-This maps each image element's stable `imageOid` to its filename in the `images/` folder of the ZIP.
+This maps each image element's stable `imageOid` to its filename in the `images/` folder of the ZIP. In 5.0 packages it is built from the `form_document` image blocks.
 
 ---
 
@@ -988,23 +1087,14 @@ Countdown or countup timer element.
 
 ### 12.1 Workflow Package (`.WFmasterX`)
 
-The standard export format for a single workflow with its images.
-
-**ZIP Structure:**
-
-```
-{WorkflowName}.WFmaster          # Workflow specification JSON
-images/{filename}                 # UI parameter images (no prefix)
-images/{imageOid}-{filename}      # Form element images (OID-prefixed)
-```
-
-No manifest file in this format. The `.WFmaster` file at the ZIP root is identified by extension.
+Mission Designer exports every single workflow as the runtime package described in 12.2 (with `manifest.json` and the environment and action libraries it uses). The download is named `{WorkflowName}({version}).WFmasterX`; the `.WFmaster` entry inside is the workflow name with characters outside `A–Z a–z 0–9 . _ -` replaced by `_`.
 
 **Import Detection:**
 
-- Look for a `.WFmaster` file at the ZIP root (no subdirectory path)
-- Extract images from `images/` folder
-- For OID-prefixed images: store under both prefixed and bare filename keys
+- Look for a `.WFmaster` file (the first one found is the workflow; `schemaVersion` must be `"4.0"` – `"5.0"`)
+- Recreate or reuse the environment and action libraries from `environments/` and `actions/`
+- Extract images from `images/` folder; an image a form references but the ZIP lacks is left empty
+- Any other entry fails the import (`zip_filename_invalid`)
 
 ---
 
@@ -1017,8 +1107,8 @@ An extended workflow package that includes all dependent libraries for self-cont
 ```
 manifest.json                            # Package metadata
 {WorkflowName}.WFmaster                  # Main workflow JSON
-environments/{EnvName}.WFenvir           # Environment library JSON files
-actions/{ActionName}.WFaction             # Action library JSON files
+environments/{EnvLibName}.WFenvir        # Environment library JSON files
+actions/{ActionLibName}.WFaction         # Action library JSON files
 images/{filename}                        # UI parameter images
 images/{imageOid}-{filename}             # Form element images
 ```
@@ -1046,6 +1136,8 @@ images/{imageOid}-{filename}             # Form element images
 - Referenced sub-workflows are resolved to embedded mode before export (no dangling references)
 - Environment and action libraries are collected by traversing the workflow's environment specifications
 - Images collected recursively from the main workflow and all child workflows
+- `manifest.json` is advisory; importers do not read it
+- On import, a workflow is linked to an environment library when `environments/{EnvLibName}.WFenvir` matches the embedded environment's `library_name`; a library of that name already in the importing team (or in GLOBAL) is reused as it is. An unmatched link is dropped with an import warning
 
 ---
 
@@ -1056,35 +1148,40 @@ Exports an entire library tree with all dependencies.
 **ZIP Structure:**
 
 ```
-manifest.json                            # Package metadata
-{LibraryName}.WFlibX                     # Workflow library JSON (root)
-steps/{StepLibName}.WFslibX              # Step library JSON files
-environments/{EnvName}.WFenvir           # Environment library JSON files
-actions/{ActionName}.WFaction             # Action library JSON files
+manifest.json                            # Package metadata (required on import)
+{LibraryName}.WFlib                      # Workflow library JSON (root)
+steps/{StepLibName}.WFslib               # Step library JSON files
+environments/{EnvLibName}.WFenvir        # Environment library JSON files
+actions/{ActionLibName}.WFaction         # Action library JSON files
 images/{filename}                        # UI parameter images
 images/{imageOid}-{filename}             # Form element images
 ```
+
+The root `.WFlib` holds every root workflow of the library and of its child libraries in `workflow_specifications[]` (each with its own `library_name` / `library_oid`); its `child_libraries[]` lists the direct child libraries' managed-element fields only. Library JSONs in this package include `value_type_specifications`.
 
 **manifest.json:**
 
 ```json
 {
   "packageType": "workflow-library",
-  "packageVersion": "1.0",
+  "packageVersion": "1.1",
   "libraryName": "My Workflow Library",
-  "stepLibraries": ["Common Steps"],
-  "environmentLibraries": ["Kitchen Environment Library"],
-  "actionLibraries": ["My Action Library"],
   "createdAt": "2026-03-01T12:00:00.000Z",
   "files": [
-    { "path": "My Workflow Library.WFlibX", "type": "workflow-library" },
-    { "path": "steps/Common Steps.WFslibX", "type": "step-library" },
+    { "path": "My Workflow Library.WFlib", "type": "workflow-library" },
+    { "path": "steps/Common Steps.WFslib", "type": "step-library" },
     { "path": "environments/Kitchen Environment Library.WFenvir", "type": "environment-library" },
     { "path": "actions/My Action Library.WFaction", "type": "action-library" },
     { "path": "images/photo.jpg", "type": "image" }
-  ]
+  ],
+  "oidIndex": {
+    "libraries": [{ "oid": "…", "name": "My Workflow Library", "entityType": "workflow", "version": "1.0.0" }],
+    "specifications": [{ "oid": "…", "libraryOid": "…", "name": "Bake Cookies", "version": "1.0.0" }]
+  }
 }
 ```
+
+The import refuses a package without `manifest.json` (`missing_manifest`), with another `packageType` (`wrong_package_type`), or without `packageVersion` `"1.1"` and an `oidIndex` (`unsupported_package_version`). `oidIndex.libraries[].entityType` is `workflow`, `step`, `environment` or `action`.
 
 **Dependencies collected:**
 
@@ -1095,16 +1192,47 @@ images/{imageOid}-{filename}             # Form element images
 
 ---
 
-### 12.4 Plain JSON Exports
+### 12.4 Plain JSON Files
 
-Libraries without images export as plain JSON files (no ZIP wrapper):
+Inside the packages, each library is a plain JSON file:
 
 | Type                | Extension   | Root Array                   |
 | ------------------- | ----------- | ---------------------------- |
-| Workflow Library    | `.WFmaster` | `workflow_specifications`    |
-| Step Library        | `.WFslibX`  | `library_steps`              |
+| Workflow Library    | `.WFlib`    | `workflow_specifications`    |
+| Step Library        | `.WFslib`   | `workflow_specifications`    |
 | Environment Library | `.WFenvir`  | `environment_specifications` |
 | Action Library      | `.WFaction` | `action_specifications`      |
+
+A bare `.WFmaster` (the canvas export) is one workflow specification, with no root array.
+
+### 12.5 Step, Environment and Action Library Packages
+
+`.WFstepLibX`, `.WFenvirLibX` and `.WFactionLibX` share one layout:
+
+```
+manifest.json                            # { packageType, packageVersion: "1.0", libraryName,
+                                         #   environmentLibraries?, actionLibraries?, createdAt, files[] }
+{LibraryName}.WFslib | .WFenvir | .WFaction   # The library JSON
+environments/{EnvLibName}.WFenvir        # Step libraries only: environment libraries the workflows use
+actions/{ActionLibName}.WFaction         # Step and environment libraries: action libraries the environments use
+images/{filename}                        # Step libraries only
+images/{imageOid}-{filename}             # Step libraries only
+```
+
+`packageType` is `step-library`, `environment-library` or `action-library`. Step and environment library JSONs include `value_type_specifications`. The importer picks the parser by the inner file's extension and still accepts the former outer names `.WFslibX` and `.WFactionX` (and, without an `environment-package` manifest, `.WFenvirX`).
+
+### 12.6 Environment Package (`.WFenvirX`)
+
+A single environment and the actions it includes. Mission Commander loads it into a work center; Mission Designer imports it as one environment.
+
+```
+{EnvName}.WFenvir                        # The environment specification itself (no library wrapper), included_actions inline
+actions/{ActionLibName}/{ActionName}.WFaction   # Each included action (standalone action JSON), grouped by action library
+manifest.json                            # { packageType: "environment-package", formatVersion: 2, createdAt,
+                                         #   environmentName, actionCount, actionLibraries: [{ name, actions: [...] }] }
+```
+
+Value Type templates are never written into this package.
 
 ---
 
@@ -1112,10 +1240,12 @@ Libraries without images export as plain JSON files (no ZIP wrapper):
 
 ### Two Image Categories
 
-| Category            | ZIP Path                       | Source                                             | Naming        |
-| ------------------- | ------------------------------ | -------------------------------------------------- | ------------- |
-| UI parameter images | `images/{filename}`            | `ui_parameter_specifications` with `type: "Image"` | Bare filename |
-| Form element images | `images/{imageOid}-{filename}` | `form_layout_config` elements with `type: "image"` | OID-prefixed  |
+| Category            | ZIP Path                       | Source                                                                              | Naming        |
+| ------------------- | ------------------------------ | ----------------------------------------------------------------------------------- | ------------- |
+| UI parameter images | `images/{filename}`            | `ui_parameter_specifications` with `type: "Image"`                                  | Bare filename |
+| Form element images | `images/{imageOid}-{filename}` | `form_document` blocks with `type: "image"` (legacy: `form_layout_config` elements) | OID-prefixed  |
+
+Image blocks whose `src` is an `http(s)://` URL, a `data:` URI or the `"No image selected"` placeholder are not packaged.
 
 ### OID Prefixing
 
@@ -1126,11 +1256,15 @@ Form element images are prefixed to prevent collision when multiple steps use im
 
 On import, the prefix is stripped:
 
-1. Check for `{imageOid}-` prefix (8+ numeric characters followed by dash)
+1. Check for `{imageOid}-` prefix (numeric characters followed by dash)
 2. Fall back to `{stepOid}-` prefix
 3. Store image under both prefixed and bare filename keys
 
+A `.WFmasterX` imported through the server matches a referenced filename against the bare entry, the `{specOid}-` prefixed entry, or any entry ending in `-{filename}`.
+
 ### MIME Type Inference
+
+Library package imports infer the MIME type from the extension (table below). A `.WFmasterX` imported through the server instead sniffs each `images/` entry's magic bytes and accepts only PNG, JPEG, WebP and GIF.
 
 | Extension       | MIME Type                  |
 | --------------- | -------------------------- |
@@ -1155,28 +1289,138 @@ Images are stored as data URIs internally: `data:{mime};base64,{base64Data}`
 
 ## 14. Schema Version History
 
-| Version     | Description                                                                                                                                                                                       |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **4.0**     | Current. USER_INTERACTION step with WYSIWYG form layouts, resource commands (Send/Receive/Synchronize), script steps, parameter binding, rich text, timer elements. Legacy UI step types removed. |
-| **3.0**     | Added FORM_ENTRY step type (migrated to USER_INTERACTION in v4.0). WYSIWYG form designer introduced.                                                                                              |
-| **Pre-3.0** | Legacy formats without `schemaVersion` field. Block-based UI steps (Instruction, TextInput, PickOne, Checkbox).                                                                                   |
+| Version     | Description                                                                                                                                                                                                  |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **5.0**     | Current. Forms are exported as a Form Document v2 (`form_document`, [§15](#15-form-document-v2)); `form_layout_config` is import-only. `action_proxy_config` may carry `action_name` and `environment_name`. |
+| **4.0**     | USER_INTERACTION step with WYSIWYG form layouts, resource commands (Send/Receive/Synchronize), script steps, parameter binding, rich text, timer elements. Legacy UI step types removed.                     |
+| **3.0**     | Added FORM_ENTRY step type (migrated to USER_INTERACTION in v4.0). WYSIWYG form designer introduced.                                                                                                         |
+| **Pre-3.0** | Legacy formats without `schemaVersion` field. Block-based UI steps (Instruction, TextInput, PickOne, Checkbox).                                                                                              |
 
 ### Import Compatibility
 
-- Files with `schemaVersion: "4.0"` are accepted
-- Files with `schemaVersion < 4.0` or no `schemaVersion` are rejected as legacy format
-- AJV (JSON Schema Draft-07) validation is applied against schema files in `src/lib/schemas/`
+- Files with `schemaVersion` `"4.0"` or `"5.0"` are accepted
+- Files with `schemaVersion < 4.0` or no `schemaVersion` are rejected as legacy format; a `.WFmasterX` with a `schemaVersion` above `"5.0"` is also rejected (`unsupported_schema_version`)
+- AJV (JSON Schema Draft-07) validation is applied against schema files in `src/lib/schemas/`; every imported `form_document` is validated against `form-document.json` and an invalid one fails the import
 
 ### Validation
 
 Import validation uses AJV with the following schema files:
 
-| Schema File                         | Validates                |
-| ----------------------------------- | ------------------------ |
-| `managed-element.json`              | Base element structure   |
-| `master-action-library.json`        | Action library JSON      |
-| `master-environment-library.json`   | Environment library JSON |
-| `master-workflow-library.json`      | Workflow library JSON    |
-| `master-workflow-step-library.json` | Step library JSON        |
+| Schema File                         | Validates                                           |
+| ----------------------------------- | --------------------------------------------------- |
+| `managed-element.json`              | Base element structure                              |
+| `master-action-library.json`        | Action library JSON                                 |
+| `master-environment-library.json`   | Environment library JSON                            |
+| `master-workflow-library.json`      | Workflow library JSON                               |
+| `master-workflow-step-library.json` | Step library JSON                                   |
+| `form-document.json`                | Form Document v2 (copy of Mission FormKit's schema) |
 
 All schemas are located in `src/lib/schemas/` and use JSON Schema Draft-07 with the base URI `https://trajectorypro.io/schemas/`.
+
+---
+
+## 15. Form Document v2
+
+From package format 5.0, a `USER_INTERACTION` or `YES_NO` step carries its form as `form_document`. The schema is owned by Mission FormKit (`packages/form-schema/src/schema/form-document.json` in the MissionFormKit repository); `src/lib/schemas/form-document.json` is an identical copy. The document is exported verbatim, ids included, and the schema forbids unknown properties at every level. All ids (sections, rows, blocks) must be unique within the document.
+
+### Structure
+
+| Object   | Fields                                                                                                                                                                                                                             |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Document | `version` (required, always `2`), `sections` (required array)                                                                                                                                                                      |
+| Section  | `id`, `role` (`"content"` or `"footer"`), `rows` — all required. A `footer` section is the form's bottom bar, drawn below the content; Mission Designer lets only buttons be dropped there and drops empty footer sections on save |
+| Row      | `id`, `blocks` (at least one) required; `gap` optional (space token)                                                                                                                                                               |
+| Block    | `id`, `type` required; optional `layout`; type-specific fields below                                                                                                                                                               |
+
+Tokens: space `none`, `xs`, `sm`, `md`, `lg`, `xl`; type size `xs`, `sm`, `md`, `lg`, `xl`, `2xl`, `3xl`.
+
+**Block `layout`** (all optional, except `aspectRatio` on images):
+
+| Field         | Type                                         | Description                                                                                                               |
+| ------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `span`        | `{ base, tablet?, phone? }`, integers 1 – 12 | Grid columns of 12 (default 12). `base` is desktop; resolution is `phone ?? tablet ?? base`                               |
+| `order`       | `{ base, tablet?, phone? }`, integers 1 – 12 | Reflow order within the row                                                                                               |
+| `visible`     | `{ base, tablet?, phone? }`, booleans        | Hide the block at a breakpoint (default `true`)                                                                           |
+| `minHeight`   | space token or `{ rem }`                     | Minimum height                                                                                                            |
+| `maxWidth`    | `{ ch }` or `{ rem }`                        | Width cap                                                                                                                 |
+| `aspectRatio` | string `"W/H"`                               | Required on image blocks                                                                                                  |
+| `align`       | `"start"`, `"center"`, `"end"`               | Alignment in the grid cell; on a button it also sets the horizontal position (start = left, center = middle, end = right) |
+
+**Per-device text size:** `size` is the desktop type token and `sizeAt: { tablet?, phone? }` overrides it per device (resolution `phone ?? tablet ?? size`). Allowed on `text`, `header`, `textInput`, `textarea`, `checkbox`, `radio`, `timer` and `button`.
+
+### Block Types
+
+| `type`              | Required fields                                                                    | Optional fields                                                                                                                                                                                                  |
+| ------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `text`, `header`    | `content` (HTML string)                                                            | `size`, `sizeAt`, `fontWeight` (`normal`/`bold`), `color`, `align` (`left`/`center`/`right`)                                                                                                                     |
+| `textInput`         | `fieldName`                                                                        | `label`, `placeholder`, `required`, `inputMode` (`text`/`number`/`phone`/`password`/`dropdown`/`combobox`), `listItems`, `listSource`, `outputParameter`, `defaultSource`, `placeholderSource`, `size`, `sizeAt` |
+| `textarea`          | `fieldName`                                                                        | `label`, `placeholder`, `required`, `rows`, `outputParameter`, `defaultSource`, `placeholderSource`, `size`, `sizeAt`                                                                                            |
+| `checkbox`, `radio` | `fieldName`, `options` (`[{ label, value }]`)                                      | `label`, `required`, `listSource`, `outputParameter`, `size`, `sizeAt`                                                                                                                                           |
+| `image`             | `src`, `layout.aspectRatio`                                                        | `imageOid`, `objectFit` (`contain`/`cover`/`fill`), `scalePercent` (10 – 300)                                                                                                                                    |
+| `video`             | `src`                                                                              | `posterUrl`                                                                                                                                                                                                      |
+| `divider`           | —                                                                                  | `weight` (`hairline`/`thick`), `color`                                                                                                                                                                           |
+| `timer`             | `label`, `fieldName`, `durationSeconds` (≥ 1), `direction` (`countdown`/`countup`) | `blockDone`, `outputParameter`, `defaultSource`, `size`, `sizeAt`                                                                                                                                                |
+| `button`            | `label`, `outputValue`                                                             | `job` (`continue`/`yes`/`no`), `emphasis` (`primary`/`secondary`), `color`, `deletable`, `size`, `sizeAt`                                                                                                        |
+| `esignature`        | `fieldName`                                                                        | `label`, `meaning`, `roleName`, `requireDifferentUser`, `outputParameter`                                                                                                                                        |
+
+`defaultSource` and `placeholderSource` use the same `{ mode, value }` shape as v1 (`static`, `property`, `input`). `listSource` is `{ "mode": "static" }` or `{ "mode": "input", "value": "..." }`.
+
+**Buttons.** A button with a `job` does the step's own work: `continue` completes a USER_INTERACTION step, `yes` and `no` answer a YES_NO step. Mission Designer writes `outputValue` `"continue"`, `"true"` or `"false"` for the three jobs, and an empty `label` means the default word (`Continue`, `Yes`, `No`) or the host's label. A host shows only the form's buttons when every device shows the jobs the step needs and no button has a job the step cannot use; otherwise it keeps its own buttons. A button without a `job` is an ordinary action button that emits its `outputValue`.
+
+**Capture.** An input block's value is stored under its `outputParameter`: when that equals an `output_parameter_specifications[].id` of the step, the value goes to that output's `target`. A step cannot complete while a `required` input is empty, a `number` text input holds text that is not a number, a `blockDone` timer is running, or an e-signature is incomplete. Mission Engine warns (`UNBOUND_FORM_INPUT`) about any `textInput`, `textarea`, `checkbox`, `radio` or `esignature` block without an `outputParameter`.
+
+### Example
+
+```json
+{
+  "version": 2,
+  "sections": [
+    {
+      "id": "7000000200001",
+      "role": "content",
+      "rows": [
+        {
+          "id": "7000000200002",
+          "blocks": [
+            {
+              "id": "7000000200003",
+              "type": "header",
+              "content": "<p>Voltage Check</p>",
+              "size": "2xl",
+              "sizeAt": { "phone": "xl" }
+            },
+            {
+              "id": "7000000200004",
+              "type": "textInput",
+              "fieldName": "voltage",
+              "label": "Voltage",
+              "inputMode": "number",
+              "required": true,
+              "outputParameter": "Voltage"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "7000000200005",
+      "role": "footer",
+      "rows": [
+        {
+          "id": "7000000200006",
+          "blocks": [
+            {
+              "id": "7000000200007",
+              "type": "button",
+              "job": "continue",
+              "label": "",
+              "outputValue": "continue",
+              "layout": { "align": "end" }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```

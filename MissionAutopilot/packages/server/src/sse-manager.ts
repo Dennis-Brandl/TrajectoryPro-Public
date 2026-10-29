@@ -125,7 +125,7 @@ export class SseManager {
     if (outputs && outputs.length > 0) {
       this.publish(instanceId, 'output', {
         instance_id: instanceId,
-        outputs,
+        outputs: protocolPairs(outputs),
         timestamp: new Date().toISOString(),
       })
     }
@@ -360,4 +360,18 @@ export class SseManager {
     }
     this.propertyBuses.clear()
   }
+}
+
+/**
+ * Output pairs on the wire. Outputs are stored as `{key, value}`; the protocol names the field
+ * `name` (REST_Protocol.md), so both are sent: `name` for protocol clients, `key` for existing
+ * readers such as the console.
+ */
+export function protocolPairs(pairs: unknown): unknown[] {
+  if (!Array.isArray(pairs)) return []
+  return pairs.map((p) => {
+    if (!p || typeof p !== 'object') return p
+    const { key, name } = p as { key?: unknown; name?: unknown }
+    return name === undefined && typeof key === 'string' ? { name: key, ...p } : p
+  })
 }

@@ -21,7 +21,7 @@ import type {
   SettingsRepository,
   Instance,
 } from '@mission/autopilot-storage'
-import type { SseManager } from '../sse-manager.js'
+import { protocolPairs, type SseManager } from '../sse-manager.js'
 import { formatSseEvent } from '../sse-utils.js'
 import { validateBody } from '../validation.js'
 
@@ -91,8 +91,8 @@ function formatInstanceResponse(instance: Instance) {
       previous: previous?.state ?? null,
       entered_at: current?.timestamp ?? instance.created_at,
     },
-    inputs: instance.input_parameters,
-    outputs: instance.output_parameters,
+    inputs: protocolPairs(instance.input_parameters),
+    outputs: protocolPairs(instance.output_parameters),
     created_at: instance.created_at,
     started_at: instance.started_at,
     completed_at: instance.completed_at,

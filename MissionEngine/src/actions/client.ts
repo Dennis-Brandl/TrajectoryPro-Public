@@ -43,7 +43,7 @@
 
 import type { ActionServerPolicy, ActionServerTrust } from 'mission-control-db/src/dao/system-settings';
 import {
-  subscribeEventStream, subscribeSse, toPropertyEvent,
+  subscribeEventStream, subscribeSse, toNamePairs, toPropertyEvent,
   type ActionEvent, type EventStreamCallbacks, type PropertyStreamEvent, type SseHandle,
 } from './sse.js';
 
@@ -73,6 +73,16 @@ export interface InvokeRequest {
 export interface ActionSnapshot {
   state: ServerState;
   outputs: Array<{ name: string; value: string }>;
+}
+
+/** The instance status body as the engine reads it. The protocol sends `state` as
+ *  `{current, previous, entered_at}`; a bare state string is accepted too. */
+export function toSnapshot(data: { state?: unknown; outputs?: unknown } | undefined): ActionSnapshot {
+  const raw = data?.state;
+  const state = typeof raw === 'string' ? raw
+    : raw && typeof raw === 'object' && typeof (raw as { current?: unknown }).current === 'string'
+      ? (raw as { current: string }).current : '';
+  return { state: state as ServerState, outputs: toNamePairs(data?.outputs) };
 }
 
 export interface ActionCapability {
@@ -304,8 +314,8 @@ export class ActionClient {
     if (resp.status !== 200) {
       throw new ActionStatusFailed(resp.status, `action getInstance failed (${resp.status}): ${await this.bodyOrRefusal(resp, serverUri)}`);
     }
-    const json = (await resp.json()) as { data: ActionSnapshot };
-    return json.data;
+    const json = (await resp.json()) as { data?: { state?: unknown; outputs?: unknown } };
+    return toSnapshot(json.data);
   }
 
   async sendCommand(serverUri: string, instanceId: string, command: ActionCommand): Promise<void> {

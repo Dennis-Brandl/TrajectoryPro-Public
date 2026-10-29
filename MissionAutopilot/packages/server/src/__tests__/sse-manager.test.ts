@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { SseManager } from '../sse-manager.js'
+import { SseManager, protocolPairs } from '../sse-manager.js'
 
 describe('SseManager teardown closers', () => {
   let manager: SseManager
@@ -59,5 +59,20 @@ describe('SseManager teardown closers', () => {
     expect(() => manager.shutdown()).not.toThrow()
     expect(boom).toHaveBeenCalledTimes(1)
     expect(ok).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('protocolPairs', () => {
+  it('adds the protocol name to stored {key, value} pairs and keeps key', () => {
+    expect(
+      protocolPairs([
+        { key: 'A', value: '1' },
+        { name: 'B', value: '2' },
+      ])
+    ).toEqual([
+      { name: 'A', key: 'A', value: '1' },
+      { name: 'B', value: '2' },
+    ])
+    expect(protocolPairs(null)).toEqual([])
   })
 })

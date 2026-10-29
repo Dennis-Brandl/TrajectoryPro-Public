@@ -1,128 +1,118 @@
 # Workflow Package Format (ZIP + JSON)
 
-Reference for the Mission Designer export/import format — the `.WFmasterX` download and `.WFmaster` / `.json` import.
+Reference for the Mission Designer workflow package — the `.WFmasterX` download and upload. The JSON shapes inside the package are specified in [`SCHEMA-SPECIFICATION.md`](../SCHEMA-SPECIFICATION.md); the suite-wide reference (every application's packages) is `docs/JSON_SCHEMA.md` at the root of the Trajectory Pro Mission Control repository.
 
 ## Overview
 
 - **Container:** ZIP.
-- **Envelope schema version:** `'3.0'` (file format; distinct from `dataSchemaVersion`, the per-spec payload version).
-- **Download extension:** `.WFmasterX` (ZIP).
-- **Envelope entry extension:** `.WFmaster` (server export) or `.json` (client export) — the parser accepts either.
+- **Envelope:** one recursive `MasterWorkflowSpecification` (the "v7.0" envelope) in a `.WFmaster` entry. The flat v3.0 envelope (`library` / `specifications` / `specEnvs` / `imageManifest`) is gone: it is neither written nor read.
+- **Schema version:** export writes `schemaVersion: "5.0"`; import accepts `"4.0"` through `"5.0"` (file format; distinct from `dataSchemaVersion`, the per-spec payload version, currently `4`).
+- **Download extension:** `.WFmasterX` (ZIP). The browser saves it as `{WorkflowName}({version}).WFmasterX`.
+- **Envelope entry extension:** `.WFmaster` only (the bare `.json` envelope is no longer accepted).
 - **Endpoints:**
   - Export: `GET /api/v2/packages/workflow/:rootSpecId`
   - Import: `POST /api/v2/packages/import` (multipart/form-data)
+
+The same package is what Mission Commander loads into a work center.
 
 ## ZIP Layout
 
 ```
 workflow.WFmasterX
-├── <safeName>.WFmaster         # JSON envelope (first *.json | *.WFmaster entry wins)
+├── <safeName>.WFmaster          # JSON envelope: the root MasterWorkflowSpecification
+├── manifest.json                # package metadata (advisory; the importer skips it)
+├── environments/
+│   └── <EnvLibName>.WFenvir     # one MasterEnvironmentLibrary per environment library the workflow uses
+├── actions/
+│   └── <ActionLibName>.WFaction # one MasterActionLibrary per action library those environments use
 └── images/
-    ├── <specId>-<filename>     # server export (namespaced by spec)
-    └── <filename>              # client export (bare)
+    ├── <imageOid>-<filename>    # form image blocks (prefix falls back to the step oid without an imageOid)
+    └── <filename>               # Image UI parameters (bare)
 ```
 
 Notes:
 
-- Only the **first** entry ending in `.json` or `.WFmaster` is parsed as the envelope.
-- Image entries can appear with either the `{specId}-{filename}` prefix (server) or bare (client); the importer tries both when resolving references.
+- `<safeName>` is the workflow name with every character outside `A–Z a–z 0–9 . _ -` replaced by `_` (at most 200 characters).
+- Only the **first** entry ending in `.WFmaster` is parsed as the envelope.
+- Image entries are resolved by bare filename, then `{specId}-{filename}`, then any entry ending in `-{filename}` (which covers `{imageOid}-{filename}`).
 - Image MIME is verified by magic-byte sniff (`src/server/imageMime.ts`), not by filename extension.
 
 ## Envelope JSON
 
-Top-level:
+The `.WFmaster` entry is a `MasterWorkflowSpecification` (SCHEMA-SPECIFICATION.md §5), built by `exportWorkflowSpec` in `src/lib/packageFormat/workflow-exporters.ts`:
 
 ```ts
-interface WorkflowEnvelope {
-  schemaVersion: '3.0'
-  library: Library
-  specifications: EnvelopeSpec[]
-  specEnvs: Array<{ specificationId: string; environmentLibraryId: string }>
-  imageManifest: Record<string /* specId */, ImageManifestEntry[]>
+interface MasterWorkflowSpecification {
+  schemaVersion: '5.0'
+  local_id: string // workflow name
+  oid: string // spec id
+  description?: string
+  type_name?: string // ISA 88 type, ≤ 50 characters; omitted when unset
+  version: string
+  state: string // Draft | InTest | InReview | Approved | Effective | Superseded | Obsolete
+  last_modified_date: string // ISO 8601
+  library_name?: string // the workflow's library (provenance)
+  library_oid?: string
+  display_style?: 'flowchart' | 'bpmn' | 'isa88'
+  steps: MasterWorkflowStep[]
+  connections: WorkflowConnection[]
+  resource_property_specifications?: ResourcePropertySpecification[]
+  starting_parameter_specifications?: ParameterSpecification[]
+  try_specifications?: TrySpecification[]
+  output_parameter_specifications?: OutputParameterSpecification[]
+  value_property_specifications?: PropertySpecification[]
+  viewport?: { x: number; y: number; zoom: number }
+  environment_specifications?: MasterEnvironmentSpecification[] // root only; action bodies inlined
+  children?: ChildWorkflowExport[] // recursive; parentChildSpecId null = direct child of the root
 }
 ```
 
-### `library`
+The authoritative TypeScript types are in `src/lib/packageFormat/export-types.ts`.
 
-Metadata about the library the specs belong to.
+Rules that matter for packaging:
 
-| Field               | Type           | Notes                                                     |
-| ------------------- | -------------- | --------------------------------------------------------- |
-| id                  | string         | UUID                                                      |
-| userId              | string         | owner UUID                                                |
-| parentLibraryId     | string \| null | nested action libraries                                   |
-| name                | string         |                                                           |
-| entityType          | string         | `workflow` \| `step` \| `environment` \| `action`         |
-| description         | string \| null |                                                           |
-| author              | string \| null | single line                                               |
-| changeHistory       | string \| null | free-form or JSON array                                   |
-| version             | string         | default `'1.0.0'`                                         |
-| isShared            | number         | `1` or `0` after normalization (`specReadDao.ts:402-408`) |
-| forkedFromLibraryId | string \| null |                                                           |
-| forkedFromVersion   | string \| null |                                                           |
-| forkedAt            | number \| null | epoch ms                                                  |
-| createdAt           | number         | epoch ms                                                  |
-| updatedAt           | number         | epoch ms                                                  |
-| lastEditedByUserId  | string \| null |                                                           |
+1. **Embedded child workflows** — every `workflowProxy` that references a step library is resolved to an embedded child with fresh oids before export (`inlineReferencedSteps.ts`), so the package never points outside itself. Children carry the root's `version` and `state`. On import, each `WORKFLOW PROXY` step is linked back to the child whose `local_id` equals the step's `local_id`.
+2. **Forms** — a form-bearing step carries its Form Document v2 verbatim in `form_document` (ids kept). On import every `form_document` is validated against `src/lib/schemas/form-document.json`; a legacy `form_layout_config` (≤ 4.0) is converted to a `form_document`.
+3. **Environment links** — each embedded environment carries `library_name`. On import the workflow is linked to the environment library whose `environments/<name>.WFenvir` filename equals that `library_name`.
 
-Note: the `Library` interface at `src/server/dao/specReadDao.ts:40-57` does **not** include `environmentLibraryIds`. The per-library env-library set is stored in the `library_environment` junction table and is not inlined into the envelope's library block. (The `specification` table has its own `environmentLibraryIds` JSON column — different thing.)
+### `manifest.json`
 
-### `specifications[]` — `EnvelopeSpec`
-
-One entry per spec in the tree (root + descendants).
-
-| Field                 | Type           | Notes                                                                                        |
-| --------------------- | -------------- | -------------------------------------------------------------------------------------------- |
-| id                    | string         | UUID                                                                                         |
-| libraryId             | string \| null |                                                                                              |
-| name                  | string         |                                                                                              |
-| description           | string \| null |                                                                                              |
-| version               | string \| null |                                                                                              |
-| state                 | string \| null | `Draft` \| `InTest` \| `InReview` \| `Approved` \| `Effective` \| `Superseded` \| `Obsolete` |
-| data                  | object         | parsed JSON workflow graph — see below                                                       |
-| dataSchemaVersion     | number         | currently `3`                                                                                |
-| parentSpecificationId | string \| null | null for the root                                                                            |
-| rootSpecificationId   | string         | self-reference on the root                                                                   |
-| createdAt             | number         | epoch ms                                                                                     |
-| updatedAt             | number         | epoch ms                                                                                     |
-| children              | string[]       | immediate child spec IDs                                                                     |
-
-#### `data` payload
-
-The workflow graph. Node/edge structure is owned by the client (`nodes`, `edges`, form layouts, etc.). Two rules matter for packaging:
-
-1. **Embedded workflow proxies** — the export inlines each `proxy_reference` row as `node.embeddedWorkflowSpecId` on the corresponding node. The import extracts these back out into a separate `proxyRefs` list before persisting `data`.
-2. **Image filenames in form elements** — the `STEP_OID_PREFIX_RE` (`/^[A-Z0-9]+-/`) is stripped from form-element image filenames during import so they match plain `images/<filename>` entries.
-
-### `imageManifest`
-
-Lookup keyed by spec id:
-
-```ts
-interface ImageManifestEntry {
-  filename: string
-  mimeType: string // image/png | image/jpeg | image/webp | image/gif
-  byteSize: number
+```json
+{
+  "packageVersion": "1.0",
+  "workflowName": "My Workflow",
+  "environmentLibraries": ["Kitchen Library"],
+  "actionLibraries": ["Oven Controls"],
+  "createdAt": "2026-04-24T12:00:00.000Z",
+  "files": [
+    { "path": "My_Workflow.WFmaster", "type": "workflow" },
+    { "path": "environments/Kitchen Library.WFenvir", "type": "environment" },
+    { "path": "actions/Oven Controls.WFaction", "type": "action" },
+    { "path": "images/7000000123456-photo.jpg", "type": "image" }
+  ]
 }
 ```
 
-The manifest is **export-only metadata**. The importer does not read it — `src/server/packageFormat/parseEnvelope.ts` contains zero references to `imageManifest`. Image ingestion is driven entirely by the `images/` ZIP entries plus the `image` filenames found inside `spec.data` form elements; a manifest that disagrees with the ZIP contents is silently ignored.
+The manifest is **export-only metadata**: `safeZipReader.ts` reads it but nothing downstream uses it.
 
 ## Export flow
 
-Source: `src/server/routes/v2/packages.ts`, `src/server/packageFormat/buildEnvelope.ts`, `loadImageBytes.ts`.
+Source: `src/server/routes/v2/packages.ts`, `src/server/packageFormat/buildWorkflowPackage.ts`.
 
-1. `specReadDao.getTree(ctx, rootSpecId)` — permission-checked fetch of `{ library, specs, proxyRefs, specEnvs, imageManifest }`.
-2. `buildWorkflowEnvelope(tree)` — assembles the v3.0 envelope and inlines `proxy_reference` rows as `node.embeddedWorkflowSpecId`.
-3. `loadImageBytesForSpecs(specIds)` — joins `image` + `image_blob` into `Map<specId, LoadedImage[]>`.
-4. ZIP assembly:
-   - `<safeName>.WFmaster` — envelope JSON (pretty-printed, 2-space indent).
-   - `images/<specId>-<filename>` — raw bytes.
-5. Response: `Content-Type: application/zip`, `Content-Disposition: attachment; filename="…​.WFmasterX"`.
+1. `specReadDao.getSpec` — the id must be a root spec (otherwise `404 not_found`).
+2. `specReadDao.getTree(ctx, rootSpecId)` — permission-checked fetch of the tree (`413 tree_too_large` past the tree limits).
+3. `buildWorkflowPackage` —
+   - `adaptSpecTree` + `inlineReferencedSteps` — client-shaped specs with every referenced step library embedded.
+   - Loads the action libraries the environments name (the environment's team wins a name clash with GLOBAL), so the environment exporter can inline action bodies.
+   - `exportWorkflowSpec` — the envelope JSON, including `action_proxy_config` derived by name and Action-Property bindings.
+   - `exportEnvironmentLibrary` / `exportActionLibrary` — the `environments/` and `actions/` entries.
+   - Image bytes from `image` + `image_blob` and from `spec.data.images` data URIs.
+4. ZIP assembly: `<safeName>.WFmaster` (pretty-printed, 2-space indent), `environments/*`, `actions/*`, `images/*`, `manifest.json`.
+5. Response: `Content-Type: application/zip`, `Content-Disposition: attachment; filename="<safeName>.WFmasterX"`, `Cache-Control: private, no-store`. Anything the export could not carry (an undecodable image, an ambiguous Action-Property binding) is listed in an `x-export-warnings` header: a JSON array of strings, percent-encoded.
 
 ## Import flow
 
-Source: `src/server/routes/v2/packages.ts`, `packageFormat/safeZipReader.ts`, `parseEnvelope.ts`, `buildImportBatch.ts`, `insertImportImages.ts`.
+Source: `src/server/routes/v2/packages.ts`, `packageFormat/safeZipReader.ts`, `parseEnvelope.ts`, `importLibrariesFromZip.ts`, `injectWorkflowEnvSpecIds.ts`, `buildImportBatch.ts`, `injectEmbeddedWorkflowSpecIds.ts`, `insertImportImages.ts`.
 
 Request — `multipart/form-data`:
 
@@ -133,17 +123,24 @@ Request — `multipart/form-data`:
 
 Pipeline:
 
-1. **`readSafeZip(buffer)`** — central-directory parse, entry / filename / size validation, MIME sniff on every `images/*` entry.
-2. **`parseEnvelope(jsonText)`** — validate `schemaVersion >= 3.0`, shape-check, and:
-   - extract `node.embeddedWorkflowSpecId` values into a separate `proxyRefs` list,
-   - collect form-element `image` filenames into an `imageRefs` list,
-   - strip the step-OID prefix from image filenames,
-   - read the envelope-root `specEnvs[]` (optional on older envelopes; treated as empty when absent).
-3. **`buildImportBatch(plan, targetLibraryId)`** — convert the `ImportPlan` into a `BatchSaveRequest` (see `src/server/batchSave/requestSchema.ts`). Fresh UUIDs are minted; parent/root and proxy relationships are re-wired via a `sourceId → newId` map. `specEnvs` entries are remapped onto the new root spec id; `environmentLibraryId` passes through verbatim.
-4. **Env-library visibility filter** — `packages.ts` drops any `specEnvs` entry whose `environmentLibraryId` is not a visible environment library for the importing user. This matches fork-library's carried-override semantics and avoids tripping the `specenv_*` triggers, which would roll back the whole import.
-5. **Batch save** — creates `specification`, `proxy_reference`, `image_reference`, and `specification_environment` rows atomically.
-6. **`insertImportImages`** — for each ZIP image, compute SHA-256, upsert `image_blob` (ON CONFLICT DO NOTHING), insert `image`. The `image_insert_bumps_blob_refcount` trigger updates `refCount`.
-7. **Missing-data defaults** (`parseEnvelope.ts:141-144`): if an `EnvelopeSpec` is missing `version` it defaults to `'1.0.0'`; missing `state` → `'Draft'`; missing `dataSchemaVersion` → `3`; missing `data` → `{ nodes: [] }`.
+1. **Size check** — a request over `MAX_IMPORT_REQUEST_BYTES` is refused before its body is read; a file over `MAX_IMPORT_ZIP_BYTES` is refused before it is buffered (`413 zip_too_large`).
+2. **`readSafeZip(buffer)`** — entry-count, filename and size validation, byte-budgeted inflation, MIME sniff on every `images/*` entry; collects the envelope, `environments/*.WFenvir`, `actions/*.WFaction` and images.
+3. **`parseWorkflowEnvelope(jsonText)`** — requires `schemaVersion` from `4.0` to `5.0`, a root `oid` and `local_id`; converts the root and every `children[]` entry to the editor's internal shape (`importWorkflowSpecToInternal`), and:
+   - extracts `embeddedWorkflowSpecId` values into a separate `proxyRefs` list,
+   - collects image filenames from `form_document` image blocks (and legacy layouts) into `imageRefs`,
+   - collects each embedded environment's `library_name` as a pending environment-library link,
+   - drops the deprecated `child_workflows[]` (a warning is logged when it is the only child source).
+4. **Missing images** — image references with no bytes in the ZIP are dropped and their `src` cleared, rather than failing the import; surviving bytes are mirrored into `spec.data.images` as data URIs.
+5. **One transaction** for everything below; any failure rolls all of it back:
+   1. `importLibrariesFromZip` — each `environments/` and `actions/` library is matched by name (the filename stem) in the target library's team, then in GLOBAL, and reused as it is; only a miss creates a new library in the target team. An unparseable or invalid sibling is skipped with a warning.
+   2. `injectWorkflowEnvSpecIds` — points each workflow's `data.environmentSpecIds` at the matched or created environment specs.
+   3. Pending environment-library links resolve by name to library ids; a name with no `environments/` file is dropped with a warning.
+   4. `buildImportBatch` — fresh UUIDs for every spec, parent/root/proxy relationships re-wired via a `sourceId → newId` map. A root whose name and version already exist in the target library is renamed `<name> (2)`, `<name> (3)`, …; children are deduplicated the same way under their parent.
+   5. `injectEmbeddedWorkflowSpecIds` — restores `node.data.embeddedWorkflowSpecId` on each `workflowProxy` node.
+   6. Environment links to libraries the importing user cannot see are dropped.
+   7. **Batch save** — creates `specification`, `proxy_reference`, `image_reference` and `specification_environment` rows.
+   8. **`insertImportImages`** — for each image, compute SHA-256, upsert `image_blob` (ON CONFLICT DO NOTHING), insert `image`.
+6. **Defaults** (`parseEnvelope.ts`): missing `version` → `'1.0.0'`; missing `state` → `'Draft'`; `dataSchemaVersion` is always the current one (`4`); a `type_name` that is not a non-blank string of at most 50 characters is dropped.
 
 ### Import response
 
@@ -151,9 +148,16 @@ Pipeline:
 {
   "rootSpecId": "uuid-of-new-root",
   "specCount": 42,
-  "imageCount": 17
+  "imageCount": 17,
+  "envLibrariesCreated": 1,
+  "envLibrariesReused": 0,
+  "actionLibrariesCreated": 1,
+  "actionLibrariesReused": 0,
+  "warnings": []
 }
 ```
+
+`warnings` lists everything the import skipped rather than failed on: unimportable sibling libraries, unresolvable environment-library links, libraries linked to GLOBAL.
 
 ### Intermediate types
 
@@ -164,6 +168,7 @@ interface ImportSpec {
   rootSourceId: string
   name: string
   description: string | null
+  typeName?: string | null
   version: string
   state: string
   dataJson: string // proxy refs stripped, JSON-stringified
@@ -186,27 +191,34 @@ interface ImportSpecEnv {
   environmentLibraryId: string
 }
 
+interface ImportPendingEnvLink {
+  specSourceId: string
+  libraryName: string
+}
+
 interface ImportPlan {
   specs: ImportSpec[]
   proxyRefs: ImportProxyRef[]
   imageRefs: ImportImageRef[]
   specEnvs: ImportSpecEnv[]
+  pendingEnvLibraryLinks: ImportPendingEnvLink[]
 }
 ```
 
 ## Limits (`src/server/limits.ts`)
 
-| Limit                        | Value                          |
-| ---------------------------- | ------------------------------ |
-| `MAX_IMPORT_ZIP_BYTES`       | 60 MB (raw multipart)          |
-| `MAX_IMPORT_PER_ENTRY_BYTES` | 10 MB (per decompressed entry) |
-| `MAX_IMPORT_TOTAL_BYTES`     | 100 MB (total decompressed)    |
-| `MAX_IMPORT_ENTRIES`         | 1100                           |
-| `MAX_IMAGES_PER_IMPORT`      | 500                            |
-| `MAX_IMAGE_BYTES`            | 5 MB                           |
-| `MAX_TREE_SPECS`             | 5000                           |
-| `MAX_TREE_PROXY_REFS`        | 10000                          |
-| `MAX_TREE_IMAGES`            | 2000                           |
+| Limit                        | Value                                    |
+| ---------------------------- | ---------------------------------------- |
+| `MAX_IMPORT_REQUEST_BYTES`   | 61 MB (whole upload request)             |
+| `MAX_IMPORT_ZIP_BYTES`       | 60 MB (the uploaded file)                |
+| `MAX_IMPORT_PER_ENTRY_BYTES` | 10 MB (per decompressed non-image entry) |
+| `MAX_IMAGE_BYTES`            | 5 MB (per decompressed `images/*` entry) |
+| `MAX_IMPORT_TOTAL_BYTES`     | 100 MB (total decompressed)              |
+| `MAX_IMPORT_ENTRIES`         | 1100                                     |
+| `MAX_IMAGES_PER_IMPORT`      | 500                                      |
+| `MAX_TREE_SPECS`             | 5000                                     |
+| `MAX_TREE_PROXY_REFS`        | 10000                                    |
+| `MAX_TREE_IMAGES`            | 2000                                     |
 
 ## ZIP safety rules
 
@@ -214,10 +226,10 @@ Applied per entry in `safeZipReader.ts`:
 
 - Filename non-empty, ≤ 255 chars, matches `/^[A-Za-z0-9][A-Za-z0-9 ._/-]{0,254}$/`.
 - No leading `/`, no `..`, no NUL bytes.
-- Per-entry decompressed size ≤ `MAX_IMPORT_PER_ENTRY_BYTES`; running total ≤ `MAX_IMPORT_TOTAL_BYTES`.
-- Every `images/*` entry is MIME-sniffed (PNG / JPEG / WebP / GIF only).
-- Top-level entry kind is restricted: only `*.json` / `*.WFmaster` (envelope) or `images/*` are accepted; any other path fails with `zip_filename_invalid { reason: 'unknown entry type' }` (`safeZipReader.ts:102`).
-- Multiple envelope entries: only the first is parsed; subsequent ones are silently ignored but still count toward total-byte limits.
+- Each entry is inflated under its byte budget (`MAX_IMAGE_BYTES` for `images/*`, `MAX_IMPORT_PER_ENTRY_BYTES` otherwise) and the running total under `MAX_IMPORT_TOTAL_BYTES`; inflation stops as soon as a budget is passed.
+- Every `images/*` entry is MIME-sniffed (PNG / JPEG / WebP / GIF only) and its name (after `images/`) must match `/^[A-Za-z0-9][A-Za-z0-9 ._-]{0,254}$/`.
+- Entry kind is restricted to `*.WFmaster`, `manifest.json`, `environments/*.WFenvir`, `actions/*.WFaction` and `images/*`; any other path fails with `zip_filename_invalid { reason: 'unknown entry type' }`.
+- Multiple `.WFmaster` entries: only the first is parsed; later ones still count toward the byte limits.
 
 ## Image MIME magic bytes (`src/server/imageMime.ts`)
 
@@ -228,41 +240,46 @@ Applied per entry in `safeZipReader.ts`:
 | GIF    | `GIF87a` / `GIF89a`                          |
 | WebP   | `RIFF....WEBP` (RIFF at 0–3, `WEBP` at 8–11) |
 
-Image-reference filenames inside `data` must match `/^[A-Za-z0-9][A-Za-z0-9 ._-]{0,254}$/` (no path separators).
-
 ## Error codes
 
-From `safeZipReader.ts` / `parseEnvelope.ts` / `routes/v2/packages.ts`:
+From `safeZipReader.ts` / `parseEnvelope.ts` / `routes/v2/packages.ts`. Size and count codes return 413; other ZIP and envelope codes return 422.
 
-| Code                         | Source                | Meaning                                                                                       |
-| ---------------------------- | --------------------- | --------------------------------------------------------------------------------------------- |
-| `json_envelope_invalid`      | parseEnvelope.ts      | Not parseable JSON, not an object, missing `schemaVersion`, or missing `specifications`       |
-| `unsupported_schema_version` | parseEnvelope.ts:76   | `parseFloat(schemaVersion) < 3.0` (2.0 is rejected; note `parseFloat` tolerates `"3.0-beta"`) |
-| `zip_too_many_entries`       | safeZipReader.ts:78   | Entry count exceeds `MAX_IMPORT_ENTRIES`                                                      |
-| `zip_filename_invalid`       | safeZipReader.ts      | Filename fails validation (charset, length, absolute, traversal, nul, or unknown entry type)  |
-| `zip_entry_too_large`        | safeZipReader.ts      | Single entry exceeds per-entry cap                                                            |
-| `zip_total_too_large`        | safeZipReader.ts      | Total decompressed exceeds cap                                                                |
-| `zip_too_large`              | packages.ts:105       | Raw multipart payload exceeds `MAX_IMPORT_ZIP_BYTES`                                          |
-| `zip_image_mime_invalid`     | safeZipReader.ts      | Image MIME sniff failed or disallowed                                                         |
-| `too_many_images`            | safeZipReader.ts      | Image count exceeds `MAX_IMAGES_PER_IMPORT`                                                   |
-| `image_not_found`            | packages.ts:175       | A `spec.data` image filename is not present as an `images/*` ZIP entry                        |
-| `schema_mismatch`            | packages.ts:94,98,100 | Envelope shape failed route-level validation (wrong field types / missing required)           |
+| Code                         | Source                              | Meaning                                                                                                                                                                      |
+| ---------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `json_envelope_invalid`      | safeZipReader.ts / parseEnvelope.ts | Not a valid ZIP, corrupt entry, no `.WFmaster` entry, envelope not parseable JSON or not an object, missing or non-numeric `schemaVersion`, root missing `oid` or `local_id` |
+| `unsupported_schema_version` | parseEnvelope.ts                    | `parseFloat(schemaVersion)` below `4.0` or above `5.0` (note `parseFloat` tolerates `"5.0-beta"`)                                                                            |
+| `invalid_form_document`      | parseEnvelope.ts                    | A step's `form_document` fails the Form Document v2 schema                                                                                                                   |
+| `zip_too_many_entries`       | safeZipReader.ts                    | Entry count exceeds `MAX_IMPORT_ENTRIES`                                                                                                                                     |
+| `zip_filename_invalid`       | safeZipReader.ts                    | Filename fails validation (charset, length, absolute, traversal, nul, image filename charset, or unknown entry type)                                                         |
+| `zip_entry_too_large`        | safeZipReader.ts                    | Single entry exceeds its cap                                                                                                                                                 |
+| `zip_total_too_large`        | safeZipReader.ts                    | Total decompressed exceeds cap                                                                                                                                               |
+| `zip_too_large`              | packages.ts                         | Upload exceeds `MAX_IMPORT_ZIP_BYTES` / `MAX_IMPORT_REQUEST_BYTES`                                                                                                           |
+| `zip_image_mime_invalid`     | safeZipReader.ts                    | Image MIME sniff failed or disallowed                                                                                                                                        |
+| `too_many_images`            | safeZipReader.ts                    | Image count exceeds `MAX_IMAGES_PER_IMPORT`                                                                                                                                  |
+| `image_not_found`            | packages.ts                         | An image row to insert has no bytes in the ZIP (`insertImportImages`)                                                                                                        |
+| `schema_mismatch`            | packages.ts                         | Multipart body unreadable, or `file` / `targetLibraryId` missing                                                                                                             |
+| `not_found`                  | packages.ts                         | Target library not visible (import); spec missing or not a root (export)                                                                                                     |
+| `tree_too_large`             | packages.ts                         | Export tree exceeds a `MAX_TREE_*` limit (413)                                                                                                                               |
+
+Errors from the batch save (for example `schema_mismatch` or `parent_not_found`) are returned with the batch save's own status and body, and roll the whole import back.
 
 ## Round-trip invariants
 
-- **Schema gate:** parser requires `schemaVersion >= 3.0`; 2.0 envelopes are rejected. Client migration to 3.0 is handled during authoring, not import.
-- **Proxy inlining ↔ extraction:** export writes `node.embeddedWorkflowSpecId`; import strips it back into `proxy_reference` rows.
-- **Image namespacing:** server exports use `images/<specId>-<filename>`; client exports use bare `images/<filename>`; import resolves both.
-- **OID prefix:** `STEP_OID_PREFIX_RE` is stripped from form-element image filenames on import.
-- **Fresh IDs:** import mints new UUIDs for every spec and re-wires parent / root / proxy references via a `sourceId → newId` map — the import is additive and never overwrites existing rows.
+- **Schema gate:** import requires `4.0 ≤ schemaVersion ≤ 5.0`; export writes `5.0`.
+- **Proxy inlining ↔ extraction:** references to step libraries are embedded on export; on import each `WORKFLOW PROXY` is re-linked to its child by `local_id` and the link is stored as a `proxy_reference` row.
+- **Image namespacing:** form images are written as `images/{imageOid}-{filename}` and UI-parameter images as `images/{filename}`; import resolves bare, `{specId}-` prefixed and `-{filename}` suffixed entries.
+- **Fresh IDs:** import mints new UUIDs for every spec and re-wires parent / root / proxy references via a `sourceId → newId` map — the import is additive and never overwrites existing specs.
+- **Libraries by name:** environment and action libraries are reused by name (team first, then GLOBAL) and created only when missing.
 - **Blob dedup:** multiple logical images with identical bytes share one `image_blob` row via SHA-256 `contentHash`.
 
 ## Key source files
 
 - `src/server/routes/v2/packages.ts` — REST endpoints.
-- `src/server/packageFormat/buildEnvelope.ts` — envelope builder.
+- `src/server/packageFormat/buildWorkflowPackage.ts` — `.WFmasterX` builder.
+- `src/lib/packageFormat/workflow-exporters.ts`, `library-exporters.ts`, `export-types.ts` — envelope and library JSON.
 - `src/server/packageFormat/parseEnvelope.ts` — envelope parser.
 - `src/server/packageFormat/safeZipReader.ts` — ZIP validation.
+- `src/server/packageFormat/importLibrariesFromZip.ts` — environment / action library reuse and creation.
 - `src/server/packageFormat/buildImportBatch.ts` — `ImportPlan` → `BatchSaveRequest`.
 - `src/server/packageFormat/insertImportImages.ts` — image blob upsert.
 - `src/server/packageFormat/loadImageBytes.ts` — export-side image loader.

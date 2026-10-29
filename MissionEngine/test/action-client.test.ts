@@ -33,7 +33,7 @@ import {
   type FetchLike,
   type InvokeRequest,
 } from '../src/actions/client.js';
-import { subscribeSse, type ActionEvent } from '../src/actions/sse.js';
+import { subscribeSse, toActionEvent, type ActionEvent } from '../src/actions/sse.js';
 import { startStubActionServer, type StubActionServer } from './stub-action-server.js';
 
 const fetchMock = vi.fn();
@@ -157,6 +157,17 @@ describe('ActionClient.getInstance', () => {
     const snap = await client.getInstance('http://localhost:3002', 'ai-1');
     expect(snap).toEqual({ state: 'RUNNING', outputs: [{ name: 'x', value: '1' }] });
     expect(fetchMock.mock.calls[0][0]).toBe('http://localhost:3002/trajectory/v1/instances/ai-1');
+  });
+
+  it('reads the protocol shape: state object and {key, value} outputs (Mission Autopilot)', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(200, { data: {
+      state: { current: 'COMPLETED', previous: 'EXECUTING', entered_at: '2026-10-29T00:00:00Z' },
+      outputs: [{ key: 'Result', value: 'ok' }, { key: 'Count', value: 3 }, { bogus: 1 }],
+    } }));
+    const client = new ActionClient(['http://localhost:3002'], fetchMock);
+
+    const snap = await client.getInstance('http://localhost:3002', 'ai-1');
+    expect(snap).toEqual({ state: 'COMPLETED', outputs: [{ name: 'Result', value: 'ok' }, { name: 'Count', value: '3' }] });
   });
 
   it('404 -> throws the typed ActionInstanceLost', async () => {
@@ -333,6 +344,13 @@ function sseStreamResponse(chunks: string[]): Response {
   });
   return new Response(stream);
 }
+
+describe('output events', () => {
+  it('accept {key, value} pairs as well as {name, value}', () => {
+    const e = toActionEvent({ event: 'output', id: '4', data: JSON.stringify({ outputs: [{ key: 'A', value: '1' }, { name: 'B', value: '2' }], timestamp: 't' }) });
+    expect(e).toMatchObject({ kind: 'output', outputs: [{ name: 'A', value: '1' }, { name: 'B', value: '2' }] });
+  });
+});
 
 describe('subscribeSse', () => {
   it('parses a two-event chunked stream and dispatches both events', async () => {

@@ -154,15 +154,17 @@ async function awaitTerminal(
       const body = (await res.json()) as {
         data: {
           state: { current: string; previous: string | null; entered_at: string }
-          outputs: Array<{ key: string; value: string }>
+          outputs: Array<{ name: string; key: string; value: string }>
         }
       }
       lastState = body.data.state.current
       if (TERMINAL.has(lastState)) {
-        // Convert outputs array [{key, value}] → dict
+        // Convert outputs array [{name, key, value}] → dict. The protocol field is `name`;
+        // `key` is still sent for older readers and must agree.
         const outputsDict: Record<string, string> = {}
         for (const o of body.data.outputs ?? []) {
-          outputsDict[o.key] = o.value
+          expect(o.name).toBe(o.key)
+          outputsDict[o.name] = o.value
         }
         return { state: lastState, outputs: outputsDict }
       }

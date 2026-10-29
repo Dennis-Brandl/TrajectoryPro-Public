@@ -125,6 +125,22 @@ export function parseSseBlock(block: string): ParsedSseBlock | null {
   return { event, data: dataLines.join('\n'), id };
 }
 
+/** Output/input pairs as the engine reads them: `{name, value}`. The protocol names the pair's
+ *  first field `name`; Mission Autopilot has sent `key`, so either is accepted. Entries with
+ *  neither are dropped; values are stringified. */
+export function toNamePairs(raw: unknown): Array<{ name: string; value: string }> {
+  if (!Array.isArray(raw)) return [];
+  const out: Array<{ name: string; value: string }> = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const { name, key, value } = item as { name?: unknown; key?: unknown; value?: unknown };
+    const id = typeof name === 'string' ? name : typeof key === 'string' ? key : null;
+    if (id === null) continue;
+    out.push({ name: id, value: value == null ? '' : String(value) });
+  }
+  return out;
+}
+
 export function toActionEvent(block: ParsedSseBlock): ActionEvent | null {
   let payload: Record<string, unknown>;
   try {
@@ -146,7 +162,7 @@ export function toActionEvent(block: ParsedSseBlock): ActionEvent | null {
     case 'output':
       return {
         kind: 'output',
-        outputs: (payload.outputs as Array<{ name: string; value: string }> | undefined) ?? [],
+        outputs: toNamePairs(payload.outputs),
         ts: payload.timestamp as string,
         eventId,
       };

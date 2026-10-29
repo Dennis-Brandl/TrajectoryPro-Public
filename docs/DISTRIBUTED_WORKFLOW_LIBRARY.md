@@ -198,7 +198,10 @@ The list form arrives when you bind the input to a whole Value Property whose en
 parameter names, or when you bind it to an entry that holds such a list (as the
 [Combine script](#61-combine-single-values-into-a-value-property-list) produces).
 
-Every name must be one of the created workflow's starting parameters; an unknown name returns code 5.
+Names that are not among the created workflow's starting parameters are ignored when action
+matching is **Loose** (Mission Commander's Settings), so you can pass a whole Value Property such
+as an order that carries more entries than the workflow needs. When matching is **Strict**, an
+unknown name returns code 5.
 
 > **One quirk.** A whole Value Property with a single entry named `Value` is read as the
 > `StartingParameters` property itself: the text of its `Value` entry is used as the parameters.

@@ -20,6 +20,7 @@ import { DaoError, pgErrorCode } from '../../dao/errors.js';
 import { workflowOutputs } from '../workflow-outputs.js';
 import { REMOTE_CODES, RemoteError, runtimeStateName } from './codes.js';
 import { parseStartingParameters } from './params.js';
+import { getActionMatchingMode } from '../../dao/system-settings.js';
 import { resolveMasterWorkflow, resolveRuntime, resolveWorkCenter, type Db, type RuntimeTarget } from './resolve.js';
 import { assertCreationAllowed, authorize, type Caller } from './authority.js';
 
@@ -73,9 +74,12 @@ export async function createRuntime(db: Db, caller: Caller, input: {
   if (input.workflow.trim() === '') throw new RemoteError(REMOTE_CODES.INVALID_INPUT, 'Workflow name is blank');
   const master = await resolveMasterWorkflow(db, wc.id, input.workflow, input.now);
   const params = parseStartingParameters(input.startingParameters);
+  // Loose matching: a whole Value Property may carry entries the child does not declare
+  // ("Cost" in a PizzaOrder); they are dropped. Strict still rejects them.
+  const ignoreUnknownParams = (await getActionMatchingMode(db)) === 'loose';
   try {
     const created = await createRuntimeWorkflow(db, {
-      workflowId: master.id, params, userId: null, start: input.start, triggeredBy: 'workflow',
+      workflowId: master.id, params, userId: null, start: input.start, triggeredBy: 'workflow', ignoreUnknownParams,
       createdBy: {
         instanceId: caller.instanceId, stepInstanceId: caller.stepInstanceId, stepStartedAt: caller.stepStartedAt,
         label: `${caller.workCenterName}/${caller.runtimeLabel}`,

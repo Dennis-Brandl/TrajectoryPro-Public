@@ -135,11 +135,13 @@ export function startingParameterSpecs(master: unknown): StartingParameterSpec[]
 export function validateStartingParams(
   specs: StartingParameterSpec[],
   entered: unknown,
+  opts: { ignoreUnknown?: boolean } = {},
 ): Record<string, string> {
   if (entered == null) return {};
   if (!isRecord(entered)) throw new DaoError('RUNTIME_PARAM_INVALID', 'params must be an object');
   const ids = new Set(specs.map((s) => s.id));
-  const keys = Object.keys(entered);
+  // ignoreUnknown: names the master does not declare are dropped, not rejected (loose matching).
+  const keys = Object.keys(entered).filter((k) => !opts.ignoreUnknown || ids.has(k));
   if (keys.length > MAX_STARTING_PARAMS) throw new DaoError('RUNTIME_PARAM_INVALID', 'too many parameters');
   const out: Record<string, string> = {};
   for (const key of keys) {

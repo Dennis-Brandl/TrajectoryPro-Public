@@ -18,6 +18,7 @@ import { makeTestDb } from '../../../test/helpers/db.js';
 import { runtimeCols } from '../../../test/helpers/instances.js';
 import { workCenter, workflow, workflowInstance, stepInstance, runtimeHistory } from '../../db/schema/index.js';
 import { setControlGrant } from '../../dao/control-grants.js';
+import { setActionMatchingMode } from '../../dao/system-settings.js';
 import { loadCaller, createRuntime, commandRuntime, getRuntimeState, getRuntimeOutputs, RemoteError } from './index.js';
 
 const CALLER_SPEC = { oid: 'root', steps: [{ oid: 'act', step_type: 'ACTION PROXY', action_proxy_config: { action_name: 'Create Runtime Workflow' } }] };
@@ -132,12 +133,29 @@ test('create: unknown parameter is 5, unknown workflow 2, other work center with
   const { db, close } = await makeTestDb();
   try {
     const w = await world(db);
+    await setActionMatchingMode(db, 'strict');
     expect(await codeOf(createRuntime(db, await w.callerFor(), { workCenter: '', workflow: 'Mix', startingParameters: 'Nope=1', start: false, now: NOW }))).toBe(5);
+    await setActionMatchingMode(db, 'loose');
     expect(await codeOf(createRuntime(db, await w.callerFor(), { workCenter: '', workflow: 'Ghost', startingParameters: '', start: false, now: NOW }))).toBe(2);
     expect(await codeOf(createRuntime(db, await w.callerFor(), { workCenter: 'Line B', workflow: 'Mix', startingParameters: '', start: false, now: NOW }))).toBe(3);
     await setControlGrant(db, { sourceWorkCenterId: w.a.id, targetWorkCenterId: w.b.id, scope: 'own', userId: null });
     const r = await createRuntime(db, await w.callerFor(), { workCenter: 'Line B', workflow: 'Mix', startingParameters: '', start: false, now: NOW });
     expect(r.label).toBe('RW-1');
+  } finally { await close(); }
+});
+
+test('create under loose matching drops entries the child does not declare; strict rejects them', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    const w = await world(db);
+    const order = JSON.stringify([
+      { name: 'Batch', value: 'B-9' }, { name: 'Cost', value: '12.50' }, { name: 'CustomerName', value: 'Sally' },
+    ]);
+    const r = await createRuntime(db, await w.callerFor(), { workCenter: '', workflow: 'Mix', startingParameters: order, start: false, now: NOW });
+    const [row] = await db.select().from(workflowInstance).where(eq(workflowInstance.id, r.id));
+    expect(row!.startingParams).toEqual({ Batch: 'B-9' });
+    await setActionMatchingMode(db, 'strict');
+    expect(await codeOf(createRuntime(db, await w.callerFor(), { workCenter: '', workflow: 'Mix', startingParameters: order, start: false, now: NOW }))).toBe(5);
   } finally { await close(); }
 });
 

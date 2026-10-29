@@ -41,10 +41,16 @@ export default function App() {
         (e as CustomEvent<{ signOut?: boolean } | undefined>).detail?.signOut === true
       setRejected(!explicit)
       setSignedIn(false)
+      setSplashDismissed(true)
     }
     window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized)
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized)
   }, [])
+
+  // The splash opens the app, before sign-in, so a fresh sign-in goes straight to the console.
+  if (!splashDismissed) {
+    return <WelcomeSplash onContinue={() => setSplashDismissed(true)} />
+  }
 
   if (!signedIn) {
     return (
@@ -56,10 +62,6 @@ export default function App() {
         initialError={rejected ? REJECTED : null}
       />
     )
-  }
-
-  if (!splashDismissed) {
-    return <WelcomeSplash onContinue={() => setSplashDismissed(true)} />
   }
 
   return (

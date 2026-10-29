@@ -62,6 +62,8 @@ export async function createRuntimeWorkflow(
   db: Db,
   input: {
     workflowId: string; params: Record<string, unknown>; userId: string | null; start?: boolean;
+    // Drop starting parameters the master does not declare instead of rejecting them.
+    ignoreUnknownParams?: boolean;
     // Spec 2026-10-15 §2: a runtime created by another runtime's action.
     triggeredBy?: 'manual' | 'workflow';
     // stepStartedAt: the creating step's activation (Caller.stepStartedAt) — with the step id, the
@@ -74,7 +76,9 @@ export async function createRuntimeWorkflow(
     // serialise — the snapshot below can never name a node a reload is deleting with its grants.
     const [master] = await tx.select().from(workflow).where(eq(workflow.id, input.workflowId)).for('share');
     if (!master) throw new DaoError('RUNTIME_MASTER_NOT_FOUND');
-    const starting = validateStartingParams(startingParameterSpecs(master.specJsonb), input.params);
+    const starting = validateStartingParams(startingParameterSpecs(master.specJsonb), input.params, {
+      ignoreUnknown: input.ignoreUnknownParams,
+    });
     const recipe = instantiateSpec(master.specJsonb);
     const timeZone = await getRuntimeIdTimezone(tx as unknown as Db);
     const { runtimeNumber, runtimeLabel } = await allocateRuntimeIdentity(

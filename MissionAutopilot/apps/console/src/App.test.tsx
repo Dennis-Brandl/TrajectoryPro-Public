@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import App from './App'
 import { clearApiKey, setApiKey, UNAUTHORIZED_EVENT } from '@/lib/apiKey'
@@ -35,6 +35,16 @@ describe('App sign-in state', () => {
       </MemoryRouter>
     )
   }
+
+  it('shows the splash before the sign-in screen, not after it', () => {
+    clearApiKey()
+    renderApp()
+    expect(screen.getByAltText('Mission Autopilot')).toBeTruthy()
+    expect(screen.queryByLabelText('API key')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(screen.getByLabelText('API key')).toBeTruthy()
+    expect(screen.queryByAltText('Mission Autopilot')).toBeNull()
+  })
 
   it('shows the rejected message after a mid-session 401', () => {
     renderApp()

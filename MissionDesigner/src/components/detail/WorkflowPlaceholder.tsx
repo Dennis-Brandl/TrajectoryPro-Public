@@ -68,8 +68,12 @@ export function WorkflowPlaceholder() {
 
   return (
     <div className="flex-1 flex items-center justify-center bg-slate-50 dark:bg-slate-900">
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-8 w-full max-w-lg text-center">
-        <img src="/MissionDesignerLargeImage.png" alt="Mission Designer" className="mx-auto mb-4 max-h-32 w-auto" />
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-8 w-full max-w-3xl text-center">
+        <img
+          src="/MissionDesignerStartGraphic.png"
+          alt="Mission Designer"
+          className="mx-auto mb-6 w-full h-auto rounded-lg bg-white"
+        />
         <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-200">Welcome to Mission Designer</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 mb-6">
           Create and manage team-scoped Workflows, Workflow Libraries, Environment Specifications, and Action

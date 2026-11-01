@@ -19,6 +19,10 @@ import {
   createCreatedEntry,
   createStateChangeEntry,
   createNewVersionEntry,
+  createMovedEntry,
+  createCopiedEntry,
+  createReferenceUpdatedEntry,
+  describeMoveHistoryEntry,
 } from '@/types/specification-history'
 
 describe('specification-history', () => {
@@ -92,5 +96,56 @@ describe('createStateChangeEntry — Phase 3 optional flags', () => {
     const e = createStateChangeEntry({ ...base, effectiveFrom: 1750000000000 })
     const [back] = parseHistory(serializeHistory([e]))
     expect(back).toEqual(e)
+  })
+
+  it('createMovedEntry returns the documented shape', () => {
+    const e = createMovedEntry({ account: 'a', version: '1.0.0', fromLibraryId: 'l1', toLibraryId: 'l2' })
+    expect(e).toMatchObject({ type: 'moved', account: 'a', version: '1.0.0', fromLibraryId: 'l1', toLibraryId: 'l2' })
+    expect('fromTeamId' in e).toBe(false)
+    const t = createMovedEntry({
+      account: 'a',
+      version: '1',
+      fromLibraryId: 'l1',
+      toLibraryId: 'l2',
+      fromTeamId: 't1',
+      toTeamId: 't2',
+    })
+    expect(t).toMatchObject({ fromTeamId: 't1', toTeamId: 't2' })
+    expect(typeof e.at).toBe('string')
+  })
+
+  it('createCopiedEntry returns the documented shape', () => {
+    expect(createCopiedEntry({ account: 'a', version: '1.0.0', fromSpecId: 's1', fromLibraryId: 'l1' })).toMatchObject({
+      type: 'copied',
+      account: 'a',
+      version: '1.0.0',
+      fromSpecId: 's1',
+      fromLibraryId: 'l1',
+    })
+  })
+
+  it('createReferenceUpdatedEntry returns the documented shape', () => {
+    expect(
+      createReferenceUpdatedEntry({ account: 'a', version: '1.0.0', field: 'action_library', from: 'Old', to: 'New' }),
+    ).toMatchObject({ type: 'reference_updated', field: 'action_library', from: 'Old', to: 'New' })
+  })
+
+  it('describeMoveHistoryEntry renders names, falling back to ids', () => {
+    const names: Record<string, string> = { l1: 'Source', l2: 'Target' }
+    const resolve = (id: string) => names[id]
+    const moved = createMovedEntry({ account: 'a', version: '1', fromLibraryId: 'l1', toLibraryId: 'l2' })
+    expect(describeMoveHistoryEntry(moved, resolve)).toBe('Moved from Source to Target')
+    expect(describeMoveHistoryEntry(moved)).toBe('Moved from l1 to l2')
+    const copied = createCopiedEntry({ account: 'a', version: '1', fromSpecId: 's', fromLibraryId: 'l1' })
+    expect(describeMoveHistoryEntry(copied, resolve)).toBe('Copied from Source')
+    const ref = createReferenceUpdatedEntry({
+      account: 'a',
+      version: '1',
+      field: 'actionLibraryName',
+      from: 'A',
+      to: 'B',
+    })
+    expect(describeMoveHistoryEntry(ref)).toBe('Reference updated: A → B')
+    expect(describeMoveHistoryEntry(createCreatedEntry({ account: 'a', version: '1' }))).toBeUndefined()
   })
 })

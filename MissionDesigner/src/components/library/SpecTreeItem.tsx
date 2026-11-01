@@ -51,6 +51,8 @@ interface SpecTreeItemProps {
   onDelete?: (specId: string) => void
   onChangeState?: (specId: string) => void
   onCreateVersion?: (specId: string) => void
+  onMoveToLibrary?: (specId: string) => void
+  onMoveToTeam?: (specId: string) => void
   onExportPDF?: (specId: string) => void
   onExportPackage?: (specId: string) => void
 }
@@ -88,6 +90,8 @@ export function SpecTreeItem({
   onDelete,
   onChangeState,
   onCreateVersion,
+  onMoveToLibrary,
+  onMoveToTeam,
   onExportPDF,
   onExportPackage,
 }: SpecTreeItemProps) {
@@ -146,6 +150,10 @@ export function SpecTreeItem({
             canChangeState={caps.canChangeState}
             canCreateVersion={caps.canCreateVersion}
             canDeleteSpec={caps.canDeleteSpec}
+            canMoveToLibrary={caps.canMoveToLibrary && !!onMoveToLibrary}
+            canMoveToTeam={caps.canMoveToTeam && !!onMoveToTeam}
+            onMoveToLibrary={onMoveToLibrary ? () => onMoveToLibrary(node.id) : undefined}
+            onMoveToTeam={onMoveToTeam ? () => onMoveToTeam(node.id) : undefined}
             onExportPackage={onExportPackage ? () => onExportPackage(node.id) : undefined}
             onExportPDF={() => onExportPDF(node.id)}
             onChangeState={() => onChangeState(node.id)}

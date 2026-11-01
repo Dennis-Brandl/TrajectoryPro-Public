@@ -27,14 +27,25 @@ import {
   editLockedStateSet,
   isEditLockedState,
 } from '@/lib/lifecycle'
+import { isGlobalTeam } from '@/lib/global-team'
 
 export interface SpecRowCapabilities {
   canChangeState: boolean
   canCreateVersion: boolean
   canDeleteSpec: boolean
+  canMoveToLibrary: boolean
+  canMoveToTeam: boolean
 }
 
-const NONE: SpecRowCapabilities = { canChangeState: false, canCreateVersion: false, canDeleteSpec: false }
+const MOVABLE_ENTITY_TYPES: readonly string[] = ['workflow', 'environment', 'action']
+
+const NONE: SpecRowCapabilities = {
+  canChangeState: false,
+  canCreateVersion: false,
+  canDeleteSpec: false,
+  canMoveToLibrary: false,
+  canMoveToTeam: false,
+}
 
 export function specRowCapabilities(
   principal: MePrincipal | null,
@@ -65,5 +76,28 @@ export function specRowCapabilities(
     (principalCan(principal, library, 'delete') &&
       (specState === 'Obsolete' || !isEditLockedState(specState, editLockedStateSet(principal.editLockedStates))))
 
-  return { canChangeState, canCreateVersion, canDeleteSpec }
+  // Move to Library: the Librarian pair (library.create + library.delete) in the source team.
+  // Step-library elements are not movable (their references carry library ids the server does not rewrite).
+  const canMoveToLibrary =
+    MOVABLE_ENTITY_TYPES.includes(library.entityType) &&
+    (admin ||
+      (principalCan(principal, library, 'library.create') && principalCan(principal, library, 'library.delete')))
+
+  // Move to Team: workflows only; needs the Librarian pair in the source team AND in at least one
+  // other non-GLOBAL team. The server still demands create rights in the destination when it must
+  // copy — that surfaces as a 403 `missing` list.
+  const canMoveToTeam =
+    library.entityType === 'workflow' &&
+    canMoveToLibrary &&
+    principal.teams.some(
+      (t) =>
+        t.id !== library.teamId &&
+        !isGlobalTeam(t.id) &&
+        !t.isGlobal &&
+        (admin ||
+          (principalHasRight(principal, t.id, 'workflow:library.create') &&
+            principalHasRight(principal, t.id, 'workflow:library.delete'))),
+    )
+
+  return { canChangeState, canCreateVersion, canDeleteSpec, canMoveToLibrary, canMoveToTeam }
 }

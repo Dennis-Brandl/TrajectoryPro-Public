@@ -17,7 +17,7 @@ import { Button } from '@mission/ui'
 export function WelcomeStep({ onNext }: { onNext: () => void }) {
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Welcome — let's set up Mission Designer</h2>
+      <h2 className="text-lg font-semibold">Welcome — let's set up Trajectory Pro Designer</h2>
       <p className="text-sm text-muted-foreground">
         This one-time setup creates the first administrator account, your first team, and the starting roles. You can
         change all of it later in Administration.

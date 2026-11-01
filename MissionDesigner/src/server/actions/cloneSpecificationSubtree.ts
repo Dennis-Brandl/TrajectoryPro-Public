@@ -12,7 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { createNewVersionEntry, serializeHistory } from '../../types/specification-history'
+import {
+  createCopiedEntry,
+  createNewVersionEntry,
+  parseHistory,
+  serializeHistory,
+} from '../../types/specification-history'
 
 export interface CloneSourceRow {
   id: string
@@ -29,6 +34,8 @@ export interface CloneSourceRow {
   dataSchemaVersion: number
   lastEditedByUserId: string | null
   history: string
+  /** Kept by copySpecificationSubtree; Create New Version leaves it out (a new Draft has none). */
+  effectiveFrom?: number | null
 }
 
 export interface ClonedRow extends CloneSourceRow {
@@ -95,6 +102,56 @@ export function cloneSpecificationSubtree(args: CloneArgs): CloneResult {
   })
 
   return { rows, newRootId, oidMap }
+}
+
+export interface CopyArgs {
+  source: CloneSourceRow[] // one or more whole trees, any order
+  /** Source id → new id for EVERY source row (and for whatever else the data may point at). */
+  idMap: Map<string, string>
+  libraryId: string
+  account: string
+  /** Extra data rewrite after the in-tree remap (e.g. references to other copied elements). */
+  rewriteData?: (json: string) => string
+  now?: () => number
+}
+
+/**
+ * State-preserving sibling of cloneSpecificationSubtree, for copies into another
+ * team: every row keeps its `state`, `version` and `history`; each root gains a
+ * `copied` history entry naming its source. Ids come from `idMap`; rows land in
+ * `libraryId`. Roots get the DB convention `rootSpecificationId = id`.
+ */
+export function copySpecificationSubtree(args: CopyArgs): ClonedRow[] {
+  const { source, idMap, libraryId, account } = args
+  const now = args.now ?? Date.now
+  const mapped = (id: string) => {
+    const to = idMap.get(id)
+    if (!to) throw new Error(`copySpecificationSubtree: no new id for ${id}`)
+    return to
+  }
+  return source.map((r) => {
+    const ts = now()
+    const id = mapped(r.id)
+    const isRoot = r.parentSpecificationId === null
+    let history = r.history
+    if (isRoot) {
+      const entries = parseHistory(r.history)
+      entries.push(createCopiedEntry({ account, version: r.version, fromSpecId: r.id, fromLibraryId: r.libraryId }))
+      history = serializeHistory(entries)
+    }
+    const data = rewriteSpecData(r.data, idMap)
+    return {
+      ...r,
+      id,
+      libraryId,
+      parentSpecificationId: isRoot ? null : mapped(r.parentSpecificationId!),
+      rootSpecificationId: isRoot ? id : mapped(r.rootSpecificationId ?? r.id),
+      data: args.rewriteData ? args.rewriteData(data) : data,
+      history,
+      createdAt: ts,
+      updatedAt: ts,
+    }
+  })
 }
 
 /**

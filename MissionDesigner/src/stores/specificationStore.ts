@@ -311,6 +311,33 @@ export const useSpecificationStore = create<SpecificationStore>()(
       })
     },
 
+    applyServerLibrary(rootIds, libraryId) {
+      const roots = new Set(rootIds)
+      set((d) => {
+        const touched: string[] = []
+        const oldLibraries = new Set<string>()
+        for (const spec of d.specs.values()) {
+          if (!roots.has(spec.rootSpecificationId) || spec.libraryId === libraryId) continue
+          if (!spec.parentSpecificationId) oldLibraries.add(spec.libraryId)
+          spec.libraryId = libraryId
+          touched.push(spec.id)
+        }
+        if (touched.length === 0) return
+        // The incremental rebuild only refreshes a root's CURRENT library, so rebuild the old
+        // libraries' root lists from d.specs (the stored list may hold stale proxies).
+        for (const oldId of oldLibraries) {
+          const left: Specification[] = []
+          for (const spec of d.specs.values()) {
+            if (!spec.parentSpecificationId && spec.libraryId === oldId && !d.pendingDeletes.has(spec.id)) {
+              left.push(spec)
+            }
+          }
+          d.rootsInLibrary.set(oldId, Object.freeze(left) as unknown as Specification[])
+        }
+        rebuildIndexes(d, touched)
+      })
+    },
+
     createSpecInMemory({ parentId, libraryId, init, isFromCopyLoop }) {
       // Honor a caller-provided id (init.id) so imports PRESERVE source OIDs
       // (Actions/Environments must keep their OIDs or workflow action-proxy

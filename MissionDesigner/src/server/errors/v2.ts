@@ -77,6 +77,9 @@ export const V2_ERROR_CODES = [
   'missing_resolution', // 422 — a conflict row arrived with no keep/replace resolution
   'forbidden_entity_types', // 403 — bundle carries entity types the caller may not import
   'commit_failed', // 500 — import transaction rolled back
+  // Move between libraries
+  'move_name_conflict', // 409 — destination library already has an element with this name
+  'move_target_invalid', // 422 — destination is the same library, another type or team, or not allowed
   // Signup gate middleware
   'signup_closed', // 403 — self-serve signup disabled
 ] as const

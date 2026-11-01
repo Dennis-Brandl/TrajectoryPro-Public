@@ -81,7 +81,8 @@ describe('buildRecordModel', () => {
     ]);
     expect(m.zoneNote).toBe('Times are America/Chicago (UTC-05:00)');
     expect(m.startingParams).toBe('size = large · crust = thin');
-    expect(m.finalValues).toBe('total = 12.50 · receipt = R-1');
+    // Outputs only: the property store also holds the starting parameters, which are not results.
+    expect(m.finalValues).toBe('receipt = R-1');
     expect(m.footerLeft).toBe('RW-7 · Generated 2026-10-27 15:00:00 by dbrandl');
   });
 

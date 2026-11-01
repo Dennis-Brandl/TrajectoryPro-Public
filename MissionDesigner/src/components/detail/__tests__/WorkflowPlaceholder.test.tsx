@@ -40,7 +40,7 @@ describe('WorkflowPlaceholder (start screen)', () => {
     render(<WorkflowPlaceholder />)
 
     const logo = screen.getByAltText('Mission Designer') as HTMLImageElement
-    expect(logo.getAttribute('src')).toContain('/MissionDesignerLargeImage.png')
+    expect(logo.getAttribute('src')).toContain('/MissionDesignerStartGraphic.png')
     expect(screen.getByText('Welcome to Mission Designer')).toBeTruthy()
     expect(screen.getByText(/Please select a starting team\./)).toBeTruthy()
   })

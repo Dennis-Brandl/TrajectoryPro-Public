@@ -220,7 +220,7 @@ export function renderRecordPdf(model: RecordModel): RecordPdfResult {
     y += 8;
   }
 
-  packed('Final properties and outputs', model.finalValues);
+  packed('Outputs', model.finalValues);
 
   // Safety net: drop any page nothing was drawn on (e.g. one autotable added), then renumber.
   const total = doc.getNumberOfPages();

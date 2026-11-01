@@ -30,6 +30,7 @@ import type { SpecificationState } from '../../../types/library'
 import { assertCanWriteSpec, gateErrorCode, resolveVisibleSpec } from './_specGate'
 import { loadPrincipal, canDo, legalEdge, rightForEdge } from '../../authz/policy'
 import { cloneSpecificationSubtree, type CloneSourceRow } from '../../actions/cloneSpecificationSubtree'
+import { topoSortByParent } from '../../actions/moveSpecs/topoSort'
 
 type Variables = { v2Session: V2Session }
 
@@ -404,33 +405,3 @@ specificationsV2.patch('/specifications/:id/version', async (c) => {
   const updated = await specReadDao.getSpec({ sessionUserId: session.userId }, id)
   return c.json({ spec: updated })
 })
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** BFS topological sort: guarantees every parent is emitted before its children,
- *  regardless of the order the recursive CTE hands back rows. */
-function topoSortByParent<T extends { id: string; parentSpecificationId: string | null }>(rows: T[]): T[] {
-  const byParent = new Map<string | null, T[]>()
-  for (const r of rows) {
-    const arr = byParent.get(r.parentSpecificationId) ?? []
-    arr.push(r)
-    byParent.set(r.parentSpecificationId, arr)
-  }
-  const result: T[] = []
-  const queue: T[] = [...(byParent.get(null) ?? [])]
-  while (queue.length > 0) {
-    const node = queue.shift()!
-    result.push(node)
-    const children = byParent.get(node.id) ?? []
-    queue.push(...children)
-  }
-  // Append any orphans / cycles so the INSERT throws a clear FK error rather
-  // than silently dropping rows.
-  if (result.length < rows.length) {
-    const seen = new Set(result.map((r) => r.id))
-    for (const r of rows) if (!seen.has(r.id)) result.push(r)
-  }
-  return result
-}

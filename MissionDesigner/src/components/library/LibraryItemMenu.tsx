@@ -26,6 +26,10 @@ export interface LibraryItemMenuProps {
   canChangeState: boolean
   canCreateVersion: boolean
   canDeleteSpec: boolean
+  canMoveToLibrary?: boolean
+  canMoveToTeam?: boolean
+  onMoveToLibrary?: () => void
+  onMoveToTeam?: () => void
   onExportPackage?: () => void
   onExportPDF: () => void
   onChangeState: () => void
@@ -37,6 +41,10 @@ export function LibraryItemMenu({
   canChangeState,
   canCreateVersion,
   canDeleteSpec,
+  canMoveToLibrary = false,
+  canMoveToTeam = false,
+  onMoveToLibrary,
+  onMoveToTeam,
   onExportPackage,
   onExportPDF,
   onChangeState,
@@ -45,7 +53,7 @@ export function LibraryItemMenu({
 }: LibraryItemMenuProps) {
   // The menu appears when the user has any write capability on this spec.
   // Exports are read-only and ride along once the menu is shown.
-  if (!canChangeState && !canCreateVersion && !canDeleteSpec) return null
+  if (!canChangeState && !canCreateVersion && !canDeleteSpec && !canMoveToLibrary && !canMoveToTeam) return null
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -64,6 +72,8 @@ export function LibraryItemMenu({
         <DropdownMenuItem onClick={onExportPDF}>Export as PDF</DropdownMenuItem>
         {canChangeState && <DropdownMenuItem onClick={onChangeState}>Change State…</DropdownMenuItem>}
         {canCreateVersion && <DropdownMenuItem onClick={onCreateVersion}>Create New Version…</DropdownMenuItem>}
+        {canMoveToLibrary && <DropdownMenuItem onClick={onMoveToLibrary}>Copy/Move to Library…</DropdownMenuItem>}
+        {canMoveToTeam && <DropdownMenuItem onClick={onMoveToTeam}>Copy/Move to Team…</DropdownMenuItem>}
         {canDeleteSpec && (
           <>
             <DropdownMenuSeparator />

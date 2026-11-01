@@ -303,14 +303,14 @@ export function WorkCenterDetail() {
       <Tabs key={view.workCenter.id} defaultValue="workflows">
         <TabsList>
           <TabsTrigger value="workflows">Workflows</TabsTrigger>
-          <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="environments">Env Specs</TabsTrigger>
-          <TabsTrigger value="roles">Roles</TabsTrigger>
           <TabsTrigger value="runtime">Runtime</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
-          <TabsTrigger value="shared">Shared State</TabsTrigger>
+          <TabsTrigger value="shared">Env Resources</TabsTrigger>
+          <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="roles">Roles</TabsTrigger>
           <TabsTrigger value="branding">Branding</TabsTrigger>
-          <TabsTrigger value="control">Control</TabsTrigger>
+          <TabsTrigger value="control">Controls</TabsTrigger>
         </TabsList>
         <TabsContent value="workflows">
           <WorkflowsTab

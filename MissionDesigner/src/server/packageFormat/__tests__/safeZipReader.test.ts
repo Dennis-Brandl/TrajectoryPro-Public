@@ -57,6 +57,27 @@ describe('readSafeZip', () => {
     await expect(readSafeZip(zip)).rejects.toThrow(/zip_filename_invalid/)
   })
 
+  it('accepts library entries whose names have apostrophes and punctuation', async () => {
+    const zip = await buildZip({
+      'workflow.WFmaster': '{}',
+      "environments/Mama Jane's Pizza.WFenvir": '{}',
+      'actions/R&D (Lab) Actions.WFaction': '{}',
+    })
+    const result = await readSafeZip(zip)
+    expect(result.envLibraries.map((e) => e.name)).toEqual(["Mama Jane's Pizza"])
+    expect(result.actionLibraries.map((e) => e.name)).toEqual(['R&D (Lab) Actions'])
+  })
+
+  it('throws zip_filename_invalid on a nested traversal segment', async () => {
+    const zip = await buildZip({ 'workflow.WFmaster': '{}', 'environments/../x.WFenvir': '{}' })
+    await expect(readSafeZip(zip)).rejects.toThrow(/zip_filename_invalid/)
+  })
+
+  it('throws zip_filename_invalid on a backslash', async () => {
+    const zip = await buildZip({ 'workflow.WFmaster': '{}', 'environments\\x.WFenvir': '{}' })
+    await expect(readSafeZip(zip)).rejects.toThrow(/zip_filename_invalid/)
+  })
+
   it('throws zip_filename_invalid on absolute path', async () => {
     const zip = await buildZip({ '/absolute.png': 'x' })
     await expect(readSafeZip(zip)).rejects.toThrow(/zip_filename_invalid/)

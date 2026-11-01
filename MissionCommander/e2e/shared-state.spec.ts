@@ -60,7 +60,7 @@ test('a loaded environment spec shows its resources and value properties in the 
 
   // Work Center → Shared State (the backstop view, spec §6.4). Nothing is running, so every
   // pool is at rest — the registry is viewable with nothing running (U3).
-  await page.getByRole('tab', { name: 'Shared State' }).click();
+  await page.getByRole('tab', { name: 'Env Resources' }).click();
   await expect(page.getByRole('cell', { name: 'Printer', exact: true })).toBeVisible();
   await expect(page.getByText('Free', { exact: true })).toBeVisible();
   await expect(page.getByText('2 available, 0 in use')).toBeVisible();

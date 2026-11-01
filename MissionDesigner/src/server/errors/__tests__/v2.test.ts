@@ -150,6 +150,8 @@ describe('v2 error codes — wflibx import + signup gate registration (audit ite
     'forbidden_entity_types',
     'commit_failed',
     'signup_closed',
+    'move_name_conflict',
+    'move_target_invalid',
   ])('%s is in the closed enum', (code) => {
     expect(isV2ErrorCode(code)).toBe(true)
   })

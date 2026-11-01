@@ -209,14 +209,14 @@ Below the header are nine tabs:
 | Tab              | Contents                                                                                                                                                                                                                  |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Workflows**    | Workflows loaded here: name, version, lifecycle state, and how many roles are allowed. Row actions are **Roles…** (see [Allowed Roles](#allowed-roles)), **Create Runtime Workflow…** and delete (trash icon) |
-| **Users**        | Members: name and email, login name, roles held here (**Roles…**), access level, the **Mission System Commander** checkbox, and **✕** to remove the member. **＋ Add User** adds a member |
 | **Env Specs**    | Environment specs loaded here: name, version, state, and the **Action Server** address used for each environment                                                                                                           |
-| **Roles**        | The roles used by this work center's workflows, as allowed roles or e-signature roles                                                                                                                                      |
 | **Runtime**      | Cards for this work center's runtime workflows. See [The Work Center's Runtime Tab](#the-work-centers-runtime-tab)                                                                                                         |
 | **History**      | This work center's finished runs. See [History](#16-history)                                                                                                                                                              |
-| **Shared State** | This work center's shared resources and value properties. See [Resources and Value Properties](#14-resources-and-value-properties)                                                                                        |
+| **Env Resources** | This work center's shared resources and value properties. See [Resources and Value Properties](#14-resources-and-value-properties)                                                                                        |
+| **Users**        | Members: name and email, login name, roles held here (**Roles…**), access level, the **Mission System Commander** checkbox, and **✕** to remove the member. **＋ Add User** adds a member |
+| **Roles**        | The roles used by this work center's workflows, as allowed roles or e-signature roles                                                                                                                                      |
 | **Branding** | This work center's colours and logo overrides |
-| **Control** | Which other work centers' runtimes this one may control, and which may control it. See [Control grants](#control-grants) |
+| **Controls** | Which other work centers' runtimes this one may control, and which may control it. See [Control grants](#control-grants) |
 
 ### Adding Members
 
@@ -234,14 +234,14 @@ The address applies to this work center only, so the same environment can use di
 `http://mission-broker:3007`. To use them in a work center: add that address to the
 action-server allowlist in **Settings**, then bind the work center's *Distributed Workflow
 Management* environment to it on the **Env Specs** tab. Reaching another work center also needs a
-grant on the **Control** tab.
+grant on the **Controls** tab.
 
 ### Control grants
 
 The **Distributed Workflow** actions let a running workflow create, start, stop, abort, suspend and
 unsuspend other runtime workflows, read their state and outputs, and wait for them to finish. A
 workflow may always do this inside its own work center. To reach another work center, an
-administrator grants it on the **Control** tab of the work center whose runtimes will do the
+administrator grants it on the **Controls** tab of the work center whose runtimes will do the
 controlling:
 
 - **Only runtimes it created** — it may create runtimes in the other work center and command the
@@ -650,7 +650,7 @@ Once loaded, these are the work center's **shared state**: every runtime workflo
 
 | View                                                 | Shows                                                              |
 | ---------------------------------------------------- | ------------------------------------------------------------------ |
-| Work center → **Shared State** tab                   | All of the work center's shared resources and value properties     |
+| Work center → **Env Resources** tab                  | All of the work center's shared resources and value properties     |
 | Environment → **Resources** / **Value Properties**   | The shared resources and value properties that environment declares |
 | **Runtime** area → a run                             | The run's own resources and values, plus the shared ones           |
 
@@ -666,7 +666,7 @@ Once loaded, these are the work center's **shared state**: every runtime workflo
 | **Defined by** | The environment spec that declares the resource (click to open it). **orphaned** means that spec has been deleted but the resource remains                                                                                |
 | **Actions**    | See below                                                                                                                                                                                                               |
 
-![Shared State tab: the resource table and value properties](/help-images/14-shared-state.png)
+![Env Resources tab: the resource table and value properties](/help-images/14-shared-state.png)
 
 | Type                                   | Mission Designer name |
 | -------------------------------------- | --------------------- |

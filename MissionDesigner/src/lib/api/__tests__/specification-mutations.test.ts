@@ -15,7 +15,12 @@
 // @vitest-environment jsdom
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { changeSpecificationState } from '@/lib/api/specification-mutations'
+import {
+  changeSpecificationState,
+  moveSpecificationToLibrary,
+  moveSpecificationToTeam,
+  moveErrorMessage,
+} from '@/lib/api/specification-mutations'
 import { ApiError } from '@/stores/specificationStore/apiClient'
 
 const okSpec = { id: 's1', state: 'Effective' }
@@ -51,5 +56,36 @@ describe('changeSpecificationState', () => {
       code: 'forbidden',
     })
     await expect(changeSpecificationState('s1', 'Approved', 'x')).rejects.toBeInstanceOf(ApiError)
+  })
+})
+
+describe('move calls and moveErrorMessage', () => {
+  it('posts to move-to-library and move-to-team with the right bodies', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ libraryId: 'L' }), { status: 200 })))
+    await moveSpecificationToLibrary('s1', 'L')
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v2/specifications/s1/move-to-library')
+    expect(JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)).toEqual({ targetLibraryId: 'L' })
+    await moveSpecificationToTeam('s1', 'T', 'L')
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/v2/specifications/s1/move-to-team')
+    expect(JSON.parse((fetchMock.mock.calls[1][1] as RequestInit).body as string)).toEqual({
+      targetTeamId: 'T',
+      targetLibraryId: 'L',
+    })
+  })
+
+  it('formats server errors from the flat body', () => {
+    expect(moveErrorMessage(new ApiError(409, 'move_name_conflict', { libraryName: 'Lib', name: 'Wf' }))).toBe(
+      '"Lib" already has an element named "Wf"',
+    )
+    expect(moveErrorMessage(new ApiError(422, 'move_target_invalid', { reason: 'x' }))).toBe(
+      "That library can't receive this element",
+    )
+    expect(moveErrorMessage(new ApiError(403, 'forbidden', { missing: ['a:b', 'c:d'] }))).toBe(
+      'You need these rights: a:b, c:d',
+    )
+    expect(moveErrorMessage(new ApiError(403, 'forbidden', {}))).toBe('403 forbidden')
+    expect(moveErrorMessage(new Error('boom'))).toBe('boom')
   })
 })

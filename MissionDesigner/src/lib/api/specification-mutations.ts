@@ -75,3 +75,81 @@ export function bumpErrorMessage(err: unknown, version: string): string {
   if (code === 'edit_locked') return 'This specification is locked — use Create New Version instead'
   return err instanceof Error && err.message ? err.message : 'Failed to update version'
 }
+
+export interface MoveToLibraryResult {
+  movedRootIds: string[]
+  referencesUpdated: number
+  libraryId: string
+}
+
+export interface MoveToTeamResult {
+  movedRootIds: string[]
+  libraryId: string
+  teamId: string
+  librariesCreated: { id: string; name: string; entityType: string }[]
+  elementsCopied: number
+  /** Destination libraries that received copies. */
+  touchedLibraryIds?: string[]
+}
+
+/** Moves every version of the element to another library in the same team. */
+export function moveSpecificationToLibrary(specId: string, targetLibraryId: string): Promise<MoveToLibraryResult> {
+  return send<MoveToLibraryResult>(`/api/v2/specifications/${specId}/move-to-library`, {
+    method: 'POST',
+    body: JSON.stringify({ targetLibraryId }),
+  })
+}
+
+/** Moves a workflow (all versions) to another team, copying its dependencies as needed. */
+export function moveSpecificationToTeam(
+  specId: string,
+  targetTeamId: string,
+  targetLibraryId: string,
+): Promise<MoveToTeamResult> {
+  return send<MoveToTeamResult>(`/api/v2/specifications/${specId}/move-to-team`, {
+    method: 'POST',
+    body: JSON.stringify({ targetTeamId, targetLibraryId }),
+  })
+}
+
+export interface CopyToLibraryResult {
+  copiedRootIds: string[]
+  libraryId: string
+}
+
+export type CopyToTeamResult = Omit<MoveToTeamResult, 'movedRootIds'> & { copiedRootIds: string[] }
+
+/** Copies every version of the element to another library; the original stays where it is. */
+export function copySpecificationToLibrary(specId: string, targetLibraryId: string): Promise<CopyToLibraryResult> {
+  return send<CopyToLibraryResult>(`/api/v2/specifications/${specId}/copy-to-library`, {
+    method: 'POST',
+    body: JSON.stringify({ targetLibraryId }),
+  })
+}
+
+/** Copies a workflow (all versions) to another team, copying its dependencies as needed. */
+export function copySpecificationToTeam(
+  specId: string,
+  targetTeamId: string,
+  targetLibraryId: string,
+): Promise<CopyToTeamResult> {
+  return send<CopyToTeamResult>(`/api/v2/specifications/${specId}/copy-to-team`, {
+    method: 'POST',
+    body: JSON.stringify({ targetTeamId, targetLibraryId }),
+  })
+}
+
+/** Failure copy for the move dialogs' toast. Error bodies are flat, so details sit on `err.body`. */
+export function moveErrorMessage(err: unknown, fallback = 'Failed to move'): string {
+  if (err instanceof ApiError) {
+    const b = err.body
+    if (err.code === 'move_name_conflict') {
+      return `"${String(b.libraryName ?? '')}" already has an element named "${String(b.name ?? '')}"`
+    }
+    if (err.code === 'move_target_invalid') return "That library can't receive this element"
+    if (err.code === 'forbidden' && Array.isArray(b.missing) && b.missing.length > 0) {
+      return `You need these rights: ${b.missing.map(String).join(', ')}`
+    }
+  }
+  return err instanceof Error && err.message ? err.message : fallback
+}

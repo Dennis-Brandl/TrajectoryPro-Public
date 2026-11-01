@@ -75,6 +75,24 @@ interface LibraryState {
   // New version helper — refetch spec tree and select the new version
   applyNewVersion: (newSpec: Specification) => Promise<void>
 
+  // Move helper — refresh both libraries after a move and select the moved element
+  applyMove: (args: {
+    libraryId: string
+    specId: string
+    fromLibraryId: string
+    movedRootIds?: string[]
+    teamId?: string
+    librariesCreated?: boolean
+    touchedLibraryIds?: string[]
+  }) => Promise<void>
+
+  applyCopy: (args: {
+    libraryId: string
+    copiedRootIds: string[]
+    librariesCreated?: boolean
+    touchedLibraryIds?: string[]
+  }) => Promise<void>
+
   // State change helper — refetch both spec caches so the sidebar reflects the new state
   applyStateChange: (updatedSpec: Specification) => Promise<void>
 
@@ -272,6 +290,69 @@ export const useLibraryStore = create<LibraryState>()(
       applyNewVersion: async (newSpec) => {
         await Promise.all([get().fetchSpecifications(newSpec.libraryId), get().fetchSpecTree(newSpec.libraryId)])
         get().setSelectedSpecification(newSpec.id, newSpec.libraryId)
+      },
+
+      applyMove: async ({
+        libraryId,
+        specId,
+        fromLibraryId,
+        movedRootIds,
+        teamId,
+        librariesCreated,
+        touchedLibraryIds,
+      }) => {
+        const specStore = () => useSpecificationStore.getState()
+        const roots = movedRootIds ?? [specId]
+        // An edit made while the move ran must reach the server before anything is reloaded over it.
+        await flushNow().catch(() => {})
+        // The open spec's cached copy must learn its new library, or a later save would write it
+        // back to the old one.
+        specStore().applyServerLibrary(roots, libraryId)
+
+        // The server rewrote the moved trees (and, for same-team moves and copies, references in
+        // other specs). A cached copy keeps stale `data`, and editing it would autosave that stale
+        // data back, so force-reload every cached spec that could have changed. Never-cached roots
+        // are pulled in too, or the destination's cached list would lack them.
+        const { specs, dirtyIds, libraries } = specStore()
+        const movedTree = new Set(roots)
+        for (const sp of specs.values()) if (roots.includes(sp.rootSpecificationId)) movedTree.add(sp.id)
+        const sourceName = libraries.get(fromLibraryId)?.name ?? ''
+        const needles = [...movedTree, ...(sourceName ? [sourceName] : [])]
+        const reload = new Set<string>(roots)
+        for (const id of movedTree) if (specs.has(id)) reload.add(id)
+        for (const sp of specs.values()) {
+          if (reload.has(sp.id) || dirtyIds.has(sp.id)) continue
+          const text = JSON.stringify(sp.data)
+          if (needles.some((needle) => text.includes(needle))) reload.add(sp.id)
+        }
+        await specStore()
+          .loadBulk([...reload])
+          .catch(() => {})
+        if (librariesCreated) {
+          // Move-to-team may have created libraries; loadLibraries only runs once at boot, so force it.
+          await useSpecificationStore.getState().loadLibraries()
+          await get().fetchLibraries()
+        }
+        // Destination libraries that received dependency copies need a refresh too.
+        const refresh = [...new Set([fromLibraryId, libraryId, ...(touchedLibraryIds ?? [])])]
+        await Promise.all(refresh.flatMap((id) => [get().fetchSpecifications(id), get().fetchSpecTree(id)]))
+        if (teamId) get().setSelectedTeamId(teamId)
+        get().setSelectedSpecification(specId, libraryId)
+      },
+
+      applyCopy: async ({ libraryId, copiedRootIds, librariesCreated, touchedLibraryIds }) => {
+        // Nothing the user has open changed. Only the destinations gain rows; the copies must be
+        // pulled in, or the destination's cached list would lack them.
+        await useSpecificationStore
+          .getState()
+          .loadBulk(copiedRootIds)
+          .catch(() => {})
+        if (librariesCreated) {
+          await useSpecificationStore.getState().loadLibraries()
+          await get().fetchLibraries()
+        }
+        const refresh = [...new Set([libraryId, ...(touchedLibraryIds ?? [])])]
+        await Promise.all(refresh.flatMap((id) => [get().fetchSpecifications(id), get().fetchSpecTree(id)]))
       },
 
       applyStateChange: async (updatedSpec) => {

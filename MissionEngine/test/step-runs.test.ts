@@ -546,3 +546,43 @@ test('a re-entered gate that opens at once records its own start, not the previo
   expect(new Date(gate[1].startedAt).getTime()).toBe(pass2At);
   await close();
 });
+
+// History report bug 2026-10-31: the first step of a run recorded every starting parameter as
+// its own input (PropertyStore.getInputParameters' first-pass fallback). A run row records only
+// the step's declared inputs.
+test('the first step records only its own declared inputs, not the run\'s starting parameters', async () => {
+  const { db, close } = await makeTestDb();
+  const deps = testDeps();
+  const spec = {
+    local_id: 'wf', oid: 'wf-sr-first-inputs', version: '1.0.0', last_modified_date: '2026-01-01',
+    starting_parameter_specifications: [
+      { id: 'Size', default_value: 'large' },
+      { id: 'OrderNumber', default_value: '7' },
+    ],
+    steps: [
+      s('start', 'START'),
+      s('first', 'SCRIPT', {
+        script_config: { source: 'output.out = size;' },
+        input_parameter_specifications: [{ id: 'size', default_value: 'Size', value_type: 'property' }],
+        output_parameter_specifications: [{ id: 'out', target: 'Out' }],
+      }),
+      s('none', 'SCRIPT', { script_config: { source: '' } }),
+      s('end', 'END'),
+    ],
+    connections: [
+      { from_step_id: 'start', to_step_id: 'first' },
+      { from_step_id: 'first', to_step_id: 'none' },
+      { from_step_id: 'none', to_step_id: 'end' },
+    ],
+  };
+  const wi = await seedQueued(db, spec);
+  await pumpUntilQuiet(db, deps);
+  expect(await statusOf(db, wi.id)).toBe('completed');
+
+  const [first] = await runsOf(db, wi.id, 'first');
+  expect(first.inputParameters).toEqual({ size: 'large' });
+  expect(first.outputParameters).toEqual({ out: 'large' });
+  const [none] = await runsOf(db, wi.id, 'none');
+  expect(none.inputParameters).toEqual({});
+  await close();
+});

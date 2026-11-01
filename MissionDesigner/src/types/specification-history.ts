@@ -39,6 +39,33 @@ export type SpecificationHistoryEntry =
       fromVersion: string
       fromSpecId: string
     }
+  | {
+      type: 'moved'
+      at: string
+      account: string
+      version: string
+      fromLibraryId: string
+      toLibraryId: string
+      fromTeamId?: string
+      toTeamId?: string
+    }
+  | {
+      type: 'copied'
+      at: string
+      account: string
+      version: string
+      fromSpecId: string
+      fromLibraryId: string
+    }
+  | {
+      type: 'reference_updated'
+      at: string
+      account: string
+      version: string
+      field: 'action_library' | 'actionLibraryName'
+      from: string
+      to: string
+    }
 
 export function parseHistory(json: string | null | undefined): SpecificationHistoryEntry[] {
   if (!json) return []
@@ -102,5 +129,78 @@ export function createNewVersionEntry(args: {
     version: args.version,
     fromVersion: args.fromVersion,
     fromSpecId: args.fromSpecId,
+  }
+}
+
+export function createMovedEntry(args: {
+  account: string
+  version: string
+  fromLibraryId: string
+  toLibraryId: string
+  fromTeamId?: string
+  toTeamId?: string
+}): Extract<SpecificationHistoryEntry, { type: 'moved' }> {
+  return {
+    type: 'moved',
+    at: nowIso(),
+    account: args.account,
+    version: args.version,
+    fromLibraryId: args.fromLibraryId,
+    toLibraryId: args.toLibraryId,
+    ...(args.fromTeamId !== undefined ? { fromTeamId: args.fromTeamId } : {}),
+    ...(args.toTeamId !== undefined ? { toTeamId: args.toTeamId } : {}),
+  }
+}
+
+export function createCopiedEntry(args: {
+  account: string
+  version: string
+  fromSpecId: string
+  fromLibraryId: string
+}): Extract<SpecificationHistoryEntry, { type: 'copied' }> {
+  return {
+    type: 'copied',
+    at: nowIso(),
+    account: args.account,
+    version: args.version,
+    fromSpecId: args.fromSpecId,
+    fromLibraryId: args.fromLibraryId,
+  }
+}
+
+export function createReferenceUpdatedEntry(args: {
+  account: string
+  version: string
+  field: 'action_library' | 'actionLibraryName'
+  from: string
+  to: string
+}): Extract<SpecificationHistoryEntry, { type: 'reference_updated' }> {
+  return {
+    type: 'reference_updated',
+    at: nowIso(),
+    account: args.account,
+    version: args.version,
+    field: args.field,
+    from: args.from,
+    to: args.to,
+  }
+}
+
+/** One-line text for the move-related entry types; undefined for other types.
+ *  `libraryName` resolves a library id to a display name (fall back to the id). */
+export function describeMoveHistoryEntry(
+  entry: SpecificationHistoryEntry,
+  libraryName: (id: string) => string | undefined = () => undefined,
+): string | undefined {
+  const name = (id: string) => libraryName(id) ?? id
+  switch (entry.type) {
+    case 'moved':
+      return `Moved from ${name(entry.fromLibraryId)} to ${name(entry.toLibraryId)}`
+    case 'copied':
+      return `Copied from ${name(entry.fromLibraryId)}`
+    case 'reference_updated':
+      return `Reference updated: ${entry.from} → ${entry.to}`
+    default:
+      return undefined
   }
 }

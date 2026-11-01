@@ -101,4 +101,39 @@ describe('LibraryItemMenu', () => {
     expect(screen.queryByText('Change State…')).toBeNull()
     expect(screen.queryByText('Delete')).toBeNull()
   })
+
+  it('shows Move to Library / Move to Team between Create New Version and Delete, and calls the callbacks', () => {
+    const onMoveToLibrary = vi.fn()
+    const onMoveToTeam = vi.fn()
+    renderMenu({ canMoveToLibrary: true, canMoveToTeam: true, onMoveToLibrary, onMoveToTeam })
+    openMenu(screen.getByRole('button', { name: /item actions/i }))
+    const items = screen.getAllByRole('menuitem').map((el) => el.textContent)
+    expect(items).toEqual([
+      'Export as PDF',
+      'Change State…',
+      'Create New Version…',
+      'Copy/Move to Library…',
+      'Copy/Move to Team…',
+      'Delete',
+    ])
+    fireEvent.click(screen.getByText('Copy/Move to Library…'))
+    expect(onMoveToLibrary).toHaveBeenCalledTimes(1)
+    openMenu(screen.getByRole('button', { name: /item actions/i }))
+    fireEvent.click(screen.getByText('Copy/Move to Team…'))
+    expect(onMoveToTeam).toHaveBeenCalledTimes(1)
+  })
+
+  it('hides the move items when their caps are false', () => {
+    renderMenu()
+    openMenu(screen.getByRole('button', { name: /item actions/i }))
+    expect(screen.queryByText('Copy/Move to Library…')).toBeNull()
+    expect(screen.queryByText('Copy/Move to Team…')).toBeNull()
+  })
+
+  it('renders when only canMoveToLibrary is true', () => {
+    renderMenu({ canChangeState: false, canCreateVersion: false, canDeleteSpec: false, canMoveToLibrary: true })
+    openMenu(screen.getByRole('button', { name: /item actions/i }))
+    expect(screen.getByText('Copy/Move to Library…')).not.toBeNull()
+    expect(screen.queryByText('Copy/Move to Team…')).toBeNull()
+  })
 })

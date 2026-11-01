@@ -113,6 +113,11 @@ Type in the search box to filter libraries and specifications by name. The searc
 
 **Delete a specification:** Hover over the specification name and click the trash icon.
 
+**Specification row menu** (three-dot button on hover) includes:
+
+- **Copy/Move to Library...** -- Copy or move a workflow, environment or action to another library of the same kind in the same team. A GLOBAL environment or action library is allowed only if you have rights there; workflows cannot go to GLOBAL. Needs the library create and delete rights for that kind of library (Librarian), or administrator. Every version moves together and keeps its state and history. References follow the move, including in Approved and Effective versions: workflows that use a moved environment, and environments and ACTION PROXY steps that name a moved action's library. If the destination already has an item with the same name, the move is blocked. **Copy** leaves the original where it is and adds a copy of every version, keeping states, versions and history. It needs the same rights plus create rights in the destination. References keep pointing at the original, and the same name clash blocks it.
+- **Copy/Move to Team...** -- Copy or move a workflow (workflows only) to a library in another team. Needs Librarian rights (workflow library create and delete) in both teams, or administrator. The workflow leaves the source team. The environments, actions and sub-workflows it uses are taken as they are from same-named libraries in the destination team (or GLOBAL); missing libraries or items are created or copied in, keeping versions and states. Copying needs create rights in the destination team; the dialog names any that are missing. The source team's environments and actions stay where they are. **Copy** leaves the workflow in the source team too and adds a copy of every version in the destination, using those same environments, actions and sub-workflows. It also needs workflow create rights in the destination team.
+
 ### Dragging Specifications to Canvas
 
 In the Workflows tab, you can drag a specification from the sidebar onto the canvas to create a pre-configured node with the specification's inputs, outputs, and values.

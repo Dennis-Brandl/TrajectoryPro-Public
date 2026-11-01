@@ -20,6 +20,7 @@ import { v2RequireOrigin, v2RequireSession } from '../../middleware/v2/permissio
 import { rateLimitV2 } from '../../middleware/v2/rateLimitV2'
 import { librariesV2 } from './libraries'
 import { specificationsV2 } from './specifications'
+import { specificationsMoveV2 } from './specificationsMove'
 import { meV2 } from './me'
 import { esignatureRolesV2 } from './esignatureRoles'
 import { imagesV2 } from './images'
@@ -39,6 +40,7 @@ v2Routes.use('*', rateLimitV2)
 
 v2Routes.route('/', librariesV2)
 v2Routes.route('/', specificationsV2)
+v2Routes.route('/', specificationsMoveV2)
 v2Routes.route('/', meV2)
 v2Routes.route('/', esignatureRolesV2)
 v2Routes.route('/', imagesV2)

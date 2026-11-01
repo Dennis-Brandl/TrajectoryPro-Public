@@ -32,6 +32,8 @@ describe('specRowCapabilities', () => {
       canChangeState: false,
       canCreateVersion: false,
       canDeleteSpec: false,
+      canMoveToLibrary: false,
+      canMoveToTeam: false,
     })
   })
 
@@ -48,7 +50,13 @@ describe('specRowCapabilities', () => {
 
   it('author (edit/create/delete) on Draft: change-state (edit-band), new version, and delete', () => {
     const c = specRowCapabilities(p(['workflow:edit', 'workflow:create', 'workflow:delete']), lib, 'Draft')
-    expect(c).toEqual({ canChangeState: true, canCreateVersion: true, canDeleteSpec: true })
+    expect(c).toEqual({
+      canChangeState: true,
+      canCreateVersion: true,
+      canDeleteSpec: true,
+      canMoveToLibrary: false,
+      canMoveToTeam: false,
+    })
   })
 
   it('delete is blocked on an edit-locked state (Approved) but allowed on Obsolete', () => {
@@ -61,6 +69,8 @@ describe('specRowCapabilities', () => {
       canChangeState: true,
       canCreateVersion: true,
       canDeleteSpec: true,
+      canMoveToLibrary: true,
+      canMoveToTeam: false, // admin, but only one team exists in this fixture
     })
     expect(specRowCapabilities(null, lib, 'Draft').canChangeState).toBe(false)
     expect(specRowCapabilities(p(['workflow:approve']), null, 'Draft').canChangeState).toBe(false)
@@ -71,5 +81,82 @@ describe('specRowCapabilities', () => {
       specRowCapabilities(p(['workflow:approve']), { teamId: 'team-b', entityType: 'workflow' }, 'Draft')
         .canChangeState,
     ).toBe(false)
+  })
+})
+
+describe('specRowCapabilities — move', () => {
+  const LIB = ['workflow:library.create', 'workflow:library.delete']
+  const two = (rights: Record<string, string[]>, admin = false): MePrincipal => ({
+    userId: 'u1',
+    isAdministrator: admin,
+    memberships: ['team-a', 'team-b', 'team-global'],
+    rightsByTeam: rights,
+    teams: [
+      { id: 'team-a', name: 'A' },
+      { id: 'team-b', name: 'B' },
+      { id: 'team-global', name: 'GLOBAL', isGlobal: true },
+    ],
+    editLockedStates: [],
+  })
+
+  it('Librarian on a workflow library can move to library and, with a qualifying other team, to team', () => {
+    const c = specRowCapabilities(two({ 'team-a': LIB, 'team-b': LIB }), lib, 'Draft')
+    expect(c.canMoveToLibrary).toBe(true)
+    expect(c.canMoveToTeam).toBe(true)
+  })
+
+  it('needs both library.create and library.delete', () => {
+    expect(specRowCapabilities(two({ 'team-a': [LIB[0]] }), lib, 'Draft').canMoveToLibrary).toBe(false)
+    expect(specRowCapabilities(two({ 'team-a': [LIB[1]] }), lib, 'Draft').canMoveToLibrary).toBe(false)
+  })
+
+  it('Author only gets neither', () => {
+    const c = specRowCapabilities(
+      two({ 'team-a': ['workflow:edit', 'workflow:create', 'workflow:delete'] }),
+      lib,
+      'Draft',
+    )
+    expect(c.canMoveToLibrary).toBe(false)
+    expect(c.canMoveToTeam).toBe(false)
+  })
+
+  it('move to team is false when the other team lacks the Librarian pair, or only GLOBAL is left', () => {
+    expect(specRowCapabilities(two({ 'team-a': LIB, 'team-b': [LIB[0]] }), lib, 'Draft').canMoveToTeam).toBe(false)
+    const onlyGlobal = two({ 'team-a': LIB, 'team-global': LIB })
+    onlyGlobal.teams = onlyGlobal.teams.filter((t) => t.id !== 'team-b')
+    expect(specRowCapabilities(onlyGlobal, lib, 'Draft').canMoveToTeam).toBe(false)
+  })
+
+  it('move to team is false for environment and action libraries', () => {
+    for (const entityType of ['environment', 'action']) {
+      const r = ['team-a', 'team-b'].reduce(
+        (acc, t) => ({ ...acc, [t]: [`${entityType}:library.create`, `${entityType}:library.delete`, ...LIB] }),
+        {},
+      )
+      const c = specRowCapabilities(two(r), { teamId: 'team-a', entityType }, 'Draft')
+      expect(c.canMoveToLibrary).toBe(true)
+      expect(c.canMoveToTeam).toBe(false)
+    }
+  })
+
+  it('step libraries cannot be moved, even by an administrator', () => {
+    const c = specRowCapabilities(
+      p(['step:library.create', 'step:library.delete'], true),
+      { teamId: 'team-a', entityType: 'step' },
+      'Draft',
+    )
+    expect(c.canMoveToLibrary).toBe(false)
+    expect(c.canMoveToTeam).toBe(false)
+  })
+
+  it('workflow Librarian has no move rights on an environment library', () => {
+    expect(
+      specRowCapabilities(two({ 'team-a': LIB }), { teamId: 'team-a', entityType: 'environment' }, 'Draft')
+        .canMoveToLibrary,
+    ).toBe(false)
+  })
+
+  it('admin with another non-GLOBAL team can move to team', () => {
+    expect(specRowCapabilities(two({}, true), lib, 'Draft').canMoveToTeam).toBe(true)
   })
 })

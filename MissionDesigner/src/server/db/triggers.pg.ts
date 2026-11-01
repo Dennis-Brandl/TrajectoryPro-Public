@@ -150,7 +150,15 @@ CREATE TRIGGER "spec_no_cross_tree_reparent"
 
 CREATE OR REPLACE FUNCTION "trg_specification_immutable_columns"() RETURNS trigger AS $fn$
 BEGIN
-  RAISE EXCEPTION 'specification.id/libraryId/rootSpecificationId are immutable';
+  IF NEW."id" IS DISTINCT FROM OLD."id"
+     OR NEW."rootSpecificationId" IS DISTINCT FROM OLD."rootSpecificationId" THEN
+    RAISE EXCEPTION 'specification.id/libraryId/rootSpecificationId are immutable';
+  END IF;
+  -- libraryId may change only inside a move transaction (SET LOCAL app.spec_move = 'on').
+  IF NEW."libraryId" IS DISTINCT FROM OLD."libraryId"
+     AND COALESCE(current_setting('app.spec_move', true), '') <> 'on' THEN
+    RAISE EXCEPTION 'specification.id/libraryId/rootSpecificationId are immutable';
+  END IF;
   RETURN NEW;
 END;
 $fn$ LANGUAGE plpgsql;

@@ -51,7 +51,10 @@ import { SpecificationItem } from './SpecificationItem'
 import { SpecTreeItem, type SpecTreeNode } from './SpecTreeItem'
 import { DeleteLibraryDialog } from './DeleteLibraryDialog'
 import { ChangeStateDialog } from './ChangeStateDialog'
+import { toast } from 'sonner'
 import { CreateNewVersionDialog } from './CreateNewVersionDialog'
+import { MoveToLibraryDialog } from './MoveToLibraryDialog'
+import { MoveToTeamDialog } from './MoveToTeamDialog'
 import { usePrincipal, principalCan } from '@/stores/principalStore'
 import {
   createLibrary as createLibraryFlow,
@@ -187,10 +190,14 @@ export function LibraryItem({
   // Dialog state for change-state and create-new-version actions
   const [stateChangeSpec, setStateChangeSpec] = useState<Specification | null>(null)
   const [newVersionSpec, setNewVersionSpec] = useState<Specification | null>(null)
+  const [moveLibrarySpec, setMoveLibrarySpec] = useState<Specification | null>(null)
+  const [moveTeamSpec, setMoveTeamSpec] = useState<Specification | null>(null)
 
   // State filter from store
   const stateFilter = useLibraryStore((s) => s.stateFilter)
   const applyNewVersion = useLibraryStore((s) => s.applyNewVersion)
+  const applyMove = useLibraryStore((s) => s.applyMove)
+  const applyCopy = useLibraryStore((s) => s.applyCopy)
   const applyStateChange = useLibraryStore((s) => s.applyStateChange)
 
   // Lookup map for SpecTreeItem callbacks (which only receive specId)
@@ -567,6 +574,14 @@ export function LibraryItem({
                       const spec = specsById.get(specId)
                       if (spec) setNewVersionSpec(spec)
                     }}
+                    onMoveToLibrary={(specId) => {
+                      const spec = specsById.get(specId)
+                      if (spec) setMoveLibrarySpec(spec)
+                    }}
+                    onMoveToTeam={(specId) => {
+                      const spec = specsById.get(specId)
+                      if (spec) setMoveTeamSpec(spec)
+                    }}
                     onExportPDF={(specId) => onExportPDF?.(specId, library.id)}
                     onExportPackage={
                       exportPackageHandler ? (specId) => exportPackageHandler(specId, library.id) : undefined
@@ -584,6 +599,8 @@ export function LibraryItem({
                     onDelete={setSpecToDelete}
                     onChangeState={setStateChangeSpec}
                     onCreateVersion={setNewVersionSpec}
+                    onMoveToLibrary={setMoveLibrarySpec}
+                    onMoveToTeam={setMoveTeamSpec}
                     onExportPDF={(specId) => onExportPDF?.(specId, library.id)}
                     onExportPackage={
                       exportPackageHandler ? (specId) => exportPackageHandler(specId, library.id) : undefined
@@ -802,6 +819,44 @@ export function LibraryItem({
           }}
           onSuccess={(newSpec) => {
             void applyNewVersion(newSpec)
+          }}
+        />
+      )}
+
+      {/* Copy/Move to Library and Copy/Move to Team Dialogs */}
+      {moveLibrarySpec && (
+        <MoveToLibraryDialog
+          spec={moveLibrarySpec}
+          library={library}
+          open
+          onOpenChange={(o) => {
+            if (!o) setMoveLibrarySpec(null)
+          }}
+          onSuccess={(r) => {
+            applyMove(r).catch(() => toast.error('Moved, but the sidebar could not refresh — reload to see the change'))
+          }}
+          onCopied={(r) => {
+            applyCopy(r).catch(() =>
+              toast.error('Copied, but the sidebar could not refresh — reload to see the change'),
+            )
+          }}
+        />
+      )}
+      {moveTeamSpec && (
+        <MoveToTeamDialog
+          spec={moveTeamSpec}
+          library={library}
+          open
+          onOpenChange={(o) => {
+            if (!o) setMoveTeamSpec(null)
+          }}
+          onSuccess={(r) => {
+            applyMove(r).catch(() => toast.error('Moved, but the sidebar could not refresh — reload to see the change'))
+          }}
+          onCopied={(r) => {
+            applyCopy(r).catch(() =>
+              toast.error('Copied, but the sidebar could not refresh — reload to see the change'),
+            )
           }}
         />
       )}

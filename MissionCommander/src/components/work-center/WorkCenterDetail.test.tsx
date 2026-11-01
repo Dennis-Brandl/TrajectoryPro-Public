@@ -365,14 +365,14 @@ describe('WorkCenterDetail', () => {
     expect(await screen.findByText('No history')).toBeInTheDocument();
   });
 
-  it('does not fetch shared state until the Shared State tab is opened', async () => {
+  it('does not fetch shared state until the Env Resources tab is opened', async () => {
     vi.spyOn(wc.workCenters, 'get').mockResolvedValue(VIEW);
     const resSpy = vi.spyOn(wc.workCenters, 'resources').mockResolvedValue({ resources: [] });
     vi.spyOn(wc.workCenters, 'valueProperties').mockResolvedValue({ values: [] });
     render(<WorkCenterDetail />);
-    await screen.findByRole('tab', { name: 'Shared State' });
+    await screen.findByRole('tab', { name: 'Env Resources' });
     expect(resSpy).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole('tab', { name: 'Shared State' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Env Resources' }));
     await waitFor(() => expect(resSpy).toHaveBeenCalledWith('w1'));
     expect(await screen.findByText('No shared resources in this work center')).toBeInTheDocument();
   });

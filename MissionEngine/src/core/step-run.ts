@@ -115,6 +115,19 @@ export async function nodePathFor(tx: Db, ctx: WorkflowContext): Promise<StepRun
 /** runtime_label + work_center_id, read once per root context (one root per transaction). */
 const instanceInfo = new WeakMap<WorkflowContext, { runtimeLabel: string; workCenterId: string | null }>();
 
+/** The step's own inputs from its snapshot: its declared input parameters and Action-Property
+ *  bound ids. On an instance's first pass the snapshot also holds every starting parameter
+ *  (PropertyStore.getInputParameters' fallback, which loose action matching still sends), and
+ *  those are the run's inputs, not the step's. */
+function declaredInputs(stepDef: MasterWorkflowStep | undefined, inputs: Record<string, string>): Record<string, string> {
+  const ids = new Set<string>([
+    ...(stepDef?.input_parameter_specifications ?? []).map(p => p.id),
+    ...(stepDef?.action_property_bindings ?? []).map(b => b.parameter_id),
+    ...(stepDef?.gate_config?.action_property_bindings ?? []).map(b => b.parameter_id),
+  ]);
+  return Object.fromEntries(Object.entries(inputs).filter(([k]) => ids.has(k)));
+}
+
 /** Writes one step_run row for `stepOid` as it ends, inside the caller's transaction. */
 export async function recordStepRun(
   tx: Db, ctx: WorkflowContext, stepOid: string, result: StepRunResult, error?: string | null,
@@ -166,7 +179,7 @@ export async function recordStepRun(
     finishedAt,
     result,
     error: error ?? null,
-    inputParameters: snapshot ? { ...snapshot.inputParameters } : null,
+    inputParameters: snapshot ? declaredInputs(stepDef, snapshot.inputParameters) : null,
     outputParameters: snapshot?.outputParameters ? { ...snapshot.outputParameters } : null,
     performedByUserId,
     performedByLoginName,

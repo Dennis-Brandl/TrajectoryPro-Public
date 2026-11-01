@@ -166,15 +166,25 @@ export interface SafeZipResult {
   manifestJsonText: string | null
 }
 
-const FILENAME_ALLOW_RE = /^[A-Za-z0-9][A-Za-z0-9 ._/-]{0,254}$/
+// Library entries are named after free-text library names (`environments/Mama
+// Jane's Pizza.WFenvir`), so only control characters and backslashes are
+// refused here. Entries are read in memory, never written to disk; image
+// filenames get the stricter isAllowedFilename check below.
+function hasDisallowedChar(name: string): boolean {
+  for (const ch of name) {
+    const code = ch.codePointAt(0)!
+    if (code < 0x20 || (code >= 0x7f && code <= 0x9f) || ch === '\\') return true
+  }
+  return false
+}
 
 function validateZipFilename(name: string): void {
   if (!name) throw new SafeZipError('zip_filename_invalid', { reason: 'empty' })
   if (name.length > 255) throw new SafeZipError('zip_filename_invalid', { reason: 'too long', name })
   if (name.startsWith('/')) throw new SafeZipError('zip_filename_invalid', { reason: 'absolute', name })
-  if (name.includes('..')) throw new SafeZipError('zip_filename_invalid', { reason: 'traversal', name })
+  if (name.split('/').includes('..')) throw new SafeZipError('zip_filename_invalid', { reason: 'traversal', name })
   if (name.includes('\u0000')) throw new SafeZipError('zip_filename_invalid', { reason: 'nul', name })
-  if (!FILENAME_ALLOW_RE.test(name)) throw new SafeZipError('zip_filename_invalid', { reason: 'charset', name })
+  if (hasDisallowedChar(name)) throw new SafeZipError('zip_filename_invalid', { reason: 'charset', name })
 }
 
 export async function readSafeZip(buffer: Buffer): Promise<SafeZipResult> {

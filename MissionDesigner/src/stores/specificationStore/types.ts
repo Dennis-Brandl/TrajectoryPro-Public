@@ -127,6 +127,8 @@ export interface SpecificationStoreActions {
   updateSpecData(id: string, dataPatch: Record<string, unknown>): void
   /** Mirror a server-side state change (PATCH /state) into the cached spec. Not an edit: never marks it dirty. */
   applyServerState(id: string, fields: Pick<Specification, 'state' | 'history'> & { version?: string }): void
+  /** Mirror a server-side move: every cached spec of the given root trees now lives in `libraryId`. Not an edit. */
+  applyServerLibrary(rootIds: string[], libraryId: string): void
   createSpecInMemory(args: {
     parentId: string | null
     libraryId: string

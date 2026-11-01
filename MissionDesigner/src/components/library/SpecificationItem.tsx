@@ -30,6 +30,8 @@ export interface SpecificationItemProps {
   onDelete: (spec: Specification) => void
   onChangeState: (spec: Specification) => void
   onCreateVersion: (spec: Specification) => void
+  onMoveToLibrary?: (spec: Specification) => void
+  onMoveToTeam?: (spec: Specification) => void
   onExportPDF: (specId: string) => void
   onExportPackage?: (specId: string) => void
   onDragStart: (event: React.DragEvent, spec: Specification) => void
@@ -49,6 +51,8 @@ export function SpecificationItem({
   onDelete,
   onChangeState,
   onCreateVersion,
+  onMoveToLibrary,
+  onMoveToTeam,
   onExportPDF,
   onExportPackage,
   onDragStart,
@@ -108,6 +112,10 @@ export function SpecificationItem({
           canChangeState={caps.canChangeState}
           canCreateVersion={caps.canCreateVersion}
           canDeleteSpec={caps.canDeleteSpec}
+          canMoveToLibrary={caps.canMoveToLibrary && !!onMoveToLibrary}
+          canMoveToTeam={caps.canMoveToTeam && !!onMoveToTeam}
+          onMoveToLibrary={onMoveToLibrary ? () => onMoveToLibrary(spec) : undefined}
+          onMoveToTeam={onMoveToTeam ? () => onMoveToTeam(spec) : undefined}
           onExportPackage={onExportPackage ? () => onExportPackage(spec.id) : undefined}
           onExportPDF={() => onExportPDF(spec.id)}
           onChangeState={() => onChangeState(spec)}

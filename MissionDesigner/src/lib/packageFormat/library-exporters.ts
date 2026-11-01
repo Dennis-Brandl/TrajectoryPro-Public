@@ -39,11 +39,12 @@ import { exportWorkflowSpec } from './workflow-exporters'
  */
 export interface EnvExportOptions {
   /**
-   * Emit value_type_specifications. Default FALSE — Value Types are
-   * Designer-only authoring templates and must never appear in runtime-facing
-   * packages (.WFenvirX, .WFmasterX, canvas .WFmaster JSON, BatchML). Only
-   * the Designer library builders (.WFenvirLibX / .WFlibX / .WFstepLibX) pass
-   * true (spec 2026-08-24-value-types-design.md §4.2).
+   * Emit value_type_specifications. Default FALSE — Value Types are authoring
+   * templates the runtime has no use for, so they stay out of .WFenvirX, canvas
+   * .WFmaster JSON and BatchML. The Designer library builders (.WFenvirLibX /
+   * .WFlibX / .WFstepLibX) and the environments/ files inside a .WFmasterX pass
+   * true, so that importing the package recreates the environment. The runtime
+   * side ignores the key.
    */
   includeValueTypes?: boolean
 

@@ -168,9 +168,19 @@ export function importEnvironmentLibrary(json: unknown): LibraryImportSuccess | 
               ? 'Count Limited'
               : res.resource_type === 'named pool'
                 ? 'Named'
-                : 'Shared Use',
+                : res.resource_type === 'sync'
+                  ? 'Sync'
+                  : 'Shared Use',
         count: res.resource_type === 'named pool' ? (res.names?.length ?? 0) : (res.use_limit ?? 1),
         ...(res.names && res.names.length > 0 ? { names: res.names } : {}),
+      })),
+      actionServers: spec.action_server_specifications?.map((server) => ({
+        id: generateOID(WORKER_INTERNAL),
+        name: server.name,
+        uri: server.uri,
+        description: server.description,
+        connectionType: server.connection_type,
+        apiKey: server.api_key,
       })),
     },
     createdAt: now,

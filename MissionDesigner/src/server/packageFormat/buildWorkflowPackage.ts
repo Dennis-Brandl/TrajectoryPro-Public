@@ -146,7 +146,9 @@ export async function buildWorkflowPackage(options: BuildWorkflowPackageOptions)
     { warnings }, // GATE follow-up item 5: gate-binding warnings join the image warnings
   )
 
-  // 5. Per-env-library exports under environments/ — also inline action bodies.
+  // 5. Per-env-library exports under environments/ — also inline action bodies. These files are
+  //    what a Designer import rebuilds the environment from, so they carry Value Types. The
+  //    workflow JSON's embedded environments above do not: nothing reads them from there.
   const envLibraryExports: Array<{ name: string; data: unknown }> = []
   for (const libId of envLibIds) {
     const lib = allLibraries.find((l) => l.id === libId)
@@ -155,7 +157,9 @@ export async function buildWorkflowPackage(options: BuildWorkflowPackageOptions)
     if (specs.length === 0) continue
     envLibraryExports.push({
       name: lib.name,
-      data: exportEnvironmentLibrary(lib, specs, undefined, allLibraries, allSpecsByLibrary),
+      data: exportEnvironmentLibrary(lib, specs, undefined, allLibraries, allSpecsByLibrary, {
+        includeValueTypes: true,
+      }),
     })
   }
 

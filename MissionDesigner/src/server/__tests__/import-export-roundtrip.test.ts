@@ -621,6 +621,50 @@ describe('import / export round-trip parity (v7.0)', () => {
     expect(heatOvenSpec).toBeDefined()
   })
 
+  it('a .WFmasterX recreates Value Types, Registered Servers and Sync resources, with no Value Types in the workflow JSON', async () => {
+    const NOW = Date.now()
+    const envSpecData = JSON.stringify({
+      included_actions: [],
+      valueTypes: [{ id: 'vt-1', name: 'Order', entries: [{ name: 'Size', defaultValue: 'Large' }] }],
+      resources: [{ id: 'r-1', name: 'Handoff', resourceType: 'Sync', count: 1 }],
+      actionServers: [{ id: 's-1', name: 'Kitchen', uri: 'http://kitchen:3002', connectionType: 'REST' }],
+    })
+    await rawQuery(
+      `INSERT INTO "specification" (id, "libraryId", name, version, state, data, "rootSpecificationId", "parentSpecificationId", "dataSchemaVersion", "createdAt", "updatedAt")
+       VALUES ('env-spec-vt', $1, 'Bakery', '1.0.0', 'Draft', $2, 'env-spec-vt', NULL, 3, $3, $4)`,
+      [f.libEnvSharedId, envSpecData, NOW, NOW],
+    )
+    await rawQuery('UPDATE "specification" SET data = $1 WHERE id = $2', [
+      JSON.stringify({ nodes: [], edges: [], environmentSpecIds: ['env-spec-vt'] }),
+      f.rootSpecId,
+    ])
+
+    const zip = await exportToZip(f.rootSpecId)
+    const zipObj = await JSZip.loadAsync(zip)
+    const workflowEntry = Object.keys(zipObj.files).find((n) => n.endsWith('.WFmaster'))!
+    expect(await zipObj.files[workflowEntry].async('string')).not.toContain('value_type_specifications')
+    expect(await zipObj.files['environments/Shared Env.WFenvir'].async('string')).toContain('value_type_specifications')
+
+    await seedTeamOther(f)
+    await createOtherTeamTargetLib(f, 'lib-other-target-vt', 'Other Target VT')
+    mockSessionAs(f.userIdOther)
+    await importFromZip(zip, 'lib-other-target-vt')
+
+    const [row] = await rawQuery<{ data: string }>(
+      `SELECT s.data FROM "specification" s JOIN "library" l ON l.id = s."libraryId"
+       WHERE l."createdByUserId" = $1 AND l.name = 'Shared Env' AND s.name = 'Bakery'`,
+      [f.userIdOther],
+    )
+    const imported = JSON.parse(row.data) as {
+      valueTypes: Array<{ name: string }>
+      resources: Array<{ name: string; resourceType: string }>
+      actionServers: Array<{ name: string; uri: string }>
+    }
+    expect(imported.valueTypes.map((v) => v.name)).toEqual(['Order'])
+    expect(imported.resources.map((r) => r.resourceType)).toEqual(['Sync'])
+    expect(imported.actionServers.map((s) => s.uri)).toEqual(['http://kitchen:3002'])
+  })
+
   it('round-trips an image stored as a data URI in spec.data.images (user upload flow)', async () => {
     // The form-designer upload path stores images as { filename: dataUri } in
     // spec.data.images and never writes to image_blob/image. Earlier tests

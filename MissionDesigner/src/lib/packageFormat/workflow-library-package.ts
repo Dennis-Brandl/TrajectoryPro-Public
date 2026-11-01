@@ -97,7 +97,7 @@ export async function createWorkflowLibraryPackage(options: CreateOptions): Prom
   const stepLibOids = new Set<string>()
   const envLibOids = new Set<string>()
   const actionLibOids = new Set<string>()
-  for (const wf of wfSpecs) {
+  const collectDependencies = (wf: Specification) => {
     // NOTE: This scans raw `spec.data.nodes` rather than the exported `MasterWorkflowSpecification.steps`
     // because the exported step form does not carry the step library reference for workflowProxy nodes.
     // The runtime node-data fields are `referencedStepLibraryId` (direct OID) and `referencedStepSpecId`
@@ -127,6 +127,12 @@ export async function createWorkflowLibraryPackage(options: CreateOptions): Prom
       const envSpec = allSpecs.find((s) => s.id === id)
       if (envSpec) envLibOids.add(envSpec.libraryId)
     }
+  }
+  for (const wf of wfSpecs) collectDependencies(wf)
+  // Referenced steps have environments and steps of their own. A Set's iteration also visits
+  // what is added during it, so this follows step libraries that reference other step libraries.
+  for (const oid of stepLibOids) {
+    for (const stepSpec of allSpecsByLibrary.get(oid) ?? []) collectDependencies(stepSpec)
   }
   // Environments → action libraries (by name) → action library OIDs.
   for (const envLibOid of envLibOids) {

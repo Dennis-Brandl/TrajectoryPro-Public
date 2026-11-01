@@ -843,6 +843,8 @@ async function applyRow(
         )
         return
       }
+      const data = specDataOrWarn(row, specJson, summary)
+      if (!data) return
       await insertSpecRow(q, {
         id: row.bundleOid,
         libraryId: row.parentLibraryOid,
@@ -850,7 +852,7 @@ async function applyRow(
         description: (specJson.description as string | undefined) ?? null,
         typeName: specTypeName(specJson, row.entityType),
         version: row.bundleVersion || '1.0.0',
-        data: buildSpecData(specJson, row.entityType),
+        data,
         now,
       })
       summary.created.specifications += 1
@@ -865,6 +867,8 @@ async function applyRow(
         )
         return
       }
+      const data = specDataOrWarn(row, specJson, summary)
+      if (!data) return
       await insertSpecRow(q, {
         id: row.bundleOid,
         libraryId: row.status.existingLibraryOid,
@@ -872,7 +876,7 @@ async function applyRow(
         description: (specJson.description as string | undefined) ?? null,
         typeName: specTypeName(specJson, row.entityType),
         version: row.bundleVersion || '1.0.0',
-        data: buildSpecData(specJson, row.entityType),
+        data,
         now,
       })
       summary.created.specifications += 1
@@ -896,6 +900,16 @@ async function applyRow(
       // would prevent the DELETE. Those referrers are already captured in
       // danglingReferences and reported to the user. Drop the inbound rows
       // first so the DELETE succeeds inside the transaction.
+      // Rebuild the replacement first: a package that cannot supply it must not cost the existing spec.
+      const specJson = findParsedSpec(row, cached.oidIndex, parsedByLibOid)
+      if (!specJson) {
+        summary.warnings.push(
+          `Specification "${row.bundleName}" (${row.bundleOid}) replace skipped: no JSON in the package for its OID`,
+        )
+        return
+      }
+      const data = specDataOrWarn(row, specJson, summary)
+      if (!data) return
       // Lock and re-check everything the delete touches (spec 2026-10-21 §6).
       await assertReplaceUnlocked(q, { specIds: [row.status.existingOid] }, locked)
       const [existingLibIdRow] = await q<{ libraryId: string }>(
@@ -911,13 +925,6 @@ async function applyRow(
         )
         return
       }
-      const specJson = findParsedSpec(row, cached.oidIndex, parsedByLibOid)
-      if (!specJson) {
-        summary.warnings.push(
-          `Specification "${row.bundleName}" (${row.bundleOid}) replaced-delete ran but re-insert skipped: no JSON in the package for its OID`,
-        )
-        return
-      }
       await insertSpecRow(q, {
         id: row.bundleOid,
         libraryId: targetLibId,
@@ -925,7 +932,7 @@ async function applyRow(
         description: (specJson.description as string | undefined) ?? null,
         typeName: specTypeName(specJson, row.entityType),
         version: row.bundleVersion || '1.0.0',
-        data: buildSpecData(specJson, row.entityType),
+        data,
         now,
       })
       summary.replaced.specifications += 1
@@ -1432,6 +1439,8 @@ packagesV2.post('/packages/workflow-library/commit', async (c) => {
         const tag = row.status.tag
         if (tag === 'no-op' || tag === 'refused') continue
         if (tag === 'conflict' && resolutions[row.bundleOid] === 'keep') continue
+        // Only workflow and step specs have nodes, and so images.
+        if (row.entityType !== 'workflow' && row.entityType !== 'step') continue
         const specJson = findParsedSpec(row, cached.oidIndex, parsedByLibOid)
         if (!specJson) continue
         const data = buildSpecData(specJson, row.entityType)
@@ -1564,10 +1573,29 @@ function buildSpecData(specJson: Record<string, unknown>, entityType: WflibxEnti
   }
 }
 
+/** A bundled action or environment spec that the importer refused. */
+class InvalidBundledSpecError extends Error {}
+
+/** The spec's data, or null with a warning when the package cannot rebuild it. */
+function specDataOrWarn(
+  row: ImportPlanRow,
+  specJson: Record<string, unknown>,
+  summary: WflibxCommitSummary,
+): Record<string, unknown> | null {
+  try {
+    return buildSpecData(specJson, row.entityType)
+  } catch (err) {
+    if (!(err instanceof InvalidBundledSpecError)) throw err
+    summary.warnings.push(`Specification "${row.bundleName}" (${row.bundleOid}) skipped: ${err.message}`)
+    return null
+  }
+}
+
 /**
  * Wrap a single action or environment spec in a minimal library envelope
  * so the library-level validator + importer accepts it, then pull out the
- * single resulting data blob.
+ * single resulting data blob. The envelope needs every field the library
+ * schema requires: without them validation fails for every spec.
  */
 function wrapAndImport(
   wrapKey: 'action_specifications' | 'environment_specifications',
@@ -1575,15 +1603,13 @@ function wrapAndImport(
 ): Record<string, unknown> {
   const envelope = {
     local_id: 'tmp',
+    oid: 'tmp',
     version: '1.0.0',
+    last_modified_date: new Date().toISOString(),
     [wrapKey]: [spec],
   }
   const importer = wrapKey === 'action_specifications' ? importActionLibrary : importEnvironmentLibrary
   const result = importer(envelope)
-  if ('error' in result || !result.specifications[0]) {
-    // Fall back to whatever data field the bundle carried — better than
-    // silently dropping the spec. Only fires on malformed exports.
-    return (spec.data as Record<string, unknown> | undefined) ?? {}
-  }
+  if ('error' in result) throw new InvalidBundledSpecError(result.error)
   return result.specifications[0].data
 }

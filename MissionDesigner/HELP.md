@@ -380,7 +380,7 @@ When you add a Value Property — in an environment, a workflow, or a step — y
 Things to know:
 
 - **The copy is one-time.** A property created from a Value Type keeps no link to it. You can rename it, edit, add, or remove its entries freely afterward, and editing or deleting the Value Type never changes existing properties.
-- **Mission Designer-only.** Value Types are an authoring convenience. They are saved with the environment and travel in Mission Designer library packages, but they never appear in runtime packages — the Mission Engine, Mission Commander, and Mission Autopilot never see them.
+- **Mission Designer-only.** Value Types are an authoring convenience. They are saved with the environment and travel in Mission Designer library packages and in `.WFmasterX` workflow packages, so importing a package recreates them. The Mission Engine, Mission Commander, and Mission Autopilot ignore them.
 - **Scope.** A workflow's property editors offer the Value Types defined on the environments associated with that workflow (and its parent workflows' environments).
 - **Reserved name.** A Value Type entry cannot be named `Description` — every property already carries the protected `Description` entry.
 

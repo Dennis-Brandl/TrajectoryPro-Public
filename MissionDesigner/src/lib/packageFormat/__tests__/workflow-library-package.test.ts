@@ -48,6 +48,41 @@ function spec(over: Partial<Specification>): Specification {
 }
 
 describe('createWorkflowLibraryPackage', () => {
+  it('bundles the environments of referenced steps, through step libraries that reference other step libraries', async () => {
+    const wfLib = lib({ id: '100', name: 'Workflows', entityType: 'workflow' })
+    const stepLibA = lib({ id: '110', name: 'Steps A', entityType: 'step' })
+    const stepLibB = lib({ id: '120', name: 'Steps B', entityType: 'step' })
+    const envLib = lib({ id: '130', name: 'Step Envs', entityType: 'environment' })
+    const proxyTo = (libId: string, specId: string) => ({
+      nodes: [{ type: 'workflowProxy', data: { referencedStepLibraryId: libId, referencedStepSpecId: specId } }],
+      edges: [],
+    })
+    const wf = spec({ id: '200', libraryId: '100', name: 'Wf', data: proxyTo('110', '210') })
+    const stepA = spec({ id: '210', libraryId: '110', name: 'Step A', data: proxyTo('120', '220') })
+    const stepB = spec({
+      id: '220',
+      libraryId: '120',
+      name: 'Step B',
+      data: { nodes: [], edges: [], environmentSpecIds: ['230'] },
+    })
+    const env = spec({ id: '230', libraryId: '130', name: 'Step Env', data: { included_actions: [] } })
+    const blob = await createWorkflowLibraryPackage({
+      tree: { library: wfLib, specifications: [wf], children: [] },
+      images: {},
+      allSpecs: [wf, stepA, stepB, env],
+      allLibraries: [wfLib, stepLibA, stepLibB, envLib],
+      allSpecsByLibrary: new Map([
+        ['100', [wf]],
+        ['110', [stepA]],
+        ['120', [stepB]],
+        ['130', [env]],
+      ]),
+    })
+    const zip = await JSZip.loadAsync(blob as unknown as Blob)
+    expect(zip.file('steps/Steps B.WFslib')).not.toBeNull()
+    expect(zip.file('environments/Step Envs.WFenvir')).not.toBeNull()
+  })
+
   it('produces a ZIP with manifest packageVersion 1.1 and oidIndex listing every library and spec', async () => {
     const wfLib = lib({ id: '100', name: 'My WF Lib', entityType: 'workflow' })
     const wfSpec = spec({ id: '200', libraryId: '100', name: 'Wf A', data: { nodes: [], edges: [] } })

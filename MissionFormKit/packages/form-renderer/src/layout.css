@@ -60,6 +60,16 @@
 [data-block-type='button'].tfk-align-start { text-align: left; }
 [data-block-type='button'].tfk-align-center { text-align: center; }
 [data-block-type='button'].tfk-align-end { text-align: right; }
+/* An image's Align works the same way. The margins move a box narrower than its cell (Scale under
+   100%); object-position moves a Contain picture inside a box wider than the picture. Cover and
+   Fill have no empty space to move across, so their cropping stays as it was. An image with no
+   Align set gets none of these rules, so no existing form moves. */
+[data-block-type='image'].tfk-align-start .tfk-media { margin-inline: 0 auto; }
+[data-block-type='image'].tfk-align-center .tfk-media { margin-inline: auto; }
+[data-block-type='image'].tfk-align-end .tfk-media { margin-inline: auto 0; }
+[data-block-type='image'].tfk-align-start .tfk-fit-contain > img { object-position: left; }
+[data-block-type='image'].tfk-align-center .tfk-fit-contain > img { object-position: center; }
+[data-block-type='image'].tfk-align-end .tfk-fit-contain > img { object-position: right; }
 
 /* base (desktop, container >= 1024px) spans — also the default */
 .tfk-span-base-1 { grid-column: span 1; }

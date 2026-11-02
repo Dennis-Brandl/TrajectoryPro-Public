@@ -523,15 +523,15 @@ Click **Preview** to try the screen as an operator would:
 
 Every element has a **Layout** section in the Inspector:
 
-| Property                  | Applies to      | Description                                                                                                                                                |
-| ------------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Span**                  | Selected device | How many of the row's 12 columns the element occupies (default 12)                                                                                         |
-| **Visible on \<device\>** | Selected device | Clear it to hide the element on that device                                                                                                                |
-| **Order**                 | Selected device | Reorder the element within its row on that device; **Auto** keeps its position in the row                                                                  |
-| **Align**                 | All devices     | Vertical position within the row: Start, Center or End. On a **Button** it also sets the horizontal position: Start = left, Center = centered, End = right |
-| **Min Height**            | All devices     | A minimum height, from `none` to `xl`                                                                                                                      |
-| **Max Width**             | All devices     | A maximum width, in `ch` (characters) or `rem`                                                                                                             |
-| **Aspect Ratio**          | Image and Video | Width to height, for example `16/9` (required for images)                                                                                                  |
+| Property                  | Applies to      | Description                                                                                                                                                                |
+| ------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Span**                  | Selected device | How many of the row's 12 columns the element occupies (default 12)                                                                                                         |
+| **Visible on \<device\>** | Selected device | Clear it to hide the element on that device                                                                                                                                |
+| **Order**                 | Selected device | Reorder the element within its row on that device; **Auto** keeps its position in the row                                                                                  |
+| **Align**                 | All devices     | Vertical position within the row: Start, Center or End. On a **Button** or an **Image** it also sets the horizontal position: Start = left, Center = centered, End = right |
+| **Min Height**            | All devices     | A minimum height, from `none` to `xl`                                                                                                                                      |
+| **Max Width**             | All devices     | A maximum width, in `ch` (characters) or `rem`                                                                                                                             |
+| **Aspect Ratio**          | Image and Video | Width to height, for example `16/9` (required for images)                                                                                                                  |
 
 Elements that collect data also have:
 

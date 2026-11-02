@@ -36,6 +36,22 @@ describe('layout.css button alignment', () => {
   })
 })
 
+describe('layout.css image alignment', () => {
+  const css = readFileSync(cssPath, 'utf8')
+
+  it('Align places an image box horizontally in its cell: start left, center middle, end right', () => {
+    expect(css).toMatch(/\[data-block-type='image'\]\.tfk-align-start \.tfk-media\s*\{[^}]*margin-inline:\s*0 auto/)
+    expect(css).toMatch(/\[data-block-type='image'\]\.tfk-align-center \.tfk-media\s*\{[^}]*margin-inline:\s*auto/)
+    expect(css).toMatch(/\[data-block-type='image'\]\.tfk-align-end \.tfk-media\s*\{[^}]*margin-inline:\s*auto 0/)
+  })
+
+  it('Align also places a Contain picture inside a box wider than the picture', () => {
+    expect(css).toMatch(/\[data-block-type='image'\]\.tfk-align-start \.tfk-fit-contain > img\s*\{[^}]*object-position:\s*left/)
+    expect(css).toMatch(/\[data-block-type='image'\]\.tfk-align-center \.tfk-fit-contain > img\s*\{[^}]*object-position:\s*center/)
+    expect(css).toMatch(/\[data-block-type='image'\]\.tfk-align-end \.tfk-fit-contain > img\s*\{[^}]*object-position:\s*right/)
+  })
+})
+
 describe('controls.css per-device size classes', () => {
   const css = readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../controls.css'), 'utf8')
   const tokens = ['xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl']

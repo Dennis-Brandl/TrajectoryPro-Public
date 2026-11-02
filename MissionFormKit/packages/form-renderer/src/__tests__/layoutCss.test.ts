@@ -52,6 +52,15 @@ describe('layout.css image alignment', () => {
   })
 })
 
+describe('controls.css text alignment past the line-length cap', () => {
+  const css = readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../controls.css'), 'utf8')
+
+  it('moves the capped text box with its alignment, so Center means the center of the cell', () => {
+    expect(css).toMatch(/\.tfk-text\.tfk-text-center\s*\{[^}]*margin-inline:\s*auto/)
+    expect(css).toMatch(/\.tfk-text\.tfk-text-right\s*\{[^}]*margin-inline:\s*auto 0/)
+  })
+})
+
 describe('controls.css per-device image scale', () => {
   const css = readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../controls.css'), 'utf8')
   const SCALED = /\.tfk-media-scaled\s*\{\s*width:\s*([^;]+);/g

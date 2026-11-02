@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import type { PerBreakpoint, BreakpointKey, SizeAt, TypeToken } from '@mission/form-schema'
+import type { PerBreakpoint, BreakpointKey, ScalePercentAt, SizeAt, TypeToken } from '@mission/form-schema'
 import { resolveAt } from '@mission/form-schema'
 
 /** Resolve a per-breakpoint value with the schema cascade (phone ?? tablet ?? base), or a default.
@@ -52,4 +52,17 @@ export function clearSizeAt(block: SizedBlock, bp: 'tablet' | 'phone'): SizedBlo
   const next = { ...sizeAt }
   delete next[bp]
   return Object.keys(next).length > 0 ? { ...rest, sizeAt: next } : rest
+}
+
+/** Patch that sets or (with undefined) removes an image's scale for one device. Desktop writes `scalePercent`; tablet/phone write `scalePercentAt[bp]`. */
+export function scalePatchAt(
+  block: { scalePercentAt?: ScalePercentAt },
+  bp: BreakpointKey,
+  value: number | undefined,
+): { scalePercent?: number; scalePercentAt?: ScalePercentAt } {
+  if (bp === 'base') return { scalePercent: value }
+  const next = { ...block.scalePercentAt }
+  if (value === undefined) delete next[bp]
+  else next[bp] = value
+  return { scalePercentAt: Object.keys(next).length > 0 ? next : undefined }
 }

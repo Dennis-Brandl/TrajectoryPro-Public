@@ -34,6 +34,12 @@ export interface SizeAt {
   phone?: TypeToken
 }
 
+/** Per-device image scale overrides. Desktop is the block's own `scalePercent`; resolution is phone ?? tablet ?? desktop. */
+export interface ScalePercentAt {
+  tablet?: number
+  phone?: number
+}
+
 /** What a button does for the step: advance, or answer a Yes/No step. */
 export type ButtonJob = 'continue' | 'yes' | 'no'
 
@@ -159,6 +165,8 @@ export interface ImageBlock extends BlockBase {
   objectFit?: 'contain' | 'cover' | 'fill'
   /** Media-box width as a percentage of the block's grid cell (10–300). Default 100. */
   scalePercent?: number
+  /** Tablet and phone overrides of `scalePercent`, each 10–300. */
+  scalePercentAt?: ScalePercentAt
   /** Image blocks REQUIRE layout.aspectRatio (enforced by the JSON Schema). */
   layout?: BlockLayout
 }

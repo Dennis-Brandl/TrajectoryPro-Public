@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import type { PerBreakpoint, SizeAt, TypeToken } from './types'
+import type { PerBreakpoint, ScalePercentAt, SizeAt, TypeToken } from './types'
 
 export type BreakpointKey = 'base' | 'tablet' | 'phone'
 
@@ -27,6 +27,18 @@ export function resolveAt<T>(value: PerBreakpoint<T> | undefined, bp: Breakpoint
   if (bp === 'base') return value.base
   if (bp === 'tablet') return value.tablet ?? value.base
   return value.phone ?? value.tablet ?? value.base
+}
+
+/** Image scale at a breakpoint: phone ?? tablet ?? desktop `scalePercent` ?? 100. */
+export function resolveScalePercent(
+  scalePercent: number | undefined,
+  at: ScalePercentAt | undefined,
+  bp: BreakpointKey,
+): number {
+  const base = scalePercent ?? 100
+  if (!at || bp === 'base') return base
+  if (bp === 'tablet') return at.tablet ?? base
+  return at.phone ?? at.tablet ?? base
 }
 
 /** Type size at a breakpoint: phone ?? tablet ?? desktop `size` ?? fallback. */

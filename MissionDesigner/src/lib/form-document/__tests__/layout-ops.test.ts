@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { describe, it, expect } from 'vitest'
-import { resolveBp, setBp, clearBp, isOverridden, sizePatchAt, clearSizeAt } from '../layout-ops'
+import { resolveBp, setBp, clearBp, isOverridden, sizePatchAt, clearSizeAt, scalePatchAt } from '../layout-ops'
 
 describe('layout-ops per-breakpoint helpers', () => {
   it('resolveBp cascades phone -> base', () => {
@@ -45,6 +45,25 @@ describe('layout-ops per-breakpoint helpers', () => {
     expect(isOverridden({ base: 12 }, 'base')).toBe(true)
     expect(isOverridden({ base: 12 }, 'phone')).toBe(false)
     expect(isOverridden({ base: 12, phone: 4 }, 'phone')).toBe(true)
+  })
+})
+
+describe('scalePatchAt', () => {
+  const block = { scalePercent: 60, scalePercentAt: { phone: 20 } }
+
+  it('Desktop writes scalePercent and leaves overrides alone', () => {
+    expect(scalePatchAt(block, 'base', 80)).toEqual({ scalePercent: 80 })
+    expect(scalePatchAt(block, 'base', undefined)).toEqual({ scalePercent: undefined })
+  })
+  it('Tablet and Phone write their own override and keep the other', () => {
+    expect(scalePatchAt(block, 'tablet', 40)).toEqual({ scalePercentAt: { phone: 20, tablet: 40 } })
+    expect(scalePatchAt({}, 'phone', 30)).toEqual({ scalePercentAt: { phone: 30 } })
+  })
+  it('clearing the last override removes scalePercentAt', () => {
+    expect(scalePatchAt(block, 'phone', undefined)).toEqual({ scalePercentAt: undefined })
+    expect(scalePatchAt({ scalePercentAt: { tablet: 40, phone: 20 } }, 'phone', undefined)).toEqual({
+      scalePercentAt: { tablet: 40 },
+    })
   })
 })
 

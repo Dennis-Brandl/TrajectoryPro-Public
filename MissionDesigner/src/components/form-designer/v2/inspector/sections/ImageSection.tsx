@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { useRef } from 'react'
+import { resolveScalePercent } from '@mission/form-schema'
 import type { Block, ImageBlock } from '@mission/form-schema'
+import { scalePatchAt } from '@/lib/form-document/layout-ops'
+import { useFormDocumentStore } from '@/stores/formDocumentStore'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { getSpecImages, setSpecImage, dedupeImageFilename } from '@/stores/specificationStore/imageHelpers'
 
@@ -37,7 +40,16 @@ export function ImageSection({
 }) {
   const block = blockProp as ImageBlock
   const specId = useLibraryStore((s) => s.selectedSpecificationId)
+  const bp = useFormDocumentStore((s) => s.activeBreakpoint)
   const fileRef = useRef<HTMLInputElement>(null)
+  // The value this device tab has set itself; empty means it inherits, shown as the placeholder.
+  const ownScale = bp === 'base' ? block.scalePercent : block.scalePercentAt?.[bp]
+  const inheritedScale =
+    bp === 'phone'
+      ? resolveScalePercent(block.scalePercent, block.scalePercentAt, 'tablet')
+      : (block.scalePercent ?? 100)
+  const inheritedFrom = bp === 'phone' && block.scalePercentAt?.tablet !== undefined ? 'Tablet' : 'Desktop'
+  const writeScale = (value: number | undefined) => onUpdate(scalePatchAt(block, bp, value) as Partial<Block>)
 
   const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -131,38 +143,43 @@ export function ImageSection({
         </select>
       </div>
 
-      {/* Scale (%) — media-box width as % of the block's grid cell (schema range 10–300).
-          Free typing is allowed mid-edit; blur clamps into range so Save can't fail on it. */}
+      {/* Scale (%) for the selected device tab — media-box width as % of the block's grid cell
+          (schema range 10–300). Free typing is allowed mid-edit; blur clamps into range so Save
+          can't fail on it. */}
       <div style={fieldStyle}>
         <label
           htmlFor="tfk-image-scale"
           className="text-gray-500 dark:text-gray-400"
-          style={{ fontSize: 11, display: 'block', marginBottom: 2 }}
+          style={{ fontSize: 11, display: 'inline-block', marginBottom: 2 }}
         >
           Scale (%)
         </label>
+        {bp !== 'base' && ownScale === undefined && (
+          <span className="text-gray-500 dark:text-gray-400" style={{ fontSize: 11, marginLeft: 6 }}>
+            {`(from ${inheritedFrom})`}
+          </span>
+        )}
         <input
           id="tfk-image-scale"
           type="number"
           min={10}
           max={300}
           step={5}
-          value={block.scalePercent ?? ''}
-          placeholder="100"
+          value={ownScale ?? ''}
+          placeholder={String(bp === 'base' ? 100 : inheritedScale)}
           onChange={(e) => {
             const raw = e.target.value
             if (raw === '') {
-              onUpdate({ scalePercent: undefined } as Partial<Block>)
+              writeScale(undefined)
               return
             }
             const n = Math.round(Number(raw))
-            if (Number.isFinite(n)) onUpdate({ scalePercent: n } as Partial<Block>)
+            if (Number.isFinite(n)) writeScale(n)
           }}
           onBlur={() => {
-            const n = block.scalePercent
-            if (n === undefined) return
-            const clamped = Math.min(300, Math.max(10, n))
-            if (clamped !== n) onUpdate({ scalePercent: clamped } as Partial<Block>)
+            if (ownScale === undefined) return
+            const clamped = Math.min(300, Math.max(10, ownScale))
+            if (clamped !== ownScale) writeScale(clamped)
           }}
           className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
           style={{
@@ -174,6 +191,23 @@ export function ImageSection({
             outline: 'none',
           }}
         />
+        {bp !== 'base' && ownScale !== undefined && (
+          <button
+            type="button"
+            onClick={() => writeScale(undefined)}
+            className="text-blue-600 dark:text-blue-400"
+            style={{
+              fontSize: 11,
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              marginTop: 4,
+              padding: 0,
+            }}
+          >
+            Clear {bp} override (inherit {inheritedFrom.toLowerCase()})
+          </button>
+        )}
       </div>
     </div>
   )

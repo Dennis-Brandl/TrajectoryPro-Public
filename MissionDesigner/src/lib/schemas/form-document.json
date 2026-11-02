@@ -22,6 +22,15 @@
         "phone": { "$ref": "#/definitions/typeToken" }
       }
     },
+    "scalePercent": { "type": "integer", "minimum": 10, "maximum": 300 },
+    "scalePercentAt": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tablet": { "$ref": "#/definitions/scalePercent" },
+        "phone": { "$ref": "#/definitions/scalePercent" }
+      }
+    },
     "pbSpan": {
       "type": "object",
       "required": ["base"],
@@ -246,7 +255,8 @@
         "src": { "type": "string", "minLength": 1 },
         "imageOid": { "type": "string" },
         "objectFit": { "enum": ["contain", "cover", "fill"] },
-        "scalePercent": { "type": "integer", "minimum": 10, "maximum": 300 }
+        "scalePercent": { "$ref": "#/definitions/scalePercent" },
+        "scalePercentAt": { "$ref": "#/definitions/scalePercentAt" }
       }
     },
     "videoBlock": {

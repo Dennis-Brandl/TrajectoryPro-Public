@@ -64,7 +64,7 @@ export interface WorkViewProps {
 // Stable tab order: the server already sorts myClaims by claimedAt ascending, but
 // parallel auto-claimed branches share one reconcile clock — the assignmentId
 // tie-break keeps tabs from swapping places between snapshot refreshes.
-function paneList(claims: InboxTask[], closedIds: ReadonlySet<string>): InboxTask[] {
+function paneList(claims: InboxTask[], closedIds: ReadonlyMap<string, string | undefined>): InboxTask[] {
   return claims
     .filter((t) => !closedIds.has(t.assignmentId))
     .sort(
@@ -140,8 +140,10 @@ export function WorkView({ wcId, wcName, snapshot: incoming, stale, inboxOffline
   // is checked for explicitly below instead of via `panes.some(...)`.
   const [focusedId, setFocusedId] = useState<string | null>(null)
   // Panes closed locally (submit, lost race) are hidden immediately; the server
-  // catches up on the next snapshot. Entries are pruned once the server agrees.
-  const [closedIds, setClosedIds] = useState<ReadonlySet<string>>(() => new Set())
+  // catches up on the next snapshot. Entries are pruned once the server agrees. Each holds
+  // the step's update time at close: a step in a loop can come straight back under the same
+  // assignment, and a newer time is what tells that new pass from a late snapshot.
+  const [closedIds, setClosedIds] = useState<ReadonlyMap<string, string | undefined>>(() => new Map())
   // Fed by WorkflowsScreen's onListCount — shown as a badge on the Workflows tab.
   const [wfCount, setWfCount] = useState(0)
   // The tablet "N open" claims sheet (spec §5.2).
@@ -268,7 +270,7 @@ export function WorkView({ wcId, wcName, snapshot: incoming, stale, inboxOffline
     const closing = panes[idx]
     const rest = panes.filter((p) => p.assignmentId !== id)
     const next = rest[idx] ?? rest[idx - 1] ?? null
-    setClosedIds((prev) => new Set(prev).add(id))
+    setClosedIds((prev) => new Map(prev).set(id, closing?.stepUpdatedAt))
     setFocusedId(next ? next.assignmentId : null)
     setArrival({ id: next ? next.assignmentId : null })
     // P0 minor: a closed pane is never the Workflows tab's "task I was just on".
@@ -296,20 +298,28 @@ export function WorkView({ wcId, wcName, snapshot: incoming, stale, inboxOffline
     const closed = closedIdsRef.current
 
     // Tombstone pruning. A locally-closed pane stays suppressed only while the
-    // server still lists it UNPAUSED (an in-flight pre-submit snapshot). Once it is
-    // gone the tombstone has done its job; if it is listed PAUSED, the "race" 409
-    // was really a pause landing mid-submit — the step is still ours, so the tab
-    // must come back (as paused) instead of being suppressed forever. Decided FIRST
+    // server still lists it UNPAUSED and UNCHANGED (an in-flight pre-submit snapshot).
+    // Once it is gone the tombstone has done its job; if it is listed PAUSED, the "race"
+    // 409 was really a pause landing mid-submit — the step is still ours, so the tab
+    // must come back (as paused) instead of being suppressed forever. If the step has
+    // changed, a loop brought it back under the same assignment: that is the next task,
+    // so it is treated as newly arrived below. Decided FIRST
     // so the baseline below (and what's diffed as "current") reflects the same
     // pruned set the render will show — otherwise a resurfaced pane is invisible to
     // this run's own baseline and gets mis-diffed as "just arrived" (stealing focus
     // on the next poll) or, if removed before that poll, never toasted at all.
     let effectiveClosed = closed
+    const nextPass = new Set<string>()
     if (closed.size > 0) {
-      const liveUnpaused = new Set(claims.filter((t) => !t.paused).map((t) => t.assignmentId))
-      const kept = [...closed].filter((id) => liveUnpaused.has(id))
-      if (kept.length !== closed.size) {
-        effectiveClosed = new Set(kept)
+      const liveUnpaused = new Map(claims.filter((t) => !t.paused).map((t) => [t.assignmentId, t.stepUpdatedAt]))
+      const kept = new Map<string, string | undefined>()
+      for (const [id, closedAt] of closed) {
+        if (!liveUnpaused.has(id)) continue
+        if (liveUnpaused.get(id) === closedAt) kept.set(id, closedAt)
+        else nextPass.add(id)
+      }
+      if (kept.size !== closed.size) {
+        effectiveClosed = kept
         setClosedIds(effectiveClosed)
       }
     }
@@ -334,7 +344,7 @@ export function WorkView({ wcId, wcName, snapshot: incoming, stale, inboxOffline
       }
     }
 
-    const added = ids.filter((id) => !prevIds.includes(id))
+    const added = ids.filter((id) => !prevIds.includes(id) || nextPass.has(id))
     // Spec §5.6 item 4: the auto-claim chain handed over the same runtime's next step right
     // after a Submit — prefer it over the neighbour the close picked, but only while the
     // operator has not started on that neighbour (the "Now on" cue is still up).
@@ -378,7 +388,7 @@ export function WorkView({ wcId, wcName, snapshot: incoming, stale, inboxOffline
       offline={inboxOffline}
       refresh={refresh}
       onOpenTask={(t) => setFocusedId(t.assignmentId)}
-      onReleased={(t) => setClosedIds((prev) => new Set(prev).add(t.assignmentId))}
+      onReleased={(t) => setClosedIds((prev) => new Map(prev).set(t.assignmentId, t.stepUpdatedAt))}
       query={inboxQuery}
       onQueryChange={setInboxQuery}
       releaseAskingId={inboxAskingId}

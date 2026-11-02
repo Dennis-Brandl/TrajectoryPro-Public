@@ -97,6 +97,7 @@
 }
 
 .tfk-media { width: 100%; overflow: hidden; border-radius: var(--form-radius-control); }
+.tfk-media-scaled { width: var(--tfk-scale-base, 100%); }
 .tfk-media > img, .tfk-media > video { width: 100%; height: 100%; display: block; }
 .tfk-fit-contain > img { object-fit: contain; }
 .tfk-fit-cover > img { object-fit: cover; }
@@ -125,8 +126,10 @@
 .tfk-hint { margin: 0; font-size: var(--form-type-size-sm); color: var(--form-color-text-muted); }
 .tfk-error { margin: 0; font-size: var(--form-type-size-sm); color: var(--form-color-danger); }
 
-/* Per-device text size overrides (sizeAt). Phone after tablet so phone wins when both match. */
+/* Per-device text size overrides (sizeAt) and image scale (scalePercentAt). Phone after tablet so
+   phone wins when both match. */
 @container tfk (max-width: 1023px) {
+  .tfk-media-scaled { width: var(--tfk-scale-tablet, var(--tfk-scale-base, 100%)); }
   .tfk-size-tablet-xs { font-size: var(--form-type-size-xs); }
   .tfk-size-tablet-sm { font-size: var(--form-type-size-sm); }
   .tfk-size-tablet-md { font-size: var(--form-type-size-md); }
@@ -136,6 +139,7 @@
   .tfk-size-tablet-3xl { font-size: var(--form-type-size-3xl); }
 }
 @container tfk (max-width: 599px) {
+  .tfk-media-scaled { width: var(--tfk-scale-phone, var(--tfk-scale-tablet, var(--tfk-scale-base, 100%))); }
   .tfk-size-phone-xs { font-size: var(--form-type-size-xs); }
   .tfk-size-phone-sm { font-size: var(--form-type-size-sm); }
   .tfk-size-phone-md { font-size: var(--form-type-size-md); }

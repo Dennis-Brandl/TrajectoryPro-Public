@@ -463,6 +463,76 @@ describe('WorkView', () => {
     expect(screen.getByText('No longer yours: Fit bracket · MIX-20261007-003')).toBeTruthy()
   })
 
+  // A step in a loop can return to WAITING_USER inside the transaction that submitted it, so
+  // the engine keeps the same assignment. Only the step's update time says it is a new pass.
+  describe('a looped step listed again under the same assignment', () => {
+    const nextPass = { ...claimA, stepUpdatedAt: '2031-01-01T00:00:00.000Z' }
+    const pane = () => document.getElementById(`panel-${claimA.assignmentId}`)
+
+    it('reopens the task after the submit, without a "No longer yours" toast', async () => {
+      vi.mocked(api.submit).mockResolvedValue(undefined as never)
+      const { update } = renderWork({ snapshot: snap([claimA]) })
+      fireEvent.click(screen.getByRole('tab', { name: /Fit bracket/ }))
+      fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+      await screen.findByText(/Submitted/)
+      expect(pane()).toBeNull()
+
+      update({ snapshot: snap([nextPass]) })
+
+      expect(pane()).not.toBeNull()
+      expect(selectedTab()).toContain('Fit bracket')
+      expect(screen.queryByText(/No longer yours/)).toBeNull()
+    })
+
+    it('opens from the inbox when the operator has moved on and the follow-on window has passed', async () => {
+      vi.mocked(api.submit).mockResolvedValue(undefined as never)
+      const { update } = renderWork({ snapshot: snap([claimA, claimB]) })
+      fireEvent.click(screen.getByRole('tab', { name: /Fit bracket/ }))
+      fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+      await screen.findByText(/Submitted/)
+      fireEvent.click(screen.getByRole('tab', { name: 'Inbox' }))
+
+      update({ snapshot: snap([nextPass, claimB]) })
+      fireEvent.click(screen.getByRole('tab', { name: 'Inbox' }))
+      fireEvent.click(within(screen.getByRole('tabpanel', { name: /Inbox/ })).getByRole('button', { name: /Fit bracket/ }))
+
+      expect(selectedTab()).toContain('Fit bracket')
+    })
+
+    it('still works when the new pass is pushed before the submit call returns', async () => {
+      let finishSubmit = () => {}
+      vi.mocked(api.submit).mockReturnValue(new Promise<never>((resolve) => { finishSubmit = () => resolve(undefined as never) }))
+      const { update } = renderWork({ snapshot: snap([claimA]) })
+      fireEvent.click(screen.getByRole('tab', { name: /Fit bracket/ }))
+      fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+
+      update({ snapshot: snap([nextPass]) })
+      await act(async () => finishSubmit())
+      await screen.findByText(/Submitted/)
+      update({ snapshot: snap([{ ...nextPass }]) })
+
+      expect(pane()).not.toBeNull()
+      expect(selectedTab()).toContain('Fit bracket')
+    })
+
+    it.each([
+      ['with an update time', '2030-01-01T00:00:00.000Z'],
+      ['with no update time', undefined],
+    ])('keeps the pane closed while a snapshot from before the submit is still arriving (%s)', async (_name, stepUpdatedAt) => {
+      vi.mocked(api.submit).mockResolvedValue(undefined as never)
+      const claim = { ...claimA, stepUpdatedAt }
+      const { update } = renderWork({ snapshot: snap([claim]) })
+      fireEvent.click(screen.getByRole('tab', { name: /Fit bracket/ }))
+      fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+      await screen.findByText(/Submitted/)
+
+      update({ snapshot: snap([{ ...claim }]) })
+
+      expect(pane()).toBeNull()
+      expect(selectedTab()).toContain('Inbox')
+    })
+  })
+
   it('horizontal swipes move between inbox and panes; vertical scrolls do not', () => {
     const { container } = renderWork({ snapshot: snap([claimA, claimB]) })
     const surface = container.querySelector('.work-panes')!

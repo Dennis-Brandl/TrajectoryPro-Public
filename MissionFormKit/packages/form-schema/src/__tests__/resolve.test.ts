@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { describe, it, expect } from 'vitest'
-import { resolveAt, resolveSize } from '../resolve'
+import { resolveAt, resolveScalePercent, resolveSize } from '../resolve'
 
 describe('resolveAt — desktop-base cascade (phone ?? tablet ?? base)', () => {
   it('returns base at every breakpoint when no overrides exist', () => {
@@ -47,6 +47,18 @@ describe('resolveAt — desktop-base cascade (phone ?? tablet ?? base)', () => {
 
   it('does not treat false as absent (visibility use-case)', () => {
     expect(resolveAt({ base: true, phone: false }, 'phone', true)).toBe(false)
+  })
+})
+
+describe('resolveScalePercent', () => {
+  it('follows phone, then tablet, then desktop, then 100', () => {
+    expect(resolveScalePercent(undefined, undefined, 'phone')).toBe(100)
+    expect(resolveScalePercent(60, undefined, 'phone')).toBe(60)
+    expect(resolveScalePercent(60, { tablet: 40 }, 'base')).toBe(60)
+    expect(resolveScalePercent(60, { tablet: 40 }, 'tablet')).toBe(40)
+    expect(resolveScalePercent(60, { tablet: 40 }, 'phone')).toBe(40)
+    expect(resolveScalePercent(60, { tablet: 40, phone: 20 }, 'phone')).toBe(20)
+    expect(resolveScalePercent(60, { phone: 20 }, 'tablet')).toBe(60)
   })
 })
 

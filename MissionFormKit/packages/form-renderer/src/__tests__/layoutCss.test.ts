@@ -52,6 +52,20 @@ describe('layout.css image alignment', () => {
   })
 })
 
+describe('controls.css per-device image scale', () => {
+  const css = readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../controls.css'), 'utf8')
+  const SCALED = /\.tfk-media-scaled\s*\{\s*width:\s*([^;]+);/g
+  const widths = [...css.matchAll(SCALED)].map((m) => m[1]!.trim())
+
+  it('falls back phone to tablet to desktop to 100%, in that order of rules', () => {
+    expect(widths).toEqual([
+      'var(--tfk-scale-base, 100%)',
+      'var(--tfk-scale-tablet, var(--tfk-scale-base, 100%))',
+      'var(--tfk-scale-phone, var(--tfk-scale-tablet, var(--tfk-scale-base, 100%)))',
+    ])
+  })
+})
+
 describe('controls.css per-device size classes', () => {
   const css = readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../controls.css'), 'utf8')
   const tokens = ['xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl']

@@ -139,6 +139,19 @@ describe('validateFormDocument', () => {
     }
   })
 
+  it('accepts scalePercentAt within 10..300 for tablet and phone; rejects anything else', () => {
+    const doc = validDoc()
+    const img = doc.sections[0]!.rows[0]!.blocks[2] as unknown as Record<string, unknown>
+    for (const ok of [{ tablet: 10 }, { phone: 300 }, { tablet: 50, phone: 25 }, {}]) {
+      img.scalePercentAt = ok
+      expect(validateFormDocument(doc).ok, JSON.stringify(ok)).toBe(true)
+    }
+    for (const bad of [{ phone: 9 }, { tablet: 301 }, { phone: 1.5 }, { base: 50 }]) {
+      img.scalePercentAt = bad
+      expect(validateFormDocument(doc).ok, JSON.stringify(bad)).toBe(false)
+    }
+  })
+
   it('rejects a zero aspect ratio like "0/0"', () => {
     const doc = validDoc()
     ;(doc.sections[0]!.rows[0]!.blocks[2]!.layout as Record<string, unknown>).aspectRatio = '0/0'

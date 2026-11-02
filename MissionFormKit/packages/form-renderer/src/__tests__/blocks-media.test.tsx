@@ -52,22 +52,39 @@ describe('image block', () => {
     expect(container.querySelector('[data-block-id="m"] .tfk-media-placeholder')!.textContent).toContain('missing.png')
   })
 
-  it('scalePercent sizes the media box as a % of the cell; 100/unset leave width alone', () => {
+  it('scale values reach the media box per device; an image with no scale gets no scale style', () => {
     const { container } = render(
       <FormDocumentView
         document={docWith([
           { id: 'sm', type: 'image', src: 'https://example.com/a.png', scalePercent: 25, layout: { aspectRatio: '1/1' } },
-          { id: 'lg', type: 'image', src: 'https://example.com/a.png', scalePercent: 150, layout: { aspectRatio: '1/1' } },
-          { id: 'df', type: 'image', src: 'https://example.com/a.png', scalePercent: 100, layout: { aspectRatio: '1/1' } },
+          {
+            id: 'all',
+            type: 'image',
+            src: 'https://example.com/a.png',
+            scalePercent: 150,
+            scalePercentAt: { tablet: 75, phone: 40 },
+            layout: { aspectRatio: '1/1' },
+          },
+          {
+            id: 'ph',
+            type: 'image',
+            src: 'https://example.com/a.png',
+            scalePercentAt: { phone: 50 },
+            layout: { aspectRatio: '1/1' },
+          },
           { id: 'un', type: 'image', src: 'https://example.com/a.png', layout: { aspectRatio: '1/1' } },
         ])}
       />,
     )
-    const width = (id: string) => container.querySelector<HTMLElement>(`[data-block-id="${id}"] .tfk-media`)!.style.width
-    expect(width('sm')).toBe('25%')
-    expect(width('lg')).toBe('150%')
-    expect(width('df')).toBe('')
-    expect(width('un')).toBe('')
+    const box = (id: string) => container.querySelector<HTMLElement>(`[data-block-id="${id}"] .tfk-media`)!
+    const scale = (id: string, bp: string) => box(id).style.getPropertyValue(`--tfk-scale-${bp}`)
+    expect(scale('sm', 'base')).toBe('25%')
+    expect(scale('sm', 'phone')).toBe('')
+    expect([scale('all', 'base'), scale('all', 'tablet'), scale('all', 'phone')]).toEqual(['150%', '75%', '40%'])
+    expect([scale('ph', 'base'), scale('ph', 'phone')]).toEqual(['', '50%'])
+    expect(box('sm').classList.contains('tfk-media-scaled')).toBe(true)
+    expect(box('ph').classList.contains('tfk-media-scaled')).toBe(true)
+    expect(box('un').classList.contains('tfk-media-scaled')).toBe(false)
   })
 })
 

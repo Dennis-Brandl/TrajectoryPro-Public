@@ -74,7 +74,7 @@ function OutputsEditorComponent({
         )}
       </div>
 
-      {outputs.length === 0 && <p className="text-xs text-slate-500 dark:text-slate-400 italic">No outputs defined</p>}
+      {outputs.length === 0 && <p className="text-xs text-muted-foreground italic">No outputs defined</p>}
 
       {outputs.map((output) => (
         <div key={output.id} className="flex gap-1 items-start">
@@ -96,7 +96,7 @@ function OutputsEditorComponent({
                   placeholder="Description (optional)"
                   value={output.description || ''}
                   onChange={(e) => updateOutput(output.id, { description: e.target.value })}
-                  className="h-7 text-xs text-slate-500 dark:text-slate-400"
+                  className="h-7 text-xs text-muted-foreground"
                   disabled={readOnly}
                 />
               </>

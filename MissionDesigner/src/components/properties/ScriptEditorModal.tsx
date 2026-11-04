@@ -154,15 +154,15 @@ function ScriptEditorModalComponent({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/80" />
         <Dialog.Content
-          className="fixed inset-4 z-50 bg-white dark:bg-slate-900 rounded-lg flex flex-col overflow-hidden"
+          className="fixed inset-4 z-50 bg-background rounded-lg flex flex-col overflow-hidden"
           onEscapeKeyDown={(e) => {
             e.preventDefault()
             handleCancel()
           }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 shrink-0">
-            <Dialog.Title className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+            <Dialog.Title className="text-sm font-semibold text-foreground">
               {isGate ? 'Edit Gate Script' : 'Edit Script'}
             </Dialog.Title>
             <Dialog.Description className="sr-only">
@@ -171,7 +171,7 @@ function ScriptEditorModalComponent({
           </div>
 
           {/* Toolbar */}
-          <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 shrink-0 flex items-center gap-2">
+          <div className="px-4 py-2 border-b border-border shrink-0 flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -198,7 +198,7 @@ function ScriptEditorModalComponent({
             >
               Generate Template
             </Button>
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium ml-auto">JavaScript</span>
+            <span className="text-[11px] text-muted-foreground font-medium ml-auto">JavaScript</span>
           </div>
 
           {/* Editor body */}
@@ -221,7 +221,7 @@ function ScriptEditorModalComponent({
           </div>
 
           {/* Footer with Cancel / Check Syntax / Save / Save and Close */}
-          <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-slate-200 dark:border-slate-700 shrink-0">
+          <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border shrink-0">
             <Button variant="outline" size="sm" onClick={handleCancel}>
               Cancel
             </Button>

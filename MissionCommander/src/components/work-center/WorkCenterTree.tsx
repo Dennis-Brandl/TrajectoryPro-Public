@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, Upload } from 'lucide-react';
 import { workCenters } from '@/lib/api/work-centers';
 import { apiErrorMessage } from '@/lib/api/client';
 import type { Workflow } from '@/lib/api/types';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useHasRight } from '@/stores/principalStore';
-import { cn } from '@/lib/utils';
+import { Button, treeRowClass, PaneLabel } from '@mission/ui';
 import { NameWithType } from '@/components/shared/NameWithType';
 import { RequiresTooltip } from '@/components/shared/RequiresTooltip';
 import { ImportPackageDialog } from './ImportPackageDialog';
@@ -89,36 +89,32 @@ export function WorkCenterTree({ onCreateRoot, onCreateChild }: WorkCenterTreePr
   }, [expanded, workflowsById]);
 
   return (
-    <div className="flex flex-col gap-1 p-2">
-      <div className="flex items-center justify-between px-2 py-1">
-        <span className="text-sm font-medium text-muted-foreground">Work Centers</span>
-        <RequiresTooltip reason={canCreate ? undefined : 'Requires work_center:create'}>
-          <button type="button" aria-label="New work center" onClick={onCreateRoot} disabled={!canCreate}
-            title={canCreate ? undefined : 'Requires work_center:create'}
-            className="flex size-6 items-center justify-center rounded hover:bg-accent disabled:pointer-events-none disabled:opacity-50">＋</button>
+    <div className="flex flex-col">
+      <PaneLabel>Work Centers</PaneLabel>
+      <div className="space-y-2 border-b border-border p-2">
+        <RequiresTooltip block reason={canCreate ? undefined : 'Requires work_center:create'}>
+          <Button variant="outline" size="sm" className="w-full" onClick={onCreateRoot} disabled={!canCreate}
+            title={canCreate ? undefined : 'Requires work_center:create'}>
+            <Plus className="h-4 w-4" />
+            New Work Center
+          </Button>
         </RequiresTooltip>
-        <RequiresTooltip reason={canCreate ? undefined : 'Requires work_center:create'}>
-          <button type="button" aria-label="Import package" onClick={() => setImportOpen(true)}
-            disabled={!canCreate} title={canCreate ? undefined : 'Requires work_center:create'}
-            className="flex size-6 items-center justify-center rounded hover:bg-accent disabled:pointer-events-none disabled:opacity-50">⭳</button>
+        <RequiresTooltip block reason={canCreate ? undefined : 'Requires work_center:create'}>
+          {/* The longest label: it wraps rather than clips when the pane is at its narrowest. */}
+          <Button variant="outline" size="sm" className="h-auto min-h-8 w-full whitespace-normal py-1"
+            onClick={() => setImportOpen(true)} disabled={!canCreate}
+            title={canCreate ? undefined : 'Requires work_center:create'}>
+            <Upload className="h-4 w-4" />
+            Import Work Center Package
+          </Button>
         </RequiresTooltip>
       </div>
       {loadError && <div className="px-2 text-sm text-destructive">{loadError}</div>}
       {loaded && !loadError && forest.length === 0 && (
-        <div className="flex flex-col gap-2 px-2 py-1 text-sm text-muted-foreground">
-          {canCreate ? (
-            <>
-              <span>No work centers yet.</span>
-              <div className="flex gap-2">
-                <button type="button" onClick={onCreateRoot}
-                  className="rounded border px-2 py-1 text-foreground hover:bg-accent">Create work center</button>
-                <button type="button" onClick={() => setImportOpen(true)}
-                  className="rounded border px-2 py-1 text-foreground hover:bg-accent">Import package</button>
-              </div>
-            </>
-          ) : (
-            <span>No work centers yet. Ask an administrator to create one or to give you access.</span>
-          )}
+        <div className="px-2 py-1 text-sm text-muted-foreground">
+          {canCreate
+            ? 'No work centers yet.'
+            : 'No work centers yet. Ask an administrator to create one or to give you access.'}
         </div>
       )}
       <div role="tree">
@@ -158,7 +154,8 @@ function TreeRow({ node, depth, expanded, workflowsById, selectedWorkCenterId, o
   // checked-and-empty on a childless node, drop the dead toggle.
   const canExpand = node.children.length > 0 || cachedWorkflows === undefined || cachedWorkflows.length > 0;
   const isSelected = selectedWorkCenterId === node.id;
-  const paddingLeft = depth * 12 + 8;
+  // treeRowClass stops at depth 2 (8, 24, 40px); deeper rows continue the 16px step inline.
+  const paddingLeft = depth * 16 + 8;
   // The group wrapper below should only appear once there's something in it —
   // otherwise an expanded-but-not-yet-fetched leaf (cachedWorkflows === undefined)
   // would render an empty, pointless role="group".
@@ -170,15 +167,15 @@ function TreeRow({ node, depth, expanded, workflowsById, selectedWorkCenterId, o
 
   return (
     <div role="treeitem" aria-selected={isSelected} aria-expanded={canExpand ? isExpanded : undefined}>
-      <div className={cn('flex items-center gap-1 rounded py-1 pr-2', isSelected ? 'bg-accent text-accent-foreground' : 'hover:bg-accent')}
-        style={{ paddingLeft }}>
+      <div className={treeRowClass({ selected: isSelected, depth: Math.min(depth, 2) as 0 | 1 | 2 })}
+        style={depth > 2 ? { paddingLeft } : undefined}>
         {canExpand ? (
           <button type="button" aria-label={isExpanded ? `Collapse ${node.name}` : `Expand ${node.name}`}
             onClick={() => onToggle(node)} className="flex size-4 shrink-0 items-center justify-center">
             {isExpanded ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
           </button>
         ) : <span className="size-4 shrink-0" />}
-        <button type="button" onClick={() => onSelect(node.id)} className="flex-1 truncate text-left text-sm">
+        <button type="button" onClick={() => onSelect(node.id)} className="flex-1 truncate text-left">
           <NameWithType name={node.name} typeName={node.typeName} />
         </button>
         <RequiresTooltip reason={canCreate ? undefined : 'Requires work_center:create'}>
@@ -194,8 +191,8 @@ function TreeRow({ node, depth, expanded, workflowsById, selectedWorkCenterId, o
               selectedWorkCenterId={selectedWorkCenterId} onToggle={onToggle} onSelect={onSelect} onCreateChild={onCreateChild} />
           ))}
           {(cachedWorkflows ?? []).map((wf) => (
-            <div key={wf.id} className="truncate py-1 text-sm italic text-muted-foreground"
-              style={{ paddingLeft: paddingLeft + 12 + 20 }}>
+            <div key={wf.id} className="truncate py-1 text-xs italic text-muted-foreground"
+              style={{ paddingLeft: paddingLeft + 16 + 20 }}>
               <NameWithType name={wf.name} typeName={wf.typeName} />
             </div>
           ))}

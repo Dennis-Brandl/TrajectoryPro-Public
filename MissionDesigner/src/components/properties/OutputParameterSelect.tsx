@@ -347,13 +347,13 @@ function OutputParameterSelectComponent({
             <>
               <SelectSeparator />
               <SelectItem value="__add_property__">
-                <span className="flex items-center gap-1 text-blue-600">
+                <span className="flex items-center gap-1 text-link">
                   <Plus className="h-3 w-3" />
                   Add Value Property...
                 </span>
               </SelectItem>
               <SelectItem value="__add_entry__">
-                <span className="flex items-center gap-1 text-blue-600">
+                <span className="flex items-center gap-1 text-link">
                   <Plus className="h-3 w-3" />
                   Add Entry to Property...
                 </span>
@@ -368,7 +368,7 @@ function OutputParameterSelectComponent({
         <DialogContent className="max-w-sm" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle className="text-sm">Add Value Property</DialogTitle>
-            <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
+            <DialogDescription className="text-xs text-muted-foreground">
               Creates a new Value Property — Freeform (Value + Description entries) or copied from a Value Type.
             </DialogDescription>
           </DialogHeader>
@@ -438,7 +438,7 @@ function OutputParameterSelectComponent({
         <DialogContent className="max-w-sm" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle className="text-sm">Add Entry to Property</DialogTitle>
-            <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
+            <DialogDescription className="text-xs text-muted-foreground">
               Adds a custom entry to an existing Value Property.
             </DialogDescription>
           </DialogHeader>

@@ -22,7 +22,7 @@ import {
   PACKAGE_EXTENSIONS,
   PACKAGE_EXTENSIONS_TEXT,
 } from '@/features/environments/packageExtensions'
-import { cn } from '@mission/ui'
+import { cn, PaneLabel } from '@mission/ui'
 
 type PanelStatus =
   | { kind: 'idle' }
@@ -59,38 +59,42 @@ export default function ExplorerPanel() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border shrink-0">
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium flex-1">
-          Explorer
-        </span>
-        <button
-          onClick={handleUploadClick}
-          className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-          title={`Import ${PACKAGE_EXTENSIONS_TEXT} file`}
-        >
-          <Upload size={12} />
-        </button>
-        <button
-          onClick={toggleCodeFilter}
-          className={cn(
-            'p-1 rounded transition-colors',
-            codeFilterActive
-              ? 'bg-primary/20 text-primary'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-          )}
-          title={codeFilterActive ? 'Showing states with code only' : 'Show all states'}
-        >
-          <Filter size={12} />
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={PACKAGE_EXTENSIONS.join(',')}
-          className="hidden"
-          onChange={handleFileSelected}
-        />
-      </div>
+      <PaneLabel
+        action={
+          <span className="flex items-center gap-1">
+            <button
+              onClick={handleUploadClick}
+              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              title={`Import ${PACKAGE_EXTENSIONS_TEXT} file`}
+              aria-label={`Import ${PACKAGE_EXTENSIONS_TEXT} file`}
+            >
+              <Upload size={12} />
+            </button>
+            <button
+              onClick={toggleCodeFilter}
+              className={cn(
+                'p-1 rounded transition-colors',
+                codeFilterActive
+                  ? 'bg-primary/20 text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              )}
+              title={codeFilterActive ? 'Showing states with code only' : 'Show all states'}
+              aria-label={codeFilterActive ? 'Showing states with code only' : 'Show all states'}
+            >
+              <Filter size={12} />
+            </button>
+          </span>
+        }
+      >
+        Explorer
+      </PaneLabel>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={PACKAGE_EXTENSIONS.join(',')}
+        className="hidden"
+        onChange={handleFileSelected}
+      />
 
       {/* Status row (upload progress / upload or action errors) */}
       {panelStatus.kind === 'uploading' && (
@@ -108,6 +112,7 @@ export default function ExplorerPanel() {
             onClick={() => setPanelStatus({ kind: 'idle' })}
             className="text-muted-foreground hover:text-foreground shrink-0"
             title="Dismiss"
+            aria-label="Dismiss"
           >
             <X size={11} />
           </button>

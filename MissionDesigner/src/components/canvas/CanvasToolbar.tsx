@@ -449,7 +449,7 @@ export function CanvasToolbar() {
   return (
     <div
       data-testid="canvas-toolbar"
-      className="flex gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm p-2 rounded-lg shadow-md border border-slate-200 dark:border-slate-700"
+      className="flex gap-2 bg-card/90 backdrop-blur-sm p-2 rounded-lg shadow-md border border-border"
     >
       {currentSpec && (
         <>

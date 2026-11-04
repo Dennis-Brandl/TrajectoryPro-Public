@@ -62,7 +62,7 @@ export function ColorPickerField({ color, onChange, label }: ColorPickerFieldPro
     <div ref={containerRef} style={{ position: 'relative', display: 'inline-block' }}>
       {label && (
         <span
-          className="text-gray-500 dark:text-gray-400"
+          className="text-muted-foreground"
           style={{
             fontSize: 11,
             display: 'block',
@@ -78,7 +78,7 @@ export function ColorPickerField({ color, onChange, label }: ColorPickerFieldPro
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="border border-slate-200 dark:border-slate-700"
+        className="border border-border"
         style={{
           width: 28,
           height: 28,
@@ -96,7 +96,7 @@ export function ColorPickerField({ color, onChange, label }: ColorPickerFieldPro
       {open && (
         <div
           ref={popoverRef}
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"
+          className="bg-background border border-border"
           style={{
             position: 'absolute',
             zIndex: 10000,
@@ -119,7 +119,7 @@ export function ColorPickerField({ color, onChange, label }: ColorPickerFieldPro
                   onChange(swatch)
                   setOpen(false)
                 }}
-                className={`border ${swatch === localColor ? 'border-blue-600 dark:border-blue-400' : 'border-gray-300 dark:border-gray-600'}`}
+                className={`border ${swatch === localColor ? 'border-brand-accent' : 'border-border'}`}
                 style={{
                   width: 20,
                   height: 20,
@@ -154,7 +154,7 @@ export function ColorPickerField({ color, onChange, label }: ColorPickerFieldPro
               onChange(c)
             }}
             prefixed
-            className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+            className="border border-border bg-background text-foreground"
             style={{
               marginTop: 8,
               width: '100%',

@@ -25,7 +25,8 @@ import { NotationSwitcher } from '@/components/toolbar/NotationSwitcher'
 import { ContextBreadcrumb } from '@/components/toolbar/ContextBreadcrumb'
 import { DraftRecoveryDialog, LegacyUpgradeDialog } from '@/components/draft'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { AboutDialog } from '@/components/about/AboutDialog'
+import { HeaderTools } from '@/components/shell/HeaderTools'
+import { LibraryRail } from '@/components/shell/LibraryRail'
 import { useBeforeUnload } from '@/hooks/useBeforeUnload'
 import { useFlowStore } from '@/stores/flowStore'
 import { useLibraryStore } from '@/stores/libraryStore'
@@ -37,9 +38,8 @@ import { useUndoRedo } from '@/hooks/useUndoRedo'
 import { normalizeCatchOutputsInNodes } from '@/lib/catch-outputs'
 import { useCopyPaste } from '@/hooks/useCopyPaste'
 import { useAutoLayout } from '@/hooks/useAutoLayout'
-import { Button } from '@mission/ui'
-import { ArrowLeft, LayoutGrid, Undo2, Redo2, PanelRight, PanelLeft, Sun, Moon, HelpCircle } from 'lucide-react'
-import { useTheme } from '@/hooks/useTheme'
+import { Button, clampPaneWidth } from '@mission/ui'
+import { ArrowLeft, LayoutGrid, Undo2, Redo2, PanelRight } from 'lucide-react'
 import { useCanEditActiveSpec } from '@/hooks/useCanEditActiveSpec'
 
 /**
@@ -92,7 +92,6 @@ function WorkflowEditorInner() {
   const librarySidebarWidth = useFlowStore((state) => state.librarySidebarWidth)
   const librarySidebarCollapsed = useFlowStore((state) => state.librarySidebarCollapsed)
   const setLibrarySidebarWidth = useFlowStore((state) => state.setLibrarySidebarWidth)
-  const setLibrarySidebarCollapsed = useFlowStore((state) => state.setLibrarySidebarCollapsed)
 
   // Local state for live drag (React state for re-renders)
   const [localPanelWidth, setLocalPanelWidth] = useState(propertiesPanelWidth)
@@ -104,14 +103,8 @@ function WorkflowEditorInner() {
   // Collapse state for narrow viewports
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false)
 
-  // Dark mode toggle
-  const { theme, toggleTheme } = useTheme()
-
-  // About dialog (opened from the header icon)
-  const [aboutOpen, setAboutOpen] = useState(false)
-
   // Library sidebar local state for live drag
-  const [localSidebarWidth, setLocalSidebarWidth] = useState(librarySidebarWidth)
+  const [localSidebarWidth, setLocalSidebarWidth] = useState(() => clampPaneWidth(librarySidebarWidth))
   const sidebarWidthRef = useRef(localSidebarWidth)
   sidebarWidthRef.current = localSidebarWidth
   const isDraggingSidebarRef = useRef(false)
@@ -416,7 +409,7 @@ function WorkflowEditorInner() {
 
   // Sync local sidebar width when store hydrates from IndexedDB
   useEffect(() => {
-    setLocalSidebarWidth(librarySidebarWidth)
+    setLocalSidebarWidth(clampPaneWidth(librarySidebarWidth))
   }, [librarySidebarWidth])
 
   // Cleanup userSelect on unmount (in case component unmounts mid-drag)
@@ -447,24 +440,11 @@ function WorkflowEditorInner() {
       {/* Legacy upgrade notification - shown once after v4.0 migration strips legacy nodes */}
       <LegacyUpgradeDialog />
 
-      {/* Top toolbar */}
-      <div className="h-12 bg-slate-100 dark:bg-slate-900 border-b flex items-center px-4 gap-2 shrink-0">
-        <button
-          type="button"
-          onClick={() => setAboutOpen(true)}
-          title="About Mission Designer"
-          aria-label="About"
-          className="rounded p-0.5 -m-0.5 hover:bg-slate-200 dark:hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-        >
-          <img src="/ic_launcher_round.png" alt="" className="h-6 w-6" />
-        </button>
-        <span className="font-semibold text-slate-700 dark:text-slate-200">Mission Designer</span>
-        <span className="text-xs text-slate-400">v{__APP_VERSION__}</span>
-        <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} version={__APP_VERSION__} />
-
+      {/* Header tools (the app header's slot) */}
+      <HeaderTools>
         {/* Notation switcher - only show for workflow editing */}
         {hasWorkflowSelected && (
-          <div className="ml-4">
+          <div className="shrink-0">
             <NotationSwitcher />
           </div>
         )}
@@ -474,6 +454,7 @@ function WorkflowEditorInner() {
           <Button
             variant="ghost"
             size="sm"
+            className="shrink-0"
             onClick={() => {
               // Deselect all nodes so properties panel shows the parent workflow, not a step
               const nodes = useFlowStore.getState().nodes
@@ -481,23 +462,22 @@ function WorkflowEditorInner() {
               setSelectedSpecification(parentSpecificationId, selectedLibraryId)
             }}
             title="Back to parent workflow"
+            aria-label="Back"
           >
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back
+            <ArrowLeft className="h-4 w-4" />
+            <span className="hidden xl:inline">Back</span>
           </Button>
         )}
 
         {/* Context breadcrumb */}
-        <div className="ml-4 border-l border-slate-300 dark:border-slate-600 pl-4">
+        <div className="min-w-0 flex-1 truncate border-l border-border pl-3">
           <ContextBreadcrumb />
         </div>
-
-        <div className="flex-1" />
 
         {/* Edit actions - only show when editing a workflow */}
         {hasWorkflowSelected && (
           <>
-            <div className="flex items-center gap-1 border-r border-slate-300 dark:border-slate-600 pr-2 mr-2">
+            <div className="flex shrink-0 items-center gap-1 border-r border-border pr-2 mr-2">
               <Button
                 variant="ghost"
                 size="sm"
@@ -522,52 +502,27 @@ function WorkflowEditorInner() {
             <Button
               variant="ghost"
               size="sm"
+              className="shrink-0"
               onClick={() => applyLayout()}
               disabled={!canEditActive}
               title="Auto-layout"
+              aria-label="Auto-layout"
             >
-              <LayoutGrid className="h-4 w-4 mr-1" />
-              Auto-layout
+              <LayoutGrid className="h-4 w-4" />
+              <span className="hidden xl:inline">Auto-layout</span>
             </Button>
           </>
         )}
-
-        {/* Help — opens the generated user guide in a new tab */}
-        <Button variant="ghost" size="sm" asChild title="Open the user guide in a new tab">
-          <a href="/help.html" target="_blank" rel="noopener noreferrer" aria-label="Help">
-            <HelpCircle className="h-4 w-4" />
-          </a>
-        </Button>
-
-        {/* Dark mode toggle */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={toggleTheme}
-          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        </Button>
-
-        {/* Spacer for user info in parent layout - matches properties panel width */}
-        <div style={{ width: isPanelCollapsed ? 32 : localPanelWidth }} className="shrink-0" />
-      </div>
+      </HeaderTools>
 
       {/* Main content area */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Far left - Library Sidebar (resizable) */}
+        {/* Far left - rail, then the Library Sidebar (resizable) */}
+        <LibraryRail />
         <LibrarySidebar width={localSidebarWidth} collapsed={librarySidebarCollapsed} />
 
-        {/* Sidebar collapse/expand toggle + drag handle */}
-        {librarySidebarCollapsed ? (
-          <button
-            className="shrink-0 flex items-center justify-center w-5 border-r border-slate-200 bg-white hover:bg-slate-50 cursor-pointer"
-            onClick={() => setLibrarySidebarCollapsed(false)}
-            title="Expand Library Sidebar"
-          >
-            <PanelLeft className="h-3.5 w-3.5 text-slate-500" />
-          </button>
-        ) : (
+        {/* Drag handle on the right edge of the sidebar */}
+        {!librarySidebarCollapsed && (
           <div className="shrink-0 flex" style={{ width: 8 }}>
             {/* Drag handle on right edge of sidebar */}
             <div
@@ -581,7 +536,7 @@ function WorkflowEditorInner() {
                 position: 'relative',
               }}
               onMouseEnter={(e) => {
-                ;(e.currentTarget as HTMLElement).style.background = '#bfdbfe'
+                ;(e.currentTarget as HTMLElement).style.background = 'var(--selection)'
               }}
               onMouseLeave={(e) => {
                 if (!isDraggingSidebarRef.current) {
@@ -595,12 +550,12 @@ function WorkflowEditorInner() {
                 const startWidth = sidebarWidthRef.current
                 const handle = e.currentTarget as HTMLElement
                 document.body.style.userSelect = 'none'
-                handle.style.background = '#bfdbfe'
+                handle.style.background = 'var(--selection)'
 
                 const handleMouseMove = (moveEvent: MouseEvent) => {
                   // Moving right (larger X) increases sidebar width — sidebar is anchored to left edge
                   const newWidth = startWidth + (moveEvent.clientX - startX)
-                  const clamped = Math.min(500, Math.max(200, newWidth))
+                  const clamped = clampPaneWidth(newWidth)
                   setLocalSidebarWidth(clamped)
                 }
 
@@ -621,14 +576,6 @@ function WorkflowEditorInner() {
               {/* Invisible wider hit area for easier grab targeting */}
               <div style={{ position: 'absolute', left: -4, right: -4, top: 0, bottom: 0 }} />
             </div>
-            {/* Collapse button */}
-            <button
-              className="flex items-center justify-center w-4 hover:bg-slate-100 transition-colors"
-              onClick={() => setLibrarySidebarCollapsed(true)}
-              title="Collapse Library Sidebar"
-            >
-              <PanelLeft className="h-3 w-3 text-slate-400" />
-            </button>
           </div>
         )}
 
@@ -654,11 +601,11 @@ function WorkflowEditorInner() {
               {/* Right - Properties Panel (resizable) */}
               {isPanelCollapsed ? (
                 <button
-                  className="shrink-0 flex items-center justify-center w-8 border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+                  className="shrink-0 flex items-center justify-center w-8 border-l border-border bg-background hover:bg-muted cursor-pointer"
                   onClick={() => setIsPanelCollapsed(false)}
                   title="Show Properties Panel"
                 >
-                  <PanelRight className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                  <PanelRight className="h-4 w-4 text-muted-foreground" />
                 </button>
               ) : (
                 <div
@@ -668,7 +615,7 @@ function WorkflowEditorInner() {
                     maxWidth: 600,
                     transition: isDraggingPanelRef.current ? 'none' : 'width 0.2s ease',
                   }}
-                  className="border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex flex-col overflow-hidden shrink-0"
+                  className="border-l border-border bg-background flex flex-col overflow-hidden shrink-0"
                 >
                   <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
                     {/* Drag handle on left edge */}
@@ -685,7 +632,7 @@ function WorkflowEditorInner() {
                         position: 'relative',
                       }}
                       onMouseEnter={(e) => {
-                        ;(e.currentTarget as HTMLElement).style.background = '#bfdbfe'
+                        ;(e.currentTarget as HTMLElement).style.background = 'var(--selection)'
                       }}
                       onMouseLeave={(e) => {
                         if (!isDraggingPanelRef.current) {
@@ -699,7 +646,7 @@ function WorkflowEditorInner() {
                         const startWidth = panelWidthRef.current
                         const handle = e.currentTarget as HTMLElement
                         document.body.style.userSelect = 'none'
-                        handle.style.background = '#bfdbfe'
+                        handle.style.background = 'var(--selection)'
 
                         const handleMouseMove = (moveEvent: MouseEvent) => {
                           // Moving left (smaller X) increases panel width — panel is anchored to right edge

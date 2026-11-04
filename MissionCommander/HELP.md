@@ -43,8 +43,8 @@ When Mission Commander starts with no administrator account, it opens on **Creat
 
 The usual path through the application:
 
-1. **Create a work center** (**Work Centers** area, **＋**) for the place where the work is done.
-2. **Create user accounts** (**Users** area, **＋**), then add the users as members on the work center's **Users** tab.
+1. **Create a work center** (**Work Centers** area, **New Work Center**) for the place where the work is done.
+2. **Create user accounts** (**Users** area, **New User**), then add the users as members on the work center's **Users** tab.
 3. **Load packages** exported from Mission Designer into the work center with **Load packages…**. These are `.WFmasterX` workflow packages and any `.WFenvirX` environment packages.
 4. **Connect action servers.** On the work center's **Env Specs** tab, an administrator enters the Mission Autopilot server address for each environment.
 5. **Decide who may act.** Create roles and give them to members in the work center. Then use **Roles…** on the **Workflows** tab to limit interactive steps to those roles. This is optional: steps without roles are open to every member.
@@ -59,7 +59,7 @@ The usual path through the application:
 
 ```
 +-----------------------------------------------------------------------------+
-| Mission Commander       [ suite diagram banner ]      Name | Theme | Sign out |
+| [icon] Mission Commander  version    Help | Theme | Settings | Name | Sign out |
 +------+-------------------+--------------------------------------------------+
 | Rail | Hierarchy Pane    | Detail Panel                                     |
 |      |                   |                                                  |
@@ -70,20 +70,23 @@ The usual path through the application:
 | EN   |                   |                                                  |
 | RO   |                   |                                                  |
 | HI   |                   |                                                  |
-| SE   |                   |                                                  |
-|      |                   |                                                  |
-| ?    |                   |                                                  |
 +------+-------------------+--------------------------------------------------+
 ```
 
-![Mission Commander with a work center selected: activity rail, work-center tree and detail panel](/help-images/2-screen-layout.png)
+![Mission Commander with a work center selected: icon rail, work-center tree and detail panel](/help-images/2-screen-layout.png)
 
-- **Header** (top) -- the application name, a diagram of how the suite fits together, your display name (on wide screens), the light/dark theme toggle, and **Sign out**
-- **Activity Rail** (far left) -- switches between the areas of the application; the **?** button at the bottom opens this guide in a new tab
+- **Top bar** -- the app icon (click it to open About), the name **Mission Commander** and the suite version. On the right, in this order: **Help** (opens this guide in a new tab), the light/dark theme toggle, **Settings** (the gear icon), your display name, and **Sign out**.
+- **Icon rail** (far left) -- switches between the areas of the application. Click the active rail item again to hide or show its tree.
 - **Hierarchy Pane** (left) -- the tree or list for the selected area
-- **Detail Panel** (right) -- details, tabs and actions for whatever you select
+- **Detail Panel** (right) -- details, tabs and actions for whatever you select. **History** and **Settings** use the full width instead of a tree and detail panel.
 
-### Activity Rail
+Settings and Help used to sit on the rail. Settings moved to the gear in the top bar, and Help moved from the foot of the rail to the top bar.
+
+When nothing is selected, the Detail Panel shows this diagram of how Mission Commander's parts relate.
+
+![Diagram: master workflows are loaded into work centers, runtime workflows execute in work centers and use environments, users are assigned to work centers and given roles, and UI steps are assigned to roles](/help-images/work-center-relationships-diagram.png)
+
+### Icon Rail
 
 | Button           | Hierarchy Pane shows                                                    |
 | ---------------- | ----------------------------------------------------------------------- |
@@ -93,9 +96,9 @@ The usual path through the application:
 | **Workflows**    | Every loaded workflow, grouped by work center                           |
 | **Environments** | Every loaded environment spec, grouped by work center                   |
 | **Roles**        | Every role                                                              |
-| **History**      | Finished runs across all work centers (no selection needed)             |
-| **Settings**     | System-wide settings (no selection needed)                              |
-| **?** (Help)     | Opens this guide in a new browser tab                                   |
+| **History**      | Finished runs across all work centers (full width, no selection needed) |
+
+**Settings** (the gear in the top bar) opens the system-wide settings, also full width. **Help** (top bar) opens this guide in a new browser tab.
 
 ### Disabled Controls
 
@@ -171,9 +174,9 @@ Work centers are arranged in a tree.
 
 ### The Work-Center Tree
 
-- **＋** beside the _Work Centers_ heading creates a top-level work center.
+- **New Work Center**, under the _Work Centers_ heading, creates a top-level work center.
 - **＋** on a row creates a child of that work center.
-- **⭳** (Import package) imports a `.WFcenterX` work-center package. See [Work-Center Packages](#6-work-center-packages-wfcenterx).
+- **Import Work Center Package** imports a `.WFcenterX` work-center package. See [Work-Center Packages](#6-work-center-packages-wfcenterx).
 - The arrow on a row expands it to show its child work centers, followed by its loaded workflows in italics.
 - Click a name to open the work center in the Detail Panel.
 
@@ -342,7 +345,7 @@ It contains **no user accounts**, and no runtime workflows, history or operator 
 
 ### Importing a Package
 
-1. In the **Work Centers** area, click **⭳** (Import package) and choose the `.WFcenterX` file.
+1. In the **Work Centers** area, click **Import Work Center Package** and choose the `.WFcenterX` file.
 2. Choose how to import it:
    - **Create new work center** -- pick a **Parent work center**, or _(as a new root)_, and click **Import**. The import is refused if a work center of the same name already exists there.
    - **Merge into existing work center** -- pick the **Target work center** and click **Preview merge**. Mission Commander shows what the merge would change without writing anything. Click **Merge** to apply it.
@@ -364,11 +367,11 @@ It contains **no user accounts**, and no runtime workflows, history or operator 
 
 ## 7. Users
 
-Select **Users** on the Activity Rail to list every account alphabetically. Disabled accounts are marked _disabled_.
+Select **Users** on the icon rail to list every account alphabetically. Disabled accounts are marked _disabled_.
 
 ### Creating a User
 
-An administrator clicks **＋** and enters:
+An administrator clicks **New User** and enters:
 
 | Field                | Description                                                                                                                                         |
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -408,7 +411,7 @@ Roles are defined once for the whole system, but they are **held per work center
 
 ### Managing Roles
 
-- **＋** in the **Roles** area creates a role with a name and an optional description.
+- **New Role** in the **Roles** area creates a role with a name and an optional description.
 - **Edit** renames a role or changes its description.
 - **Delete** removes a role and takes it away from every member who holds it. A role that a loaded workflow still uses, as an allowed role or as an e-signature role, cannot be deleted.
 
@@ -441,7 +444,7 @@ On a work center's **Workflows** tab, **Roles…** opens **Allowed roles — \<w
 
 ## 9. Workflows
 
-Select **Workflows** on the Activity Rail to list every loaded workflow, grouped by work center, with its version and state. Each workflow entry belongs to exactly one work center.
+Select **Workflows** on the icon rail to list every loaded workflow, grouped by work center, with its version and state. Each workflow entry belongs to exactly one work center.
 
 ### The Workflow Detail Panel
 
@@ -463,7 +466,7 @@ A workflow's ISA 88 type (Procedure, Operation, Phase and so on) is set in Missi
 
 ## 10. Environments
 
-Select **Environments** on the Activity Rail to list every loaded environment spec, grouped by work center.
+Select **Environments** on the icon rail to list every loaded environment spec, grouped by work center.
 
 The environment detail panel has a **Delete** button, which is blocked while runtime workflows or schedules depend on the spec. It also has five tabs:
 
@@ -561,7 +564,7 @@ Two places show live runs. The **Runtime** area shows one run in full detail. A 
 
 ### The Runtime Area
 
-Select **Runtime** on the Activity Rail. The Hierarchy Pane shows the work-center tree. Each work center row carries a count, and beneath it are its active runtime workflows (**runtime ID · workflow name**, with a status badge). Click a run to open it. The Detail Panel then shows the following sections.
+Select **Runtime** on the icon rail. The Hierarchy Pane shows the work-center tree. Each work center row carries a count, and beneath it are its active runtime workflows (**runtime ID · workflow name**, with a status badge). Click a run to open it. The Detail Panel then shows the following sections.
 
 ![Runtime area: runtime workflows by work center, with the live diagram of the selected one](/help-images/13-runtime-area.png)
 
@@ -749,7 +752,7 @@ Signature records stay after the run leaves the Runtime views. They are deleted 
 
 Every run that finishes is recorded in History, whether it completed, stopped, aborted or errored.
 
-- **History** on the Activity Rail shows runs from every work center. A selector narrows it to one work center, or to _(deleted work centers)_.
+- **History** on the icon rail shows runs from every work center. A selector narrows it to one work center, or to _(deleted work centers)_.
 - A work center's **History** tab shows only that work center's runs.
 
 ### Finding a Run
@@ -785,7 +788,7 @@ Administrators can click **Purge…** on the History page to delete every entry 
 
 ## 17. Settings
 
-Settings apply to the whole system. Saving them requires `settings:edit`.
+Settings apply to the whole system. Open them with the gear icon in the top bar. Saving them requires `settings:edit`.
 
 ![Settings panel](/help-images/17-settings.png)
 
@@ -815,7 +818,7 @@ A change here reaches the engine within a few seconds.
 | -------------- | ------------------------------------------------------------ | -------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | **.WFmasterX** | Mission Designer (**Export Workflow Package**)               | **Load packages…**                           | One workflow with its environments, actions and images                                      |
 | **.WFenvirX**  | Mission Designer (single environment export)                 | **Load packages…**                           | One environment and the actions it includes                                                 |
-| **.WFcenterX** | Mission Commander (**Save package…**)                        | **⭳** Import package (Work Centers area)     | A work-center subtree: tree and settings, workflows, environments, roles and role grants     |
+| **.WFcenterX** | Mission Commander (**Save package…**)                        | **Import Work Center Package** (Work Centers area)     | A work-center subtree: tree and settings, workflows, environments, roles and role grants     |
 
 ### What's Inside a Work-Center Package (.WFcenterX)
 

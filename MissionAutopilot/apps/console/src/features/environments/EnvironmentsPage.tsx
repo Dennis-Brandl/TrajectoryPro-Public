@@ -91,9 +91,9 @@ function EnvironmentCard({
             </div>
           ) : (
             <Button
-              variant="ghost"
+              variant="destructiveOutline"
               size="sm"
-              className="h-7 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+              className="h-7 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={() => setConfirming(true)}
             >
               Delete

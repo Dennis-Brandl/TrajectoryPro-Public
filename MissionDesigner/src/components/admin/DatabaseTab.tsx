@@ -74,8 +74,8 @@ export function DatabaseTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Database Schema Check</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <h2 className="text-lg font-semibold text-foreground">Database Schema Check</h2>
+          <p className="text-sm text-muted-foreground">
             Compares the active database against the expected schema for this build.
           </p>
         </div>
@@ -122,19 +122,19 @@ export function DatabaseTab() {
           </div>
 
           {/* Table-by-table results */}
-          <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-900">
+          <div className="border border-border rounded-lg overflow-hidden bg-background">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-                  <th className="text-left px-4 py-2 font-medium text-slate-600 dark:text-slate-300">Table</th>
-                  <th className="text-left px-4 py-2 font-medium text-slate-600 dark:text-slate-300">Status</th>
-                  <th className="text-left px-4 py-2 font-medium text-slate-600 dark:text-slate-300">Details</th>
+                <tr className="bg-muted border-b border-border">
+                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">Table</th>
+                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">Status</th>
+                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">Details</th>
                 </tr>
               </thead>
               <tbody>
                 {results.tables.map((t) => (
-                  <tr key={t.table} className="border-b border-slate-200 dark:border-slate-700 last:border-b-0">
-                    <td className="px-4 py-2 font-mono text-slate-700 dark:text-slate-200">{t.table}</td>
+                  <tr key={t.table} className="border-b border-border last:border-b-0">
+                    <td className="px-4 py-2 font-mono text-foreground">{t.table}</td>
                     <td className="px-4 py-2">
                       {t.status === 'ok' ? (
                         <span className="inline-flex items-center gap-1 text-green-700 dark:text-green-400">
@@ -149,16 +149,16 @@ export function DatabaseTab() {
                           <AlertTriangle className="h-4 w-4" /> Missing columns
                         </span>
                       ) : t.status === 'unexpected_table' ? (
-                        <span className="inline-flex items-center gap-1 text-blue-700 dark:text-blue-400">
+                        <span className="inline-flex items-center gap-1 text-link">
                           <AlertTriangle className="h-4 w-4" /> Unexpected table
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-blue-700 dark:text-blue-400">
+                        <span className="inline-flex items-center gap-1 text-link">
                           <AlertTriangle className="h-4 w-4" /> Extra columns
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-2 text-slate-500 dark:text-slate-400">
+                    <td className="px-4 py-2 text-muted-foreground">
                       {t.fixed.length > 0 && (
                         <span className="text-green-700 dark:text-green-400">
                           Fixed: <span className="font-mono">{t.fixed.join(', ')}</span>
@@ -170,18 +170,18 @@ export function DatabaseTab() {
                         </span>
                       )}
                       {t.status === 'unexpected_table' && (
-                        <span className="text-blue-600 dark:text-blue-400">
+                        <span className="text-link">
                           Not in expected schema. Columns:{' '}
                           <span className="font-mono">{t.extraColumns.join(', ')}</span>
                         </span>
                       )}
                       {t.status !== 'unexpected_table' && t.extraColumns.length > 0 && (
-                        <span className="text-blue-600 dark:text-blue-400">
+                        <span className="text-link">
                           Extra: <span className="font-mono">{t.extraColumns.join(', ')}</span>
                         </span>
                       )}
                       {t.status === 'ok' && t.fixed.length === 0 && (
-                        <span className="text-slate-400 dark:text-slate-500">All columns present</span>
+                        <span className="text-muted-foreground">All columns present</span>
                       )}
                     </td>
                   </tr>

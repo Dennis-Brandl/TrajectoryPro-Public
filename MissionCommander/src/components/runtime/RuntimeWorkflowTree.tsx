@@ -16,7 +16,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { runtimeWorkflows } from '@/lib/api/runtime-workflows';
 import { usePolledView } from '@/lib/hooks/usePolledView';
 import { useSelectionStore } from '@/stores/selectionStore';
-import { cn } from '@/lib/utils';
+import { cn, treeRowClass, PaneLabel } from '@mission/ui';
 import { buildForest, type TreeNode } from '@/components/work-center/tree';
 import { RuntimeStatusBadge } from './RuntimeStatusBadge';
 import type { ActiveRuntimeLeaf } from '@/lib/api/types';
@@ -48,12 +48,10 @@ export function RuntimeWorkflowTree() {
   }
 
   return (
-    <div className="flex flex-col gap-1 p-2">
-      <div className="px-2 py-1">
-        <span className="text-sm font-medium text-muted-foreground">Runtime</span>
-      </div>
+    <div className="flex flex-col">
+      <PaneLabel>Runtime</PaneLabel>
       {stale && (
-        <p className="px-2 text-xs text-muted-foreground" role="status">
+        <p className="px-3 py-1 text-xs text-muted-foreground" role="status">
           Live view unavailable — showing last known state
         </p>
       )}
@@ -77,18 +75,20 @@ function RuntimeTreeRow({ node, depth, leavesByWc, selectedId, onSelect }: RowPr
   // (key = node.id) is stable across refetches — no reseed-fights-collapse hazard.
   const [open, setOpen] = useState(true);
   const leaves = leavesByWc.get(node.id) ?? [];
-  const paddingLeft = depth * 12 + 8;
+  // treeRowClass stops at depth 2 (8, 24, 40px); deeper rows continue the 16px step inline.
+  const paddingLeft = depth * 16 + 8;
 
   return (
     <div role="treeitem" aria-selected={false} aria-expanded={open}>
-      <div className="flex items-center gap-1 rounded py-1 pr-2 hover:bg-accent" style={{ paddingLeft }}>
+      <div className={treeRowClass({ depth: Math.min(depth, 2) as 0 | 1 | 2 })}
+        style={depth > 2 ? { paddingLeft } : undefined}>
         <button type="button" aria-label={open ? `Collapse ${node.name}` : `Expand ${node.name}`}
           onClick={() => setOpen((v) => !v)} className="flex size-4 shrink-0 items-center justify-center">
           {open ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
         </button>
-        <span className="flex-1 truncate text-sm">{node.name}</span>
+        <span className="flex-1 truncate">{node.name}</span>
         {leaves.length > 0 && (
-          <span className="shrink-0 rounded bg-accent px-1.5 text-[10px] text-accent-foreground"
+          <span className="shrink-0 rounded bg-muted px-1.5 text-[11px] text-muted-foreground"
             title={`${leaves.length} active runtime workflows`}>
             {leaves.length}
           </span>
@@ -98,15 +98,14 @@ function RuntimeTreeRow({ node, depth, leavesByWc, selectedId, onSelect }: RowPr
         <div role="group">
           {leaves.map((rw) => (
             <button key={rw.id} type="button" onClick={() => onSelect(rw.id)}
-              className={cn('flex w-full items-center gap-2 rounded py-1 pr-2 text-left text-sm',
-                selectedId === rw.id ? 'bg-accent text-accent-foreground' : 'hover:bg-accent')}
+              className={cn(treeRowClass({ selected: selectedId === rw.id }), 'w-full gap-2 text-left')}
               style={{ paddingLeft: paddingLeft + 24 }}>
               <span className="min-w-0 flex-1 truncate">{rw.runtimeLabel} · {rw.masterName}</span>
               <RuntimeStatusBadge status={rw.status} />
             </button>
           ))}
           {leaves.length === 0 && (
-            <p className="py-1 text-sm text-muted-foreground" style={{ paddingLeft: paddingLeft + 24 }}
+            <p className="py-1 text-xs text-muted-foreground" style={{ paddingLeft: paddingLeft + 24 }}
               aria-label={`No active runtime workflows in ${node.name}`}>—</p>
           )}
           {node.children.map((child) => (

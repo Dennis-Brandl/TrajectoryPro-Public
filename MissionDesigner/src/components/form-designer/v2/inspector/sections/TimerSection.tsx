@@ -61,7 +61,7 @@ export function TimerSection({
       <div style={fieldStyle}>
         <label
           htmlFor="tfk-timer-label"
-          className="text-gray-500 dark:text-gray-400"
+          className="text-muted-foreground"
           style={{ fontSize: 11, display: 'block', marginBottom: 2 }}
         >
           Label
@@ -71,7 +71,7 @@ export function TimerSection({
           type="text"
           value={block.label}
           onChange={(e) => onUpdate({ label: e.target.value } as Partial<Block>)}
-          className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
+          className="bg-background text-foreground border border-border"
           style={{
             width: '100%',
             fontSize: 13,
@@ -92,7 +92,7 @@ export function TimerSection({
       {/* Duration */}
       <div style={fieldStyle}>
         <span
-          className="text-gray-500 dark:text-gray-400"
+          className="text-muted-foreground"
           style={{ fontSize: 11, display: 'block', marginBottom: 2, userSelect: 'none' }}
         >
           Duration
@@ -134,7 +134,7 @@ export function TimerSection({
       {/* Direction segmented control */}
       <div style={fieldStyle}>
         <span
-          className="text-gray-500 dark:text-gray-400"
+          className="text-muted-foreground"
           style={{ fontSize: 11, display: 'block', marginBottom: 2, userSelect: 'none' }}
         >
           Direction
@@ -142,7 +142,7 @@ export function TimerSection({
         <div style={{ display: 'flex' }}>
           <button
             type="button"
-            className={`border border-gray-300 dark:border-gray-600 ${block.direction === 'countdown' ? 'bg-blue-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200'}`}
+            className={`border border-border ${block.direction === 'countdown' ? 'bg-brand-accent text-white' : 'bg-muted text-foreground'}`}
             style={{
               flex: 1,
               fontSize: 12,
@@ -156,7 +156,7 @@ export function TimerSection({
           </button>
           <button
             type="button"
-            className={`border border-gray-300 dark:border-gray-600 ${block.direction === 'countup' ? 'bg-blue-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200'}`}
+            className={`border border-border ${block.direction === 'countup' ? 'bg-brand-accent text-white' : 'bg-muted text-foreground'}`}
             style={{
               flex: 1,
               fontSize: 12,
@@ -187,7 +187,7 @@ export function TimerSection({
             onChange={(e) => onUpdate({ blockDone: e.target.checked } as Partial<Block>)}
             style={{ cursor: 'pointer' }}
           />
-          <span className="text-gray-700 dark:text-slate-200" style={{ fontSize: 13 }}>
+          <span className="text-foreground" style={{ fontSize: 13 }}>
             Block Done until timer expires or is stopped
           </span>
         </label>

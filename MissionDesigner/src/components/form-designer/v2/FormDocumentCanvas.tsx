@@ -80,10 +80,7 @@ export function FormDocumentCanvas() {
       {/* Auto margins (not justify-content:center) center the frame: when it overflows, a
           justify-centered flex child clips its left edge unreachably; auto margins collapse
           to 0 so both edges stay scrollable. */}
-      <div
-        className="bg-[#cbd5e1] dark:bg-[#1e293b]"
-        style={{ flex: 1, overflow: 'auto', display: 'flex', padding: 32 }}
-      >
+      <div className="bg-[#cbd5e1] dark:bg-muted" style={{ flex: 1, overflow: 'auto', display: 'flex', padding: 32 }}>
         <div
           data-testid="bp-frame"
           style={{

@@ -82,7 +82,7 @@ export function NumericInput({ value, onChange, min, max, step = 1, label }: Num
   return (
     <label style={{ display: 'block', width: '100%' }}>
       <span
-        className="text-gray-500 dark:text-gray-400"
+        className="text-muted-foreground"
         style={{
           fontSize: 11,
           display: 'block',
@@ -101,7 +101,7 @@ export function NumericInput({ value, onChange, min, max, step = 1, label }: Num
         min={min}
         max={max}
         step={step}
-        className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
+        className="bg-background text-foreground border border-border"
         style={{
           width: '100%',
           fontSize: 13,

@@ -64,7 +64,7 @@ export function LibraryItemMenu({
           onClick={(e) => e.stopPropagation()}
           aria-label="Item actions"
         >
-          <MoreHorizontal className="h-3 w-3 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" />
+          <MoreHorizontal className="h-3 w-3 text-muted-foreground hover:text-foreground" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>

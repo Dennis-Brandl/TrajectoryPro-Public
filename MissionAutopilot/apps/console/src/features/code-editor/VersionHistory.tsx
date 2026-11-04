@@ -61,7 +61,7 @@ function VersionItem({
           v{version.version_number}
         </span>
         {version.is_active && (
-          <Badge variant="default" className="text-[10px] h-4 px-1.5">
+          <Badge variant="default" className="text-[11px] h-4 px-1.5">
             Active
           </Badge>
         )}
@@ -71,7 +71,7 @@ function VersionItem({
         <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{version.description}</p>
       )}
 
-      <p className="text-[10px] text-muted-foreground mt-0.5">
+      <p className="text-[11px] text-muted-foreground mt-0.5">
         {formatTimestamp(version.created_at)}
       </p>
 
@@ -81,7 +81,7 @@ function VersionItem({
           <Button
             size="sm"
             variant="outline"
-            className="h-6 text-[10px] px-2 flex-1"
+            className="h-6 text-[11px] px-2 flex-1"
             disabled={activateMutation.isPending}
             onClick={() => activateMutation.mutate({ actionOid, state, versionId: version.id })}
           >
@@ -93,7 +93,7 @@ function VersionItem({
               <Button
                 size="sm"
                 variant="destructive"
-                className="h-6 text-[10px] px-2"
+                className="h-6 text-[11px] px-2"
                 disabled={deleteMutation.isPending}
                 onClick={() => {
                   deleteMutation.mutate(
@@ -107,7 +107,7 @@ function VersionItem({
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-6 text-[10px] px-1.5"
+                className="h-6 text-[11px] px-1.5"
                 onClick={() => setConfirmDelete(false)}
               >
                 ✕
@@ -116,8 +116,8 @@ function VersionItem({
           ) : (
             <Button
               size="sm"
-              variant="ghost"
-              className="h-6 text-[10px] px-2 text-muted-foreground hover:text-destructive"
+              variant="destructiveOutline"
+              className="h-6 text-[11px] px-2"
               onClick={() => setConfirmDelete(true)}
             >
               Delete

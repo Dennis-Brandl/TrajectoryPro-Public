@@ -164,7 +164,7 @@ export function ActionPickerDialog({ open, onOpenChange, includedActions, onConf
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400 dark:text-slate-500" />
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search actions..."
             value={searchQuery}
@@ -176,7 +176,7 @@ export function ActionPickerDialog({ open, onOpenChange, includedActions, onConf
         {/* Action list */}
         <ScrollArea className="flex-1 min-h-[200px] max-h-[400px] border rounded-md">
           {groupedActions.size === 0 ? (
-            <div className="p-4 text-center text-slate-500 dark:text-slate-400 text-sm">
+            <div className="p-4 text-center text-muted-foreground text-sm">
               {actionLibraries.length === 0
                 ? 'No action libraries found. Create an action library first.'
                 : 'No actions found matching your search.'}
@@ -185,7 +185,7 @@ export function ActionPickerDialog({ open, onOpenChange, includedActions, onConf
             <div className="p-2">
               {Array.from(groupedActions.entries()).map(([libraryName, actions]) => (
                 <div key={libraryName} className="mb-3">
-                  <div className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide px-2 py-1">
+                  <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide px-2 py-1">
                     {libraryName}
                   </div>
                   {actions.map((action) => {
@@ -196,13 +196,13 @@ export function ActionPickerDialog({ open, onOpenChange, includedActions, onConf
                       <button
                         key={action.id}
                         onClick={() => toggleAction(action)}
-                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left hover:bg-slate-100 dark:hover:bg-slate-800 ${
-                          isSelected ? 'bg-blue-50' : ''
+                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left hover:bg-muted ${
+                          isSelected ? 'bg-selection' : ''
                         }`}
                       >
                         <div
                           className={`h-4 w-4 rounded border flex items-center justify-center ${
-                            isSelected ? 'bg-blue-600 border-blue-600' : 'border-slate-300 dark:border-slate-600'
+                            isSelected ? 'bg-brand-accent border-brand-accent' : 'border-border'
                           }`}
                         >
                           {isSelected && <Check className="h-3 w-3 text-white" />}
@@ -220,7 +220,7 @@ export function ActionPickerDialog({ open, onOpenChange, includedActions, onConf
 
         {/* Footer */}
         <DialogFooter className="flex items-center justify-between">
-          <span className="text-sm text-slate-500 dark:text-slate-400">
+          <span className="text-sm text-muted-foreground">
             {selectedActions.size} action{selectedActions.size !== 1 ? 's' : ''} selected
           </span>
           <div className="flex gap-2">

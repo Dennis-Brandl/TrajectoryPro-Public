@@ -13,6 +13,7 @@
 // limitations under the License.
 import { useEffect } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
+import { Button } from '@mission/ui'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { TextStyle, Color } from '@tiptap/extension-text-style'
@@ -136,7 +137,7 @@ export function ContentEditorDialog() {
           aria-label="Edit content"
           aria-describedby={undefined}
           onKeyDown={(e) => e.stopPropagation()}
-          className="bg-white dark:bg-slate-900 fixed left-1/2 top-1/2 z-[110] w-[640px] max-w-[92vw] -translate-x-1/2 -translate-y-1/2 rounded-lg shadow-xl"
+          className="bg-background fixed left-1/2 top-1/2 z-[110] w-[640px] max-w-[92vw] -translate-x-1/2 -translate-y-1/2 rounded-lg shadow-xl"
         >
           <Dialog.Title style={{ fontSize: 14, fontWeight: 600, padding: '12px 16px 0' }}>
             Edit {block.type === 'header' ? 'header' : 'text'} content
@@ -156,7 +157,7 @@ export function ContentEditorDialog() {
               aria-label="Bold"
               aria-pressed={editor?.isActive('bold') ?? false}
               onClick={() => editor?.chain().focus().toggleBold().run()}
-              className="border border-gray-300 dark:border-gray-600"
+              className="border border-border"
               style={{ width: 32, height: 32, borderRadius: 6, cursor: 'pointer' }}
             >
               <Bold size={16} />
@@ -166,7 +167,7 @@ export function ContentEditorDialog() {
               aria-label="Italic"
               aria-pressed={editor?.isActive('italic') ?? false}
               onClick={() => editor?.chain().focus().toggleItalic().run()}
-              className="border border-gray-300 dark:border-gray-600"
+              className="border border-border"
               style={{ width: 32, height: 32, borderRadius: 6, cursor: 'pointer' }}
             >
               <Italic size={16} />
@@ -185,7 +186,7 @@ export function ContentEditorDialog() {
                 aria-label={`Align ${val}`}
                 aria-pressed={(b.align ?? 'left') === val}
                 onClick={() => patch({ align: val })}
-                className="border border-gray-300 dark:border-gray-600"
+                className="border border-border"
                 style={{ width: 32, height: 32, cursor: 'pointer' }}
               >
                 <Icon size={16} />
@@ -199,7 +200,7 @@ export function ContentEditorDialog() {
               onChange={(e) => {
                 if (e.target.value) insertParam(e.target.value)
               }}
-              className="bg-white dark:bg-slate-900 border border-gray-300 dark:border-gray-600"
+              className="bg-background border border-border"
               style={{ fontSize: 13, padding: '4px 8px', borderRadius: 4, marginLeft: 'auto' }}
             >
               <option value="">{inputs.length === 0 ? 'No input parameters' : 'Insert parameter…'}</option>
@@ -211,7 +212,7 @@ export function ContentEditorDialog() {
             </select>
           </div>
           <div
-            className="border-y border-gray-200 dark:border-gray-700"
+            className="border-y border-border"
             style={{ minHeight: 180, maxHeight: '50vh', overflow: 'auto', padding: '8px 16px' }}
           >
             <EditorContent editor={editor} />
@@ -220,17 +221,13 @@ export function ContentEditorDialog() {
             <button
               type="button"
               onClick={() => store.closeContentEditor()}
-              className="px-4 py-2 text-sm font-medium rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="px-4 py-2 text-sm font-medium rounded-md border border-border text-foreground hover:bg-muted"
             >
               Cancel
             </button>
-            <button
-              type="button"
-              onClick={save}
-              className="px-5 py-2 text-sm font-semibold rounded-md bg-blue-600 text-white shadow-sm hover:bg-blue-700"
-            >
+            <Button type="button" onClick={save}>
               Save
-            </button>
+            </Button>
           </div>
           {/* Chip styling for ParamToken spans inside the editor. */}
           <style>{`.tfk-param-chip{background:#dbeafe;color:#1d4ed8;border-radius:4px;padding:0 4px;font-size:0.9em;white-space:nowrap}`}</style>

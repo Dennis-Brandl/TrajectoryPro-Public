@@ -90,7 +90,7 @@ export function CanvasContextMenu({
   return (
     <div
       ref={menuRef}
-      className="bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-[160px]"
+      className="bg-card rounded-lg shadow-lg border border-border py-1 min-w-[160px]"
       style={{
         position: 'fixed',
         left: position.x,
@@ -139,7 +139,7 @@ function SelectionMenuItems({ onClose }: { onClose: () => void }) {
     <>
       {showAlign && (
         <>
-          <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-slate-400 select-none">
+          <div className="px-3 py-1 text-[11px] uppercase tracking-wide text-muted-foreground select-none">
             Align ({selectedCount} selected)
           </div>
           <MenuItem
@@ -172,12 +172,14 @@ function SelectionMenuItems({ onClose }: { onClose: () => void }) {
             label="Align Bottom"
             onClick={() => align('bottom')}
           />
-          <div className="my-1 border-t border-slate-200" />
+          <div className="my-1 border-t border-border" />
         </>
       )}
       {showDistribute && (
         <>
-          <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-slate-400 select-none">Distribute</div>
+          <div className="px-3 py-1 text-[11px] uppercase tracking-wide text-muted-foreground select-none">
+            Distribute
+          </div>
           <MenuItem
             icon={<Rows3 className="h-3.5 w-3.5" />}
             label="Distribute Horizontally"
@@ -188,7 +190,7 @@ function SelectionMenuItems({ onClose }: { onClose: () => void }) {
             label="Distribute Vertically"
             onClick={() => distribute('vertical')}
           />
-          <div className="my-1 border-t border-slate-200" />
+          <div className="my-1 border-t border-border" />
         </>
       )}
     </>
@@ -308,7 +310,7 @@ function NodeContextMenuItems({
       )}
       {canEdit && (
         <>
-          <div className="my-1 border-t border-slate-200" />
+          <div className="my-1 border-t border-border" />
           <MenuItem
             icon={<Trash2 className="h-3.5 w-3.5 text-red-500" />}
             label="Delete"
@@ -419,7 +421,7 @@ function EdgeContextMenuItems({
       {canEdit && (
         <MenuItem icon={<Trash2 className="h-3.5 w-3.5 text-red-500" />} label="Delete" onClick={handleDelete} danger />
       )}
-      {!canEdit && <div className="px-3 py-1.5 text-sm text-slate-400 select-none">Read-only</div>}
+      {!canEdit && <div className="px-3 py-1.5 text-sm text-muted-foreground select-none">Read-only</div>}
     </>
   )
 }
@@ -445,13 +447,13 @@ function MenuItem({
     <button
       type="button"
       className={`w-full px-3 py-1.5 text-sm cursor-pointer flex items-center gap-2 ${
-        danger ? 'text-red-600 hover:bg-red-50' : 'text-slate-700 hover:bg-slate-100'
+        danger ? 'text-destructive hover:bg-destructive/10' : 'text-foreground hover:bg-muted'
       }`}
       onClick={onClick}
     >
       {icon}
       <span className="flex-1 text-left">{label}</span>
-      {shortcut && <span className="text-xs text-slate-400 ml-4">{shortcut}</span>}
+      {shortcut && <span className="text-xs text-muted-foreground ml-4">{shortcut}</span>}
     </button>
   )
 }

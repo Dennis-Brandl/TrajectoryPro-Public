@@ -15,7 +15,7 @@
 // @vitest-environment jsdom
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { ActionDetailView } from '@/components/detail/ActionDetailView'
 import { EnvironmentDetailView } from '@/components/detail/EnvironmentDetailView'
 import { useCanEditActiveSpec } from '@/hooks/useCanEditActiveSpec'
@@ -105,5 +105,24 @@ describe('detail views read-only', () => {
     seedSelectedSpec('environment')
     const { container } = render(<EnvironmentDetailView />)
     expect((container.querySelector('fieldset') as HTMLFieldSetElement)?.disabled).toBe(true)
+  })
+
+  it('EnvironmentDetailView tabs keep their names and switch', () => {
+    vi.mocked(useCanEditActiveSpec).mockReturnValue(true)
+    seedSelectedSpec('environment')
+    render(<EnvironmentDetailView />)
+    const names = screen.getAllByRole('tab').map((t) => t.textContent?.replace(/\d+$/, ''))
+    expect(names).toEqual([
+      'Included Actions',
+      'Property Values',
+      'Action Properties',
+      'Value Types',
+      'Resources',
+      'Registered Action Servers',
+    ])
+    const values = screen.getByRole('tab', { name: /Value Types/ })
+    fireEvent.mouseDown(values, { button: 0 })
+    expect(values.getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: /Included Actions/ }).getAttribute('aria-selected')).toBe('false')
   })
 })

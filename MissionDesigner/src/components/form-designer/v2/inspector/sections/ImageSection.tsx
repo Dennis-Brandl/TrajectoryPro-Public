@@ -70,7 +70,7 @@ export function ImageSection({
       <div style={fieldStyle}>
         <label
           htmlFor="tfk-image-src"
-          className="text-gray-500 dark:text-gray-400"
+          className="text-muted-foreground"
           style={{ fontSize: 11, display: 'block', marginBottom: 2 }}
         >
           Image Source (filename or URL)
@@ -81,7 +81,7 @@ export function ImageSection({
             type="text"
             value={block.src}
             onChange={(e) => onUpdate({ src: e.target.value } as Partial<Block>)}
-            className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
+            className="bg-background text-foreground border border-border"
             style={{
               flex: 1,
               fontSize: 13,
@@ -96,7 +96,7 @@ export function ImageSection({
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-slate-300 border border-gray-300 dark:border-gray-600"
+            className="bg-muted text-foreground dark:text-muted-foreground border border-border"
             style={{ fontSize: 12, padding: '4px 10px', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap' }}
           >
             Choose file…
@@ -117,7 +117,7 @@ export function ImageSection({
       <div style={fieldStyle}>
         <label
           htmlFor="tfk-image-fit"
-          className="text-gray-500 dark:text-gray-400"
+          className="text-muted-foreground"
           style={{ fontSize: 11, display: 'block', marginBottom: 2 }}
         >
           Object Fit
@@ -126,7 +126,7 @@ export function ImageSection({
           id="tfk-image-fit"
           value={block.objectFit ?? 'contain'}
           onChange={(e) => onUpdate({ objectFit: e.target.value as ImageBlock['objectFit'] } as Partial<Block>)}
-          className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
+          className="bg-background text-foreground border border-border"
           style={{
             width: '100%',
             fontSize: 13,
@@ -149,13 +149,13 @@ export function ImageSection({
       <div style={fieldStyle}>
         <label
           htmlFor="tfk-image-scale"
-          className="text-gray-500 dark:text-gray-400"
+          className="text-muted-foreground"
           style={{ fontSize: 11, display: 'inline-block', marginBottom: 2 }}
         >
           Scale (%)
         </label>
         {bp !== 'base' && ownScale === undefined && (
-          <span className="text-gray-500 dark:text-gray-400" style={{ fontSize: 11, marginLeft: 6 }}>
+          <span className="text-muted-foreground" style={{ fontSize: 11, marginLeft: 6 }}>
             {`(from ${inheritedFrom})`}
           </span>
         )}
@@ -181,7 +181,7 @@ export function ImageSection({
             const clamped = Math.min(300, Math.max(10, ownScale))
             if (clamped !== ownScale) writeScale(clamped)
           }}
-          className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
+          className="bg-background text-foreground border border-border"
           style={{
             width: '100%',
             fontSize: 13,
@@ -195,7 +195,7 @@ export function ImageSection({
           <button
             type="button"
             onClick={() => writeScale(undefined)}
-            className="text-blue-600 dark:text-blue-400"
+            className="text-link"
             style={{
               fontSize: 11,
               background: 'transparent',

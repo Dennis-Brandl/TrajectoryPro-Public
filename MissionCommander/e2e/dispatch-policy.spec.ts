@@ -31,12 +31,13 @@ import { test, expect, type Page } from '@playwright/test';
 import { bootstrapFirstAdmin, signIn } from './helpers/auth';
 import { ADMIN } from './helpers/db';
 import { workflowPackage } from './helpers/packages';
+import { openRail } from './helpers/rail';
 
 const WC_NAME = 'E2E Dispatch WC';
 const WF_NAME = 'E2E Dispatch Workflow';
 
 async function createWorkCenter(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Work Centers' }).click(); // activity rail
+  await openRail(page, 'Work Centers');
   await page.getByRole('button', { name: 'New work center' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
@@ -61,7 +62,7 @@ async function load(page: Page, name: string, oid: string) {
 // for the initial navigation and to reselect after each hard reload, since
 // useSelectionStore carries no persistence of its own.
 async function openWorkflow(page: Page) {
-  await page.getByRole('button', { name: 'Workflows' }).click(); // activity rail
+  await openRail(page, 'Workflows');
   await page.getByRole('button', { name: `${WF_NAME} v1.0.0` }).click();
   await expect(page.getByRole('heading', { name: WF_NAME })).toBeVisible();
 }

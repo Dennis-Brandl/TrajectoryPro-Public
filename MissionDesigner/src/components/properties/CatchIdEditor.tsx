@@ -43,7 +43,7 @@ export function CatchIdEditor({ value, onChange, takenIds, hideHeading = false }
           onBlur={commit}
           className={`rounded border px-2 py-0.5 text-xs ${duplicate ? 'border-red-500' : ''}`}
         />
-        {duplicate && <span className="ml-2 text-[10px] text-red-600">catch_id must be unique</span>}
+        {duplicate && <span className="ml-2 text-[11px] text-red-600">catch_id must be unique</span>}
       </div>
     </section>
   )

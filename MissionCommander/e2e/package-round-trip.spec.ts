@@ -84,12 +84,12 @@ test('a steward exports a work center and imports the package back as a new one'
   // an unscoped getByText('RT Original') can resolve to two elements once both catch up.
   await expect(page.getByRole('heading', { name: 'RT Original' })).toBeVisible();
 
-  // 4. Import the very bytes that were downloaded, via the tree toolbar's Import package
-  // control (aria-label="Import package" — WorkCenterTree.tsx). Task 8 made the dialog
+  // 4. Import the very bytes that were downloaded, via the Import Work Center Package button
+  // control (WorkCenterTree.tsx). Task 8 made the dialog
   // mode-first (ImportPackageDialog.tsx): once a file is picked, mode starts out null and
   // the Import button only renders once "Create new work center" is chosen — so that choice
   // has to happen here before Import is clickable.
-  await page.getByRole('button', { name: 'Import package' }).click();
+  await page.getByRole('button', { name: 'Import Work Center Package' }).click();
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Package').setInputFiles(packagePath!);
   await dialog.getByRole('button', { name: 'Create new work center' }).click();

@@ -42,6 +42,7 @@ import { parseWorkflowEnvelope, EnvelopeParseError } from '../../packageFormat/p
 import { buildImportBatch } from '../../packageFormat/buildImportBatch'
 import { insertImportImages, ImportImageMissingError } from '../../packageFormat/insertImportImages'
 import { injectSpecImagesAsDataUris } from '../../packageFormat/injectSpecImages'
+import { findBundleImage, injectWflibxImages } from '../../packageFormat/wflibxImages'
 import { injectWorkflowEnvSpecIds } from '../../packageFormat/injectWorkflowEnvSpecIds'
 import { injectEmbeddedWorkflowSpecIds } from '../../packageFormat/injectEmbeddedWorkflowSpecIds'
 import { importLibrariesFromZip } from '../../packageFormat/importLibrariesFromZip'
@@ -843,7 +844,7 @@ async function applyRow(
         )
         return
       }
-      const data = specDataOrWarn(row, specJson, summary)
+      const data = specDataOrWarn(row, specJson, summary, cached.imageBytes)
       if (!data) return
       await insertSpecRow(q, {
         id: row.bundleOid,
@@ -867,7 +868,7 @@ async function applyRow(
         )
         return
       }
-      const data = specDataOrWarn(row, specJson, summary)
+      const data = specDataOrWarn(row, specJson, summary, cached.imageBytes)
       if (!data) return
       await insertSpecRow(q, {
         id: row.bundleOid,
@@ -908,7 +909,7 @@ async function applyRow(
         )
         return
       }
-      const data = specDataOrWarn(row, specJson, summary)
+      const data = specDataOrWarn(row, specJson, summary, cached.imageBytes)
       if (!data) return
       // Lock and re-check everything the delete touches (spec 2026-10-21 §6).
       await assertReplaceUnlocked(q, { specIds: [row.status.existingOid] }, locked)
@@ -1107,6 +1108,7 @@ async function insertWflibxImagesForSpec(
   warnings: string[],
 ): Promise<void> {
   const filenamesNeeded = new Set<string>()
+  const imageOids = new Map<string, string>()
 
   const collectFromLayouts = (layouts: unknown) => {
     if (!layouts) return
@@ -1157,7 +1159,9 @@ async function insertWflibxImagesForSpec(
           const src = block.src
           if (typeof src !== 'string' || !src || src === 'No image selected') continue
           if (src.startsWith('data:') || /^https?:/.test(src)) continue
-          filenamesNeeded.add(src.replace(/^[A-Z0-9]+-/, ''))
+          const filename = src.replace(/^[A-Z0-9]+-/, '')
+          filenamesNeeded.add(filename)
+          if (typeof block.imageOid === 'string' && !imageOids.has(filename)) imageOids.set(filename, block.imageOid)
         }
       }
     }
@@ -1173,34 +1177,13 @@ async function insertWflibxImagesForSpec(
 
   if (filenamesNeeded.size === 0) return
 
-  // Build a filename → bytes/mime map. Keys in cached.imageBytes are zip
-  // paths like `images/<filename>` or `images/<oid>-<filename>`.
-  const byBareFilename = new Map<string, { bytes: Uint8Array; key: string }>()
-  const allEntries: Array<{ bytes: Uint8Array; key: string; filename: string }> = []
-  for (const [path, bytes] of Object.entries(imageBytes)) {
-    if (!path.startsWith('images/')) continue
-    const filename = path.substring('images/'.length)
-    allEntries.push({ bytes, key: path, filename })
-    if (!byBareFilename.has(filename)) byBareFilename.set(filename, { bytes, key: path })
-  }
-
   const now = Date.now()
   for (const wantFilename of filenamesNeeded) {
-    let match = byBareFilename.get(wantFilename)
-    if (!match) {
-      // Suffix match for `<oid>-<filename>` form-element images.
-      const suffix = `-${wantFilename}`
-      for (const entry of allEntries) {
-        if (entry.filename.endsWith(suffix)) {
-          match = { bytes: entry.bytes, key: entry.key }
-          break
-        }
-      }
-    }
-    if (!match) continue // Bytes not in the bundle — drop silently.
+    const bytes = findBundleImage(imageBytes, wantFilename, imageOids.get(wantFilename))
+    if (!bytes) continue // Bytes not in the bundle — drop silently.
 
     // M1: pass Buffer to ensure bytea is written correctly under PGlite/Postgres.
-    const buf = Buffer.from(match.bytes)
+    const buf = Buffer.from(bytes)
     // The file's own bytes decide its type; its name and extension are not trusted.
     const mimeType = sniffMime(buf)
     if (!mimeType || !ALLOWED_IMAGE_MIMES.has(mimeType)) {
@@ -1581,9 +1564,12 @@ function specDataOrWarn(
   row: ImportPlanRow,
   specJson: Record<string, unknown>,
   summary: WflibxCommitSummary,
+  imageBytes: Record<string, Uint8Array>,
 ): Record<string, unknown> | null {
   try {
-    return buildSpecData(specJson, row.entityType)
+    const data = buildSpecData(specJson, row.entityType)
+    if (row.entityType === 'workflow' || row.entityType === 'step') injectWflibxImages(data, imageBytes)
+    return data
   } catch (err) {
     if (!(err instanceof InvalidBundledSpecError)) throw err
     summary.warnings.push(`Specification "${row.bundleName}" (${row.bundleOid}) skipped: ${err.message}`)

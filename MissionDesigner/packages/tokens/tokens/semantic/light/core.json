@@ -16,5 +16,7 @@
   "destructive": { "$value": "{color.support.danger}", "$type": "color" },
   "border": { "$value": "{color.neutral.200}", "$type": "color" },
   "input": { "$value": "{color.neutral.200}", "$type": "color" },
-  "ring": { "$value": "{color.neutral.300}", "$type": "color" }
+  "ring": { "$value": "{color.brand.blue}", "$type": "color" },
+  "selection": { "$value": "rgb(0 122 255 / 12%)" },
+  "link": { "$value": "#0060cc", "$type": "color" }
 }

@@ -122,7 +122,7 @@ export function MoveToLibraryDialog({
               aria-label="Destination library"
               value={targetId}
               onChange={(e) => setTargetId(e.target.value)}
-              className="w-full h-9 rounded-md border border-slate-200 dark:border-slate-700 bg-transparent px-2 text-sm text-slate-700 dark:text-slate-200"
+              className="w-full h-9 rounded-md border border-border bg-transparent px-2 text-sm text-foreground"
             >
               <option value="">Choose a library…</option>
               {targets.map((t) => (
@@ -132,10 +132,10 @@ export function MoveToLibraryDialog({
               ))}
             </select>
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             <strong>Move</strong> takes all versions of this element to that library. References to it keep working.
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             <strong>Copy</strong> leaves it here and adds a copy of all its versions, keeping their states. References
             keep pointing at the original.
           </p>

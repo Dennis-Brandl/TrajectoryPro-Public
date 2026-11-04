@@ -17,9 +17,9 @@ import { resolveBp, setBp, clearBp, isOverridden } from '@/lib/form-document/lay
 import { ownRowTarget, rowAboveTarget } from '@/lib/form-document/column-ops'
 
 const field: React.CSSProperties = { marginBottom: 10 }
-const labelCls = 'text-gray-500 dark:text-gray-400'
+const labelCls = 'text-muted-foreground'
 const labelSt: React.CSSProperties = { fontSize: 11, display: 'block', marginBottom: 2 }
-const inputCls = 'bg-white dark:bg-slate-900 border border-gray-300 dark:border-gray-600'
+const inputCls = 'bg-background border border-border'
 const inputSt: React.CSSProperties = {
   width: '100%',
   fontSize: 13,
@@ -129,7 +129,7 @@ export function LayoutSection({ block, onUpdate }: { block: Block; onUpdate: (pa
             checked={visible}
             onChange={(e) => write({ ...layout, visible: setBp(layout.visible, true, bp, e.target.checked) })}
           />
-          <span className="text-gray-700 dark:text-slate-200" style={{ fontSize: 13 }}>
+          <span className="text-foreground" style={{ fontSize: 13 }}>
             Visible on {bp}
           </span>
         </label>
@@ -163,7 +163,7 @@ export function LayoutSection({ block, onUpdate }: { block: Block; onUpdate: (pa
             disabled={layout.order === undefined}
             aria-label="Reset order to automatic"
             title="Automatic order (DOM order)"
-            className="bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-slate-300 border border-gray-300 dark:border-gray-600 disabled:opacity-40"
+            className="bg-muted text-foreground dark:text-muted-foreground border border-border disabled:opacity-40"
             style={{
               fontSize: 12,
               padding: '4px 10px',
@@ -189,7 +189,7 @@ export function LayoutSection({ block, onUpdate }: { block: Block; onUpdate: (pa
               ...(layout.order ? { order: clearBp(layout.order, resolveBp(layout.order, 'base', 0), bp) } : {}),
             })
           }
-          className="text-blue-600 dark:text-blue-400"
+          className="text-link"
           style={{
             fontSize: 11,
             background: 'transparent',

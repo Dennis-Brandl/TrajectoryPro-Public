@@ -45,7 +45,7 @@ export function AlignDropdown() {
         <Button
           variant="ghost"
           size="sm"
-          className={cn(!canAlign && 'text-slate-300 pointer-events-none')}
+          className={cn(!canAlign && 'text-muted-foreground pointer-events-none')}
           title={canAlign ? 'Align selected nodes' : 'Select 2+ nodes to align'}
           aria-label="Align"
         >
@@ -56,48 +56,48 @@ export function AlignDropdown() {
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           sideOffset={4}
-          className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg p-1 min-w-[180px] z-[10000]"
+          className="bg-background border border-border rounded-lg shadow-lg p-1 min-w-[180px] z-[10000]"
         >
           <DropdownMenu.Item
             disabled={!canAlign}
             onSelect={() => alignSelectedNodes('left')}
-            className="flex items-center gap-2 px-2.5 py-1.5 text-[13px] rounded cursor-pointer outline-none select-none text-gray-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 data-[disabled]:text-gray-400 dark:data-[disabled]:text-gray-500 data-[disabled]:cursor-not-allowed data-[disabled]:hover:bg-transparent"
+            className="flex items-center gap-2 px-2.5 py-1.5 text-[13px] rounded cursor-pointer outline-none select-none text-foreground hover:bg-muted data-[disabled]:text-muted-foreground data-[disabled]:cursor-not-allowed data-[disabled]:hover:bg-transparent"
           >
             <AlignStartVertical size={14} /> Align Left
           </DropdownMenu.Item>
           <DropdownMenu.Item
             disabled={!canAlign}
             onSelect={() => alignSelectedNodes('centerH')}
-            className="flex items-center gap-2 px-2.5 py-1.5 text-[13px] rounded cursor-pointer outline-none select-none text-gray-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 data-[disabled]:text-gray-400 dark:data-[disabled]:text-gray-500 data-[disabled]:cursor-not-allowed data-[disabled]:hover:bg-transparent"
+            className="flex items-center gap-2 px-2.5 py-1.5 text-[13px] rounded cursor-pointer outline-none select-none text-foreground hover:bg-muted data-[disabled]:text-muted-foreground data-[disabled]:cursor-not-allowed data-[disabled]:hover:bg-transparent"
           >
             <AlignCenterVertical size={14} /> Align Center H
           </DropdownMenu.Item>
           <DropdownMenu.Item
             disabled={!canAlign}
             onSelect={() => alignSelectedNodes('right')}
-            className="flex items-center gap-2 px-2.5 py-1.5 text-[13px] rounded cursor-pointer outline-none select-none text-gray-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 data-[disabled]:text-gray-400 dark:data-[disabled]:text-gray-500 data-[disabled]:cursor-not-allowed data-[disabled]:hover:bg-transparent"
+            className="flex items-center gap-2 px-2.5 py-1.5 text-[13px] rounded cursor-pointer outline-none select-none text-foreground hover:bg-muted data-[disabled]:text-muted-foreground data-[disabled]:cursor-not-allowed data-[disabled]:hover:bg-transparent"
           >
             <AlignEndVertical size={14} /> Align Right
           </DropdownMenu.Item>
-          <div className="h-px bg-gray-200 dark:bg-slate-700 my-1" />
+          <div className="h-px bg-border my-1" />
           <DropdownMenu.Item
             disabled={!canAlign}
             onSelect={() => alignSelectedNodes('top')}
-            className="flex items-center gap-2 px-2.5 py-1.5 text-[13px] rounded cursor-pointer outline-none select-none text-gray-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 data-[disabled]:text-gray-400 dark:data-[disabled]:text-gray-500 data-[disabled]:cursor-not-allowed data-[disabled]:hover:bg-transparent"
+            className="flex items-center gap-2 px-2.5 py-1.5 text-[13px] rounded cursor-pointer outline-none select-none text-foreground hover:bg-muted data-[disabled]:text-muted-foreground data-[disabled]:cursor-not-allowed data-[disabled]:hover:bg-transparent"
           >
             <AlignStartHorizontal size={14} /> Align Top
           </DropdownMenu.Item>
           <DropdownMenu.Item
             disabled={!canAlign}
             onSelect={() => alignSelectedNodes('centerV')}
-            className="flex items-center gap-2 px-2.5 py-1.5 text-[13px] rounded cursor-pointer outline-none select-none text-gray-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 data-[disabled]:text-gray-400 dark:data-[disabled]:text-gray-500 data-[disabled]:cursor-not-allowed data-[disabled]:hover:bg-transparent"
+            className="flex items-center gap-2 px-2.5 py-1.5 text-[13px] rounded cursor-pointer outline-none select-none text-foreground hover:bg-muted data-[disabled]:text-muted-foreground data-[disabled]:cursor-not-allowed data-[disabled]:hover:bg-transparent"
           >
             <AlignCenterHorizontal size={14} /> Align Center V
           </DropdownMenu.Item>
           <DropdownMenu.Item
             disabled={!canAlign}
             onSelect={() => alignSelectedNodes('bottom')}
-            className="flex items-center gap-2 px-2.5 py-1.5 text-[13px] rounded cursor-pointer outline-none select-none text-gray-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 data-[disabled]:text-gray-400 dark:data-[disabled]:text-gray-500 data-[disabled]:cursor-not-allowed data-[disabled]:hover:bg-transparent"
+            className="flex items-center gap-2 px-2.5 py-1.5 text-[13px] rounded cursor-pointer outline-none select-none text-foreground hover:bg-muted data-[disabled]:text-muted-foreground data-[disabled]:cursor-not-allowed data-[disabled]:hover:bg-transparent"
           >
             <AlignEndHorizontal size={14} /> Align Bottom
           </DropdownMenu.Item>

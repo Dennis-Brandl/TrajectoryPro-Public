@@ -90,13 +90,13 @@ test('a steward previews and confirms a package merge into an existing work cent
   await expect(dialog).toBeHidden();
   await expect(page.getByRole('cell', { name: 'Merge Target Only Workflow', exact: true })).toBeVisible();
 
-  // 4. Import the exported package via the tree toolbar's Import package control, choose
+  // 4. Import the exported package via the Import Work Center Package button, choose
   // merge, target "Merge Target", and preview. `exact: true` throughout this leg is load-
   // bearing, not decoration: "Merge Target" is a substring of "New child of Merge Target"
   // (the row's own child-create button) and "Merge" is a substring of the mode button's own
   // label "Merge into existing work center" — either collision would trip Playwright's
   // strict-mode "resolved to N elements" failure rather than silently pass.
-  await page.getByRole('button', { name: 'Import package' }).click();
+  await page.getByRole('button', { name: 'Import Work Center Package' }).click();
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Package').setInputFiles(packagePath!);
   await dialog.getByRole('button', { name: 'Merge into existing work center' }).click();

@@ -28,12 +28,13 @@ import { test, expect, type Page } from '@playwright/test';
 import { bootstrapFirstAdmin, signIn } from './helpers/auth';
 import { ADMIN } from './helpers/db';
 import { machineWorkflowPackage, type FilePayload } from './helpers/packages';
+import { openRail } from './helpers/rail';
 
 const WC_NAME = 'E2E History WC';
 const WF_NAME = 'E2E History Workflow';
 
 async function createWorkCenter(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Work Centers' }).click(); // activity rail
+  await openRail(page, 'Work Centers');
   await page.getByRole('button', { name: 'New work center' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
@@ -114,7 +115,7 @@ test('history round trip: per-WC tab, detail trace, cross-WC rail page, admin pu
 
   // Cross-WC rail page: the row is visible once scoped to this work center, and the
   // orphans option exists (a deleted work center's history is otherwise unreachable here).
-  await page.getByRole('button', { name: 'History', exact: true }).click(); // ActivityRail
+  await openRail(page, 'History');
   await page.getByRole('combobox', { name: 'Work center' }).click();
   await expect(page.getByRole('option', { name: '(deleted work centers)' })).toBeVisible();
   await page.getByRole('option', { name: WC_NAME, exact: true }).click();
@@ -122,7 +123,7 @@ test('history round trip: per-WC tab, detail trace, cross-WC rail page, admin pu
 
   // Back on the work center's own History tab (selectedWorkCenterId survives the rail
   // round trip — WorkCenterDetail remounts straight to it): delete RW-1's history entry.
-  await page.getByRole('button', { name: 'Work Centers', exact: true }).click(); // ActivityRail
+  await openRail(page, 'Work Centers');
   await page.getByRole('tab', { name: 'History' }).click();
   await row1.click();
   await expect(detailDialog).toBeVisible();
@@ -142,7 +143,7 @@ test('history round trip: per-WC tab, detail trace, cross-WC rail page, admin pu
 
   // Admin purge: older-than = tomorrow, scoped to this work center -> preview shows 1
   // (RW-2 only; RW-1's history entry was already hard-deleted above).
-  await page.getByRole('button', { name: 'History', exact: true }).click(); // ActivityRail
+  await openRail(page, 'History');
   await page.getByRole('combobox', { name: 'Work center' }).click();
   await page.getByRole('option', { name: WC_NAME, exact: true }).click();
   await expect(page.getByRole('button', { name: 'History RW-2' })).toBeVisible();

@@ -60,17 +60,7 @@ export function HierarchyPane() {
   if (activeHierarchy === 'environment') return <EnvironmentTree />;
   // Runtime (spec 2026-08-27 §4.2): a true WC tree with active runtime-workflow leaves.
   if (activeHierarchy === 'runtime') return <RuntimeWorkflowTree />;
-  // History (Task 8) is a cross-work-center page, not a tree — there is nothing to select
-  // here, so the pane is a short caption; the real content lives in DetailPanel's HistoryPage.
-  if (activeHierarchy === 'history') {
-    return <p className="p-4 text-sm text-muted-foreground">Execution history across all work centers</p>;
-  }
-  // Settings (action-matching-mode spec 2026-08-20) is system-wide, not scoped to any work
-  // center — like History, there is nothing to select here; the real content lives in
-  // DetailPanel's SettingsPanel.
-  if (activeHierarchy === 'settings') {
-    return <p className="p-4 text-sm text-muted-foreground">System-wide configuration</p>;
-  }
+  // History and Settings are full-width pages with no tree; AppShell mounts no pane for them.
   if (activeHierarchy !== 'work_center') return null;
 
   return (

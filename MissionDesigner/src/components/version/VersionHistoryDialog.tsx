@@ -35,7 +35,7 @@ export function VersionHistoryDialog({ open, onOpenChange, history, title }: Ver
             <p className="text-sm text-muted-foreground py-4 text-center">No version history</p>
           ) : (
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-white dark:bg-slate-950">
+              <thead className="sticky top-0 bg-background">
                 <tr className="border-b text-left">
                   <th className="py-2 pr-3 font-medium">Version</th>
                   <th className="py-2 pr-3 font-medium">Date</th>

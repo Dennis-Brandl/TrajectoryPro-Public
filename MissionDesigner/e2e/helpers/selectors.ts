@@ -15,7 +15,7 @@
 import type { Page, Locator } from '@playwright/test'
 
 export function stepsTab(page: Page): Locator {
-  return page.getByRole('tab', { name: 'Steps' })
+  return page.getByRole('button', { name: 'Step Libraries', exact: true })
 }
 
 export function newLibraryBtn(page: Page): Locator {

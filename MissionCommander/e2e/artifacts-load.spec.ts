@@ -27,6 +27,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { bootstrapFirstAdmin, signIn } from './helpers/auth';
 import { ADMIN } from './helpers/db';
 import { workflowPackage, environmentPackage, diagramWorkflowPackage, type FilePayload } from './helpers/packages';
+import { openRail } from './helpers/rail';
 
 // Each Playwright test runs in a fresh, isolated browser context (cookies/storage), so a
 // leg signs in cleanly without any prior leg signing out.
@@ -37,7 +38,7 @@ import { workflowPackage, environmentPackage, diagramWorkflowPackage, type FileP
  * this needs no tree-row selector, and every leg stays independent of the others' leftovers.
  */
 async function createWorkCenter(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Work Centers' }).click(); // activity rail
+  await openRail(page, 'Work Centers');
   await page.getByRole('button', { name: 'New work center' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
@@ -86,7 +87,7 @@ test('loads a workflow package into a work center, which then owns it in the Wor
 
   // …and the Workflow hierarchy groups it under its OWNING work center — the header is the
   // work center's name, which is the whole point of M6's regrouping.
-  await page.getByRole('button', { name: 'Workflows' }).click(); // activity rail
+  await openRail(page, 'Workflows');
   await expect(page.getByRole('heading', { level: 3, name: 'E2E Load WC1' })).toBeVisible();
   await expect(page.getByRole('button', { name: /E2E Bottle Fill v1\.0\.0/ })).toBeVisible();
 });
@@ -107,7 +108,7 @@ test('a second identical load reports already present and creates no second entr
   await expect(page.getByText('0 loaded, 0 replaced, 1 already present, 0 failed')).toBeVisible();
   await closeResults(page);
 
-  await page.getByRole('button', { name: 'Workflows' }).click();
+  await openRail(page, 'Workflows');
   await expect(page.getByRole('button', { name: /E2E Repeat v1\.0\.0/ })).toHaveCount(1);
 });
 
@@ -126,7 +127,7 @@ test('one package fanned out to two work centers becomes two independent entries
   await closeResults(page);
 
   // Two INDEPENDENT entries, one under each work-center header (spec D3).
-  await page.getByRole('button', { name: 'Workflows' }).click();
+  await openRail(page, 'Workflows');
   await expect(page.getByRole('button', { name: /E2E Fanout v1\.0\.0/ })).toHaveCount(2);
   await expect(page.getByRole('heading', { level: 3, name: 'E2E Fan Source' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 3, name: 'E2E Fan Target' })).toBeVisible();
@@ -150,7 +151,7 @@ test('a corrupt package fails only its own pair while its sibling still commits'
   await closeResults(page);
 
   // The good one really committed.
-  await page.getByRole('button', { name: 'Workflows' }).click();
+  await openRail(page, 'Workflows');
   await expect(page.getByRole('button', { name: /E2E Good v1\.0\.0/ })).toBeVisible();
 });
 
@@ -163,7 +164,7 @@ test('routes by extension: a .WFenvirX lands in the Environments hierarchy', asy
   await expect(page.getByText('1 loaded, 0 replaced, 0 already present, 0 failed')).toBeVisible();
   await closeResults(page);
 
-  await page.getByRole('button', { name: 'Environments' }).click(); // activity rail
+  await openRail(page, 'Environments');
   await expect(page.getByRole('heading', { level: 3, name: 'E2E Load WC5' })).toBeVisible();
   await expect(page.getByRole('button', { name: /E2E Ambient v1\.0\.0/ })).toBeVisible();
 });
@@ -193,7 +194,7 @@ test('deleting a populated work center shows the impact summary, then Delete any
 
   // Gone from the tree, and its artifact went with it.
   await expect(page.getByRole('button', { name: /E2E Doomed/ })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Workflows' }).click();
+  await openRail(page, 'Workflows');
   await expect(page.getByRole('button', { name: /E2E Doomed WF/ })).toHaveCount(0);
 });
 
@@ -205,7 +206,7 @@ test('the Diagram tab renders the loaded workflow and drills into its child', as
   await closeResults(page);
 
   // Reach the workflow's own detail panel through the Workflows hierarchy.
-  await page.getByRole('button', { name: 'Workflows' }).click(); // activity rail
+  await openRail(page, 'Workflows');
   await page.getByRole('button', { name: /E2E Diagram Workflow/ }).click();
   await expect(page.getByRole('heading', { name: 'E2E Diagram Workflow' })).toBeVisible();
 

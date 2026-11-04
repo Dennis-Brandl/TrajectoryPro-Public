@@ -134,7 +134,7 @@ export function ActionImportFlag({
             </div>
           ) : (
             <Button
-              variant="outline"
+              variant="destructiveOutline"
               size="sm"
               className="h-7 text-xs"
               onClick={() => setConfirming(true)}

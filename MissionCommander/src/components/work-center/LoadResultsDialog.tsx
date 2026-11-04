@@ -17,7 +17,7 @@ import type { LoadResult } from '@/lib/api/types';
 
 const PILL: Record<LoadResult['status'], string> = {
   loaded: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
-  replaced: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+  replaced: 'bg-primary/15 text-primary',
   already_present: 'bg-muted text-muted-foreground',
   failed: 'bg-destructive/15 text-destructive',
 };

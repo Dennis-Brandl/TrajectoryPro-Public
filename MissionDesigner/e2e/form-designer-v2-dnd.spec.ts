@@ -69,7 +69,7 @@ function realConsoleIssues(bucket: string[], allow: RegExp[] = [DROP_EFFECT_ARTI
 
 async function setupAndLogin(page: Page, libName: string, wfName: string): Promise<void> {
   await page.goto('/')
-  await expect(page.getByRole('tab', { name: 'Workflows' })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('button', { name: 'Workflows', exact: true })).toBeVisible({ timeout: 15_000 })
 
   await page.getByRole('button', { name: 'New Library' }).click()
   await expect(page.getByRole('alertdialog')).toBeVisible()

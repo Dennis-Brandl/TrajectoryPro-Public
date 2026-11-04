@@ -18,7 +18,7 @@ import { Server, X, Download, History } from 'lucide-react'
 import { toast } from 'sonner'
 import { Input } from '@mission/ui'
 import { Label } from '@mission/ui'
-import { Button } from '@mission/ui'
+import { Button, Tabs, TabsList, TabsTrigger, TabsContent } from '@mission/ui'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { useSpecificationStore } from '@/stores/specificationStore'
 import { flushNow } from '@/stores/specificationStore/saveScheduler'
@@ -153,11 +153,11 @@ export function EnvironmentDetailView() {
 
   if (!selectedSpecificationId || !selectedSpec) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+      <div className="flex-1 flex items-center justify-center bg-side-panel">
         <div className="text-center">
-          <Server className="h-12 w-12 text-slate-300 mx-auto mb-2" />
-          <p className="text-slate-500 dark:text-slate-400">Select an environment from the library</p>
-          <p className="text-sm text-slate-400 mt-1">
+          <Server className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+          <p className="text-muted-foreground">Select an environment from the library</p>
+          <p className="text-sm text-muted-foreground mt-1">
             Choose an environment specification to view and edit its details
           </p>
         </div>
@@ -249,17 +249,17 @@ export function EnvironmentDetailView() {
   }
 
   return (
-    <div className="flex-1 bg-slate-50 dark:bg-slate-900 flex flex-col">
+    <div className="flex-1 bg-side-panel flex flex-col">
       {/* Sticky header */}
-      <div className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-3 pt-3 pb-2 shrink-0">
+      <div className="bg-side-panel border-b border-border px-3 pt-3 pb-2 shrink-0">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <Server className="h-6 w-6 text-blue-600" />
+            <div className="p-2 bg-selection rounded-lg">
+              <Server className="h-6 w-6 text-link" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-200">Environment Details</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <h2 className="text-xl font-semibold text-foreground">Environment Details</h2>
+              <p className="text-sm text-muted-foreground">
                 Configure the actions, properties, resources, and servers for this environment
               </p>
             </div>
@@ -359,8 +359,8 @@ export function EnvironmentDetailView() {
           <fieldset disabled={!canEdit} className="contents">
             <div className="space-y-3">
               {/* Basic Info — always visible */}
-              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-2">
-                <h3 className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Basic Information</h3>
+              <div className="bg-card rounded-lg border border-border p-3 space-y-2">
+                <h3 className="text-sm font-medium text-foreground mb-1">Basic Information</h3>
                 <div className="grid grid-cols-[1fr_2fr] gap-3">
                   <div className="space-y-1">
                     <Label className="text-sm">Name</Label>
@@ -382,42 +382,32 @@ export function EnvironmentDetailView() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-sm">OID</Label>
-                  <p className="text-xs font-mono text-slate-500 dark:text-slate-400 break-all select-all">
-                    {selectedSpec.id}
-                  </p>
+                  <p className="text-xs font-mono text-muted-foreground break-all select-all">{selectedSpec.id}</p>
                 </div>
               </div>
 
               {/* Tabbed sections */}
-              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+              <Tabs
+                value={activeTab}
+                onValueChange={(v) => setActiveTab(v as TabKey)}
+                className="bg-card rounded-lg border border-border"
+              >
                 {/* Tab bar */}
-                <div role="tablist" className="flex border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
+                <TabsList className="h-auto w-full justify-start overflow-x-auto">
                   {(Object.keys(TAB_LABELS) as TabKey[]).map((key) => (
-                    <button
-                      key={key}
-                      type="button"
-                      role="tab"
-                      aria-selected={activeTab === key}
-                      tabIndex={activeTab === key ? 0 : -1}
-                      onClick={() => setActiveTab(key)}
-                      className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-                        activeTab === key
-                          ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                          : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
-                      }`}
-                    >
+                    <TabsTrigger key={key} value={key}>
                       {TAB_LABELS[key]}
                       {tabCounts[key] > 0 && (
-                        <span className="ml-1.5 text-xs font-normal bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-full">
+                        <span className="ml-1.5 text-xs font-normal bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">
                           {tabCounts[key]}
                         </span>
                       )}
-                    </button>
+                    </TabsTrigger>
                   ))}
-                </div>
+                </TabsList>
 
                 {/* Tab content */}
-                <div role="tabpanel" className="p-3">
+                <TabsContent value={activeTab} className="mt-0 p-3">
                   {activeTab === 'actions' && (
                     <IncludedActionsSection
                       includedActions={includedActions}
@@ -531,8 +521,8 @@ export function EnvironmentDetailView() {
                       hideHeader
                     />
                   )}
-                </div>
-              </div>
+                </TabsContent>
+              </Tabs>
             </div>
           </fieldset>
         </div>

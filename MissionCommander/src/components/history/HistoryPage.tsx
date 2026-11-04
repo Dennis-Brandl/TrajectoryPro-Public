@@ -123,7 +123,7 @@ export function HistoryPage() {
           </div>
         </div>
         {isAdmin && (
-          <Button type="button" variant="destructive" size="sm" onClick={() => setPurgeOpen(true)}>
+          <Button type="button" variant="destructiveOutline" size="sm" onClick={() => setPurgeOpen(true)}>
             Purge…
           </Button>
         )}

@@ -16,13 +16,19 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react-swc';
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
+
+const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
 
 export default defineConfig({
   // Mirrors vite.config.ts's '@' -> src alias. Like the plugins array above, this is
   // NOT inherited from vite.config.ts (separate config, no merge) — omitting it makes
   // any test that imports through '@/*' (e.g. ui primitives importing '@/lib/utils')
   // fail to resolve under Vitest even though the real Vite dev/build works fine.
-  resolve: { alias: { '@': path.resolve(__dirname, './src') } },
+  // @mission/ui is a file: link into MissionDesigner, which has its own react; dedupe so
+  // tests render with this app's single React instance.
+  resolve: { preserveSymlinks: true, dedupe: ['react', 'react-dom'], alias: { '@': path.resolve(__dirname, './src') } },
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   // Mirrors vite.config.ts's transform so renderer tests see the same JSX runtime
   // (automatic, via react-swc) as the real dev/build. vitest.config.ts is a separate
   // config from vite.config.ts and does NOT inherit its plugins — without this,

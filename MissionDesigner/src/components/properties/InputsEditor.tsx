@@ -86,7 +86,7 @@ function InputsEditorComponent({
         )}
       </div>
 
-      {inputs.length === 0 && <p className="text-xs text-slate-500 dark:text-slate-400 italic">No inputs defined</p>}
+      {inputs.length === 0 && <p className="text-xs text-muted-foreground italic">No inputs defined</p>}
 
       {inputs.map((input) => {
         const isProperty = input.valueType === 'property'
@@ -117,9 +117,9 @@ function InputsEditorComponent({
                         name={`valueType-${input.id}`}
                         checked={!isProperty}
                         onChange={() => updateInput(input.id, { valueType: 'literal' })}
-                        className="h-3 w-3 accent-slate-600 dark:accent-slate-300"
+                        className="h-3 w-3 accent-muted-foreground"
                       />
-                      <span className="text-xs text-slate-600 dark:text-slate-300">Text</span>
+                      <span className="text-xs text-muted-foreground">Text</span>
                     </label>
                     <label className="flex items-center gap-1 cursor-pointer shrink-0">
                       <input
@@ -127,9 +127,9 @@ function InputsEditorComponent({
                         name={`valueType-${input.id}`}
                         checked={isProperty}
                         onChange={() => updateInput(input.id, { valueType: 'property' })}
-                        className="h-3 w-3 accent-slate-600 dark:accent-slate-300"
+                        className="h-3 w-3 accent-muted-foreground"
                       />
-                      <span className="text-xs text-slate-600 dark:text-slate-300">Source</span>
+                      <span className="text-xs text-muted-foreground">Source</span>
                     </label>
                   </div>
                   {isProperty ? (
@@ -153,7 +153,7 @@ function InputsEditorComponent({
                     placeholder="Description (optional)"
                     value={input.description || ''}
                     onChange={(e) => updateInput(input.id, { description: e.target.value })}
-                    className="h-7 text-xs text-slate-500 dark:text-slate-400"
+                    className="h-7 text-xs text-muted-foreground"
                     disabled={readOnly}
                   />
                 </>

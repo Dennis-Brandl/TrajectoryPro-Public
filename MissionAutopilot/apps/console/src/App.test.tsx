@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import { clearApiKey, setApiKey, UNAUTHORIZED_EVENT } from '@/lib/apiKey'
 
@@ -23,27 +24,38 @@ const REJECTED_TEXT = 'That key was not accepted. Check ACTIONS_API_KEY in .env.
 describe('App sign-in state', () => {
   beforeEach(() => {
     setApiKey('test-key-0123456789abcdef0123456789abcdef')
+    // Signed-in renders mount the console, which fetches; keep those requests pending.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => new Promise<Response>(() => {}))
+    )
   })
   afterEach(() => {
+    vi.unstubAllGlobals()
     clearApiKey()
   })
 
   function renderApp() {
     render(
-      <MemoryRouter>
-        <App />
-      </MemoryRouter>
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <MemoryRouter>
+          <App />
+        </MemoryRouter>
+      </QueryClientProvider>
     )
   }
 
-  it('shows the splash before the sign-in screen, not after it', () => {
+  it('shows the API key form straight away, with the splash art and description', () => {
     clearApiKey()
     renderApp()
-    expect(screen.getByAltText('Mission Autopilot')).toBeTruthy()
-    expect(screen.queryByLabelText('API key')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
     expect(screen.getByLabelText('API key')).toBeTruthy()
-    expect(screen.queryByAltText('Mission Autopilot')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull()
+    const img = screen.getByAltText('Mission Autopilot')
+    expect(img.getAttribute('src')).toBe('/MissionAutopilotSplashScreen.png')
+    expect(screen.getByText(/Execution system for Environment Actions/)).toBeTruthy()
+    expect(screen.getByText(/Supports Opaque and Observable actions/)).toBeTruthy()
   })
 
   it('shows the rejected message after a mid-session 401', () => {

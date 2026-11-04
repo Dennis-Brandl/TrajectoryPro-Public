@@ -36,7 +36,7 @@ export function DistributeDropdown() {
         <Button
           variant="ghost"
           size="sm"
-          className={cn(!canDistribute && 'text-slate-300 pointer-events-none')}
+          className={cn(!canDistribute && 'text-muted-foreground pointer-events-none')}
           title={canDistribute ? 'Distribute selected nodes' : 'Select 3+ nodes to distribute'}
           aria-label="Distribute"
         >
@@ -47,19 +47,19 @@ export function DistributeDropdown() {
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           sideOffset={4}
-          className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg p-1 min-w-[180px] z-[10000]"
+          className="bg-background border border-border rounded-lg shadow-lg p-1 min-w-[180px] z-[10000]"
         >
           <DropdownMenu.Item
             disabled={!canDistribute}
             onSelect={() => distributeSelectedNodes('horizontal')}
-            className="flex items-center gap-2 px-2.5 py-1.5 text-[13px] rounded cursor-pointer outline-none select-none text-gray-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 data-[disabled]:text-gray-400 dark:data-[disabled]:text-gray-500 data-[disabled]:cursor-not-allowed data-[disabled]:hover:bg-transparent"
+            className="flex items-center gap-2 px-2.5 py-1.5 text-[13px] rounded cursor-pointer outline-none select-none text-foreground hover:bg-muted data-[disabled]:text-muted-foreground data-[disabled]:cursor-not-allowed data-[disabled]:hover:bg-transparent"
           >
             Distribute Horizontally
           </DropdownMenu.Item>
           <DropdownMenu.Item
             disabled={!canDistribute}
             onSelect={() => distributeSelectedNodes('vertical')}
-            className="flex items-center gap-2 px-2.5 py-1.5 text-[13px] rounded cursor-pointer outline-none select-none text-gray-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 data-[disabled]:text-gray-400 dark:data-[disabled]:text-gray-500 data-[disabled]:cursor-not-allowed data-[disabled]:hover:bg-transparent"
+            className="flex items-center gap-2 px-2.5 py-1.5 text-[13px] rounded cursor-pointer outline-none select-none text-foreground hover:bg-muted data-[disabled]:text-muted-foreground data-[disabled]:cursor-not-allowed data-[disabled]:hover:bg-transparent"
           >
             Distribute Vertically
           </DropdownMenu.Item>

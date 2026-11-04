@@ -187,12 +187,12 @@ export function SubWorkflowCreationDialog({ open, onClose, onCreate, position }:
               <div className="flex-1">
                 <Label
                   htmlFor="mode-new"
-                  className={cn('flex items-center gap-2 cursor-pointer', creationMode === 'new' && 'text-blue-700')}
+                  className={cn('flex items-center gap-2 cursor-pointer', creationMode === 'new' && 'text-link')}
                 >
                   <FilePlus className="h-4 w-4" />
                   Create New Empty Workflow
                 </Label>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Creates a new workflow specification that you can edit.
                 </p>
                 {creationMode === 'new' && (
@@ -216,18 +216,18 @@ export function SubWorkflowCreationDialog({ open, onClose, onCreate, position }:
               <div className="flex-1">
                 <Label
                   htmlFor="mode-copy"
-                  className={cn('flex items-center gap-2 cursor-pointer', creationMode === 'copy' && 'text-blue-700')}
+                  className={cn('flex items-center gap-2 cursor-pointer', creationMode === 'copy' && 'text-link')}
                 >
                   <Copy className="h-4 w-4" />
                   Copy from Library Step
                 </Label>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Creates a new workflow by copying a step's content.
                 </p>
                 {creationMode === 'copy' && (
                   <div className="mt-2">
                     <StepLibraryPicker onSelect={handleStepSelect} selectedSpecId={selectedSpec?.id} />
-                    {selectedSpec && <p className="text-xs text-blue-600 mt-1">Selected: {selectedSpec.name}</p>}
+                    {selectedSpec && <p className="text-xs text-link mt-1">Selected: {selectedSpec.name}</p>}
                   </div>
                 )}
               </div>
@@ -239,15 +239,12 @@ export function SubWorkflowCreationDialog({ open, onClose, onCreate, position }:
               <div className="flex-1">
                 <Label
                   htmlFor="mode-reference"
-                  className={cn(
-                    'flex items-center gap-2 cursor-pointer',
-                    creationMode === 'reference' && 'text-blue-700',
-                  )}
+                  className={cn('flex items-center gap-2 cursor-pointer', creationMode === 'reference' && 'text-link')}
                 >
                   <Link2 className="h-4 w-4" />
                   Reference Library Step
                 </Label>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Links to an existing step. Changes to the step are reflected here.
                 </p>
                 {creationMode === 'reference' && (

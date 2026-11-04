@@ -52,7 +52,7 @@ export function EnvironmentDetail() {
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-xl font-semibold">{view.environmentSpec.name}</h1>
           <RequiresTooltip reason={canDelete ? undefined : 'Requires environment:delete'}>
-            <Button type="button" variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}
+            <Button type="button" variant="destructiveOutline" size="sm" onClick={() => setDeleteOpen(true)}
               disabled={!canDelete} title={canDelete ? undefined : 'Requires environment:delete'}>Delete</Button>
           </RequiresTooltip>
         </div>

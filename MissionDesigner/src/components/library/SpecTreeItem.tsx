@@ -14,6 +14,7 @@
 
 import { ArrowUpRight, ChevronDown, ChevronRight, FileText } from 'lucide-react'
 import { toast } from 'sonner'
+import { cn, treeRowClass, StateTag } from '@mission/ui'
 import { useSpecExpansion } from '@/hooks/useSpecExpansion'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { LibraryItemMenu } from './LibraryItemMenu'
@@ -112,10 +113,14 @@ export function SpecTreeItem({
     <div>
       <div
         data-testid="spec-tree-row"
-        className={`group flex items-center gap-1 ${paddingClass(depth)} py-1 rounded-md cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 ${
-          isSelected ? 'border-l-2 border-blue-600 bg-blue-50 dark:bg-blue-900/30' : ''
-        } ${dim ? 'opacity-50' : ''}`}
+        className={cn(
+          'group cursor-pointer',
+          treeRowClass({ selected: isSelected }),
+          paddingClass(depth),
+          dim && 'opacity-50',
+        )}
         onClick={() => setSelectedSpecification(node.id, libraryId)}
+        title={depth === 0 && node.version ? `${node.name} [${node.version}]` : node.name}
       >
         {hasChildren ? (
           <button
@@ -127,24 +132,22 @@ export function SpecTreeItem({
             }}
           >
             {isExpanded ? (
-              <ChevronDown className="h-3 w-3 text-slate-400" />
+              <ChevronDown className="h-3 w-3 text-muted-foreground" />
             ) : (
-              <ChevronRight className="h-3 w-3 text-slate-400" />
+              <ChevronRight className="h-3 w-3 text-muted-foreground" />
             )}
           </button>
         ) : (
-          <FileText className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+          <FileText className="h-3.5 w-3.5 text-muted-foreground" />
         )}
-        <div className="flex-1 min-w-0 flex flex-col">
-          <span className="text-xs truncate dark:text-slate-200" title={node.name}>
-            {node.name}
-          </span>
-          {depth === 0 && node.version && node.state && (
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-              <span>{`[${node.version}]`}</span> <span>{node.state}</span>
+        <span className="flex-1 min-w-0 text-xs truncate dark:text-foreground">{node.name}</span>
+        {depth === 0 && node.version && node.state && (
+          <>
+            <span className="shrink-0">
+              <StateTag state={node.state} />
             </span>
-          )}
-        </div>
+          </>
+        )}
         {depth === 0 && onDelete && onExportPDF && onChangeState && onCreateVersion && (
           <LibraryItemMenu
             canChangeState={caps.canChangeState}
@@ -178,12 +181,12 @@ export function SpecTreeItem({
             <div
               key={`ref-${ref.specId}`}
               data-testid="spec-tree-ref-row"
-              className={`group flex items-center gap-1 ${paddingClass(depth + 1)} py-1 rounded-md cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800`}
+              className={cn('group cursor-pointer', treeRowClass(), paddingClass(depth + 1))}
               onClick={() => toast.info('Referenced workflows are only editable from the Step Workflow library')}
               title={`In ${ref.libraryName}`}
             >
-              <ArrowUpRight className="h-3 w-3 text-slate-400 shrink-0" />
-              <span className="flex-1 text-xs italic truncate text-slate-500 dark:text-slate-400">{ref.specName}</span>
+              <ArrowUpRight className="h-3 w-3 text-muted-foreground shrink-0" />
+              <span className="flex-1 text-xs italic truncate text-muted-foreground">{ref.specName}</span>
             </div>
           ))}
         </div>

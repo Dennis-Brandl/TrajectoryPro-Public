@@ -18,6 +18,7 @@ import { test, expect } from '@playwright/test';
 import { bootstrapFirstAdmin, signIn } from './helpers/auth';
 import { ADMIN } from './helpers/db';
 import { workflowPackage } from './helpers/packages';
+import { openRail } from './helpers/rail';
 
 test('a work center type and a workflow type show in the hierarchy and on the detail pages', async ({ page, request }) => {
   await bootstrapFirstAdmin(request);
@@ -53,7 +54,7 @@ test('a work center type and a workflow type show in the hierarchy and on the de
   await page.getByRole('button', { name: 'Collapse E2E Line' }).click();
   await page.getByRole('button', { name: 'Expand E2E Line' }).click();
   await expect(page.getByRole('tree').getByText('E2E Clean Tank · Operation')).toBeVisible();
-  await page.getByRole('button', { name: 'Workflows' }).click(); // activity rail
+  await openRail(page, 'Workflows');
   const row = page.getByRole('button', { name: 'E2E Clean Tank v1.0.0 · Operation' });
   await expect(row).toBeVisible();
   await row.click();
@@ -61,7 +62,7 @@ test('a work center type and a workflow type show in the hierarchy and on the de
   await expect(page.getByText('Type: Operation')).toBeVisible();
 
   // 5. Clearing the work center type removes the suffix.
-  await page.getByRole('button', { name: 'Work Centers' }).click(); // activity rail
+  await openRail(page, 'Work Centers');
   await page.getByRole('button', { name: 'E2E Line · Production Line' }).click();
   await page.getByRole('button', { name: 'Edit' }).click();
   await expect(dialog).toBeVisible();

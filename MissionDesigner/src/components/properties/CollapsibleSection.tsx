@@ -55,9 +55,9 @@ interface CollapsibleSectionProps {
  */
 export function CollapsibleSection({ value, title, count, children }: CollapsibleSectionProps) {
   return (
-    <Accordion.Item value={value} className="border-b border-slate-200 dark:border-slate-700">
+    <Accordion.Item value={value} className="border-b border-border">
       <Accordion.Header>
-        <Accordion.Trigger className="text-gray-700 dark:text-slate-200" style={triggerStyle}>
+        <Accordion.Trigger className="text-foreground" style={triggerStyle}>
           {/* The title keeps its own element so text queries on the bare title still match
               when a count is appended (e.g. "INPUT PARAMETERS (3)"). */}
           <span>

@@ -25,7 +25,7 @@ export function CatchTriggeredBy({ triggers, onSelect }: Props) {
     <section className="mt-3 border-t pt-3">
       <h4 className="text-xs font-semibold text-muted-foreground">Triggered by ({triggers.length})</h4>
       {triggers.length === 0 ? (
-        <p className="mt-1 text-[10px] text-amber-600">Not referenced by any TRY</p>
+        <p className="mt-1 text-[11px] text-amber-600">Not referenced by any TRY</p>
       ) : (
         <ul role="list" className="mt-1 space-y-1">
           {triggers.map((t) => (
@@ -36,7 +36,7 @@ export function CatchTriggeredBy({ triggers, onSelect }: Props) {
                 className="flex w-full items-center justify-between rounded px-1 py-0.5 text-left text-xs hover:bg-muted"
               >
                 <span className="truncate">{t.stepLabel}</span>
-                <span className="ml-2 shrink-0 rounded bg-orange-100 px-1 text-[9px] font-mono text-orange-800">
+                <span className="ml-2 shrink-0 rounded bg-orange-100 px-1 text-[11px] font-mono text-orange-800">
                   ON {t.mode}
                 </span>
               </button>

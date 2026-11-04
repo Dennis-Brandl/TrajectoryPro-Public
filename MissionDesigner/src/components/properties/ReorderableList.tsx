@@ -96,7 +96,7 @@ function ReorderableListComponent<T extends ReorderableItem>({
         )}
       </div>
 
-      {items.length === 0 && <p className="text-xs text-slate-500 dark:text-slate-400 italic">{emptyMessage}</p>}
+      {items.length === 0 && <p className="text-xs text-muted-foreground italic">{emptyMessage}</p>}
 
       {items.map((item, index) => (
         <div key={item.id} className="flex gap-1 items-start">

@@ -21,6 +21,7 @@ import { HistoryPage } from '@/components/history/HistoryPage';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { PilotBrandingEditor } from '@/components/settings/pilot-branding/PilotBrandingEditor';
 import { RuntimeWorkflowDetail } from '@/components/runtime/RuntimeWorkflowDetail';
+import { EmptyDetail } from './EmptyDetail';
 
 // Switches the central detail on the active hierarchy + its selection. Each detail
 // component reads its own selected id from the store and owns its dialogs.
@@ -33,14 +34,14 @@ export function DetailPanel() {
   const selectedEnvironmentId = useSelectionStore((s) => s.selectedEnvironmentId);
   const selectedRuntimeWorkflowId = useSelectionStore((s) => s.selectedRuntimeWorkflowId);
 
-  if (activeHierarchy === 'user') return selectedUserId ? <UserDetail /> : <div className="p-4 text-sm text-muted-foreground">Select a user</div>;
-  if (activeHierarchy === 'role') return selectedRoleId ? <RoleDetail /> : <div className="p-4 text-sm text-muted-foreground">Select a role</div>;
-  if (activeHierarchy === 'work_center') return selectedWorkCenterId ? <WorkCenterDetail /> : <div className="p-4 text-sm text-muted-foreground">Select a work center in the tree, or create one.</div>;
-  if (activeHierarchy === 'workflow') return selectedWorkflowId ? <WorkflowDetail /> : <div className="p-4 text-sm text-muted-foreground">Select a workflow</div>;
-  if (activeHierarchy === 'environment') return selectedEnvironmentId ? <EnvironmentDetail /> : <div className="p-4 text-sm text-muted-foreground">Select an environment</div>;
+  if (activeHierarchy === 'user') return selectedUserId ? <UserDetail /> : <EmptyDetail message="Select a user" />;
+  if (activeHierarchy === 'role') return selectedRoleId ? <RoleDetail /> : <EmptyDetail message="Select a role" />;
+  if (activeHierarchy === 'work_center') return selectedWorkCenterId ? <WorkCenterDetail /> : <EmptyDetail message="Select a work center in the tree, or create one." />;
+  if (activeHierarchy === 'workflow') return selectedWorkflowId ? <WorkflowDetail /> : <EmptyDetail message="Select a workflow" />;
+  if (activeHierarchy === 'environment') return selectedEnvironmentId ? <EnvironmentDetail /> : <EmptyDetail message="Select an environment" />;
   // Runtime (spec 2026-08-27 §4.2/§4.3): RuntimeWorkflowDetail is store-driven (reads
   // selectedRuntimeWorkflowId itself) — this just gates on whether anything is selected.
-  if (activeHierarchy === 'runtime') return selectedRuntimeWorkflowId ? <RuntimeWorkflowDetail /> : <div className="p-4 text-sm text-muted-foreground">Select a runtime workflow</div>;
+  if (activeHierarchy === 'runtime') return selectedRuntimeWorkflowId ? <RuntimeWorkflowDetail /> : <EmptyDetail message="Select a runtime workflow" />;
   // History (Task 8) has no per-row selection to gate on — the page renders unconditionally,
   // owning its own filter/scope/pagination state (mirrors HistoryTab's per-work-center idiom).
   if (activeHierarchy === 'history') return <HistoryPage />;

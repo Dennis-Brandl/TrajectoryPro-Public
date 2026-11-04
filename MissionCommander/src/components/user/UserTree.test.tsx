@@ -46,6 +46,6 @@ describe('UserTree', () => {
   it('disables New user for a non-admin', async () => {
     usePrincipalStore.getState().setPrincipal({ id: 'v', email: '', loginName: 'admin', displayName: 'V', accessLevel: 'viewer', isAdministrator: false, rights: ['user:read'], missionSystemCommanderOf: [] });
     render(<UserTree onCreateUser={() => {}} />);
-    await waitFor(() => expect(screen.getByRole('button', { name: 'New user' })).toBeDisabled());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'New User' })).toBeDisabled());
   });
 });

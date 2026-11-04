@@ -17,6 +17,7 @@ import { useNavigate, useParams } from 'react-router'
 import { ChevronRight, ChevronDown, MoreHorizontal, Download, FileText, Trash2 } from 'lucide-react'
 import {
   cn,
+  treeRowClass,
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
@@ -124,7 +125,7 @@ export function EnvironmentNode({
   return (
     <div>
       <div
-        className="group flex items-center gap-1 px-2 py-0.5 cursor-pointer hover:bg-muted/50 text-xs"
+        className={cn('group cursor-pointer', treeRowClass({ depth: 0 }))}
         onClick={() => {
           setExpanded(!expanded)
           void navigate(`/environments/${oid}`)
@@ -133,7 +134,7 @@ export function EnvironmentNode({
         <Chevron size={12} className="text-muted-foreground shrink-0" />
         <span className="font-medium text-foreground truncate flex-1">{localId}</span>
         {!expanded && (
-          <span className="text-[10px] text-muted-foreground group-hover:hidden">
+          <span className="text-[11px] text-muted-foreground group-hover:hidden">
             {actionCount}
           </span>
         )}
@@ -169,7 +170,7 @@ export function EnvironmentNode({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="pl-5 pr-2 text-[10px] text-muted-foreground cursor-default">
+      <div className="pl-5 pr-2 text-[11px] text-muted-foreground cursor-default">
         [v{version}] imported {formatShortDate(lastModifiedDate)}
       </div>
       {expanded &&
@@ -220,8 +221,8 @@ function ActionNode({
     <div>
       <div
         className={cn(
-          'flex items-center gap-1 pl-5 pr-2 py-0.5 cursor-pointer hover:bg-muted/50 text-xs',
-          isSelected && !expanded && 'bg-primary/10 text-primary'
+          'cursor-pointer',
+          treeRowClass({ depth: 1, selected: isSelected && !expanded })
         )}
         onClick={() => {
           setExpanded(!expanded)
@@ -235,7 +236,7 @@ function ActionNode({
           {action.local_id}
         </span>
         {!expanded && (
-          <span className="ml-auto text-[10px] text-muted-foreground">
+          <span className="ml-auto text-[11px] text-muted-foreground">
             {action.states_with_code.length}
           </span>
         )}
@@ -270,10 +271,7 @@ function StateNode({
 
   return (
     <div
-      className={cn(
-        'flex items-center gap-1.5 pl-9 pr-2 py-0.5 cursor-pointer hover:bg-muted/50 text-xs',
-        isSelected && 'bg-primary/10 border-l-2 border-primary'
-      )}
+      className={cn('cursor-pointer', treeRowClass({ depth: 2, selected: isSelected }))}
       onClick={() => void navigate(`/actions/${actionOid}/code/${state}`)}
     >
       <span

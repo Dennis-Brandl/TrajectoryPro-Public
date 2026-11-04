@@ -49,6 +49,7 @@ import { test, expect, type Browser, type BrowserContext, type Page } from '@pla
 import { bootstrapFirstAdmin, signIn } from './helpers/auth';
 import { ADMIN, STEWARD, type DemoLogin } from './helpers/db';
 import { chainWorkflowPackage, chainReleaseWorkflowPackage, type FilePayload } from './helpers/packages';
+import { openRail } from './helpers/rail';
 
 const COCKPIT = 'http://localhost:3006';
 const WC_NAME = 'E2E Chain WC';
@@ -63,7 +64,7 @@ const REVIEWER_ROLE = 'E2E Reviewer';
 // WorkCenterDialog.tsx renders <input id="wc-auto-claim" type="checkbox"> labelled
 // "Auto-claim follow-on steps" (workflow.auto_claim stays null → inherits the WC's true).
 async function createAutoClaimWorkCenter(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Work Centers' }).click(); // activity rail
+  await openRail(page, 'Work Centers');
   await page.getByRole('button', { name: 'New work center' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();

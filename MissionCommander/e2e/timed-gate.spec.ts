@@ -21,12 +21,13 @@ import { test, expect, type Page } from '@playwright/test';
 import { bootstrapFirstAdmin, signIn } from './helpers/auth';
 import { ADMIN, STEWARD } from './helpers/db';
 import { timedGateWorkflowPackage, type FilePayload } from './helpers/packages';
+import { openRail } from './helpers/rail';
 
 const PILOT = 'http://localhost:3006';
 const WC_NAME = 'E2E Timed Gate WC';
 
 async function createWorkCenter(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Work Centers' }).click(); // activity rail
+  await openRail(page, 'Work Centers');
   await page.getByRole('button', { name: 'New work center' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();

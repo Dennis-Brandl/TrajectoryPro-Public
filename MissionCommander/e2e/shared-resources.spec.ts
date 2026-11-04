@@ -25,12 +25,13 @@ import { test, expect, type Page } from '@playwright/test';
 import { bootstrapFirstAdmin, signIn } from './helpers/auth';
 import { ADMIN } from './helpers/db';
 import { sharedResourceWorkflowPackage, type FilePayload } from './helpers/packages';
+import { openRail } from './helpers/rail';
 
 const WC_NAME = 'E2E Shared Resources WC';
 const WF_NAME = 'E2E Shared Resources Workflow';
 
 async function createWorkCenter(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Work Centers' }).click(); // activity rail
+  await openRail(page, 'Work Centers');
   await page.getByRole('button', { name: 'New work center' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
@@ -78,7 +79,7 @@ test('a commander releases a shared hold from the Environment pane; the waiter p
 
   // Environment → Resources: RW-1 holds Printer, RW-2 waits (chip forms per spec §6.3). The
   // engine needs a moment to start both — generous timeouts on the FIRST assertion only.
-  await page.getByRole('button', { name: 'Environments' }).click(); // activity rail
+  await openRail(page, 'Environments');
   await page.getByRole('button', { name: /E2E Shared Res Env v1\.0\.0/ }).click();
   await expect(page.getByRole('heading', { name: 'E2E Shared Res Env' })).toBeVisible();
   await page.getByRole('tab', { name: 'Resources' }).click();
@@ -137,7 +138,7 @@ test('a commander releases a shared hold from the Environment pane; the waiter p
   await expect(sizeRow.getByText(/Demo Administrator/)).toBeVisible();
 
   // …and the Environment pane's Value Properties tab agrees (one registry, spec U5).
-  await page.getByRole('button', { name: 'Environments' }).click();
+  await openRail(page, 'Environments');
   await page.getByRole('button', { name: /E2E Shared Res Env v1\.0\.0/ }).click();
   await page.getByRole('tab', { name: 'Value Properties' }).click();
   await expect(page.getByRole('row', { name: /^Size / }).getByText('7', { exact: true })).toBeVisible({ timeout: 15_000 });

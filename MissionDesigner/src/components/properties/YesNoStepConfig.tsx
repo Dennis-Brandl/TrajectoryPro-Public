@@ -36,16 +36,16 @@ function YesNoStepConfigComponent({ data, onChange, readOnly = false }: YesNoSte
   )
 
   return (
-    <div className="space-y-4 border-t border-slate-200 dark:border-slate-700 pt-3">
+    <div className="space-y-4 border-t border-border pt-3">
       <div className="flex items-center gap-2">
-        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
           Yes/No Configuration
         </span>
       </div>
 
       {/* Default Selection */}
-      <div className="space-y-1 border-t border-slate-100 dark:border-slate-800 pt-3">
-        <Label className="text-xs text-slate-500 dark:text-slate-400">Default Selection</Label>
+      <div className="space-y-1 border-t border-border pt-3">
+        <Label className="text-xs text-muted-foreground">Default Selection</Label>
         <Select
           value={data.yesNoDefaultSelection || 'none'}
           onValueChange={handleDefaultSelectionChange}
@@ -68,7 +68,7 @@ function YesNoStepConfigComponent({ data, onChange, readOnly = false }: YesNoSte
             </SelectItem>
           </SelectContent>
         </Select>
-        <p className="text-[10px] text-slate-400 dark:text-slate-500">Which option is selected by default at runtime</p>
+        <p className="text-[11px] text-muted-foreground">Which option is selected by default at runtime</p>
       </div>
     </div>
   )

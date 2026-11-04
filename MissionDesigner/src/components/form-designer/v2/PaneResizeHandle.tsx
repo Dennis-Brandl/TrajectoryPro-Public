@@ -59,7 +59,7 @@ export function PaneResizeHandle({ width, min, max, direction, onResize, label }
       aria-orientation="vertical"
       aria-label={label}
       onPointerDown={onPointerDown}
-      className="absolute inset-y-0 z-10 w-1.5 cursor-col-resize hover:bg-blue-400/50 active:bg-blue-500/60"
+      className="absolute inset-y-0 z-10 w-1.5 cursor-col-resize hover:bg-brand-accent/50 active:bg-brand-accent/60"
       style={{ [direction === 1 ? 'right' : 'left']: 0, touchAction: 'none' }}
     />
   )

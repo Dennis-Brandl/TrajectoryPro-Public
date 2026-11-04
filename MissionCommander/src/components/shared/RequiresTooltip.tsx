@@ -17,6 +17,7 @@ import type { ReactNode } from 'react';
 // `title` tooltip never shows. Wrap it here: hover passes THROUGH the disabled control to
 // this span, whose `title` renders. The control keeps its own title (a11y + tests); this is
 // additive. `inline-block` so the span hugs the control and the hover target matches.
-export function RequiresTooltip({ reason, children }: { reason: string | undefined; children: ReactNode }) {
-  return <span className="inline-block" title={reason}>{children}</span>;
+// Pass `block` when the control fills its row.
+export function RequiresTooltip({ reason, block, children }: { reason: string | undefined; block?: boolean; children: ReactNode }) {
+  return <span className={block ? 'block' : 'inline-block'} title={reason}>{children}</span>;
 }

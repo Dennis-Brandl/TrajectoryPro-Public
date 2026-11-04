@@ -18,9 +18,9 @@ import { ColorPickerField } from '../shared/ColorPickerField'
 import { DeviceSizeField } from '../shared/DeviceSizeField'
 
 const JOBS: ButtonJob[] = ['continue', 'yes', 'no']
-const labelCls = 'text-gray-500 dark:text-gray-400'
+const labelCls = 'text-muted-foreground'
 const labelSt: React.CSSProperties = { fontSize: 11, display: 'block', marginBottom: 2 }
-const inputCls = 'bg-white dark:bg-slate-900 border border-gray-300 dark:border-gray-600'
+const inputCls = 'bg-background border border-border'
 const inputSt: React.CSSProperties = { width: '100%', fontSize: 13, padding: '4px 8px', borderRadius: 4 }
 const field: React.CSSProperties = { marginBottom: 10 }
 
@@ -119,7 +119,7 @@ export function ButtonSection({ block, onUpdate }: { block: Block; onUpdate: (pa
               aria-label={val === 'primary' ? 'Primary' : 'Secondary'}
               aria-pressed={active}
               onClick={() => onUpdate({ emphasis: val } as Partial<Block>)}
-              className={`border border-gray-300 dark:border-gray-600 ${active ? 'bg-blue-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200'}`}
+              className={`border border-border ${active ? 'bg-brand-accent text-white' : 'bg-muted text-foreground'}`}
               style={{
                 flex: 1,
                 fontSize: 12,

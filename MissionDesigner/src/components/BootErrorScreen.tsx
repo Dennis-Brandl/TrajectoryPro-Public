@@ -47,13 +47,11 @@ export function BootErrorScreen({ detail, onRetry, onSignOut }: BootErrorScreenP
   }
 
   return (
-    <div className="h-screen w-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
-      <div className="max-w-md w-full mx-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-        <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-          Mission Designer can't load your account right now.
-        </h1>
-        {detail && <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{detail}</p>}
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+    <div className="h-screen w-screen flex items-center justify-center bg-side-panel">
+      <div className="max-w-md w-full mx-4 rounded-lg border border-border bg-card p-6 shadow-sm">
+        <h1 className="text-lg font-semibold text-foreground">Mission Designer can't load your account right now.</h1>
+        {detail && <p className="mt-2 text-sm text-muted-foreground">{detail}</p>}
+        <p className="mt-2 text-sm text-muted-foreground">
           Press Retry. If it keeps failing, check that the server is running, or sign out and sign in again.
         </p>
         <div className="mt-4 flex gap-2">
@@ -64,9 +62,7 @@ export function BootErrorScreen({ detail, onRetry, onSignOut }: BootErrorScreenP
             Sign out
           </Button>
         </div>
-        {failedAt && (
-          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{`Still failing (checked at ${failedAt}).`}</p>
-        )}
+        {failedAt && <p className="mt-3 text-sm text-muted-foreground">{`Still failing (checked at ${failedAt}).`}</p>}
       </div>
     </div>
   )

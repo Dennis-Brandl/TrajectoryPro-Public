@@ -69,10 +69,10 @@ export function LibraryDetailView() {
 
   if (!selectedLibraryId || !selectedLibrary) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+      <div className="flex-1 flex items-center justify-center bg-side-panel">
         <div className="text-center">
-          <Library className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-500 dark:text-slate-400">Select a library to view details</p>
+          <Library className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground">Select a library to view details</p>
         </div>
       </div>
     )
@@ -141,12 +141,12 @@ export function LibraryDetailView() {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-slate-900">
+    <div className="flex-1 flex flex-col bg-background">
       {/* Header */}
-      <div className="h-12 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4">
+      <div className="h-12 border-b border-border flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
-          <Library className="h-5 w-5 text-blue-500" />
-          <span className="font-medium text-slate-700 dark:text-slate-200">{selectedLibrary.name}</span>
+          <Library className="h-5 w-5 text-link" />
+          <span className="font-medium text-foreground">{selectedLibrary.name}</span>
         </div>
         <VersionBadge version={version} onBump={handleVersionBump} />
         <div className="flex items-center gap-2">
@@ -179,7 +179,7 @@ export function LibraryDetailView() {
         <div data-testid="library-detail-view" className="max-w-2xl space-y-6">
           {/* Library Description */}
           <div className="space-y-2">
-            <Label htmlFor="description" className="text-sm font-medium text-slate-700 dark:text-slate-200">
+            <Label htmlFor="description" className="text-sm font-medium text-foreground">
               Library Description
             </Label>
             <Textarea
@@ -194,10 +194,8 @@ export function LibraryDetailView() {
           {/* Environment Libraries (only for workflow and step libraries) */}
           {showEnvironmentAssociation && (
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                Associated Environment Libraries
-              </Label>
-              <p className="text-xs text-slate-500">
+              <Label className="text-sm font-medium text-foreground">Associated Environment Libraries</Label>
+              <p className="text-xs text-muted-foreground">
                 Select environment libraries that provide context for this {selectedLibrary.entityType}.
               </p>
 
@@ -244,18 +242,18 @@ export function LibraryDetailView() {
                   </SelectContent>
                 </Select>
               ) : environmentLibraryIds.length === 0 ? (
-                <p className="text-sm text-slate-400 italic">
+                <p className="text-sm text-muted-foreground italic">
                   No environment libraries available. Create one in the Environment tab.
                 </p>
               ) : (
-                <p className="text-sm text-slate-400 italic">All environment libraries have been added.</p>
+                <p className="text-sm text-muted-foreground italic">All environment libraries have been added.</p>
               )}
             </div>
           )}
 
           {/* Author */}
           <div className="space-y-2">
-            <Label htmlFor="author" className="text-sm font-medium text-slate-700 dark:text-slate-200">
+            <Label htmlFor="author" className="text-sm font-medium text-foreground">
               Author
             </Label>
             <Input
@@ -269,7 +267,7 @@ export function LibraryDetailView() {
 
           {/* Version History */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">Version History</Label>
+            <Label className="text-sm font-medium text-foreground">Version History</Label>
             {(() => {
               const history = parseVersionHistory(changeHistory)
               if (history.length === 0) {

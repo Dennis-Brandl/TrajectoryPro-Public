@@ -134,7 +134,7 @@ export function TeamsTab() {
     <>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Teams</h2>
+          <h2 className="text-lg font-semibold text-foreground">Teams</h2>
           <Button size="sm" onClick={openCreate}>
             <Plus className="h-4 w-4 mr-2" />
             New Team
@@ -157,9 +157,7 @@ export function TeamsTab() {
                 onClick={() => setSelectedTeamId(team.id === selectedTeamId ? null : team.id)}
                 className={cn(
                   'flex items-center gap-3 rounded-md border px-3 py-2 cursor-pointer',
-                  team.id === selectedTeamId
-                    ? 'border-blue-400 dark:border-blue-600 bg-blue-50 dark:bg-blue-950/30'
-                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900',
+                  team.id === selectedTeamId ? 'border-brand-accent bg-selection' : 'border-border bg-background',
                 )}
               >
                 <div className="min-w-0 flex-1">

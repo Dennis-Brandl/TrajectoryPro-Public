@@ -379,7 +379,7 @@ export function NotationSymbol({ type, notation }: { type: NodeType; notation: N
   }
 
   // Fallback
-  return <div className="w-6 h-6 bg-slate-300 rounded" />
+  return <div className="w-6 h-6 bg-muted rounded" />
 }
 
 /** Default label for a node type (matches FlowCanvas.getDefaultLabel). */
@@ -476,16 +476,16 @@ export const StepPalette = memo(function StepPalette() {
   if (collapsed) {
     return (
       <div
-        className="shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 flex flex-col overflow-y-auto"
+        className="shrink-0 bg-background border-r border-border flex flex-col overflow-y-auto"
         style={{ width: 40 }}
       >
         {/* Expand toggle */}
         <button
           onClick={() => setCollapsed(false)}
-          className="flex items-center justify-center py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-b border-slate-200 dark:border-slate-700"
+          className="flex items-center justify-center py-1.5 hover:bg-muted transition-colors border-b border-border"
           title="Expand Step Palette"
         >
-          <ChevronRight className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </button>
 
         {/* Step types - icon only */}
@@ -498,7 +498,7 @@ export const StepPalette = memo(function StepPalette() {
             onDragStart={canEdit ? (event) => onDragStart(event, type) : undefined}
             onClick={() => handleClickAdd(type)}
             aria-disabled={!canEdit}
-            className={`flex items-center justify-center py-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${canEdit ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed opacity-50'}`}
+            className={`flex items-center justify-center py-1.5 rounded hover:bg-muted transition-colors ${canEdit ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed opacity-50'}`}
             title={label}
           >
             <NotationSymbol type={type} notation={notation} />
@@ -509,20 +509,20 @@ export const StepPalette = memo(function StepPalette() {
   }
 
   return (
-    <div className="w-fit shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 p-2 overflow-y-auto">
-      <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1 px-1 flex items-center">
+    <div className="w-fit shrink-0 bg-background border-r border-border p-2 overflow-y-auto">
+      <h2 className="text-sm font-semibold text-foreground mb-1 px-1 flex items-center">
         <span className="flex-1">
           Step Types
-          <span className="text-xs font-normal text-slate-500 dark:text-slate-400 ml-2">
+          <span className="text-xs font-normal text-muted-foreground ml-2">
             ({notation === 'bpmn' ? 'BPMN' : notation === 'isa88' ? 'ISA 88' : 'Flowchart'})
           </span>
         </span>
         <button
           onClick={() => setCollapsed(true)}
-          className="p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          className="p-0.5 rounded hover:bg-muted transition-colors"
           title="Collapse Step Palette"
         >
-          <ChevronLeft className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+          <ChevronLeft className="h-4 w-4 text-muted-foreground" />
         </button>
       </h2>
       <div>
@@ -536,7 +536,7 @@ export const StepPalette = memo(function StepPalette() {
             onDragStart={canEdit ? (event) => onDragStart(event, type) : undefined}
             onClick={() => handleClickAdd(type)}
             aria-disabled={!canEdit}
-            className={`flex items-center gap-2 py-1.5 px-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${canEdit ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed opacity-50'}`}
+            className={`flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted transition-colors ${canEdit ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed opacity-50'}`}
             title={
               type === 'userInteractionStep'
                 ? 'Display a custom form to the user with text, inputs, images, and buttons'
@@ -549,11 +549,11 @@ export const StepPalette = memo(function StepPalette() {
                     : undefined
             }
           >
-            <GripVertical className="size-3 text-slate-300 dark:text-slate-600 shrink-0" />
+            <GripVertical className="size-3 text-muted-foreground shrink-0" />
             <div className="w-7 h-6 flex items-center justify-center">
               <NotationSymbol type={type} notation={notation} />
             </div>
-            <span className="text-sm text-slate-700 dark:text-slate-200">{label}</span>
+            <span className="text-sm text-foreground">{label}</span>
           </div>
         ))}
       </div>

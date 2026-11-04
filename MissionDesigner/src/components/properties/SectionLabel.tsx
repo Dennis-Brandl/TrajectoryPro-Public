@@ -13,5 +13,5 @@
 // limitations under the License.
 
 export function SectionLabel({ label }: { label: string }) {
-  return <div className="text-xs font-bold text-slate-500 dark:text-slate-400">{label}</div>
+  return <div className="text-xs font-bold text-muted-foreground">{label}</div>
 }

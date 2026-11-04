@@ -1,0 +1,62 @@
+{
+  "status-ok": {
+    "$value": "#4ade80",
+    "$type": "color"
+  },
+  "status-ok-bg": {
+    "$value": "#052e16",
+    "$type": "color"
+  },
+  "status-ok-fg": {
+    "$value": "#bbf7d0",
+    "$type": "color"
+  },
+  "status-warn": {
+    "$value": "#fbbf24",
+    "$type": "color"
+  },
+  "status-warn-bg": {
+    "$value": "#3a2a06",
+    "$type": "color"
+  },
+  "status-warn-fg": {
+    "$value": "#fde68a",
+    "$type": "color"
+  },
+  "status-alarm": {
+    "$value": "#f87171",
+    "$type": "color"
+  },
+  "status-alarm-bg": {
+    "$value": "#3b0d0d",
+    "$type": "color"
+  },
+  "status-alarm-fg": {
+    "$value": "#fecaca",
+    "$type": "color"
+  },
+  "status-info": {
+    "$value": "#60a5fa",
+    "$type": "color"
+  },
+  "status-info-bg": {
+    "$value": "#0c1f3f",
+    "$type": "color"
+  },
+  "status-info-fg": {
+    "$value": "#bfdbfe",
+    "$type": "color"
+  },
+  "status-paused": {
+    "$value": "#facc15",
+    "$type": "color"
+  },
+  "status-paused-bg": {
+    "$value": "#3a3005",
+    "$type": "color"
+  },
+  "status-paused-fg": {
+    "$value": "#fef08a",
+    "$type": "color"
+  }
+}

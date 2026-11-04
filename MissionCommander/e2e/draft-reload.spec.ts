@@ -20,6 +20,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { bootstrapFirstAdmin, signIn } from './helpers/auth';
 import { ADMIN } from './helpers/db';
 import type { FilePayload } from './helpers/packages';
+import { openRail } from './helpers/rail';
 
 /** A Draft workflow with one named middle step. Same oid + version + state across builds. */
 function draftPackage(stepName: string): FilePayload {
@@ -43,7 +44,7 @@ function draftPackage(stepName: string): FilePayload {
 }
 
 async function createWorkCenter(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Work Centers' }).click();
+  await openRail(page, 'Work Centers');
   await page.getByRole('button', { name: 'New work center' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
@@ -81,7 +82,7 @@ test('re-loading a changed Draft workflow replaces it', async ({ page, request }
   await expect(page.getByRole('cell', { name: 'E2E Draft Reload', exact: true })).toHaveCount(1);
 
   // Its detail shows the renamed step, not the old one.
-  await page.getByRole('button', { name: 'Workflows' }).click(); // activity rail
+  await openRail(page, 'Workflows');
   await expect(page.getByRole('button', { name: /E2E Draft Reload v1\.0\.0/ })).toHaveCount(1);
   await page.getByRole('button', { name: /E2E Draft Reload v1\.0\.0/ }).click();
   await page.getByRole('tab', { name: 'Diagram' }).click();

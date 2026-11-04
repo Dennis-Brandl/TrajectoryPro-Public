@@ -39,10 +39,7 @@ export function AppearanceSection({ block, onUpdate }: { block: Block; onUpdate:
       )}
       {isDivider && (
         <div style={field}>
-          <span
-            className="text-gray-500 dark:text-gray-400"
-            style={{ fontSize: 11, display: 'block', marginBottom: 2 }}
-          >
+          <span className="text-muted-foreground" style={{ fontSize: 11, display: 'block', marginBottom: 2 }}>
             Color
           </span>
           <ColorPickerField color={color} onChange={(c) => onUpdate({ color: c } as Partial<Block>)} />
@@ -52,7 +49,7 @@ export function AppearanceSection({ block, onUpdate }: { block: Block; onUpdate:
         <div style={field}>
           <label
             htmlFor="tfk-weight"
-            className="text-gray-500 dark:text-gray-400"
+            className="text-muted-foreground"
             style={{ fontSize: 11, display: 'block', marginBottom: 2 }}
           >
             Weight
@@ -61,7 +58,7 @@ export function AppearanceSection({ block, onUpdate }: { block: Block; onUpdate:
             id="tfk-weight"
             value={(block as { weight?: string }).weight ?? 'hairline'}
             onChange={(e) => onUpdate({ weight: e.target.value } as Partial<Block>)}
-            className="bg-white dark:bg-slate-900 border border-gray-300 dark:border-gray-600"
+            className="bg-background border border-border"
             style={{ width: '100%', fontSize: 13, padding: '4px 8px', borderRadius: 4 }}
           >
             <option value="hairline">Hairline</option>

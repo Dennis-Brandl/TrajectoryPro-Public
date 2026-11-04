@@ -67,7 +67,7 @@ export function CreateAdminStep({ onCreated }: { onCreated: () => void }) {
   if (created) {
     return (
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Administrator created</h2>
+        <h2 className="text-lg font-semibold text-foreground">Administrator created</h2>
         <p className="text-sm text-muted-foreground">
           The administrator account is ready. You can add more administrators now, or continue.
         </p>
@@ -99,7 +99,7 @@ export function CreateAdminStep({ onCreated }: { onCreated: () => void }) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Create the administrator account</h2>
+      <h2 className="text-lg font-semibold text-foreground">Create the administrator account</h2>
       <p className="text-sm text-muted-foreground">This account is created as an administrator.</p>
       <div className="space-y-2">
         <Label htmlFor="name">Name</Label>

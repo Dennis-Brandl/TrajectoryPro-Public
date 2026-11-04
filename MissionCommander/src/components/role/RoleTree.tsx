@@ -17,7 +17,8 @@ import { apiErrorMessage } from '@/lib/api/client';
 import type { Role } from '@/lib/api/types';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useHasRight } from '@/stores/principalStore';
-import { cn } from '@/lib/utils';
+import { Plus } from 'lucide-react';
+import { Button, cn, treeRowClass, PaneLabel } from '@mission/ui';
 import { RequiresTooltip } from '@/components/shared/RequiresTooltip';
 
 let refreshHandler: (() => void) | null = null;
@@ -43,21 +44,22 @@ export function RoleTree({ onCreateRole }: { onCreateRole: () => void }) {
   useEffect(() => { refreshHandler = load; return () => { refreshHandler = null; }; }, [load]);
 
   return (
-    <div className="flex flex-col gap-1 p-2">
-      <div className="flex items-center justify-between px-2 py-1">
-        <span className="text-sm font-medium text-muted-foreground">Roles</span>
-        <RequiresTooltip reason={canCreate ? undefined : 'Requires role:create'}>
-          <button type="button" aria-label="New role" onClick={onCreateRole} disabled={!canCreate}
-            title={canCreate ? undefined : 'Requires role:create'}
-            className="flex size-6 items-center justify-center rounded hover:bg-accent disabled:pointer-events-none disabled:opacity-50">＋</button>
+    <div className="flex flex-col">
+      <PaneLabel>Roles</PaneLabel>
+      <div className="border-b border-border p-2">
+        <RequiresTooltip block reason={canCreate ? undefined : 'Requires role:create'}>
+          <Button variant="outline" size="sm" className="w-full" onClick={onCreateRole} disabled={!canCreate}
+            title={canCreate ? undefined : 'Requires role:create'}>
+            <Plus className="h-4 w-4" />
+            New Role
+          </Button>
         </RequiresTooltip>
       </div>
       {loadError && <div className="px-2 text-sm text-destructive">{loadError}</div>}
       <div role="list">
         {items.map((r) => (
           <button key={r.id} type="button" onClick={() => selectRole(r.id)}
-            className={cn('flex w-full truncate rounded px-2 py-1 text-left text-sm',
-              selectedRoleId === r.id ? 'bg-accent text-accent-foreground' : 'hover:bg-accent')}>
+            className={cn(treeRowClass({ selected: selectedRoleId === r.id }), 'w-full truncate text-left')}>
             {r.name}
           </button>
         ))}

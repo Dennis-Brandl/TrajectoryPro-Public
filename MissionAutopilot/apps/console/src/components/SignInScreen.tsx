@@ -13,10 +13,13 @@
 // limitations under the License.
 
 import { useState } from 'react'
-import { Button, Input, Label } from '@mission/ui'
+import { Button, Input, Label, SignInFrame } from '@mission/ui'
 import { setApiKey } from '@/lib/apiKey'
 
 export const REJECTED = 'That key was not accepted. Check ACTIONS_API_KEY in .env.'
+const DESCRIPTION =
+  'Execution system for Environment Actions, with code written in Python. ' +
+  'Supports Opaque and Observable actions, with execution logs and Action Instance visibility.'
 const NOT_RESPONDING = 'Mission Autopilot is not responding. Check that its server is running.'
 
 export function SignInScreen({
@@ -53,16 +56,18 @@ export function SignInScreen({
   }
 
   return (
-    <div className="fixed inset-0 min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-slate-900 via-slate-950 to-black">
+    <SignInFrame
+      splashSrc="/MissionAutopilotSplashScreen.png"
+      splashAlt="Mission Autopilot"
+      description={DESCRIPTION}
+    >
       <form
         onSubmit={(e) => void submit(e)}
-        className="w-full max-w-md space-y-4 rounded-2xl border border-amber-500/20 bg-slate-900/85 p-8 shadow-2xl"
+        className="w-80 space-y-4 rounded-[10px] border border-border p-6"
       >
-        <h1 className="text-xl font-semibold text-slate-100">Sign in to Mission Autopilot</h1>
+        <h1 className="text-lg font-semibold">Sign in</h1>
         <div className="space-y-1.5">
-          <Label htmlFor="api-key" className="text-slate-200">
-            API key
-          </Label>
+          <Label htmlFor="api-key">API key</Label>
           <Input
             id="api-key"
             type="password"
@@ -71,19 +76,19 @@ export function SignInScreen({
             autoComplete="off"
             autoFocus
           />
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted-foreground">
             The key is ACTIONS_API_KEY in the .env file next to docker-compose.yml.
           </p>
         </div>
         {error && (
-          <p role="alert" className="text-sm text-red-400">
+          <p role="alert" className="text-sm text-destructive">
             {error}
           </p>
         )}
-        <Button type="submit" disabled={checking || key.trim() === ''}>
+        <Button type="submit" className="w-full" disabled={checking || key.trim() === ''}>
           Sign in
         </Button>
       </form>
-    </div>
+    </SignInFrame>
   )
 }

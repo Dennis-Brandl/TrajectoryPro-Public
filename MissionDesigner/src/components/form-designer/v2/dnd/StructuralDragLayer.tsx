@@ -82,7 +82,7 @@ function Grip({
         justifyContent: 'center',
         padding: 0,
         border: 'none',
-        background: '#1e293b',
+        background: '#262626',
         color: '#fff',
         borderRadius: 4,
         boxShadow: '0 1px 3px rgba(0,0,0,0.3)',

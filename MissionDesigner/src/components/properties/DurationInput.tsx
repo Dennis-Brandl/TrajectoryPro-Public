@@ -54,7 +54,7 @@ export function DurationInput({
     <div className="space-y-1">
       <div className="flex gap-1">
         {FIELDS.map((f) => (
-          <label key={f.key} className="flex items-center gap-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <label key={f.key} className="flex items-center gap-0.5 text-xs text-muted-foreground">
             <Input
               id={`${idPrefix}-${f.key}`}
               aria-label={f.label}
@@ -70,13 +70,13 @@ export function DurationInput({
         ))}
       </div>
       {total < 1 && emptyText ? (
-        <p className="text-xs text-slate-500 dark:text-slate-400">{emptyText}</p>
+        <p className="text-xs text-muted-foreground">{emptyText}</p>
       ) : total < 1 ? (
         <p className="text-xs text-red-600 dark:text-red-400">Enter a delay</p>
       ) : total > MAX_DELAY_SECONDS ? (
         <p className="text-xs text-red-600 dark:text-red-400">Longer than 52 weeks</p>
       ) : (
-        <p className="text-xs text-slate-500 dark:text-slate-400">Total: {formatDuration(total)}</p>
+        <p className="text-xs text-muted-foreground">Total: {formatDuration(total)}</p>
       )}
     </div>
   )

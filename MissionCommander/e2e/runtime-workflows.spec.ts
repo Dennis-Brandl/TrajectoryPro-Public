@@ -33,6 +33,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { bootstrapFirstAdmin, signIn } from './helpers/auth';
 import { ADMIN } from './helpers/db';
 import { machineWorkflowPackage, type FilePayload } from './helpers/packages';
+import { openRail } from './helpers/rail';
 
 const WC_NAME = 'E2E Runtime WC';
 const WF_NAME = 'E2E Runtime Workflow';
@@ -47,7 +48,7 @@ const RW_VIEWER = {
 };
 
 async function createWorkCenter(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Work Centers' }).click(); // activity rail
+  await openRail(page, 'Work Centers');
   await page.getByRole('button', { name: 'New work center' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
@@ -62,7 +63,7 @@ async function createWorkCenter(page: Page, name: string) {
 // carries no aria-label — its accessible name is just node.name — so `exact: true` is
 // load-bearing: without it this would also match "New child of {name}"/"Expand {name}".
 async function selectWorkCenter(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Work Centers' }).click(); // activity rail
+  await openRail(page, 'Work Centers');
   await page.getByRole('button', { name, exact: true }).click();
   await expect(page.getByRole('heading', { name })).toBeVisible();
 }
@@ -217,7 +218,7 @@ test('a non-commander sees runtime workflows read-only', async ({ page, request 
   // Create the viewer login (Users hierarchy → New user; mirrors users-roles.spec.ts).
   // accessLevel defaults to viewer — leave it; missionSystemCommander is a per-work-center flag
   // orthogonal to access tier, which is exactly the distinction this leg exercises.
-  await page.getByRole('button', { name: 'Users' }).click();
+  await openRail(page, 'Users');
   await page.getByRole('button', { name: 'New user' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();

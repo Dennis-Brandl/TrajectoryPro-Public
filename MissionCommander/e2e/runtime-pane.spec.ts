@@ -24,13 +24,14 @@ import { test, expect, type Page } from '@playwright/test';
 import { bootstrapFirstAdmin, signIn } from './helpers/auth';
 import { ADMIN, STEWARD } from './helpers/db';
 import { uiWorkflowPackage, type FilePayload } from './helpers/packages';
+import { openRail } from './helpers/rail';
 
 const COCKPIT = 'http://localhost:3006';
 const WC_NAME = 'E2E Runtime Pane WC';
 const WF_NAME = 'E2E Runtime Pane Workflow';
 
 async function createWorkCenter(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Work Centers' }).click(); // activity rail
+  await openRail(page, 'Work Centers');
   await page.getByRole('button', { name: 'New work center' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
@@ -80,7 +81,7 @@ test('runtime pane: tree → live diagram → pause/resume → assign → cockpi
   await expect(createDialog).toBeHidden();
 
   // The new rail section: tree shows the WC with the active leaf; select it.
-  await page.getByRole('button', { name: 'Runtime', exact: true }).click();
+  await openRail(page, 'Runtime');
   await expect(page.getByText(WC_NAME)).toBeVisible();
   const leaf = page.getByRole('button', { name: new RegExp(`RW-1 · ${WF_NAME}`) });
   await expect(leaf).toBeVisible({ timeout: 30_000 }); // engine picks the queued row up

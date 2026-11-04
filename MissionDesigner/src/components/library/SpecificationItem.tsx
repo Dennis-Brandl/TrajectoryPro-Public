@@ -14,6 +14,7 @@
 
 import { useEffect, useState } from 'react'
 import { FileText, ChevronRight, ChevronDown } from 'lucide-react'
+import { cn, treeRowClass, StateTag } from '@mission/ui'
 import type { Library, Specification } from '@/types/library'
 import { LibraryItemMenu } from './LibraryItemMenu'
 import { useSpecificationStore } from '@/stores/specificationStore'
@@ -41,8 +42,8 @@ export interface SpecificationItemProps {
 
 /**
  * Specification item for the library sidebar.
- * Displays the spec name with `[version] state` on a sub-line beneath it,
- * matching the SpecTreeItem layout used by hierarchies that have a specTree.
+ * One line: the spec name, then a state tag. The name truncates;
+ * the row's title carries the full name and `[version]`.
  */
 export function SpecificationItem({
   spec,
@@ -80,34 +81,34 @@ export function SpecificationItem({
   return (
     <div>
       <div
-        className={`group flex items-center gap-1 px-2 py-1 rounded-md cursor-grab active:cursor-grabbing hover:bg-slate-100 dark:hover:bg-slate-800 ${
-          selectedSpecificationId === spec.id ? 'border-l-2 border-blue-600 bg-blue-50 dark:bg-blue-900/30' : ''
-        }`}
+        className={cn(
+          'group cursor-grab active:cursor-grabbing',
+          treeRowClass({ selected: selectedSpecificationId === spec.id }),
+        )}
         onClick={() => onSelect(spec.id)}
+        title={spec.version ? `${spec.name} [${spec.version}]` : spec.name}
         draggable
         onDragStart={(e) => onDragStart(e, spec)}
       >
         {hasChildren ? (
           <button onClick={handleToggle} className="p-0 shrink-0">
             {expanded ? (
-              <ChevronDown className="h-3 w-3 text-slate-400" />
+              <ChevronDown className="h-3 w-3 text-muted-foreground" />
             ) : (
-              <ChevronRight className="h-3 w-3 text-slate-400" />
+              <ChevronRight className="h-3 w-3 text-muted-foreground" />
             )}
           </button>
         ) : (
-          <FileText className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+          <FileText className="h-3.5 w-3.5 text-muted-foreground" />
         )}
-        <div className="flex-1 min-w-0 flex flex-col">
-          <span className="text-xs truncate dark:text-slate-200" title={spec.name}>
-            {spec.name}
-          </span>
-          {spec.version && spec.state && (
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-              <span>{`[${spec.version}]`}</span> <span>{spec.state}</span>
+        <span className="flex-1 min-w-0 text-xs truncate dark:text-foreground">{spec.name}</span>
+        {spec.version && spec.state && (
+          <>
+            <span className="shrink-0">
+              <StateTag state={spec.state} />
             </span>
-          )}
-        </div>
+          </>
+        )}
         <LibraryItemMenu
           canChangeState={caps.canChangeState}
           canCreateVersion={caps.canCreateVersion}
@@ -124,7 +125,7 @@ export function SpecificationItem({
         />
       </div>
       {expanded && hasChildren && (
-        <div className="ml-4 border-l border-slate-200 dark:border-slate-700 pl-2">
+        <div className="ml-4 border-l border-border pl-2">
           {directChildren.map((child) => (
             <ChildSpecItem key={child.id} child={child} depth={1} libraryId={libraryId} onNavigate={onSelect} />
           ))}
@@ -160,27 +161,24 @@ function ChildSpecItem({
 
   return (
     <div>
-      <div
-        className="group flex items-center gap-1 px-2 py-0.5 rounded-md cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800"
-        onDoubleClick={handleDoubleClick}
-      >
+      <div className={cn('group cursor-pointer', treeRowClass({ depth: 1 }))} onDoubleClick={handleDoubleClick}>
         {hasNested ? (
           <button onClick={() => setExpanded(!expanded)} className="p-0 shrink-0">
             {expanded ? (
-              <ChevronDown className="h-3 w-3 text-slate-400" />
+              <ChevronDown className="h-3 w-3 text-muted-foreground" />
             ) : (
-              <ChevronRight className="h-3 w-3 text-slate-400" />
+              <ChevronRight className="h-3 w-3 text-muted-foreground" />
             )}
           </button>
         ) : (
-          <FileText className="h-3 w-3 text-slate-400 dark:text-slate-500" />
+          <FileText className="h-3 w-3 text-muted-foreground" />
         )}
-        <span className="flex-1 text-xs truncate text-slate-500 dark:text-slate-400" title={child.name}>
+        <span className="flex-1 text-xs truncate text-muted-foreground" title={child.name}>
           {child.name}
         </span>
       </div>
       {expanded && hasNested && (
-        <div className="ml-4 border-l border-slate-200 dark:border-slate-700 pl-2">
+        <div className="ml-4 border-l border-border pl-2">
           {nestedChildren.map((nested) => (
             <ChildSpecItem
               key={nested.id}

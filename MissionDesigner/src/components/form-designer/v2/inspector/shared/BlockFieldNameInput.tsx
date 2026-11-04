@@ -28,14 +28,14 @@ export function BlockFieldNameInput({ value, blockId, allBlocks, onUpdate }: Pro
   )
   return (
     <div>
-      <span className="text-gray-500 dark:text-gray-400" style={{ fontSize: 11, display: 'block', marginBottom: 2 }}>
+      <span className="text-muted-foreground" style={{ fontSize: 11, display: 'block', marginBottom: 2 }}>
         Field Name
       </span>
       <input
         type="text"
         value={value}
         onChange={(e) => onUpdate({ fieldName: e.target.value })}
-        className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
+        className="bg-background text-foreground border border-border"
         style={{
           width: '100%',
           fontSize: 13,

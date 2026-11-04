@@ -94,7 +94,7 @@ export default function TestPanel({
                   placeholder={param.default_value ?? ''}
                 />
                 {param.description && (
-                  <p className="text-[10px] text-muted-foreground leading-tight">
+                  <p className="text-[11px] text-muted-foreground leading-tight">
                     {param.description}
                   </p>
                 )}

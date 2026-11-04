@@ -17,6 +17,7 @@ import { CURRENT_DATA_SCHEMA_VERSION } from '../src/lib/data-schema-version'
 import { openDb, closeDb } from './helpers/db'
 import { loadAdminState, ADMIN_STORAGE_STATE } from './helpers/session'
 import { LIBRARY_NAMES, SUB_LIBRARY_NAME, workflowName, childName } from './helpers/fixtures'
+import { openRail } from './helpers/rail'
 
 /**
  * End-to-end lifecycle test for Step Libraries and Step Workflows.
@@ -79,7 +80,9 @@ test.describe.serial('Step Library & Step Workflow E2E', () => {
 
     // Navigate to the root — we should land on the main editor authenticated.
     await sharedPage.goto('/')
-    await expect(sharedPage.getByRole('tab', { name: 'Steps' })).toBeVisible({ timeout: 10_000 })
+    await expect(sharedPage.getByRole('button', { name: 'Step Libraries', exact: true })).toBeVisible({
+      timeout: 10_000,
+    })
   })
 
   test.afterAll(async () => {
@@ -91,7 +94,7 @@ test.describe.serial('Step Library & Step Workflow E2E', () => {
   test('Phase A1: create 3 step libraries', async () => {
     skipIfFailed()
     try {
-      await sharedPage.getByRole('tab', { name: 'Steps' }).click()
+      await openRail(sharedPage, 'Step Libraries')
 
       for (const libName of LIBRARY_NAMES) {
         await sharedPage.getByRole('button', { name: 'New Library' }).click()
@@ -173,7 +176,7 @@ test.describe.serial('Step Library & Step Workflow E2E', () => {
 
       // Reload page, verify UI re-renders from server state
       await sharedPage.reload()
-      await sharedPage.getByRole('tab', { name: 'Steps' }).click()
+      await openRail(sharedPage, 'Step Libraries')
       await sharedPage.getByText(libName, { exact: true }).click()
       await expect(sharedPage.getByLabel('Library Description')).toHaveValue(description)
       await expect(sharedPage.getByLabel('Author')).toHaveValue(author)

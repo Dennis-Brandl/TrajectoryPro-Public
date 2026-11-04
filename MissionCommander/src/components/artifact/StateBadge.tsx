@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+import { StateTag } from '@mission/ui';
 
 // The tree leaf's badge. It keys on `state`, NOT on effective-dating: effectiveFrom is
 // NULL through both import paths (the import route passes no meta.effectiveFrom, and
@@ -18,11 +19,11 @@
 // carry a date (seeded, or set by Runtime) surfaces it on hover instead.
 export function StateBadge({ state, effectiveFrom }: { state: string; effectiveFrom: string | null }) {
   return (
-    <span
-      className="ml-auto shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground"
-      title={effectiveFrom ? `Effective from ${new Date(effectiveFrom).toLocaleDateString()}` : undefined}
-    >
-      {state}
+    <span className="ml-auto shrink-0">
+      <StateTag
+        state={state}
+        title={effectiveFrom ? `Effective from ${new Date(effectiveFrom).toLocaleDateString()}` : undefined}
+      />
     </span>
   );
 }

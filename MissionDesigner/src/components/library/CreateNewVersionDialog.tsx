@@ -79,11 +79,11 @@ export function CreateNewVersionDialog({
         </DialogHeader>
         <div className="space-y-4">
           <div className="text-sm">
-            <span className="text-slate-500">Current version: </span>
+            <span className="text-muted-foreground">Current version: </span>
             <span className="font-mono">{spec.version}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-500">Bump:</span>
+            <span className="text-sm text-muted-foreground">Bump:</span>
             <Button variant="outline" size="sm" onClick={() => bump('major')}>
               Major
             </Button>
@@ -103,7 +103,7 @@ export function CreateNewVersionDialog({
               <p className="text-xs text-red-600">A version {version} already exists in this library</p>
             )}
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             The new version will be created as a Draft in this library. The current version is unchanged.
           </p>
         </div>

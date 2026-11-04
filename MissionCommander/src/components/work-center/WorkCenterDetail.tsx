@@ -182,7 +182,7 @@ export function WorkCenterDetail() {
             </RequiresTooltip>
 
             <RequiresTooltip reason={canDelete ? undefined : 'Requires work_center:delete'}>
-              <Button type="button" variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}
+              <Button type="button" variant="destructiveOutline" size="sm" onClick={() => setDeleteOpen(true)}
                 disabled={!canDelete} title={canDelete ? undefined : 'Requires work_center:delete'}>Delete</Button>
             </RequiresTooltip>
           </div>

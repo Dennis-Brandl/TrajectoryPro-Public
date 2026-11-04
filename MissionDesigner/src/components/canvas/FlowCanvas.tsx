@@ -780,7 +780,7 @@ export function FlowCanvas({ onMoveEnd, initialViewport }: FlowCanvasProps = {})
 
           {/* Selection toolbar — Align (2+) and Distribute (3+) dropdowns */}
           <Panel position="top-left">
-            <div className="flex items-center gap-0.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md shadow-sm">
+            <div className="flex items-center gap-0.5 bg-background border border-border rounded-md shadow-sm">
               <AlignDropdown />
               <DistributeDropdown />
             </div>
@@ -799,7 +799,7 @@ export function FlowCanvas({ onMoveEnd, initialViewport }: FlowCanvasProps = {})
         {/* MiniMap toggle button (bottom-left) */}
         <button
           onClick={() => setShowMiniMap((prev) => !prev)}
-          className="absolute bottom-2 left-2 z-10 p-1.5 rounded bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400"
+          className="absolute bottom-2 left-2 z-10 p-1.5 rounded bg-card/80 border border-border hover:bg-muted text-muted-foreground"
           title={showMiniMap ? 'Hide minimap' : 'Show minimap'}
         >
           <Map className="h-4 w-4" />

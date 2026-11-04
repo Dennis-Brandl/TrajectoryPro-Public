@@ -99,11 +99,12 @@ export function toWorkflowResourceRow(v: WorkflowResourceView, instance: { id: s
   };
 }
 
-// Same tiny uppercase-pill shape as StateBadge / RuntimeStatusBadge.
-const BADGE = 'shrink-0 rounded px-1.5 py-0.5 text-[10px] uppercase';
+// Same tiny uppercase-pill shape as RuntimeStatusBadge, with its own muted/attention/alarm tones
+// (StateBadge uses the shared StateTag, which colors by lifecycle state).
+const BADGE = 'shrink-0 rounded px-1.5 py-0.5 text-[11px] uppercase';
 const MUTED = `${BADGE} bg-muted text-muted-foreground`;
-const ATTENTION = `${BADGE} bg-accent text-accent-foreground`;
-const ALARM = `${BADGE} bg-destructive/15 text-destructive`;
+const ATTENTION = `${BADGE} bg-status-warn-bg text-status-warn-fg`;
+const ALARM = `${BADGE} bg-status-alarm-bg text-status-alarm-fg`;
 
 function Chip({ chip, onOpen }: { chip: ResourceChip; onOpen: (instanceId: string) => void }) {
   const cls = 'rounded border px-1.5 py-0.5 text-xs';

@@ -73,7 +73,7 @@ export function RoleAssignmentDialog({
                 checked={draft.has(role.id)}
                 disabled={saving}
                 onChange={() => toggle(role.id)}
-                className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-primary cursor-pointer"
+                className="mt-0.5 h-4 w-4 rounded border-border accent-primary cursor-pointer"
               />
               <span>
                 <span className="font-medium">{role.name}</span>

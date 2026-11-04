@@ -42,7 +42,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@mission/ui'
-import { Input } from '@mission/ui'
+import { Input, cn, treeRowClass } from '@mission/ui'
 import { Button } from '@mission/ui'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { useSpecificationStore } from '@/stores/specificationStore'
@@ -416,9 +416,7 @@ export function LibraryItem({
     <div className="select-none">
       {/* Library row */}
       <div
-        className={`group flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 ${
-          isSelected ? 'bg-slate-100 dark:bg-slate-800' : ''
-        }`}
+        className={cn('group cursor-pointer', treeRowClass({ selected: isSelected }))}
         role="treeitem"
         aria-expanded={isExpanded}
         aria-level={depth + 1}
@@ -429,16 +427,16 @@ export function LibraryItem({
         }}
       >
         <button
-          className="p-0.5 hover:bg-slate-200 rounded"
+          className="p-0.5 hover:bg-accent rounded"
           aria-label={isExpanded ? 'Collapse' : 'Expand'}
           onClick={(e) => {
             e.stopPropagation()
             onToggle()
           }}
         >
-          <FolderIcon className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+          <FolderIcon className="h-4 w-4 text-muted-foreground" />
         </button>
-        <span className="flex-1 text-sm truncate dark:text-slate-200">{library.name}</span>
+        <span className="flex-1 truncate">{library.name}</span>
         {showActions && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -519,7 +517,7 @@ export function LibraryItem({
 
       {/* Children (sub-libraries and specifications) */}
       {isExpanded && (
-        <div className="ml-4 border-l border-slate-200 dark:border-slate-700 pl-2" role="group">
+        <div className="ml-4 border-l border-border pl-2" role="group">
           {/* Child libraries */}
           {children.map((child) => {
             // Filter child specifications based on search query
@@ -612,7 +610,7 @@ export function LibraryItem({
                 ))}
           {/* Empty state */}
           {children.length === 0 && specifications.length === 0 && (
-            <div className="text-xs text-slate-400 py-1 px-2">No sub-libraries or specifications</div>
+            <div className="text-xs text-muted-foreground py-1 px-2">No sub-libraries or specifications</div>
           )}
         </div>
       )}

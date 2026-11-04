@@ -16,6 +16,7 @@ import { useState, useEffect } from 'react'
 import { createFileRoute, useNavigate, redirect } from '@tanstack/react-router'
 import { useSession } from '@/lib/auth-client'
 import { getSetupStatus } from '@/lib/setupClient'
+import { SignInFrame } from '@mission/ui'
 import { LoginForm } from '@/components/auth/LoginForm'
 
 export function LoginPage() {
@@ -60,45 +61,36 @@ export function LoginPage() {
   // whole transition (and any redirect bounce). Show the splash, never blank.
   if (isPending || session) {
     return (
-      <div className="login-bg min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           {/* w-64, not a fixed height: the splash art is ~1.42:1, so sizing it by
               height shrinks it to a strip too narrow to read the product name. */}
           <img src="/MissionDesignerSplashScreen.png" alt="Mission Designer" className="w-64 h-auto rounded-lg" />
-          <p className="text-xs text-[#F4F1DE]/50">Copyright 2026 Dennis L. Brandl · Apache License 2.0</p>
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-white/10 border-t-[#D4AF37]" />
-          <span className="text-sm text-[#F4F1DE]/60">Loading...</span>
+          <p className="text-xs text-muted-foreground">Copyright 2026 Dennis L. Brandl · Apache License 2.0</p>
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-primary" />
+          <span className="text-sm text-muted-foreground">Loading...</span>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="login-bg min-h-screen flex items-center justify-center">
-      <div className="login-card relative w-full max-w-md p-8 space-y-6">
-        <div className="text-center">
-          <img
-            src="/MissionDesignerSplashScreen.png"
-            alt="Mission Designer"
-            className="mx-auto w-full max-w-sm h-auto rounded-lg"
-          />
-          <p className="mt-3 text-xs text-[#F4F1DE]/50">Copyright 2026 Dennis L. Brandl · Apache License 2.0</p>
-          <p className="mt-4 text-sm text-[#F4F1DE]/60">
-            Design and manage workflows, procedures, recipes, and batch processes. Author step-by-step specifications
-            for Trajectory Pro Mission Control runtime environments.
-          </p>
-          <p className="mt-4 text-[#F4F1DE]/80">Sign in to your account</p>
-        </div>
-
+    <SignInFrame
+      splashSrc="/MissionDesignerSplashScreen.png"
+      splashAlt="Mission Designer"
+      description="Design and manage workflows, procedures, recipes, and batch processes. Author step-by-step specifications for Trajectory Pro Mission Control runtime environments."
+    >
+      <div className="w-80 space-y-4 rounded-[10px] border border-border p-6">
+        <h1 className="text-lg font-semibold">Sign in</h1>
         {healthError ? (
-          <div className="rounded-md border border-red-500/30 bg-red-500/10 p-4 text-center">
-            <p className="text-sm font-medium text-red-300">{healthError}</p>
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-center">
+            <p className="text-sm font-medium text-destructive">{healthError}</p>
           </div>
         ) : (
           <LoginForm />
         )}
       </div>
-    </div>
+    </SignInFrame>
   )
 }
 

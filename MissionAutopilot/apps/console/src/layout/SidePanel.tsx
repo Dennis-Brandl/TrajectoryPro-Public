@@ -12,21 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { useLocation } from 'react-router'
+import { SidePane } from '@mission/ui'
 import { usePanelContext } from './PanelContext'
+import { paneVisible } from './rail'
 import ExplorerPanel from '@/features/explorer/ExplorerPanel'
 import InstancesPanel from '@/features/instances-panel/InstancesPanel'
 import SearchPanel from '@/features/search-panel/SearchPanel'
 
 export default function SidePanel() {
   const { activePanel } = usePanelContext()
+  const { pathname } = useLocation()
 
-  if (!activePanel) return null
+  if (!activePanel || !paneVisible(pathname, activePanel)) return null
 
   return (
-    <div className="w-56 bg-[var(--side-panel)] border-r border-border shrink-0 overflow-y-auto">
+    <SidePane storageKey="mission-autopilot-side-pane-width">
       {activePanel === 'explorer' && <ExplorerPanel />}
       {activePanel === 'instances' && <InstancesPanel />}
       {activePanel === 'search' && <SearchPanel />}
-    </div>
+    </SidePane>
   )
 }

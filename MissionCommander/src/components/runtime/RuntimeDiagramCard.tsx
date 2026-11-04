@@ -166,7 +166,7 @@ export function RuntimeDiagramCard({ instanceId, canCommand, busy, onAssign, onF
                 </Button>
               )}
               {canCommand && entry?.assignment?.status === 'claimed' && (
-                <Button type="button" size="sm" variant="destructive" disabled={busy}
+                <Button type="button" size="sm" variant="destructiveOutline" disabled={busy}
                   onClick={() => { setTooltip(null); onForceRelease(entry.assignment!.id, tooltip.step.name); }}>
                   Force release
                 </Button>

@@ -32,7 +32,7 @@ test.describe('Workflow CRUD', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByRole('tab', { name: 'Workflows' })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('button', { name: 'Workflows', exact: true })).toBeVisible({ timeout: 15_000 })
   })
 
   test('create a new workflow library', async ({ page }) => {

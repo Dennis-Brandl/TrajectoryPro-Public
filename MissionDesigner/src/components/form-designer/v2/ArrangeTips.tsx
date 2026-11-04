@@ -48,21 +48,16 @@ export function ArrangeTips() {
     <div
       role="note"
       aria-label="Arranging tips"
-      className="bg-blue-50 text-slate-700 dark:bg-slate-800 dark:text-slate-200 border-b border-blue-100 dark:border-slate-700"
+      className="bg-selection text-foreground dark:bg-muted border-b border-border"
       style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 12px', fontSize: 12, lineHeight: 1.5 }}
     >
-      <Lightbulb size={14} style={{ flexShrink: 0, marginTop: 2 }} className="text-blue-600 dark:text-blue-400" />
+      <Lightbulb size={14} style={{ flexShrink: 0, marginTop: 2 }} className="text-link" />
       <span style={{ flex: 1 }}>
         Each row is split into columns. Hover a row to see its grips: drag an element&apos;s grip to move it, and drop
         it <strong>beside</strong> another element to put them side by side. Or right-click an element and choose{' '}
         <strong>Arrange in 2 columns</strong> (also in Layout on the right). Drag the line between two elements to
         change their widths; the Tablet and Phone tabs can set their own.{' '}
-        <a
-          href={ARRANGE_HELP_HREF}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline text-blue-700 dark:text-blue-300"
-        >
+        <a href={ARRANGE_HELP_HREF} target="_blank" rel="noopener noreferrer" className="underline text-link">
           Help
         </a>
       </span>

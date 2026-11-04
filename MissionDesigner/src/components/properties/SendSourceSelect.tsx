@@ -137,7 +137,7 @@ function SendSourceSelectComponent({ value, onChange, readOnly = false }: SendSo
 
           <SelectSeparator />
           <SelectItem value="__literal__">
-            <span className="text-blue-600">Literal value...</span>
+            <span className="text-link">Literal value...</span>
           </SelectItem>
         </SelectContent>
       </Select>

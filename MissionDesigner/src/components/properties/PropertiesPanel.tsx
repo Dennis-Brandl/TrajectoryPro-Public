@@ -162,19 +162,17 @@ function PropertiesPanelComponent({ onCollapse }: PropertiesPanelProps) {
   return (
     <>
       {/* Sticky panel header with dynamic title and collapse button */}
-      <div className="sticky top-0 z-20 bg-white dark:bg-slate-900 h-12 border-b border-slate-200 dark:border-slate-700 flex items-center px-4 shrink-0 justify-between">
+      <div className="sticky top-0 z-20 bg-background h-12 border-b border-border flex items-center px-4 shrink-0 justify-between">
         <div className="flex items-center min-w-0 flex-1">
-          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide shrink-0">
+          <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide shrink-0">
             {headerLabel}
           </span>
-          {headerName && (
-            <span className="font-medium text-slate-700 dark:text-slate-200 ml-2 truncate text-sm">{headerName}</span>
-          )}
+          {headerName && <span className="font-medium text-foreground ml-2 truncate text-sm">{headerName}</span>}
         </div>
         <button
           onClick={onCollapse}
           title="Hide Properties Panel"
-          className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 shrink-0 ml-2"
+          className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground shrink-0 ml-2"
         >
           <PanelRight className="h-3.5 w-3.5" />
         </button>
@@ -189,8 +187,8 @@ function PropertiesPanelComponent({ onCollapse }: PropertiesPanelProps) {
         {/* Multiple selection message */}
         {totalSelected > 1 && (
           <div className="p-3 text-center">
-            <p className="text-slate-500 text-sm">{totalSelected} items selected</p>
-            <p className="text-xs text-slate-500">Select a single item to edit properties</p>
+            <p className="text-muted-foreground text-sm">{totalSelected} items selected</p>
+            <p className="text-xs text-muted-foreground">Select a single item to edit properties</p>
           </div>
         )}
 
@@ -212,7 +210,7 @@ function PropertiesPanelComponent({ onCollapse }: PropertiesPanelProps) {
                     sourceNodeLabel={sourceNode.data.label || 'SELECT'}
                   />
                 ) : (
-                  <p className="text-xs text-slate-500 italic">
+                  <p className="text-xs text-muted-foreground italic">
                     Condition expressions are only available for connections from SELECT 1 nodes.
                   </p>
                 )}

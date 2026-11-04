@@ -20,10 +20,11 @@ import { test, expect, type Page } from '@playwright/test';
 import { bootstrapFirstAdmin, signIn } from './helpers/auth';
 import { ADMIN } from './helpers/db';
 import { environmentPackage, type FilePayload } from './helpers/packages';
+import { openRail } from './helpers/rail';
 
 // Same helpers as artifacts-load.spec.ts (each spec file keeps its own copy — see that file).
 async function createWorkCenter(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Work Centers' }).click(); // activity rail
+  await openRail(page, 'Work Centers');
   await page.getByRole('button', { name: 'New work center' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
@@ -68,7 +69,7 @@ test('a loaded environment spec shows its resources and value properties in the 
   await expect(page.getByText('annotation')).toBeVisible(); // the Description entry, shown but labelled
 
   // Environment → Resources / Value Properties (spec §6.3), with the provenance link inside the table.
-  await page.getByRole('button', { name: 'Environments' }).click(); // activity rail
+  await openRail(page, 'Environments');
   await page.getByRole('button', { name: /E2E Shared Env v1\.0\.0/ }).click();
   await expect(page.getByRole('heading', { name: 'E2E Shared Env' })).toBeVisible();
   await page.getByRole('tab', { name: 'Resources' }).click();

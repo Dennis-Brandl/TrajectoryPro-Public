@@ -92,15 +92,10 @@ function ResourcesEditorComponent({
         )}
       </div>
 
-      {resources.length === 0 && (
-        <p className="text-xs text-slate-500 dark:text-slate-400 italic">No resources defined</p>
-      )}
+      {resources.length === 0 && <p className="text-xs text-muted-foreground italic">No resources defined</p>}
 
       {resources.map((r) => (
-        <div
-          key={r.id}
-          className="space-y-1 p-1.5 bg-slate-50 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700"
-        >
+        <div key={r.id} className="space-y-1 p-1.5 bg-muted rounded border border-border">
           <div className="flex gap-1 items-start">
             <div className="flex-1 space-y-1">
               <Input
@@ -135,12 +130,10 @@ function ResourcesEditorComponent({
                   </SelectContent>
                 </Select>
                 {r.resourceType === 'Named' ? (
-                  <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                    Count: {r.names?.length ?? 0}
-                  </span>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">Count: {r.names?.length ?? 0}</span>
                 ) : r.resourceType !== 'Single Use' && r.resourceType !== 'Sync' ? (
                   <div className="flex items-center gap-0.5">
-                    <Label className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">Count:</Label>
+                    <Label className="text-xs text-muted-foreground whitespace-nowrap">Count:</Label>
                     <Input
                       type="number"
                       min={1}
@@ -151,12 +144,12 @@ function ResourcesEditorComponent({
                     />
                   </div>
                 ) : (
-                  <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">Count: 1</span>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">Count: 1</span>
                 )}
               </div>
               {r.resourceType === 'Named' && (
                 <div className="space-y-1 mt-1">
-                  <Label className="text-xs text-slate-500 dark:text-slate-400">Names:</Label>
+                  <Label className="text-xs text-muted-foreground">Names:</Label>
                   {(r.names || []).map((name, ni) => (
                     <div key={ni} className="flex gap-1 items-center">
                       <Input

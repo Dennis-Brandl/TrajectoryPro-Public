@@ -21,6 +21,7 @@ import { getSetupStatus } from '@/lib/auth/setupClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { SignInFrame } from '@mission/ui';
 
 export const Route = createFileRoute('/setup')({
   beforeLoad: async () => {
@@ -46,8 +47,12 @@ export function SetupPage() {
     if (res.error) setError(res.error.message ?? 'Setup failed'); else navigate({ to: '/' });
   };
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <form noValidate onSubmit={handleSubmit(onSubmit)} className="w-80 space-y-4 rounded-lg border p-6">
+    <SignInFrame
+      splashSrc="/MissionCommanderSplashScreen.png"
+      splashAlt="Mission Commander"
+      description="Runs workflows in work centers. Load released workflow packages, assign people, and watch each run."
+    >
+      <form noValidate onSubmit={handleSubmit(onSubmit)} className="w-80 space-y-4 rounded-[10px] border border-border p-6">
         <h1 className="text-lg font-semibold">Create the first administrator</h1>
         <div className="space-y-1"><Label htmlFor="name">Name</Label><Input id="name" {...register('name')} />
           {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}</div>
@@ -58,6 +63,6 @@ export function SetupPage() {
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         <Button type="submit" className="w-full" disabled={isSubmitting}>{isSubmitting ? 'Creating…' : 'Create administrator'}</Button>
       </form>
-    </div>
+    </SignInFrame>
   );
 }

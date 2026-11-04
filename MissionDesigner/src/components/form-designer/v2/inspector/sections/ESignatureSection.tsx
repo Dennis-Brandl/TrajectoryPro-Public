@@ -29,8 +29,7 @@ interface ESignatureSectionProps {
 
 const fieldStyle: React.CSSProperties = { marginBottom: 10 }
 const captionStyle: React.CSSProperties = { fontSize: 11, display: 'block', marginBottom: 2, userSelect: 'none' }
-const controlClass =
-  'bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600'
+const controlClass = 'bg-background text-foreground border border-border'
 const controlStyle: React.CSSProperties = {
   width: '100%',
   fontSize: 13,
@@ -60,7 +59,7 @@ export function ESignatureSection({ block: blockProp, onUpdate, allBlocks }: ESi
       </div>
 
       <div style={fieldStyle}>
-        <label htmlFor="esig-label" className="text-gray-500 dark:text-gray-400" style={captionStyle}>
+        <label htmlFor="esig-label" className="text-muted-foreground" style={captionStyle}>
           Label
         </label>
         <input
@@ -75,7 +74,7 @@ export function ESignatureSection({ block: blockProp, onUpdate, allBlocks }: ESi
       </div>
 
       <div style={fieldStyle}>
-        <label htmlFor="esig-meaning" className="text-gray-500 dark:text-gray-400" style={captionStyle}>
+        <label htmlFor="esig-meaning" className="text-muted-foreground" style={captionStyle}>
           Meaning
         </label>
         <textarea
@@ -90,7 +89,7 @@ export function ESignatureSection({ block: blockProp, onUpdate, allBlocks }: ESi
       </div>
 
       <div style={fieldStyle}>
-        <label htmlFor="esig-role" className="text-gray-500 dark:text-gray-400" style={captionStyle}>
+        <label htmlFor="esig-role" className="text-muted-foreground" style={captionStyle}>
           Role
         </label>
         {error ? (
@@ -135,7 +134,7 @@ export function ESignatureSection({ block: blockProp, onUpdate, allBlocks }: ESi
             onChange={() => onUpdate({ requireDifferentUser: !block.requireDifferentUser } as Partial<Block>)}
             style={{ cursor: 'pointer' }}
           />
-          <span className="text-gray-700 dark:text-slate-200" style={{ fontSize: 13 }}>
+          <span className="text-foreground" style={{ fontSize: 13 }}>
             A different user than the operator must sign
           </span>
         </label>

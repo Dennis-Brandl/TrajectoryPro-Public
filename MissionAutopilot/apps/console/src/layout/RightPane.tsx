@@ -110,7 +110,7 @@ export default function RightPane() {
       {/* Sticky header */}
       <div className="sticky top-0 z-20 h-12 px-3 flex items-center justify-between border-b border-border bg-[var(--side-panel)] shrink-0">
         <div className="flex flex-col min-w-0">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
             {payload.header.eyebrow}
           </span>
           <span className="text-sm font-medium text-foreground truncate">

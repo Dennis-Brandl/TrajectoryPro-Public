@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { useNavigate } from 'react-router'
+import { PaneLabel } from '@mission/ui'
 import { useActiveInstances } from '@/features/instances/hooks'
 import { getStateColor } from '@/features/instances/InstancesPage'
 
@@ -24,14 +25,15 @@ export default function InstancesPanel() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border shrink-0">
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium flex-1">
-          Instances
-        </span>
-        {!isLoading && !isError && (
-          <span className="text-[10px] text-muted-foreground">{instances.length}</span>
-        )}
-      </div>
+      <PaneLabel
+        action={
+          !isLoading && !isError ? (
+            <span className="text-[11px] normal-case tracking-normal">{instances.length}</span>
+          ) : undefined
+        }
+      >
+        Instances
+      </PaneLabel>
 
       <div className="flex-1 overflow-y-auto py-1">
         {isLoading && <p className="px-3 py-2 text-xs text-muted-foreground">Loading...</p>}
@@ -56,9 +58,9 @@ export default function InstancesPanel() {
                   className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${getStateColor(inst.state)}`}
                 />
                 <span className="text-foreground truncate flex-1">{inst.action_name}</span>
-                <span className="text-[10px] text-muted-foreground shrink-0">{inst.state}</span>
+                <span className="text-[11px] text-muted-foreground shrink-0">{inst.state}</span>
               </span>
-              <span className="text-[10px] text-muted-foreground truncate w-full pl-3">
+              <span className="text-[11px] text-muted-foreground truncate w-full pl-3">
                 {inst.environment_name}
               </span>
             </button>

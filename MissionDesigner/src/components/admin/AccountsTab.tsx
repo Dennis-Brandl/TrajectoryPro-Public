@@ -373,7 +373,7 @@ export function AccountsTab({ currentUserId }: { currentUserId: string }) {
     <>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">User Accounts</h2>
+          <h2 className="text-lg font-semibold text-foreground">User Accounts</h2>
           <div className="flex items-center gap-3">
             <Button onClick={() => setShowAddAccount(true)} size="sm" variant="outline">
               <UserPlus className="h-4 w-4 mr-2" />
@@ -412,9 +412,7 @@ export function AccountsTab({ currentUserId }: { currentUserId: string }) {
                 onClick={() => setSelectedUserId(u.id === selectedUserId ? null : u.id)}
                 className={cn(
                   'flex items-center gap-3 rounded-md border px-3 py-2 cursor-pointer',
-                  u.id === selectedUserId
-                    ? 'border-blue-400 dark:border-blue-600 bg-blue-50 dark:bg-blue-950/30'
-                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900',
+                  u.id === selectedUserId ? 'border-brand-accent bg-selection' : 'border-border bg-background',
                 )}
               >
                 <div className="min-w-0 flex-shrink-0 w-44">
@@ -435,7 +433,7 @@ export function AccountsTab({ currentUserId }: { currentUserId: string }) {
                         disabled={saving}
                         onChange={() => handleRoleToggle(u.id, key, getRoleValue(u, key))}
                         onClick={(e) => e.stopPropagation()}
-                        className="h-3.5 w-3.5 rounded border-gray-300 text-primary accent-primary cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                        className="h-3.5 w-3.5 rounded border-border text-primary accent-primary cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                       />
                       {label}
                     </label>
@@ -484,8 +482,8 @@ export function AccountsTab({ currentUserId }: { currentUserId: string }) {
         )}
 
         {/* Database management section */}
-        <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
-          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">Database Management</h3>
+        <div className="border-t border-border pt-6">
+          <h3 className="text-sm font-semibold text-foreground mb-3">Database Management</h3>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={handleBackup}>
               <Download className="h-4 w-4 mr-2" />
@@ -499,7 +497,7 @@ export function AccountsTab({ currentUserId }: { currentUserId: string }) {
               <Trash2 className="h-4 w-4 mr-2" />
               Clear Workflows
             </Button>
-            <Button variant="destructive" size="sm" onClick={() => setShowClearConfirm(true)}>
+            <Button variant="destructiveOutline" size="sm" onClick={() => setShowClearConfirm(true)}>
               <Trash2 className="h-4 w-4 mr-2" />
               Clear Database
             </Button>

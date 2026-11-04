@@ -39,7 +39,7 @@ export function ReviewStep({ teams, onBack }: { teams: Team[]; onBack: () => voi
   if (done) {
     return (
       <div className="space-y-2 text-center">
-        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Setting up your workspace…</h2>
+        <h2 className="text-lg font-semibold text-foreground">Setting up your workspace…</h2>
         <p className="text-sm text-muted-foreground">Finishing setup and loading the editor.</p>
       </div>
     )
@@ -47,7 +47,7 @@ export function ReviewStep({ teams, onBack }: { teams: Team[]; onBack: () => voi
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Review &amp; finish</h2>
+      <h2 className="text-lg font-semibold text-foreground">Review &amp; finish</h2>
       <div className="text-sm">
         <div className="font-medium">Teams</div>
         <ul className="ml-4 list-disc text-muted-foreground">

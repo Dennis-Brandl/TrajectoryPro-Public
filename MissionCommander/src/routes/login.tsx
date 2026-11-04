@@ -21,6 +21,7 @@ import { getSetupStatus } from '@/lib/auth/setupClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { SignInFrame } from '@mission/ui';
 
 export const Route = createFileRoute('/login')({
   beforeLoad: async () => {
@@ -48,18 +49,12 @@ export function LoginPage() {
     if (res.error) setError(res.error.message ?? 'Sign-in failed'); else navigate({ to: '/' });
   };
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6">
-      <div className="w-80 text-center">
-        <img
-          src="/MissionCommanderSplashScreen.png"
-          alt="Mission Commander"
-          className="mx-auto h-auto w-full rounded-lg"
-        />
-        <p className="mt-3 text-xs text-muted-foreground">
-          Copyright 2026 Dennis L. Brandl · Apache License 2.0
-        </p>
-      </div>
-      <form noValidate onSubmit={handleSubmit(onSubmit)} className="w-80 space-y-4 rounded-lg border p-6">
+    <SignInFrame
+      splashSrc="/MissionCommanderSplashScreen.png"
+      splashAlt="Mission Commander"
+      description="Runs workflows in work centers. Load released workflow packages, assign people, and watch each run."
+    >
+      <form noValidate onSubmit={handleSubmit(onSubmit)} className="w-80 space-y-4 rounded-[10px] border border-border p-6">
         <h1 className="text-lg font-semibold">Sign in</h1>
         <div className="space-y-1"><Label htmlFor="email">Email</Label>
           <Input id="email" type="email" {...register('email')} />
@@ -68,8 +63,8 @@ export function LoginPage() {
           <Input id="password" type="password" {...register('password')} />
           {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}</div>
         {error && <p role="alert" data-testid="login-error" className="text-sm text-destructive">{error}</p>}
-        <Button type="submit" className="w-full" disabled={isSubmitting}>{isSubmitting ? 'Signing in…' : 'Sign In'}</Button>
+        <Button type="submit" className="w-full" disabled={isSubmitting}>{isSubmitting ? 'Signing in…' : 'Sign in'}</Button>
       </form>
-    </div>
+    </SignInFrame>
   );
 }

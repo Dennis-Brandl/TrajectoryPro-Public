@@ -14,6 +14,7 @@
 import { expect, type Page } from '@playwright/test';
 import { STEWARD } from './db';
 import type { FilePayload } from './packages';
+import { openRail } from './rail';
 
 // Pilot e2e setup shared by pilot-frame.spec.ts and pilot-options.spec.ts.
 
@@ -27,7 +28,7 @@ export async function signInPilot(pilot: Page, email: string, password: string) 
 }
 
 export async function createWorkCenter(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Work Centers' }).click(); // activity rail
+  await openRail(page, 'Work Centers');
   await page.getByRole('button', { name: 'New work center' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();

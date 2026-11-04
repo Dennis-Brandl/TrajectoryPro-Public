@@ -31,8 +31,8 @@ const inputSt: CSSProperties = {
   borderRadius: 4,
   boxSizing: 'border-box',
 }
-const inputCls = 'bg-white dark:bg-slate-900 border border-gray-300 dark:border-gray-600'
-const labelCls = 'text-gray-500 dark:text-gray-400'
+const inputCls = 'bg-background border border-border'
+const labelCls = 'text-muted-foreground'
 
 /**
  * Edits the labels of the step's host-chrome decision buttons (Continue, or a Yes/No pair)
@@ -69,7 +69,10 @@ export function ActionsPanel({
   }
   if (!draft) return null
   return (
-    <div onKeyDown={(e) => e.stopPropagation()} style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}>
+    <div
+      onKeyDown={(e) => e.stopPropagation()}
+      style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}
+    >
       <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', marginBottom: 6 }}>Actions</div>
       {draft.kind === 'continue' ? (
         <div>

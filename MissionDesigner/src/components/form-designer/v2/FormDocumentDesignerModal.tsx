@@ -16,6 +16,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { useStore } from 'zustand'
 import { Undo2, Redo2, CircleHelp } from 'lucide-react'
 import { toast } from 'sonner'
+import { Button } from '@mission/ui'
 import {
   DndContext,
   DragOverlay,
@@ -166,7 +167,7 @@ export default function FormDocumentDesignerModal() {
             e.preventDefault()
             handleCancel()
           }}
-          className="bg-white dark:bg-slate-900 fixed inset-0 z-[100] overflow-hidden"
+          className="bg-background fixed inset-0 z-[100] overflow-hidden"
           style={{ display: 'grid', gridTemplateRows: 'auto 1fr', gridTemplateColumns: `auto 1fr ${inspectorWidth}px` }}
         >
           {/* Radix requires a Title for a11y; the toolbar already conveys purpose visually, so keep it sr-only. */}
@@ -181,14 +182,19 @@ export default function FormDocumentDesignerModal() {
               alignItems: 'center',
               gap: 8,
               padding: 8,
-              borderBottom: '1px solid #e2e8f0',
+              borderBottom: '1px solid var(--border)',
             }}
           >
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               <div
                 role="group"
                 aria-label="Editor mode"
-                style={{ display: 'inline-flex', border: '1px solid #cbd5e1', borderRadius: 6, overflow: 'hidden' }}
+                style={{
+                  display: 'inline-flex',
+                  border: '1px solid var(--border)',
+                  borderRadius: 6,
+                  overflow: 'hidden',
+                }}
               >
                 {(['edit', 'preview'] as const).map((m) => (
                   <button
@@ -201,8 +207,8 @@ export default function FormDocumentDesignerModal() {
                       fontSize: 13,
                       border: 'none',
                       cursor: 'pointer',
-                      background: previewMode === m ? '#2563eb' : '#fff',
-                      color: previewMode === m ? '#fff' : '#334155',
+                      background: previewMode === m ? 'var(--brand-accent)' : 'var(--card)',
+                      color: previewMode === m ? 'var(--brand-accent-foreground)' : 'var(--foreground)',
                     }}
                   >
                     {m === 'edit' ? 'Edit' : 'Preview'}
@@ -239,7 +245,7 @@ export default function FormDocumentDesignerModal() {
                 rel="noopener noreferrer"
                 aria-label="Form designer help"
                 title="How to add, arrange and make columns of form elements"
-                className="flex items-center gap-1 px-2 py-1 text-sm text-slate-600 hover:text-blue-700 dark:text-slate-300"
+                className="flex items-center gap-1 px-2 py-1 text-sm text-muted-foreground hover:text-link"
               >
                 <CircleHelp size={16} /> Help
               </a>
@@ -263,17 +269,13 @@ export default function FormDocumentDesignerModal() {
               <button
                 type="button"
                 onClick={handleCancel}
-                className="px-4 py-2 text-sm font-medium rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                className="px-4 py-2 text-sm font-medium rounded-md border border-border text-foreground hover:bg-muted"
               >
                 Cancel
               </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="px-5 py-2 text-sm font-semibold rounded-md bg-blue-600 text-white shadow-sm hover:bg-blue-700"
-              >
+              <Button type="button" onClick={handleSave}>
                 Save
-              </button>
+              </Button>
             </div>
           </div>
           {previewMode === 'preview' ? (
@@ -301,7 +303,7 @@ export default function FormDocumentDesignerModal() {
               <div
                 data-testid="inspector-slot"
                 style={{
-                  borderLeft: '1px solid #e2e8f0',
+                  borderLeft: '1px solid var(--border)',
                   position: 'relative',
                   display: 'flex',
                   flexDirection: 'column',
@@ -351,7 +353,7 @@ function DragChip({ activeId }: { activeId: string }) {
     <div
       style={{
         padding: '4px 10px',
-        background: '#1e293b',
+        background: '#262626',
         color: '#fff',
         borderRadius: 6,
         fontSize: 12,

@@ -44,8 +44,7 @@ export interface MoveToTeamDialogProps {
   }) => void
 }
 
-const SELECT_CLASS =
-  'w-full h-9 rounded-md border border-slate-200 dark:border-slate-700 bg-transparent px-2 text-sm text-slate-700 dark:text-slate-200'
+const SELECT_CLASS = 'w-full h-9 rounded-md border border-border bg-transparent px-2 text-sm text-foreground'
 
 export function MoveToTeamDialog({ open, onOpenChange, spec, library, onSuccess, onCopied }: MoveToTeamDialogProps) {
   const principal = usePrincipal()
@@ -182,15 +181,15 @@ export function MoveToTeamDialog({ open, onOpenChange, spec, library, onSuccess,
               </select>
             </div>
           )}
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             <strong>Move</strong> takes the workflow out of this team. <strong>Copy</strong> leaves it here and adds a
             copy of all its versions there, keeping their states.
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             Either way, environments, actions and sub-workflows it uses are copied into that team&apos;s libraries of
             the same name when missing.
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             Copying needs create rights in that team; you&apos;ll be told if any are missing.
           </p>
           {error && <p className="text-sm text-red-600">{error}</p>}

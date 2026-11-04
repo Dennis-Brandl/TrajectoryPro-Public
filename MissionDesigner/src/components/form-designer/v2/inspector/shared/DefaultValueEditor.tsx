@@ -14,9 +14,9 @@
 import type { ParameterDefaultSource } from '@mission/form-schema'
 import type { ParameterSpec } from '@/types/nodes'
 
-const label = 'text-gray-500 dark:text-gray-400'
+const label = 'text-muted-foreground'
 const labelSt: React.CSSProperties = { fontSize: 11, display: 'block', marginBottom: 2 }
-const ctrl = 'bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600'
+const ctrl = 'bg-background text-foreground border border-border'
 const ctrlSt: React.CSSProperties = {
   width: '100%',
   fontSize: 13,

@@ -155,7 +155,7 @@ function ResourceCommandEditorComponent({
     return (
       <div className="space-y-2">
         {!hideHeading && <Label className="text-xs font-medium">Resource Commands</Label>}
-        <p className="text-xs text-slate-500 dark:text-slate-400 italic">
+        <p className="text-xs text-muted-foreground italic">
           No resources available. Add resources to the workflow or environment.
         </p>
       </div>
@@ -244,7 +244,7 @@ function CommandSection({
         )}
       </div>
 
-      {commands.length === 0 && <p className="text-xs text-slate-500 dark:text-slate-400 italic">None</p>}
+      {commands.length === 0 && <p className="text-xs text-muted-foreground italic">None</p>}
 
       {commands.map((cmd) => {
         const resourceSpec = allResources.get(cmd.resourceName)
@@ -255,10 +255,7 @@ function CommandSection({
         const otherNames = new Set(commands.filter((c) => c.id !== cmd.id).map((c) => c.resourceName))
 
         return (
-          <div
-            key={cmd.id}
-            className="space-y-1 p-1.5 bg-slate-50 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700"
-          >
+          <div key={cmd.id} className="space-y-1 p-1.5 bg-muted rounded border border-border">
             <div className="flex gap-1 items-start">
               <div className="flex-1 space-y-1">
                 {/* Resource Name */}
@@ -289,9 +286,7 @@ function CommandSection({
                           {available.map((resource) => (
                             <SelectItem key={resource.id} value={resource.name}>
                               {resource.name}
-                              <span className="text-slate-400 dark:text-slate-500 ml-1 text-xs">
-                                ({resource.resourceType})
-                              </span>
+                              <span className="text-muted-foreground ml-1 text-xs">({resource.resourceType})</span>
                             </SelectItem>
                           ))}
                         </SelectGroup>
@@ -315,7 +310,7 @@ function CommandSection({
                 <div className="flex gap-1 items-center">
                   {isCountLimited ? (
                     <div className="flex items-center gap-0.5">
-                      <Label className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">Count:</Label>
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">Count:</Label>
                       <Input
                         type="number"
                         min={1}
@@ -326,14 +321,14 @@ function CommandSection({
                       />
                     </div>
                   ) : (
-                    <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">Count: 1</span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">Count: 1</span>
                   )}
                 </div>
 
                 {/* Named + Acquire: store acquired name */}
                 {resourceSpec?.resourceType === 'Named' && commandType === 'Acquire' && (
                   <div className="space-y-0.5">
-                    <Label className="text-xs text-slate-500 dark:text-slate-400">Store acquired name to:</Label>
+                    <Label className="text-xs text-muted-foreground">Store acquired name to:</Label>
                     <OutputParameterSelect
                       value={cmd.target}
                       onChange={(value) => onUpdate(cmd.id, { target: value || undefined })}
@@ -345,7 +340,7 @@ function CommandSection({
                 {/* Named + Release: specify which named resource to release */}
                 {resourceSpec?.resourceType === 'Named' && commandType === 'Release' && (
                   <div className="space-y-0.5">
-                    <Label className="text-xs text-slate-500 dark:text-slate-400">Release resource stored in:</Label>
+                    <Label className="text-xs text-muted-foreground">Release resource stored in:</Label>
                     <OutputParameterSelect
                       value={cmd.target}
                       onChange={(value) => onUpdate(cmd.id, { target: value || undefined })}
@@ -404,16 +399,13 @@ function SyncSection({
         )}
       </div>
 
-      {commands.length === 0 && <p className="text-xs text-slate-500 dark:text-slate-400 italic">None</p>}
+      {commands.length === 0 && <p className="text-xs text-muted-foreground italic">None</p>}
 
       {commands.map((cmd) => {
         const isUnresolved = !!cmd.resourceName && !allResources.has(cmd.resourceName)
 
         return (
-          <div
-            key={cmd.id}
-            className="space-y-1 p-1.5 bg-slate-50 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700"
-          >
+          <div key={cmd.id} className="space-y-1 p-1.5 bg-muted rounded border border-border">
             <div className="flex gap-1 items-start">
               <div className="flex-1 space-y-1">
                 {/* Resource Name */}
@@ -486,7 +478,7 @@ function SyncSection({
                 {/* Sync Send: parameter to send */}
                 {cmd.commandType === 'Send' && (
                   <div className="space-y-0.5">
-                    <Label className="text-xs text-slate-500 dark:text-slate-400">Parameter to send:</Label>
+                    <Label className="text-xs text-muted-foreground">Parameter to send:</Label>
                     <SendSourceSelect
                       value={cmd.source}
                       onChange={(value) => onUpdate(cmd.id, { source: value })}
@@ -497,7 +489,7 @@ function SyncSection({
                 {/* Sync Receive: store received value */}
                 {cmd.commandType === 'Receive' && (
                   <div className="space-y-0.5">
-                    <Label className="text-xs text-slate-500 dark:text-slate-400">Store received value to:</Label>
+                    <Label className="text-xs text-muted-foreground">Store received value to:</Label>
                     <OutputParameterSelect
                       value={cmd.target}
                       onChange={(value) => onUpdate(cmd.id, { target: value || undefined })}

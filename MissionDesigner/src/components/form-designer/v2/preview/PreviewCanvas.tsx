@@ -70,10 +70,7 @@ export function PreviewCanvas() {
       <BreakpointTabs />
       {/* Auto margins, not justify-content:center — keeps both edges scrollable on overflow
           (see FormDocumentCanvas). */}
-      <div
-        className="bg-[#cbd5e1] dark:bg-[#1e293b]"
-        style={{ flex: 1, overflow: 'auto', display: 'flex', padding: 32 }}
-      >
+      <div className="bg-[#cbd5e1] dark:bg-muted" style={{ flex: 1, overflow: 'auto', display: 'flex', padding: 32 }}>
         <div
           data-testid="preview-frame"
           style={{

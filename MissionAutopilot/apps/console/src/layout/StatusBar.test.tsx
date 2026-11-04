@@ -17,7 +17,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { PanelProvider } from './PanelContext'
-import TopNav, { actionTesterUrl } from './TopNav'
+import StatusBar from './StatusBar'
 
 const serverInfoMock = vi.hoisted(() =>
   vi.fn().mockResolvedValue({
@@ -31,6 +31,7 @@ const serverInfoMock = vi.hoisted(() =>
 vi.mock('@/lib/api', () => ({
   api: {
     serverInfo: serverInfoMock,
+    dashboard: vi.fn().mockResolvedValue({ environments: { total_count: 3, total_actions: 12 } }),
   },
 }))
 
@@ -45,44 +46,13 @@ function renderWithProviders(ui: React.ReactElement) {
   )
 }
 
-describe('TopNav', () => {
+describe('StatusBar', () => {
   // jsdom has no Clipboard API of its own — every test that touches
   // navigator.clipboard defines it as an own property (via Object.assign or
   // Object.defineProperty). Remove it after each test so one test's
   // clipboard stub never leaks into the next.
   afterEach(() => {
     Reflect.deleteProperty(navigator, 'clipboard')
-  })
-
-  it('has an Environments link to /environments', () => {
-    renderWithProviders(<TopNav />)
-    expect(screen.getByRole('link', { name: 'Environments' })).toHaveAttribute(
-      'href',
-      '/environments'
-    )
-  })
-
-  it('actionTesterUrl builds from protocol and hostname', () => {
-    expect(actionTesterUrl({ protocol: 'http:', hostname: 'plant-pc' })).toBe(
-      'http://plant-pc:3004'
-    )
-  })
-
-  it('Tester link follows the current host', () => {
-    renderWithProviders(<TopNav />)
-    const link = screen.getByRole('link', { name: 'Mission Autopilot Tester' })
-    expect(link.getAttribute('href')).toBe(actionTesterUrl(window.location))
-  })
-
-  it('renders a Mission Autopilot Tester link that opens :3004 in a new tab', () => {
-    renderWithProviders(<TopNav />)
-    const link = screen.getByRole('link', { name: 'Mission Autopilot Tester' })
-    expect(link).toHaveAttribute(
-      'href',
-      `${window.location.protocol}//${window.location.hostname}:3004`
-    )
-    expect(link).toHaveAttribute('target', '_blank')
-    expect(link).toHaveAttribute('rel', 'noreferrer')
   })
 
   it('shows the Mission Commander address chip with a copy button when fleet_base_url is set', async () => {
@@ -94,7 +64,7 @@ describe('TopNav', () => {
     })
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.assign(navigator, { clipboard: { writeText } })
-    renderWithProviders(<TopNav />)
+    renderWithProviders(<StatusBar />)
     expect(await screen.findByText('http://mission-autopilot-server:3002')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Copy Mission Commander address' }))
     expect(writeText).toHaveBeenCalledWith('http://mission-autopilot-server:3002')
@@ -109,7 +79,7 @@ describe('TopNav', () => {
       fleet_base_url: 'http://mission-autopilot-server:3002',
     })
     Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true })
-    renderWithProviders(<TopNav />)
+    renderWithProviders(<StatusBar />)
     expect(await screen.findByText('http://mission-autopilot-server:3002')).toBeInTheDocument()
     expect(() =>
       fireEvent.click(screen.getByRole('button', { name: 'Copy Mission Commander address' }))
@@ -126,11 +96,25 @@ describe('TopNav', () => {
     })
     const writeText = vi.fn().mockRejectedValue(new Error('denied'))
     Object.assign(navigator, { clipboard: { writeText } })
-    renderWithProviders(<TopNav />)
+    renderWithProviders(<StatusBar />)
     expect(await screen.findByText('http://mission-autopilot-server:3002')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Copy Mission Commander address' }))
     expect(writeText).toHaveBeenCalledWith('http://mission-autopilot-server:3002')
     expect(await screen.findByText('Select and copy')).toBeInTheDocument()
+  })
+
+  it('shows the counts, the Server label and no version text', async () => {
+    serverInfoMock.mockResolvedValue({
+      rest_base_url: 'http://127.0.0.1:3002',
+      protocol_path: '/trajectory/v1/',
+      port: 3002,
+      fleet_base_url: null,
+    })
+    renderWithProviders(<StatusBar />)
+    expect(await screen.findByText('3 environments | 12 actions')).toBeInTheDocument()
+    expect(screen.getByText('Server:')).toBeInTheDocument()
+    expect(screen.queryByText(/v3\.0\.0/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Mission Autopilot v/)).not.toBeInTheDocument()
   })
 
   it('hides the Mission Commander address chip when fleet_base_url is null', async () => {
@@ -140,7 +124,7 @@ describe('TopNav', () => {
       port: 3002,
       fleet_base_url: null,
     })
-    renderWithProviders(<TopNav />)
+    renderWithProviders(<StatusBar />)
     expect(await screen.findByText('http://127.0.0.1:3002')).toBeInTheDocument()
     expect(screen.queryByText('Mission Commander address:')).not.toBeInTheDocument()
   })

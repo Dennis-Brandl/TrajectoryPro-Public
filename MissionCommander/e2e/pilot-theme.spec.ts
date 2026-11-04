@@ -26,6 +26,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { bootstrapFirstAdmin, signIn } from './helpers/auth';
 import { ADMIN, STEWARD } from './helpers/db';
+import { openRail } from './helpers/rail';
 
 const PILOT = 'http://localhost:3006';
 const WC_NAME = 'E2E Theme WC';
@@ -34,7 +35,7 @@ const brand = (p: Page) =>
   p.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--pilot-brand').trim());
 
 async function createWorkCenter(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Work Centers' }).click(); // activity rail
+  await openRail(page, 'Work Centers');
   await page.getByRole('button', { name: 'New work center' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
@@ -87,7 +88,7 @@ test('a Commander theme change reaches an open Pilot without reload, and survive
     await pilot.evaluate(() => { (window as unknown as { __sameDocument?: boolean }).__sameDocument = true; });
 
     // Commander: Settings → Pilot branding. The preview reacts before anything is saved.
-    await page.getByRole('button', { name: 'Settings' }).click(); // activity rail
+    await page.getByRole('button', { name: 'Settings' }).click(); // header gear
     const branding = page.getByRole('region', { name: 'Pilot branding' });
     await branding.getByLabel('App title', { exact: true }).fill('Acme Pilot');
     await branding.getByLabel('Light Brand', { exact: true }).fill('#7c3aed');
@@ -164,7 +165,7 @@ test('the login screen shows the site logo (spec §12, R5), and the top bar show
   await assignStewardToWorkCenter(page, WC);
 
   // Commander: upload, describe, see it in the preview, save.
-  await page.getByRole('button', { name: 'Settings' }).click(); // activity rail
+  await page.getByRole('button', { name: 'Settings' }).click(); // header gear
   const branding = page.getByRole('region', { name: 'Pilot branding' });
   // The editor loads the stored theme first; until then its fields are disabled (and it
   // re-mounts once loaded), so a file chosen earlier would be dropped.

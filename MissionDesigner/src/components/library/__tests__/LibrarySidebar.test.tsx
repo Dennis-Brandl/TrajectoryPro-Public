@@ -15,7 +15,7 @@
 // @vitest-environment jsdom
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { LibrarySidebar } from '@/components/library/LibrarySidebar'
 import { usePrincipalStore } from '@/stores/principalStore'
 import { useLibraryStore } from '@/stores/libraryStore'
@@ -28,7 +28,16 @@ vi.mock('@/components/library/CreateLibraryDialog', () => ({
   CreateLibraryDialog: () => <button>New Library</button>,
 }))
 vi.mock('@/components/library/use-library-export', () => ({ useLibraryExport: () => ({}) }))
-vi.mock('@/components/library/use-library-import', () => ({ useLibraryImport: () => ({}) }))
+const captured: { setLegacy?: (v: boolean) => void } = {}
+vi.mock('@/components/library/use-library-import', () => ({
+  useLibraryImport: (setLegacy: (v: boolean) => void) => {
+    captured.setLegacy = setLegacy
+    return {}
+  },
+}))
+vi.mock('@/components/import/LegacyFormatDialog', () => ({
+  LegacyFormatDialog: ({ open }: { open: boolean }) => (open ? <div>Legacy dialog open</div> : null),
+}))
 vi.mock('@/components/export', () => ({
   ExportMenu: () => <div />,
   ImportButton: () => <button>Import Library</button>,
@@ -48,12 +57,33 @@ beforeEach(() => {
 })
 
 describe('LibrarySidebar gating', () => {
-  it('shows all four entity tabs to a member with no create rights (viewers can browse)', () => {
+  it('renders no pane when collapsed (the rail stays in the page)', () => {
     usePrincipalStore.setState({ principal: principal([]) })
+    const { container } = render(<LibrarySidebar collapsed />)
+    expect(container.firstChild).toBeNull()
+  })
+
+  it('keeps an open import dialog rendered when collapsed flips true', async () => {
+    usePrincipalStore.setState({ principal: principal([]) })
+    const { rerender } = render(<LibrarySidebar />)
+    act(() => captured.setLegacy!(true))
+    expect(screen.queryByText('Legacy dialog open')).not.toBeNull()
+    expect(screen.queryByText('Workflows')).not.toBeNull()
+    rerender(<LibrarySidebar collapsed />)
+    expect(screen.queryByText('Legacy dialog open')).not.toBeNull()
+    expect(screen.queryByText('Workflows')).toBeNull()
+  })
+
+  it.each([
+    ['workflow', 'Workflows'],
+    ['step', 'Step Libraries'],
+    ['environment', 'Environments'],
+    ['action', 'Actions'],
+  ] as const)('titles the pane for %s as %s', (activeEntityType, title) => {
+    usePrincipalStore.setState({ principal: principal([]) })
+    useLibraryStore.setState({ activeEntityType })
     render(<LibrarySidebar />)
-    for (const label of ['Workflows', 'Steps', 'Environments', 'Actions']) {
-      expect(screen.getByRole('tab', { name: new RegExp(label, 'i') })).not.toBeNull()
-    }
+    expect(screen.queryByText(title)).not.toBeNull()
   })
 
   it('hides New Library when the user lacks library.create in every team', () => {

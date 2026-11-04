@@ -127,11 +127,13 @@ export function ActionDetailView() {
 
   if (!selectedSpecificationId || !selectedSpec) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+      <div className="flex-1 flex items-center justify-center bg-side-panel">
         <div className="text-center">
-          <Zap className="h-12 w-12 text-slate-300 mx-auto mb-2" />
-          <p className="text-slate-500 dark:text-slate-400">Select an action from the library</p>
-          <p className="text-sm text-slate-400 mt-1">Choose an action specification to view and edit its details</p>
+          <Zap className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+          <p className="text-muted-foreground">Select an action from the library</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Choose an action specification to view and edit its details
+          </p>
         </div>
       </div>
     )
@@ -206,19 +208,17 @@ export function ActionDetailView() {
   }
 
   return (
-    <div className="flex-1 bg-slate-50 dark:bg-slate-900 flex flex-col">
+    <div className="flex-1 bg-side-panel flex flex-col">
       {/* Sticky header */}
-      <div className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-3 pt-3 pb-2 shrink-0">
+      <div className="bg-side-panel border-b border-border px-3 pt-3 pb-2 shrink-0">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
               <Zap className="h-6 w-6 text-amber-600" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-200">Action Details</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                Define action parameters and values
-              </p>
+              <h2 className="text-xl font-semibold text-foreground">Action Details</h2>
+              <p className="text-sm text-muted-foreground whitespace-nowrap">Define action parameters and values</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -276,18 +276,18 @@ export function ActionDetailView() {
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-2xl mx-auto p-3">
           <fieldset disabled={!canEdit} className="contents">
-            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-2">
+            <div className="bg-card rounded-lg border border-border p-3 space-y-2">
               {/* Basic Info Section */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <h3 className="text-sm font-medium text-slate-700 dark:text-slate-200">Basic Information</h3>
-                  <div className="flex items-center gap-1 rounded-md border border-slate-200 p-0.5">
+                  <h3 className="text-sm font-medium text-foreground">Basic Information</h3>
+                  <div className="flex items-center gap-1 rounded-md border border-border p-0.5">
                     <button
                       type="button"
                       className={`px-2.5 py-0.5 text-xs font-medium rounded transition-colors ${
                         actionVisibility === 'opaque'
-                          ? 'bg-slate-700 text-white'
-                          : 'text-slate-500 hover:text-slate-700'
+                          ? 'bg-brand-accent text-white'
+                          : 'text-muted-foreground hover:text-foreground'
                       }`}
                       onClick={() => patchData({ actionVisibility: 'opaque' })}
                     >
@@ -297,8 +297,8 @@ export function ActionDetailView() {
                       type="button"
                       className={`px-2.5 py-0.5 text-xs font-medium rounded transition-colors ${
                         actionVisibility === 'observable'
-                          ? 'bg-slate-700 text-white'
-                          : 'text-slate-500 hover:text-slate-700'
+                          ? 'bg-brand-accent text-white'
+                          : 'text-muted-foreground hover:text-foreground'
                       }`}
                       onClick={() => patchData({ actionVisibility: 'observable' })}
                     >
@@ -329,16 +329,14 @@ export function ActionDetailView() {
 
                   <div className="space-y-1">
                     <Label className="text-sm">OID</Label>
-                    <p className="text-xs font-mono text-slate-500 dark:text-slate-400 break-all select-all">
-                      {selectedSpec.id}
-                    </p>
+                    <p className="text-xs font-mono text-muted-foreground break-all select-all">{selectedSpec.id}</p>
                   </div>
                 </div>
               </div>
 
               {/* Input Parameters Section */}
-              <div className="border-t border-slate-200 dark:border-slate-700 pt-3">
-                <h3 className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">Input Parameters</h3>
+              <div className="border-t border-border pt-3">
+                <h3 className="text-sm font-medium text-foreground mb-2">Input Parameters</h3>
                 <ValuesEditor
                   values={inputs}
                   onChange={(newInputs) => patchData({ inputs: newInputs })}
@@ -349,8 +347,8 @@ export function ActionDetailView() {
               </div>
 
               {/* Output Parameters Section */}
-              <div className="border-t border-slate-200 dark:border-slate-700 pt-3">
-                <h3 className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">Output Parameters</h3>
+              <div className="border-t border-border pt-3">
+                <h3 className="text-sm font-medium text-foreground mb-2">Output Parameters</h3>
                 <ValuesEditor
                   values={outputs}
                   onChange={(newOutputs) => patchData({ outputs: newOutputs })}

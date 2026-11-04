@@ -85,7 +85,7 @@ export function SelectionOverlay({ viewportRef }: { viewportRef: RefObject<HTMLD
           top: rect.top,
           width: rect.width,
           height: rect.height,
-          border: '2px solid #2563eb',
+          border: '2px solid var(--brand-accent)',
           borderRadius: 4,
           boxSizing: 'border-box',
           pointerEvents: 'none',

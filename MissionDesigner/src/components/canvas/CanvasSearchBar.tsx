@@ -104,10 +104,10 @@ export function CanvasSearchBar({ onClose }: CanvasSearchBarProps) {
 
   return (
     <div
-      className="absolute top-3 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2 bg-white rounded-lg shadow-lg border border-slate-200 px-3 py-2"
+      className="absolute top-3 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2 bg-card rounded-lg shadow-lg border border-border px-3 py-2"
       style={{ minWidth: 300 }}
     >
-      <Search className="h-4 w-4 text-slate-400 flex-shrink-0" />
+      <Search className="h-4 w-4 text-muted-foreground flex-shrink-0" />
       <input
         ref={inputRef}
         type="text"
@@ -115,12 +115,12 @@ export function CanvasSearchBar({ onClose }: CanvasSearchBarProps) {
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Search nodes..."
-        className="flex-1 text-sm outline-none border-none bg-transparent text-slate-700 placeholder:text-slate-400"
+        className="flex-1 text-sm outline-none border-none bg-transparent text-foreground placeholder:text-muted-foreground"
       />
 
       {/* Match count */}
       {query.trim() && (
-        <span className="text-xs text-slate-400 whitespace-nowrap">
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
           {matches.length === 0 ? 'No matches' : `${matches.length > 0 ? currentIndex + 1 : 0} of ${matches.length}`}
         </span>
       )}
@@ -130,7 +130,7 @@ export function CanvasSearchBar({ onClose }: CanvasSearchBarProps) {
         <div className="flex items-center gap-0.5">
           <button
             type="button"
-            className="p-0.5 rounded hover:bg-slate-100 text-slate-500"
+            className="p-0.5 rounded hover:bg-muted text-muted-foreground"
             onClick={() => navigateToMatch(currentIndex - 1)}
             title="Previous match (Shift+Enter)"
           >
@@ -138,7 +138,7 @@ export function CanvasSearchBar({ onClose }: CanvasSearchBarProps) {
           </button>
           <button
             type="button"
-            className="p-0.5 rounded hover:bg-slate-100 text-slate-500"
+            className="p-0.5 rounded hover:bg-muted text-muted-foreground"
             onClick={() => navigateToMatch(currentIndex + 1)}
             title="Next match (Enter)"
           >
@@ -150,7 +150,7 @@ export function CanvasSearchBar({ onClose }: CanvasSearchBarProps) {
       {/* Close button */}
       <button
         type="button"
-        className="p-0.5 rounded hover:bg-slate-100 text-slate-400"
+        className="p-0.5 rounded hover:bg-muted text-muted-foreground"
         onClick={onClose}
         title="Close (Escape)"
       >

@@ -56,7 +56,7 @@ function Select1OptionEditor({
   extraGroups?: ExtraPickerGroup[]
 }) {
   return (
-    <div className="space-y-1.5 border-l-2 border-slate-200 dark:border-slate-700 pl-2">
+    <div className="space-y-1.5 border-l-2 border-border pl-2">
       <div className="flex items-center gap-2">
         <input
           type="radio"
@@ -79,7 +79,7 @@ function Select1OptionEditor({
           value={option.operator}
           onChange={(e) => onUpdate(option.id, { operator: e.target.value as Select1Operator })}
           disabled={readOnly || option.isDefault}
-          className="h-7 text-sm border border-slate-300 dark:border-slate-600 rounded px-1 bg-white dark:bg-slate-900 disabled:opacity-50"
+          className="h-7 text-sm border border-border rounded px-1 bg-background disabled:opacity-50"
         >
           {OPERATORS.map((op) => (
             <option key={op.value} value={op.value}>
@@ -109,7 +109,7 @@ function Select1OptionEditor({
           <Button
             variant="ghost"
             size="sm"
-            className={`h-7 px-1.5 text-[10px] font-mono ${option.valueType === 'property' ? 'bg-blue-100 text-blue-700' : 'text-slate-500 dark:text-slate-400'}`}
+            className={`h-7 px-1.5 text-[11px] font-mono ${option.valueType === 'property' ? 'bg-selection text-link' : 'text-muted-foreground'}`}
             onClick={() => onUpdate(option.id, { valueType: option.valueType === 'literal' ? 'property' : 'literal' })}
             disabled={readOnly || option.isDefault}
             title={
@@ -194,14 +194,14 @@ function Select1StepConfigComponent({ data, nodeId, onChange, readOnly = false }
   const options = (data.select1Options || []) as Select1OptionSpec[]
 
   return (
-    <div className="space-y-4 border-t border-slate-200 dark:border-slate-700 pt-3">
-      <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">
+    <div className="space-y-4 border-t border-border pt-3">
+      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
         Select 1 Configuration
       </span>
 
       {/* Input Parameter Name */}
       <div className="space-y-1">
-        <Label className="text-xs text-slate-500 dark:text-slate-400">Input Parameter Name</Label>
+        <Label className="text-xs text-muted-foreground">Input Parameter Name</Label>
         <div className="flex items-center gap-2">
           <label className="flex items-center gap-1 cursor-pointer shrink-0">
             <input
@@ -209,10 +209,10 @@ function Select1StepConfigComponent({ data, nodeId, onChange, readOnly = false }
               name="select1InputValueType"
               checked={data.select1InputValueType !== 'property'}
               onChange={() => onChange({ select1InputValueType: 'literal' })}
-              className="h-3 w-3 accent-slate-600 dark:accent-slate-300"
+              className="h-3 w-3 accent-muted-foreground"
               disabled={readOnly}
             />
-            <span className="text-xs text-slate-600 dark:text-slate-300">Text</span>
+            <span className="text-xs text-muted-foreground">Text</span>
           </label>
           <label className="flex items-center gap-1 cursor-pointer shrink-0">
             <input
@@ -220,10 +220,10 @@ function Select1StepConfigComponent({ data, nodeId, onChange, readOnly = false }
               name="select1InputValueType"
               checked={data.select1InputValueType === 'property'}
               onChange={() => onChange({ select1InputValueType: 'property' })}
-              className="h-3 w-3 accent-slate-600 dark:accent-slate-300"
+              className="h-3 w-3 accent-muted-foreground"
               disabled={readOnly}
             />
-            <span className="text-xs text-slate-600 dark:text-slate-300">Source</span>
+            <span className="text-xs text-muted-foreground">Source</span>
           </label>
         </div>
         {data.select1InputValueType === 'property' ? (

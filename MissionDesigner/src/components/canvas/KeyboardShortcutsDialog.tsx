@@ -71,7 +71,7 @@ export function KeyboardShortcutsDialog({ open, onClose }: KeyboardShortcutsDial
 function ShortcutSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">{title}</h3>
+      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{title}</h3>
       <div className="space-y-1.5">{children}</div>
     </div>
   )
@@ -80,12 +80,12 @@ function ShortcutSection({ title, children }: { title: string; children: React.R
 function ShortcutRow({ keys, altKeys, description }: { keys: string[]; altKeys?: string[]; description: string }) {
   return (
     <div className="flex items-center justify-between text-sm">
-      <span className="text-slate-600">{description}</span>
+      <span className="text-muted-foreground">{description}</span>
       <div className="flex items-center gap-1">
         <KeyCombo keys={keys} />
         {altKeys && (
           <>
-            <span className="text-slate-400 text-xs mx-0.5">/</span>
+            <span className="text-muted-foreground text-xs mx-0.5">/</span>
             <KeyCombo keys={altKeys} />
           </>
         )}
@@ -99,8 +99,8 @@ function KeyCombo({ keys }: { keys: string[] }) {
     <span className="flex items-center gap-0.5">
       {keys.map((key, i) => (
         <span key={i}>
-          {i > 0 && <span className="text-slate-300 mx-0.5">+</span>}
-          <kbd className="bg-slate-100 rounded px-1.5 py-0.5 text-xs font-mono border border-slate-200 text-slate-600">
+          {i > 0 && <span className="text-muted-foreground mx-0.5">+</span>}
+          <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs font-mono border border-border text-muted-foreground">
             {key}
           </kbd>
         </span>

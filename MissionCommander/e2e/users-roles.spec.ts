@@ -20,6 +20,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { bootstrapFirstAdmin, signIn } from './helpers/auth';
 import { ADMIN, NEW_USER } from './helpers/db';
+import { openRail } from './helpers/rail';
 
 async function signOut(page: Page) {
   await page.getByRole('button', { name: /sign out/i }).click();
@@ -31,7 +32,7 @@ test('admin creates a viewer login and assigns roles on a work center; the new u
   await signIn(page, ADMIN.email, ADMIN.password);
 
   // Users hierarchy → create the login (spec 2026-09-06 D6: login name is required).
-  await page.getByRole('button', { name: 'Users' }).click();
+  await openRail(page, 'Users');
   await page.getByRole('button', { name: 'New user' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
@@ -48,7 +49,7 @@ test('admin creates a viewer login and assigns roles on a work center; the new u
   // Roles are per work center (spec 2026-09-06 D3): assign the user to the seeded "Demo Line"
   // work center from its Users tab, then edit their roles there. The demo seed GUARANTEES the
   // "Operator"/"Supervisor" roles exist, so this leg is non-tolerant.
-  await page.getByRole('button', { name: 'Work Centers' }).click();
+  await openRail(page, 'Work Centers');
   await page.getByRole('button', { name: 'Demo Line', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Demo Line' })).toBeVisible();
   await page.getByRole('tab', { name: 'Users' }).click();
@@ -70,7 +71,7 @@ test('admin creates a viewer login and assigns roles on a work center; the new u
   await expect(page.getByRole('cell', { name: /Operator, Supervisor/ })).toBeVisible();
 
   // The user's own detail mirrors it, grouped by work center.
-  await page.getByRole('button', { name: 'Users' }).click();
+  await openRail(page, 'Users');
   await page.getByRole('button', { name: NEW_USER.displayName }).click();
   // exact: the Roles cell's accessible name now carries "Add Role in Demo Line" too.
   await expect(page.getByRole('cell', { name: 'Demo Line', exact: true })).toBeVisible();
@@ -94,14 +95,14 @@ test('admin creates a viewer login and assigns roles on a work center; the new u
 
   // The new user signs in with the initial password and sees a viewer-scoped tool.
   await signIn(page, NEW_USER.email, NEW_USER.password);
-  await page.getByRole('button', { name: 'Users' }).click();
+  await openRail(page, 'Users');
   await expect(page.getByRole('button', { name: 'New user' })).toBeDisabled();
   await signOut(page);
 });
 
 test('admin resets the new user password: old fails, new works', async ({ page }) => {
   await signIn(page, ADMIN.email, ADMIN.password);
-  await page.getByRole('button', { name: 'Users' }).click();
+  await openRail(page, 'Users');
   await page.getByRole('button', { name: NEW_USER.displayName }).click();
   await page.getByRole('button', { name: 'Set password' }).click();
   const dialog = page.getByRole('dialog');
@@ -131,18 +132,18 @@ test('admin resets the new user password: old fails, new works', async ({ page }
 
 test('admin impersonates the viewer, sees the banner and viewer rights, then stops', async ({ page }) => {
   await signIn(page, ADMIN.email, ADMIN.password);
-  await page.getByRole('button', { name: 'Users' }).click();
+  await openRail(page, 'Users');
   await page.getByRole('button', { name: NEW_USER.displayName }).click();
   await page.getByRole('button', { name: 'Impersonate' }).click();
 
   // Banner appears; the tool is now viewer-scoped (New user disabled).
   await expect(page.getByText(/Impersonating/)).toBeVisible({ timeout: 15_000 });
-  await page.getByRole('button', { name: 'Users' }).click();
+  await openRail(page, 'Users');
   await expect(page.getByRole('button', { name: 'New user' })).toBeDisabled();
 
   // Stop restores the admin (banner gone, New user enabled again).
   await page.getByRole('button', { name: /stop impersonating/i }).click();
   await expect(page.getByText(/Impersonating/)).toHaveCount(0, { timeout: 15_000 });
-  await page.getByRole('button', { name: 'Users' }).click();
+  await openRail(page, 'Users');
   await expect(page.getByRole('button', { name: 'New user' })).toBeEnabled();
 });

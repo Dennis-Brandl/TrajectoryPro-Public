@@ -25,4 +25,11 @@ describe('DetailPanel', () => {
     render(<DetailPanel />);
     expect(screen.getByText('Select a work center in the tree, or create one.')).toBeInTheDocument();
   });
+
+  it('shows the diagram with the empty-state message when nothing is selected', () => {
+    useSelectionStore.setState({ activeHierarchy: 'user', selectedUserId: null });
+    render(<DetailPanel />);
+    expect(screen.getByRole('img', { name: /work center/i })).toBeInTheDocument();
+    expect(screen.getByText('Select a user')).toBeInTheDocument();
+  });
 });

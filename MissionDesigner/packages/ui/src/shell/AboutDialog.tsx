@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import type { RefObject } from 'react'
+import { Button } from '../primitives/button'
 import {
-  Button,
   Dialog,
   DialogClose,
   DialogContent,
@@ -21,35 +22,48 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@mission/ui'
+} from '../primitives/dialog'
+import { SUITE_VERSION } from './suite-version'
 
-const APP_NAME = 'Mission Designer'
-const APP_TAGLINE = 'Visual workflow specification editor'
 const COPYRIGHT = 'Copyright 2026 Dennis L. Brandl. Licensed under the Apache License, Version 2.0.'
 
-interface AboutDialogProps {
+export interface AboutDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  /** App version (build-time `__APP_VERSION__`), passed in so the dialog stays pure/testable. */
-  version: string
+  appName: string
+  buildVersion: string
+  tagline: string
+  /** Element that gets focus when the dialog closes (there is no DialogTrigger). */
+  returnFocusRef?: RefObject<HTMLElement | null>
 }
 
-/** "About" dialog opened from the app-header icon. Shows name, version, and copyright. */
-export function AboutDialog({ open, onOpenChange, version }: AboutDialogProps) {
+/** "About" dialog opened from the app-header icon. */
+export function AboutDialog({ open, onOpenChange, appName, buildVersion, tagline, returnFocusRef }: AboutDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
+      <DialogContent
+        className="max-w-sm"
+        onCloseAutoFocus={(e) => {
+          if (returnFocusRef?.current) {
+            e.preventDefault()
+            returnFocusRef.current.focus()
+          }
+        }}
+      >
         <DialogHeader>
           <div className="flex items-center gap-3">
             <img src="/ic_launcher_round.png" alt="" className="h-12 w-12 shrink-0" />
             <div className="text-left">
-              <DialogTitle>{APP_NAME}</DialogTitle>
-              <DialogDescription>Version {version}</DialogDescription>
+              <DialogTitle>{appName}</DialogTitle>
+              <DialogDescription>Version {SUITE_VERSION}</DialogDescription>
             </div>
           </div>
         </DialogHeader>
         <div className="space-y-2 text-sm text-muted-foreground">
-          <p>{APP_TAGLINE}</p>
+          <p>
+            {appName} build {buildVersion}
+          </p>
+          <p>{tagline}</p>
           <p>{COPYRIGHT}</p>
         </div>
         <DialogFooter>

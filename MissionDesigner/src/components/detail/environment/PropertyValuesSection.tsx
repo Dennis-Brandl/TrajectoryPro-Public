@@ -46,19 +46,15 @@ export function PropertyValuesSection({
   return (
     <>
       {showValues && (
-        <div className={hideHeaders ? '' : 'border-t border-slate-200 dark:border-slate-700 pt-3'}>
-          {!hideHeaders && (
-            <h3 className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">Property Values</h3>
-          )}
+        <div className={hideHeaders ? '' : 'border-t border-border pt-3'}>
+          {!hideHeaders && <h3 className="text-sm font-medium text-foreground mb-2">Property Values</h3>}
           <ValuesEditor values={values} onChange={onValuesChange} availableValueTypes={availableValueTypes} />
         </div>
       )}
 
       {showActionProps && (
-        <div className={hideHeaders ? '' : 'border-t border-slate-200 dark:border-slate-700 pt-3'}>
-          {!hideHeaders && (
-            <h3 className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">Action Properties</h3>
-          )}
+        <div className={hideHeaders ? '' : 'border-t border-border pt-3'}>
+          {!hideHeaders && <h3 className="text-sm font-medium text-foreground mb-2">Action Properties</h3>}
           <ValuesEditor
             values={actionProperties}
             onChange={onActionPropertiesChange}

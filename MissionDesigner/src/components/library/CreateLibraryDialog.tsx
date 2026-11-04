@@ -116,7 +116,7 @@ export function CreateLibraryDialog() {
   return (
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogTrigger asChild>
-        <Button variant="outline" size="sm" className="w-full">
+        <Button variant="outline" size="sm" className="min-w-0 flex-1">
           <Plus className="h-4 w-4 mr-2" />
           New Library
         </Button>
@@ -142,7 +142,7 @@ export function CreateLibraryDialog() {
                 aria-label="Team"
                 value={effectiveTeamId}
                 onChange={(e) => setTeamId(e.target.value)}
-                className="mt-2 w-full h-9 rounded-md border border-slate-200 dark:border-slate-700 bg-transparent px-2 text-sm text-slate-700 dark:text-slate-200"
+                className="mt-2 w-full h-9 rounded-md border border-border bg-transparent px-2 text-sm text-foreground"
               >
                 {eligibleTeams.map((t) => (
                   <option key={t.id} value={t.id}>

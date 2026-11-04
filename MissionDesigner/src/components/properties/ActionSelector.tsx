@@ -190,23 +190,21 @@ export function ActionSelector({ selectedActionName, environmentSpecId, onAction
                 <div className="flex items-center gap-2">
                   <Zap className="h-3 w-3 text-amber-600" />
                   <span>{action.name}</span>
-                  <span className="text-xs text-slate-400 dark:text-slate-500">({action.libraryName})</span>
+                  <span className="text-xs text-muted-foreground">({action.libraryName})</span>
                 </div>
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       ) : environmentSpecIds.length === 0 ? (
-        <p className="text-xs text-slate-400 dark:text-slate-500 italic">
+        <p className="text-xs text-muted-foreground italic">
           No environments associated with this specification. Add environments in the header above.
         </p>
       ) : (
-        <p className="text-xs text-slate-400 dark:text-slate-500 italic">
-          No actions available in the associated environments.
-        </p>
+        <p className="text-xs text-muted-foreground italic">No actions available in the associated environments.</p>
       )}
       {selectedActionName && (
-        <p className="text-xs text-slate-500 dark:text-slate-400">
+        <p className="text-xs text-muted-foreground">
           Selected: <span className="font-medium">{selectedActionName}</span>
         </p>
       )}

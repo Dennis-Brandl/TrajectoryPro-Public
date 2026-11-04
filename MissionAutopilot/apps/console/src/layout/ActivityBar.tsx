@@ -12,40 +12,56 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { FolderTree, Play, Search } from 'lucide-react'
-import { usePanelContext, type PanelId } from './PanelContext'
-import { cn } from '@mission/ui'
+import { useLocation, useNavigate } from 'react-router'
+import { FolderTree, LayoutDashboard, Play, ScrollText, Search } from 'lucide-react'
+import { ActivityRail, type RailItem } from '@mission/ui'
+import { usePanelContext } from './PanelContext'
+import { railActiveId, type RailId } from './rail'
 
-const items: { id: PanelId; icon: typeof FolderTree; label: string }[] = [
-  { id: 'explorer', icon: FolderTree, label: 'Explorer' },
+// The cast bridges two copies of the React types (this console's and the linked
+// UI package's), which make otherwise identical icon types incompatible.
+const items = [
+  { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { id: 'environments', icon: FolderTree, label: 'Environments' },
   { id: 'instances', icon: Play, label: 'Instances' },
+  { id: 'log', icon: ScrollText, label: 'Log' },
   { id: 'search', icon: Search, label: 'Search' },
-]
+] as unknown as (RailItem & { id: RailId })[]
 
 export default function ActivityBar() {
-  const { activePanel, togglePanel } = usePanelContext()
+  const { activePanel, setActivePanel, togglePanel } = usePanelContext()
+  const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const activeId = railActiveId(pathname, activePanel)
 
-  return (
-    <div className="flex flex-col items-center w-10 bg-[var(--activity-bar)] border-r border-border shrink-0 pt-2 gap-1">
-      {items.map(({ id, icon: Icon, label }) => {
-        const isActive = activePanel === id
-        return (
-          <button
-            key={id}
-            onClick={() => togglePanel(id)}
-            title={label}
-            className={cn(
-              'relative flex items-center justify-center w-8 h-8 rounded transition-colors',
-              isActive ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {isActive && (
-              <div className="absolute left-0 top-1 bottom-1 w-0.5 bg-primary rounded-r" />
-            )}
-            <Icon size={18} />
-          </button>
-        )
-      })}
-    </div>
-  )
+  function onSelect(id: string) {
+    const active = id === activeId
+    switch (id as RailId) {
+      case 'dashboard':
+        if (active) return
+        void navigate('/')
+        setActivePanel(null)
+        return
+      case 'environments':
+        if (active) return togglePanel('explorer')
+        void navigate('/environments')
+        setActivePanel('explorer')
+        return
+      case 'instances':
+        if (active) return togglePanel('instances')
+        void navigate('/instances')
+        setActivePanel('instances')
+        return
+      case 'log':
+        if (active) return
+        void navigate('/log')
+        setActivePanel(null)
+        return
+      case 'search':
+        setActivePanel(active ? null : 'search')
+        return
+    }
+  }
+
+  return <ActivityRail items={items} activeId={activeId} onSelect={onSelect} />
 }

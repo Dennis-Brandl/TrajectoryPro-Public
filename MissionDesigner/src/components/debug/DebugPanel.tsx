@@ -202,24 +202,24 @@ export function DebugPanel() {
 
     return (
       <div key={lib.id} style={{ marginLeft: depth * 16 }}>
-        <div className="flex items-center gap-1 py-0.5 hover:bg-slate-100 rounded group">
+        <div className="flex items-center gap-1 py-0.5 hover:bg-muted rounded group">
           <button onClick={() => toggleLibrary(lib.id)} className="p-0.5" disabled={!hasContent}>
             {hasContent ? (
               isExpanded ? (
-                <ChevronDown className="h-3 w-3 text-slate-400" />
+                <ChevronDown className="h-3 w-3 text-muted-foreground" />
               ) : (
-                <ChevronRight className="h-3 w-3 text-slate-400" />
+                <ChevronRight className="h-3 w-3 text-muted-foreground" />
               )
             ) : (
               <span className="w-3" />
             )}
           </button>
-          <span className="text-sm font-medium text-slate-700">{lib.name}</span>
-          <code className="text-[9px] text-slate-400 font-mono bg-slate-50 px-1 rounded" title={lib.id}>
+          <span className="text-sm font-medium text-foreground">{lib.name}</span>
+          <code className="text-[11px] text-muted-foreground font-mono bg-muted px-1 rounded" title={lib.id}>
             {lib.id.slice(0, 8)}
           </code>
           <span className="flex-1" />
-          <span className="text-xs text-slate-400 mr-2">
+          <span className="text-xs text-muted-foreground mr-2">
             {specs.length} spec{specs.length !== 1 ? 's' : ''}
           </span>
           <button
@@ -240,26 +240,26 @@ export function DebugPanel() {
 
               return (
                 <div key={spec.id}>
-                  <div className="flex items-center gap-1 py-0.5 hover:bg-slate-50 rounded group text-sm">
+                  <div className="flex items-center gap-1 py-0.5 hover:bg-muted rounded group text-sm">
                     <button onClick={() => toggleSpec(spec.id)} className="p-0.5" disabled={!hasNodes}>
                       {hasNodes ? (
                         isSpecExpanded ? (
-                          <ChevronDown className="h-3 w-3 text-slate-400" />
+                          <ChevronDown className="h-3 w-3 text-muted-foreground" />
                         ) : (
-                          <ChevronRight className="h-3 w-3 text-slate-400" />
+                          <ChevronRight className="h-3 w-3 text-muted-foreground" />
                         )
                       ) : (
                         <span className="w-3" />
                       )}
                     </button>
-                    <span className="text-slate-600 truncate" title={spec.id}>
+                    <span className="text-muted-foreground truncate" title={spec.id}>
                       {spec.name}
                     </span>
-                    <code className="text-[9px] text-slate-400 font-mono bg-slate-50 px-1 rounded" title={spec.id}>
+                    <code className="text-[11px] text-muted-foreground font-mono bg-muted px-1 rounded" title={spec.id}>
                       {spec.id.slice(0, 8)}
                     </code>
-                    {parentId && <span className="text-xs text-slate-400">(child)</span>}
-                    {hasNodes && <span className="text-xs text-slate-400">[{nodes.length} steps]</span>}
+                    {parentId && <span className="text-xs text-muted-foreground">(child)</span>}
+                    {hasNodes && <span className="text-xs text-muted-foreground">[{nodes.length} steps]</span>}
                     <span className="flex-1" />
                     <button
                       onClick={() => handleDeleteSpec(spec.id)}
@@ -270,7 +270,7 @@ export function DebugPanel() {
                     </button>
                   </div>
                   {isSpecExpanded && hasNodes && (
-                    <div className="ml-6 border-l border-slate-200 pl-2">
+                    <div className="ml-6 border-l border-border pl-2">
                       {nodes.map((node, idx) => {
                         const isChildWorkflow = node.type === 'workflowProxy'
                         const embeddedSpec =
@@ -279,15 +279,15 @@ export function DebugPanel() {
                             : null
 
                         return (
-                          <div key={node.id} className="flex items-center gap-1 py-0.5 text-xs text-slate-500">
-                            <span className="text-slate-400 w-4 text-right">{idx + 1}.</span>
+                          <div key={node.id} className="flex items-center gap-1 py-0.5 text-xs text-muted-foreground">
+                            <span className="text-muted-foreground w-4 text-right">{idx + 1}.</span>
                             <span
                               className={cn(
-                                'px-1 rounded text-[10px]',
+                                'px-1 rounded text-[11px]',
                                 node.type === 'start' && 'bg-green-100 text-green-700',
                                 node.type === 'end' && 'bg-red-100 text-red-700',
-                                node.type === 'workflowProxy' && 'bg-blue-100 text-blue-700',
-                                node.type === 'actionProxyWait' && 'bg-slate-100 text-slate-700',
+                                node.type === 'workflowProxy' && 'bg-selection text-link',
+                                node.type === 'actionProxyWait' && 'bg-muted text-foreground',
                                 node.type === 'select1' && 'bg-amber-100 text-amber-700',
                                 node.type === 'waitAny' && 'bg-amber-100 text-amber-700',
                                 node.type === 'parallel' && 'bg-purple-100 text-purple-700',
@@ -298,7 +298,7 @@ export function DebugPanel() {
                             </span>
                             <span className="truncate">{node.data.label || '(no label)'}</span>
                             <code
-                              className="text-[8px] text-slate-400 font-mono bg-slate-50 px-0.5 rounded"
+                              className="text-[11px] text-muted-foreground font-mono bg-muted px-0.5 rounded"
                               title={node.id}
                             >
                               {node.id.slice(0, 8)}
@@ -307,16 +307,18 @@ export function DebugPanel() {
                             {isChildWorkflow && node.data.subWorkflowMode && (
                               <span
                                 className={cn(
-                                  'text-[10px] px-1 rounded',
+                                  'text-[11px] px-1 rounded',
                                   node.data.subWorkflowMode === 'embedded'
-                                    ? 'bg-blue-50 text-blue-600'
+                                    ? 'bg-selection text-link'
                                     : 'bg-green-50 text-green-600',
                                 )}
                               >
                                 {node.data.subWorkflowMode}
                               </span>
                             )}
-                            {embeddedSpec && <span className="text-[10px] text-slate-400">→ {embeddedSpec.name}</span>}
+                            {embeddedSpec && (
+                              <span className="text-[11px] text-muted-foreground">→ {embeddedSpec.name}</span>
+                            )}
                           </div>
                         )
                       })}
@@ -340,7 +342,7 @@ export function DebugPanel() {
   }
 
   const typeColors: Record<string, string> = {
-    workflow: 'bg-blue-100 text-blue-700',
+    workflow: 'bg-selection text-link',
     step: 'bg-green-100 text-green-700',
     environment: 'bg-purple-100 text-purple-700',
     action: 'bg-orange-100 text-orange-700',
@@ -352,7 +354,7 @@ export function DebugPanel() {
         variant="ghost"
         size="sm"
         onClick={() => setOpen(true)}
-        className="h-8 w-8 p-0 text-slate-600 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white"
+        className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground dark:text-foreground dark:hover:text-white"
         title="Summary Panel"
       >
         <Eye className="h-4 w-4" />
@@ -373,11 +375,11 @@ export function DebugPanel() {
           <div className="flex-1 overflow-y-auto space-y-4 pr-2">
             {loading && !data ? (
               <div className="flex items-center justify-center py-8">
-                <div className="animate-spin h-6 w-6 border-2 border-slate-300 border-t-blue-600 rounded-full" />
+                <div className="animate-spin h-6 w-6 border-2 border-border border-t-blue-600 rounded-full" />
               </div>
             ) : data ? (
               <>
-                <div className="text-xs text-slate-500 mb-2">
+                <div className="text-xs text-muted-foreground mb-2">
                   Total: {data.libraries.length} libraries, {data.specifications.length} specifications
                 </div>
 
@@ -408,7 +410,7 @@ export function DebugPanel() {
                       {isExpanded && (
                         <div className="p-2 bg-white">
                           {libs.length === 0 ? (
-                            <p className="text-sm text-slate-400 italic px-2">No libraries</p>
+                            <p className="text-sm text-muted-foreground italic px-2">No libraries</p>
                           ) : (
                             libs.map((lib) => renderLibrary(lib))
                           )}
@@ -419,7 +421,7 @@ export function DebugPanel() {
                 })}
               </>
             ) : (
-              <p className="text-slate-500 text-center py-8">Failed to load data</p>
+              <p className="text-muted-foreground text-center py-8">Failed to load data</p>
             )}
           </div>
         </DialogContent>

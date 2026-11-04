@@ -55,14 +55,14 @@ export function DeviceSizeField({
       {!inline && (
         <label
           htmlFor={id}
-          className="text-gray-500 dark:text-gray-400"
+          className="text-muted-foreground"
           style={{ fontSize: 11, display: 'inline-block', marginBottom: 2 }}
         >
           Size
         </label>
       )}
       {bp !== 'base' && !overridden && (
-        <span className="text-gray-500 dark:text-gray-400" style={{ fontSize: 11, marginLeft: 6 }}>
+        <span className="text-muted-foreground" style={{ fontSize: 11, marginLeft: 6 }}>
           {`(from ${inheritedFrom})`}
         </span>
       )}
@@ -71,7 +71,7 @@ export function DeviceSizeField({
         aria-label={inline ? 'Text size' : undefined}
         value={value}
         onChange={(e) => onChange(sizePatchAt(block, bp, e.target.value as TypeToken))}
-        className="bg-white dark:bg-slate-900 border border-gray-300 dark:border-gray-600"
+        className="bg-background border border-border"
         style={
           inline
             ? { fontSize: 13, padding: '4px 8px', borderRadius: 4 }
@@ -88,7 +88,7 @@ export function DeviceSizeField({
         <button
           type="button"
           onClick={() => onChange({ sizeAt: clearSizeAt(block, clearable).sizeAt })}
-          className="text-blue-600 dark:text-blue-400"
+          className="text-link"
           style={{
             fontSize: 11,
             background: 'transparent',

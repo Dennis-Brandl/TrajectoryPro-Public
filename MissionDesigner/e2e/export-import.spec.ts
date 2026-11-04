@@ -27,6 +27,7 @@ import { ADMIN_STORAGE_STATE, loadAdminState } from './helpers/session'
 import { createLibrary } from './helpers/admin'
 import { openWritableDb, seedRootSpec } from './helpers/seed'
 import { seedFromWflibx } from './helpers/seed-library'
+import { openRail } from './helpers/rail'
 
 /**
  * Export / Import round-trip tests.
@@ -48,7 +49,7 @@ import { seedFromWflibx } from './helpers/seed-library'
 
 async function setupAndLogin(page: Page): Promise<void> {
   await page.goto('/')
-  await expect(page.getByRole('tab', { name: 'Workflows' })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('button', { name: 'Workflows', exact: true })).toBeVisible({ timeout: 15_000 })
 
   // Create a workflow library and a specification
   await page.getByRole('button', { name: 'New Library' }).click()
@@ -172,7 +173,7 @@ test.describe.serial('Workflow export downloads', () => {
   // hydration de-risk: if seeded data.nodes don't render, every test fails here.
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByRole('tab', { name: 'Workflows' })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('button', { name: 'Workflows', exact: true })).toBeVisible({ timeout: 15_000 })
     await expandTheLibrary(page, DL_LIB)
     await specRow(page, DL_WF).getByText(DL_WF, { exact: true }).click()
     await expect(page.locator('.react-flow')).toBeVisible({ timeout: 8_000 })
@@ -254,8 +255,8 @@ test.describe.serial('Workflow export downloads', () => {
  * Helper: navigate to the Workflows tab and ensure it is active.
  */
 async function goToWorkflowsTab(page: Page): Promise<void> {
-  await page.getByRole('tab', { name: 'Workflows' }).click()
-  await expect(page.getByRole('tab', { name: 'Workflows' })).toHaveAttribute('aria-selected', 'true', {
+  await openRail(page, 'Workflows')
+  await expect(page.getByRole('button', { name: 'Workflows', exact: true })).toHaveAttribute('aria-current', 'page', {
     timeout: 6_000,
   })
 }
@@ -300,7 +301,7 @@ test.describe.serial('Workflow Library .WFlibX round-trip', () => {
     sharedPage = await sharedContext.newPage()
     await sharedPage.setViewportSize({ width: 1440, height: 900 })
     await sharedPage.goto('/')
-    await expect(sharedPage.getByRole('tab', { name: 'Workflows' })).toBeVisible({ timeout: 15_000 })
+    await expect(sharedPage.getByRole('button', { name: 'Workflows', exact: true })).toBeVisible({ timeout: 15_000 })
   })
 
   test.afterAll(async () => {

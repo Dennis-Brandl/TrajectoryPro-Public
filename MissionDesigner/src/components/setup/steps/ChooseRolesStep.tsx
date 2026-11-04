@@ -61,7 +61,7 @@ export function ChooseRolesStep({ onNext, onBack }: { onNext: () => void; onBack
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Choose starting roles</h2>
+      <h2 className="text-lg font-semibold text-foreground">Choose starting roles</h2>
       <p className="text-sm text-muted-foreground">
         Built-in roles are pre-selected — uncheck any you don't want, or create your own.
       </p>

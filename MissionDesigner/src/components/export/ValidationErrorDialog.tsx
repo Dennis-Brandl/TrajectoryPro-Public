@@ -41,13 +41,11 @@ export function ValidationErrorDialog({ open, onClose, errors }: ValidationError
             >
               <div className="flex-1">
                 {error.workflowName && (
-                  <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 mr-1">
-                    [{error.workflowName}]
-                  </span>
+                  <span className="text-xs font-semibold text-link mr-1">[{error.workflowName}]</span>
                 )}
                 {error.nodeName && <span className="font-medium">{error.nodeName}</span>}
                 {error.nodeName && error.nodeType && (
-                  <span className="text-slate-500 dark:text-slate-400 ml-1">({error.nodeType})</span>
+                  <span className="text-muted-foreground ml-1">({error.nodeType})</span>
                 )}
                 {(error.nodeName || error.nodeType) && <span className="mx-1">&mdash;</span>}
                 <span>{error.message}</span>

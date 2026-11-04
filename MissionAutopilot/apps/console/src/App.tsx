@@ -16,7 +16,6 @@ import { useEffect, useState } from 'react'
 import { Routes, Route } from 'react-router'
 import Layout from './layout/Layout'
 import { PanelProvider } from './layout/PanelContext'
-import { WelcomeSplash } from './components/WelcomeSplash'
 import { SignInScreen, REJECTED } from './components/SignInScreen'
 import { getApiKey, UNAUTHORIZED_EVENT } from './lib/apiKey'
 import DashboardPage from './features/dashboard/DashboardPage'
@@ -30,7 +29,6 @@ import LogPage from './features/log/LogPage'
 import SettingsPage from './features/settings/SettingsPage'
 
 export default function App() {
-  const [splashDismissed, setSplashDismissed] = useState(false)
   const [signedIn, setSignedIn] = useState(() => getApiKey() !== null)
   // True only after the server rejected the key mid-session; explicit sign out stays blank.
   const [rejected, setRejected] = useState(false)
@@ -41,16 +39,10 @@ export default function App() {
         (e as CustomEvent<{ signOut?: boolean } | undefined>).detail?.signOut === true
       setRejected(!explicit)
       setSignedIn(false)
-      setSplashDismissed(true)
     }
     window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized)
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized)
   }, [])
-
-  // The splash opens the app, before sign-in, so a fresh sign-in goes straight to the console.
-  if (!splashDismissed) {
-    return <WelcomeSplash onContinue={() => setSplashDismissed(true)} />
-  }
 
   if (!signedIn) {
     return (

@@ -45,13 +45,13 @@ const STATE_COLORS: Record<string, string> = {
   ABORTING: 'bg-red-500',
   STOPPING: 'bg-red-500',
   // Gray — terminal
-  COMPLETED: 'bg-gray-400',
-  ABORTED: 'bg-gray-400',
-  STOPPED: 'bg-gray-400',
+  COMPLETED: 'bg-muted-foreground',
+  ABORTED: 'bg-muted-foreground',
+  STOPPED: 'bg-muted-foreground',
 }
 
 export function getStateColor(state: string): string {
-  return STATE_COLORS[state] ?? 'bg-gray-400'
+  return STATE_COLORS[state] ?? 'bg-muted-foreground'
 }
 
 function StateDot({ state }: { state: string }) {

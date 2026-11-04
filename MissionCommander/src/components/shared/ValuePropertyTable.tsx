@@ -25,7 +25,7 @@ import type { SharedValuePropertyView } from '@/lib/api/types';
 // input; Save hands the row + new value to the caller, which posts through useActionRunner and
 // refreshes — the cell keeps the last-known value until then (no optimistic write).
 
-const BADGE = 'ml-2 shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground';
+const BADGE = 'ml-2 shrink-0 rounded bg-muted px-1.5 py-0.5 text-[11px] uppercase text-muted-foreground';
 const SYSTEM_COMMANDER_REASON = 'Requires Mission System Commander';
 
 export type ValueEditHandlers = {

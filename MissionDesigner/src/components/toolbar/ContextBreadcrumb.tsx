@@ -124,17 +124,17 @@ export function ContextBreadcrumb() {
   }, [selectedSpecificationId, allSpecs, specIndex])
 
   return (
-    <div className="flex items-center gap-1 text-sm text-slate-600">
-      <Icon className="h-4 w-4 text-slate-500" />
+    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+      <Icon className="h-4 w-4 text-muted-foreground" />
       <span className="font-medium">{entityLabel}</span>
 
       {libraryHierarchy.map((lib, index) => (
         <span key={lib.id} className="flex items-center gap-1">
-          <ChevronRight className="h-3 w-3 text-slate-500" />
+          <ChevronRight className="h-3 w-3 text-muted-foreground" />
           <button
             type="button"
             onClick={() => handleLibraryClick(lib.id)}
-            className={`hover:underline hover:text-blue-600 cursor-pointer ${index === libraryHierarchy.length - 1 && specificationHierarchy.length === 0 ? 'text-slate-700' : 'text-slate-500'}`}
+            className={`hover:underline hover:text-link cursor-pointer ${index === libraryHierarchy.length - 1 && specificationHierarchy.length === 0 ? 'text-foreground' : 'text-muted-foreground'}`}
           >
             {lib.name}
           </button>
@@ -143,11 +143,11 @@ export function ContextBreadcrumb() {
 
       {specificationHierarchy.map((spec, index) => (
         <span key={spec.id} className="flex items-center gap-1">
-          <ChevronRight className="h-3 w-3 text-slate-500" />
+          <ChevronRight className="h-3 w-3 text-muted-foreground" />
           <button
             type="button"
             onClick={() => handleSpecClick(spec.id)}
-            className={`hover:underline hover:text-blue-600 cursor-pointer ${index === specificationHierarchy.length - 1 ? 'font-medium text-slate-700' : 'text-slate-500'}`}
+            className={`hover:underline hover:text-link cursor-pointer ${index === specificationHierarchy.length - 1 ? 'font-medium text-foreground' : 'text-muted-foreground'}`}
           >
             {spec.name}
           </button>
@@ -156,8 +156,8 @@ export function ContextBreadcrumb() {
 
       {libraryHierarchy.length === 0 && specificationHierarchy.length === 0 && (
         <>
-          <ChevronRight className="h-3 w-3 text-slate-500" />
-          <span className="text-slate-500 italic">No selection</span>
+          <ChevronRight className="h-3 w-3 text-muted-foreground" />
+          <span className="text-muted-foreground italic">No selection</span>
         </>
       )}
     </div>

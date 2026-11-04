@@ -42,11 +42,9 @@ function CatchOutputsListComponent({ outputs }: CatchOutputsListProps) {
         <div key={output.name} className="space-y-0.5">
           <div className="text-sm font-medium px-1">{output.name}</div>
           {output.target && output.target !== output.name && (
-            <div className="text-xs text-slate-500 dark:text-slate-400 px-1">→ {output.target}</div>
+            <div className="text-xs text-muted-foreground px-1">→ {output.target}</div>
           )}
-          {output.description && (
-            <div className="text-xs text-slate-500 dark:text-slate-400 px-1">{output.description}</div>
-          )}
+          {output.description && <div className="text-xs text-muted-foreground px-1">{output.description}</div>}
         </div>
       ))}
     </div>

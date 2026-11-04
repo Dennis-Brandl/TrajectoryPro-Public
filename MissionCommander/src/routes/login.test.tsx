@@ -51,11 +51,18 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('LoginPage', () => {
+  it('renders inside the suite sign-in frame with the description', () => {
+    render(<LoginPage />);
+    expect(screen.getByText('Runs workflows in work centers. Load released workflow packages, assign people, and watch each run.')).toBeInTheDocument();
+    expect(screen.getByAltText('Mission Commander')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
+  });
+
   it('shows the zod inline error for a bad email and never calls signIn', async () => {
     render(<LoginPage />);
     await userEvent.type(screen.getByLabelText('Email'), 'not-an-email');
     await userEvent.type(screen.getByLabelText('Password'), 'password123');
-    await userEvent.click(screen.getByRole('button', { name: 'Sign In' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(await screen.findByText('Invalid email')).toBeInTheDocument();
     expect(signIn.email).not.toHaveBeenCalled();
   });
@@ -65,7 +72,7 @@ describe('LoginPage', () => {
     render(<LoginPage />);
     await userEvent.type(screen.getByLabelText('Email'), 'admin@example.com');
     await userEvent.type(screen.getByLabelText('Password'), 'password123');
-    await userEvent.click(screen.getByRole('button', { name: 'Sign In' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
     await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: '/' }));
     expect(signIn.email).toHaveBeenCalledWith({ email: 'admin@example.com', password: 'password123' });
   });
@@ -75,7 +82,7 @@ describe('LoginPage', () => {
     render(<LoginPage />);
     await userEvent.type(screen.getByLabelText('Email'), 'admin@example.com');
     await userEvent.type(screen.getByLabelText('Password'), 'password123');
-    await userEvent.click(screen.getByRole('button', { name: 'Sign In' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(await screen.findByTestId('login-error')).toHaveTextContent('Invalid credentials');
     expect(navigate).not.toHaveBeenCalled();
   });

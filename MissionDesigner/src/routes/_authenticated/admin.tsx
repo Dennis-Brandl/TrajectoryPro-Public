@@ -15,7 +15,7 @@
 import { createFileRoute, getRouteApi, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
-import { Button } from '@mission/ui'
+import { Button, Tabs, TabsList, TabsTrigger, TabsContent } from '@mission/ui'
 import { AccountsTab } from '@/components/admin/AccountsTab'
 import { LibraryAdminTab } from '@/components/admin/LibraryAdminTab'
 import { DatabaseTab } from '@/components/admin/DatabaseTab'
@@ -23,7 +23,7 @@ import { CleanupTab } from '@/components/admin/CleanupTab'
 import { TeamsTab } from '@/components/admin/TeamsTab'
 import { RolesTab } from '@/components/admin/RolesTab'
 import { ESignatureRolesTab } from '@/components/admin/ESignatureRolesTab'
-import { useTheme } from '@/hooks/useTheme'
+import { HeaderTools } from '@/components/shell/HeaderTools'
 
 const authenticatedRoute = getRouteApi('/_authenticated')
 
@@ -42,8 +42,7 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]['key']
 
-function AdminPage() {
-  useTheme()
+export function AdminPage() {
   const navigate = useNavigate()
   const { user } = authenticatedRoute.useRouteContext()
   const isAdmin = (user as { isAdministrator?: boolean })?.isAdministrator === true
@@ -59,51 +58,45 @@ function AdminPage() {
   if (!isAdmin) return null
 
   return (
-    <div className="h-full w-full flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
-      {/* Top bar */}
-      <div className="h-12 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 flex items-center px-4 gap-3 shrink-0">
-        <Button variant="ghost" size="sm" onClick={() => navigate({ to: '/' })}>
+    <div className="h-full w-full flex flex-col bg-side-panel text-foreground">
+      <HeaderTools>
+        <Button variant="ghost" size="sm" className="shrink-0" onClick={() => navigate({ to: '/' })}>
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back
         </Button>
-        <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Administration</h1>
-      </div>
+        <h1 className="shrink-0 text-sm font-semibold text-foreground">Administration</h1>
+      </HeaderTools>
 
-      {/* Tab bar */}
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 flex gap-1 shrink-0">
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
-              activeTab === tab.key
-                ? 'text-blue-600 dark:text-blue-400'
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-          >
-            {tab.label}
-            {activeTab === tab.key && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
-            )}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as TabKey)}
+        className="flex min-h-0 flex-1 flex-col gap-0"
+      >
+        {/* Tab bar */}
+        <TabsList className="h-auto w-full shrink-0 justify-start overflow-x-auto">
+          {TABS.map((tab) => (
+            <TabsTrigger key={tab.key} value={tab.key}>
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
-      {/* Tab content */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-5xl mx-auto">
-          {activeTab === 'accounts' && <AccountsTab currentUserId={(user as { id: string }).id} />}
-          {activeTab === 'teams' && <TeamsTab />}
-          {activeTab === 'roles' && <RolesTab />}
-          {activeTab === 'esignature' && <ESignatureRolesTab />}
-          {activeTab === 'action' && <LibraryAdminTab entityType="action" />}
-          {activeTab === 'environment' && <LibraryAdminTab entityType="environment" />}
-          {activeTab === 'step' && <LibraryAdminTab entityType="step" />}
-          {activeTab === 'workflow' && <LibraryAdminTab entityType="workflow" />}
-          {activeTab === 'database' && <DatabaseTab />}
-          {activeTab === 'cleanup' && <CleanupTab />}
-        </div>
-      </div>
+        {/* Tab content */}
+        <TabsContent value={activeTab} className="mt-0 flex-1 overflow-y-auto p-6">
+          <div className="max-w-5xl mx-auto">
+            {activeTab === 'accounts' && <AccountsTab currentUserId={(user as { id: string }).id} />}
+            {activeTab === 'teams' && <TeamsTab />}
+            {activeTab === 'roles' && <RolesTab />}
+            {activeTab === 'esignature' && <ESignatureRolesTab />}
+            {activeTab === 'action' && <LibraryAdminTab entityType="action" />}
+            {activeTab === 'environment' && <LibraryAdminTab entityType="environment" />}
+            {activeTab === 'step' && <LibraryAdminTab entityType="step" />}
+            {activeTab === 'workflow' && <LibraryAdminTab entityType="workflow" />}
+            {activeTab === 'database' && <DatabaseTab />}
+            {activeTab === 'cleanup' && <CleanupTab />}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

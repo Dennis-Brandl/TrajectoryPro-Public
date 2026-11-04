@@ -95,7 +95,7 @@ function TreeNode({
       {/* Library row */}
       <button
         className={cn(
-          'flex items-center gap-1 w-full px-2 py-1 text-left hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-sm',
+          'flex items-center gap-1 w-full px-2 py-1 text-left hover:bg-muted rounded text-sm',
           level > 0 && 'ml-3',
         )}
         style={{ paddingLeft: `${level * 12 + 8}px` }}
@@ -103,16 +103,16 @@ function TreeNode({
       >
         {hasChildren ? (
           isExpanded ? (
-            <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500 flex-shrink-0" />
+            <ChevronDown className="h-3 w-3 text-muted-foreground flex-shrink-0" />
           ) : (
-            <ChevronRight className="h-3 w-3 text-slate-400 dark:text-slate-500 flex-shrink-0" />
+            <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
           )
         ) : (
           <span className="w-3" />
         )}
         <FolderOpen className="h-3 w-3 text-amber-500 flex-shrink-0" />
-        <span className="truncate text-slate-700 dark:text-slate-200">{library.name}</span>
-        <span className="text-xs text-slate-400 dark:text-slate-500 ml-auto flex-shrink-0">{specs.length}</span>
+        <span className="truncate text-foreground">{library.name}</span>
+        <span className="text-xs text-muted-foreground ml-auto flex-shrink-0">{specs.length}</span>
       </button>
 
       {/* Expanded content */}
@@ -142,24 +142,19 @@ function TreeNode({
               <button
                 key={spec.id}
                 className={cn(
-                  'flex items-center gap-1 w-full px-2 py-1 text-left hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-sm',
-                  selectedSpecId === spec.id && 'bg-blue-50 hover:bg-blue-100',
+                  'flex items-center gap-1 w-full px-2 py-1 text-left hover:bg-muted rounded text-sm',
+                  selectedSpecId === spec.id && 'bg-selection hover:bg-selection',
                 )}
                 style={{ paddingLeft: `${(level + 1) * 12 + 8}px` }}
                 onClick={() => onSelect(spec, library)}
               >
                 <span className="w-3" />
                 <FileText className="h-3 w-3 text-sky-500 flex-shrink-0" />
-                <span
-                  className={cn(
-                    'truncate',
-                    selectedSpecId === spec.id ? 'text-blue-700' : 'text-slate-700 dark:text-slate-200',
-                  )}
-                >
+                <span className={cn('truncate', selectedSpecId === spec.id ? 'text-link' : 'text-foreground')}>
                   {spec.name}
                 </span>
                 {(inputCount > 0 || outputCount > 0) && (
-                  <span className="text-xs text-slate-400 dark:text-slate-500 ml-auto flex-shrink-0">
+                  <span className="text-xs text-muted-foreground ml-auto flex-shrink-0">
                     {inputCount}in/{outputCount}out
                   </span>
                 )}
@@ -216,7 +211,7 @@ export function StepLibraryPicker({ onSelect, selectedSpecId, className }: StepL
     <div className={cn('flex flex-col', className)}>
       {/* Search input */}
       <div className="relative mb-2">
-        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400 dark:text-slate-500" />
+        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
         <Input
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -229,7 +224,7 @@ export function StepLibraryPicker({ onSelect, selectedSpecId, className }: StepL
       <ScrollArea className="h-48 border rounded">
         <div className="p-1">
           {stepLibraries.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-32 text-slate-400 dark:text-slate-500">
+            <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
               <Layers className="h-6 w-6 mb-2" />
               <p className="text-xs">No step libraries found</p>
               <p className="text-xs">Create a step library first</p>

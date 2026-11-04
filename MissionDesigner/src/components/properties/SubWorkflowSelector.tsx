@@ -73,22 +73,22 @@ export function SubWorkflowSelector({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-800 rounded border dark:border-slate-700">
+      <div className="flex items-center gap-2 p-2 bg-muted rounded border dark:border-border">
         {isReferenceValid ? (
           <Link2 className="h-4 w-4 text-green-500" />
         ) : (
           <AlertTriangle className="h-4 w-4 text-amber-500" />
         )}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Reference to Step</p>
+          <p className="text-sm font-medium text-foreground">Reference to Step</p>
           {referencedSpecInfo ? (
-            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+            <p className="text-xs text-muted-foreground truncate">
               {referencedSpecInfo.spec.name} in {referencedSpecInfo.library.name}
             </p>
           ) : referencedStepName ? (
             <p className="text-xs text-amber-600 truncate">{referencedStepName} (not found)</p>
           ) : (
-            <p className="text-xs text-slate-400 dark:text-slate-500">No step selected</p>
+            <p className="text-xs text-muted-foreground">No step selected</p>
           )}
         </div>
         {!isReferenceValid && (

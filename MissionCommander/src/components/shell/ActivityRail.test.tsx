@@ -12,7 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ActivityRail } from './ActivityRail';
@@ -24,19 +24,12 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('ActivityRail', () => {
-  it('shows exactly the eight surviving hierarchies', () => {
+  it('shows exactly seven hierarchies and no Settings or Help', () => {
     render(<ActivityRail />);
     const labels = screen.getAllByRole('button').map((b) => b.getAttribute('aria-label'));
-    expect(labels).toEqual(['Work Centers', 'Runtime', 'Users', 'Workflows', 'Environments', 'Roles', 'History', 'Settings']);
-  });
-
-  // Help (2026-09-14): the user guide opens in its own tab, as Mission Designer's toolbar link does.
-  it('links to the help guide in a new tab', () => {
-    render(<ActivityRail />);
-    const help = screen.getByRole('link', { name: 'Help' });
-    expect(help).toHaveAttribute('href', '/help.html');
-    expect(help).toHaveAttribute('target', '_blank');
-    expect(help).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(labels).toEqual(['Work Centers', 'Runtime', 'Users', 'Workflows', 'Environments', 'Roles', 'History']);
+    expect(screen.queryByLabelText('Settings')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Help' })).toBeNull();
   });
 
   it('offers no Libraries entry', () => {
@@ -50,27 +43,32 @@ describe('ActivityRail', () => {
     expect(useSelectionStore.getState().activeHierarchy).toBe('workflow');
   });
 
-  // Runtime pane (spec 2026-08-27): store-driven exactly like the other hierarchies.
   it('clicking Runtime activates the runtime hierarchy', async () => {
     render(<ActivityRail />);
     await userEvent.click(screen.getByLabelText('Runtime'));
     expect(useSelectionStore.getState().activeHierarchy).toBe('runtime');
   });
 
-  // Task 8: History is store-driven exactly like the other five hierarchies — a plain
-  // click flips activeHierarchy, which is what HierarchyPane/DetailPanel switch on to
-  // actually render the page.
   it('clicking History activates the history hierarchy', async () => {
     render(<ActivityRail />);
     await userEvent.click(screen.getByLabelText('History'));
     expect(useSelectionStore.getState().activeHierarchy).toBe('history');
   });
 
-  // action-matching-mode spec (2026-08-20): Settings is store-driven exactly like History —
-  // a plain click flips activeHierarchy, which HierarchyPane/DetailPanel switch on.
-  it('clicking Settings activates the settings hierarchy', async () => {
-    render(<ActivityRail />);
-    await userEvent.click(screen.getByLabelText('Settings'));
-    expect(useSelectionStore.getState().activeHierarchy).toBe('settings');
+  it('marks the active hierarchy, and none on settings', () => {
+    const { rerender } = render(<ActivityRail />);
+    expect(screen.getByLabelText('Work Centers')).toHaveAttribute('aria-current', 'page');
+    useSelectionStore.setState({ activeHierarchy: 'settings' });
+    rerender(<ActivityRail />);
+    for (const b of screen.getAllByRole('button')) expect(b).not.toHaveAttribute('aria-current');
+  });
+
+  it('reports whether a click was on the already-active item', async () => {
+    const onItemClick = vi.fn();
+    render(<ActivityRail onItemClick={onItemClick} />);
+    await userEvent.click(screen.getByLabelText('Work Centers'));
+    await userEvent.click(screen.getByLabelText('Users'));
+    expect(onItemClick).toHaveBeenNthCalledWith(1, true);
+    expect(onItemClick).toHaveBeenNthCalledWith(2, false);
   });
 });

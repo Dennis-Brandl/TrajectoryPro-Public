@@ -153,14 +153,14 @@ describe('capability gating', () => {
     usePrincipalStore.getState().setPrincipal({ id: 'v', email: '', loginName: 'admin', displayName: 'V', accessLevel: 'viewer', isAdministrator: false, rights: ['work_center:read'], missionSystemCommanderOf: [] });
     vi.spyOn(wc.workCenters, 'list').mockResolvedValue({ nodes: [] });
     render(<WorkCenterTree onCreateRoot={() => {}} onCreateChild={() => {}} />);
-    expect(await screen.findByRole('button', { name: 'New work center' })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: 'New Work Center' })).toBeDisabled();
   });
 
   it('an administrator sees the tree "New work center" button enabled', async () => {
     usePrincipalStore.getState().setPrincipal({ id: 'a', email: '', loginName: 'admin', displayName: 'A', accessLevel: 'administrator', isAdministrator: true, rights: [], missionSystemCommanderOf: [] });
     vi.spyOn(wc.workCenters, 'list').mockResolvedValue({ nodes: [] });
     render(<WorkCenterTree onCreateRoot={() => {}} onCreateChild={() => {}} />);
-    expect(await screen.findByRole('button', { name: 'New work center' })).toBeEnabled();
+    expect(await screen.findByRole('button', { name: 'New Work Center' })).toBeEnabled();
   });
 
   it('a viewer without work_center:link sees Edit roles disabled; a work_center:link principal sees it enabled', async () => {

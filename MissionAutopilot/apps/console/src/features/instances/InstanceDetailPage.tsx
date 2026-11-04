@@ -288,7 +288,7 @@ export default function InstanceDetailPage() {
               so it deliberately does NOT depend on getCommandButtons. */}
           <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-border/40">
             <Button
-              variant="destructive"
+              variant="destructiveOutline"
               size="sm"
               disabled={deleteMutation.isPending}
               onClick={() => void handleDelete()}

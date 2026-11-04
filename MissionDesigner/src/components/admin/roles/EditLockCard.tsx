@@ -72,9 +72,9 @@ export function EditLockCard() {
   }
 
   return (
-    <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 space-y-3">
+    <div className="rounded-md border border-border bg-background p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Lifecycle Edit Lock</h3>
+        <h3 className="text-sm font-semibold text-foreground">Lifecycle Edit Lock</h3>
         <Button size="sm" onClick={handleSave} disabled={!dirty || saving}>
           {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
           Save
@@ -97,7 +97,7 @@ export function EditLockCard() {
                 checked={draft.has(state)}
                 disabled={saving}
                 onChange={() => toggle(state)}
-                className="h-4 w-4 rounded border-gray-300 accent-primary cursor-pointer disabled:cursor-not-allowed"
+                className="h-4 w-4 rounded border-border accent-primary cursor-pointer disabled:cursor-not-allowed"
               />
               {state}
             </label>

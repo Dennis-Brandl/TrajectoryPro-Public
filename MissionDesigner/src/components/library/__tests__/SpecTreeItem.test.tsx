@@ -81,10 +81,18 @@ describe('SpecTreeItem', () => {
 })
 
 describe('SpecTreeItem metadata line (depth === 0)', () => {
-  it('renders [version] state beneath the name for depth 0', () => {
+  it('renders the state tag after the name for depth 0; version is in the title only', () => {
     render(<SpecTreeItem node={NODE_A} libraryId="lib" depth={0} searchQuery="" />)
-    expect(screen.getByText(/\[1\.0\.0\]/)).toBeTruthy()
+    expect(screen.queryByText(/\[1\.0\.0\]/)).toBeNull()
     expect(screen.getByText('Draft')).toBeTruthy()
+  })
+
+  it('is one line: name, state tag, with the full name and version in the row title', () => {
+    render(<SpecTreeItem node={NODE_A} libraryId="lib" depth={0} searchQuery="" />)
+    const row = screen.getByTestId('spec-tree-row')
+    expect(row.getAttribute('title')).toBe('Workflow A [1.0.0]')
+    expect(screen.getByText('Draft').className).toMatch(/uppercase/)
+    expect(row.querySelector('.flex-col')).toBeNull()
   })
 
   it('does NOT render metadata line for depth > 0', () => {
@@ -132,7 +140,7 @@ describe('SpecTreeItem click navigation', () => {
     } as Partial<ReturnType<typeof useLibraryStore.getState>>)
     const { container } = render(<SpecTreeItem node={NODE_A} libraryId="lib" depth={0} searchQuery="" />)
     const row = container.querySelector<HTMLElement>('[data-testid="spec-tree-row"]')!
-    expect(row.className).toMatch(/border-blue-600/)
+    expect(row.className).toMatch(/bg-selection/)
   })
 })
 

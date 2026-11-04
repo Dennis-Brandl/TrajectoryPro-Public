@@ -165,8 +165,8 @@ export function TeamMembersPanel({ teamId, teamName, onMembershipChanged }: Team
 
   return (
     <>
-      <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 space-y-3">
-        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Members of {teamName}</h3>
+      <div className="rounded-md border border-border bg-background p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-foreground">Members of {teamName}</h3>
 
         <div className="flex items-center gap-2">
           <select
@@ -174,7 +174,7 @@ export function TeamMembersPanel({ teamId, teamName, onMembershipChanged }: Team
             value={addUserId}
             disabled={adding}
             onChange={(e) => setAddUserId(e.target.value)}
-            className="h-8 flex-1 rounded-md border border-slate-200 dark:border-slate-700 bg-transparent px-2 text-sm"
+            className="h-8 flex-1 rounded-md border border-border bg-transparent px-2 text-sm"
           >
             <option value="">Select a user to add…</option>
             {nonMembers.map((u) => (
@@ -199,10 +199,7 @@ export function TeamMembersPanel({ teamId, teamName, onMembershipChanged }: Team
         {!loading && !error && (
           <div className="space-y-1">
             {members.map((m) => (
-              <div
-                key={m.userId}
-                className="flex items-center gap-3 rounded-md border border-slate-100 dark:border-slate-800 px-3 py-2"
-              >
+              <div key={m.userId} className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
                 <div className="min-w-0 flex-shrink-0 w-48">
                   <div className="text-sm font-medium truncate">{m.name || '(no name)'}</div>
                   <div className="text-xs text-muted-foreground truncate">{m.email}</div>

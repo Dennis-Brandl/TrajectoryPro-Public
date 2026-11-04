@@ -137,14 +137,14 @@ export function NotationSwitcher() {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2">
             {notationLabels[notation]}
             <ChevronDown className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           {(Object.keys(notationLabels) as Notation[]).map((n) => (
-            <DropdownMenuItem key={n} onClick={() => handleSelect(n)} className={n === notation ? 'bg-slate-100' : ''}>
+            <DropdownMenuItem key={n} onClick={() => handleSelect(n)} className={n === notation ? 'bg-muted' : ''}>
               <span className="font-medium">{notationLabels[n]}</span>
             </DropdownMenuItem>
           ))}
@@ -160,7 +160,7 @@ export function NotationSwitcher() {
             <AlertDialogDescription className="space-y-3">
               <p>This will change the visual style of your diagram and re-layout all nodes.</p>
               {pendingNotation && (
-                <div className="p-3 bg-slate-50 rounded-md text-sm">
+                <div className="p-3 bg-muted rounded-md text-sm">
                   <strong>{notationLabels[pendingNotation]}:</strong> {notationDescriptions[pendingNotation]}
                 </div>
               )}

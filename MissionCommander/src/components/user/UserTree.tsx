@@ -17,7 +17,8 @@ import { apiErrorMessage } from '@/lib/api/client';
 import type { AppUser } from '@/lib/api/types';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useHasRight } from '@/stores/principalStore';
-import { cn } from '@/lib/utils';
+import { Plus } from 'lucide-react';
+import { Button, cn, treeRowClass, PaneLabel } from '@mission/ui';
 import { RequiresTooltip } from '@/components/shared/RequiresTooltip';
 
 // Module-level refresh handler (same pattern as WorkCenterTree.refreshTree): later
@@ -45,21 +46,22 @@ export function UserTree({ onCreateUser }: { onCreateUser: () => void }) {
   useEffect(() => { refreshHandler = load; return () => { refreshHandler = null; }; }, [load]);
 
   return (
-    <div className="flex flex-col gap-1 p-2">
-      <div className="flex items-center justify-between px-2 py-1">
-        <span className="text-sm font-medium text-muted-foreground">Users</span>
-        <RequiresTooltip reason={canCreate ? undefined : 'Requires access:create'}>
-          <button type="button" aria-label="New user" onClick={onCreateUser} disabled={!canCreate}
-            title={canCreate ? undefined : 'Requires access:create'}
-            className="flex size-6 items-center justify-center rounded hover:bg-accent disabled:pointer-events-none disabled:opacity-50">＋</button>
+    <div className="flex flex-col">
+      <PaneLabel>Users</PaneLabel>
+      <div className="border-b border-border p-2">
+        <RequiresTooltip block reason={canCreate ? undefined : 'Requires access:create'}>
+          <Button variant="outline" size="sm" className="w-full" onClick={onCreateUser} disabled={!canCreate}
+            title={canCreate ? undefined : 'Requires access:create'}>
+            <Plus className="h-4 w-4" />
+            New User
+          </Button>
         </RequiresTooltip>
       </div>
       {loadError && <div className="px-2 text-sm text-destructive">{loadError}</div>}
       <div role="list">
         {items.map((u) => (
           <button key={u.id} type="button" onClick={() => selectUser(u.id)}
-            className={cn('flex w-full items-center gap-2 truncate rounded px-2 py-1 text-left text-sm',
-              selectedUserId === u.id ? 'bg-accent text-accent-foreground' : 'hover:bg-accent')}>
+            className={cn(treeRowClass({ selected: selectedUserId === u.id }), 'w-full truncate text-left')}>
             <span className="truncate">{u.displayName}</span>
             {u.status === 'disabled' && <span className="ml-auto text-xs text-muted-foreground">disabled</span>}
           </button>

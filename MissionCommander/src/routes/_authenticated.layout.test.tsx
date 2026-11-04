@@ -14,6 +14,7 @@
 // limitations under the License.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 const { navigate } = vi.hoisted(() => ({ navigate: vi.fn() }));
 
@@ -30,7 +31,7 @@ vi.mock('@/lib/auth/auth-client', () => ({
 vi.mock('@/lib/auth/setupClient', () => ({ getSetupStatus: vi.fn() }));
 vi.mock('@/lib/auth/boot', () => ({ runBoot: vi.fn() }));
 vi.mock('@/components/shell/ImpersonationBanner', () => ({
-  ImpersonationBanner: () => null,
+  ImpersonationBanner: () => <div data-testid="impersonation-banner" />,
 }));
 vi.mock('@/stores/principalStore', () => ({
   usePrincipalStore: Object.assign(
@@ -41,6 +42,7 @@ vi.mock('@/stores/principalStore', () => ({
 
 import { AuthenticatedLayout } from './_authenticated';
 import { __resetThemeStoreForTest } from '@/stores/themeStore';
+import { useSelectionStore } from '@/stores/selectionStore';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -49,60 +51,55 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); });
 
-describe('AuthenticatedLayout title line', () => {
-  // The banner is a diagram carrying real meaning (environments and workflows load into
-  // work centers; users are assigned to work centers and given roles), so it must be a
-  // described image, not an alt="" decoration a screen reader skips.
-  it('renders the banner with descriptive alternative text', () => {
+describe('AuthenticatedLayout shared header', () => {
+  it('opens About for Mission Commander with its build and tagline', async () => {
     render(<AuthenticatedLayout />);
-    const banner = screen.getByRole('img', { name: /work center/i });
-    expect(banner).toBeInTheDocument();
-    expect(banner.getAttribute('alt')).not.toBe('');
+    await userEvent.click(screen.getByRole('button', { name: 'About Mission Commander' }));
+    expect(await screen.findByText(`Mission Commander build ${__APP_VERSION__}`)).toBeInTheDocument();
+    expect(screen.getByText('Runs workflows in work centers')).toBeInTheDocument();
   });
 
-  it('places the banner inside the title line, not the panes below it', () => {
+  it('shows the suite version in the bar and no diagram image in the header', () => {
     render(<AuthenticatedLayout />);
-    const banner = screen.getByRole('img', { name: /work center/i });
-    expect(banner.closest('header')).not.toBeNull();
+    expect(screen.getByText('v1.0.0')).toBeInTheDocument();
+    const header = screen.getByRole('banner');
+    expect(header.querySelector('img[alt]:not([alt=""])')).toBeNull();
   });
 
-  // The banner is an addition to the title line, not a replacement for what was there.
-  it('keeps the product name and the session controls', () => {
+  it('keeps the product name, display name and Sign out', () => {
     render(<AuthenticatedLayout />);
     expect(screen.getByText('Mission Commander')).toBeInTheDocument();
     expect(screen.getByText('Dennis')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sign out/i })).toBeInTheDocument();
   });
 
-  // True centring needs the two outer cells to be equal-width tracks; with a plain
-  // justify-between flex the banner would sit wherever the differing left/right widths
-  // pushed it, which is visibly off-centre and drifts as the display name changes length.
-  it('centres the banner independently of the left and right content widths', () => {
+  it('Settings in the header selects the settings hierarchy and shows pressed', async () => {
+    useSelectionStore.setState({ activeHierarchy: 'work_center' });
     render(<AuthenticatedLayout />);
-    const header = screen.getByRole('img', { name: /work center/i }).closest('header')!;
-    expect(header.className).toContain('grid-cols-[1fr_auto_1fr]');
+    expect(screen.getByRole('button', { name: 'Settings' })).toHaveAttribute('aria-pressed', 'false');
+    await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    expect(useSelectionStore.getState().activeHierarchy).toBe('settings');
+    expect(await screen.findByRole('button', { name: 'Settings', pressed: true })).toBeInTheDocument();
   });
 
-  // themeStore is a zustand singleton created once at module import (when this file's
-  // top-level `import { AuthenticatedLayout } from './_authenticated'` first pulled it in),
-  // so setting localStorage here alone would not affect the already-resolved state.
-  // __resetThemeStoreForTest forces a fresh read, the same way a real page load would.
-  it('renders the dark banner and a "switch to light" toggle in dark mode', async () => {
+  it('puts Help in the header, opening the guide in a new tab', () => {
+    render(<AuthenticatedLayout />);
+    const help = screen.getByRole('link', { name: 'Help' });
+    expect(help).toHaveAttribute('href', '/help.html');
+    expect(help).toHaveAttribute('target', '_blank');
+    expect(help.closest('header')).not.toBeNull();
+  });
+
+  it('renders the impersonation banner directly under the header', () => {
+    render(<AuthenticatedLayout />);
+    const header = screen.getByRole('banner');
+    expect(header.nextElementSibling).toBe(screen.getByTestId('impersonation-banner'));
+  });
+
+  it('offers the theme toggle in the header', () => {
     localStorage.setItem('mission-theme', 'dark');
     __resetThemeStoreForTest();
     render(<AuthenticatedLayout />);
-    expect(await screen.findByRole('img')).toHaveAttribute(
-      'src', expect.stringContaining('mission-commander-dark'),
-    );
     expect(screen.getByRole('button', { name: /switch to light mode/i })).toBeVisible();
-  });
-
-  it('renders the light banner and a "switch to dark" toggle in light mode', async () => {
-    localStorage.setItem('mission-theme', 'light');
-    __resetThemeStoreForTest();
-    render(<AuthenticatedLayout />);
-    const img = await screen.findByRole('img');
-    expect(img.getAttribute('src')).not.toContain('mission-commander-dark');
-    expect(screen.getByRole('button', { name: /switch to dark mode/i })).toBeVisible();
   });
 });

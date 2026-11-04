@@ -63,26 +63,26 @@ export function WorkflowPlaceholder() {
   }
 
   if (isDismissed) {
-    return <div className="flex-1 bg-slate-50 dark:bg-slate-900" />
+    return <div className="flex-1 bg-side-panel" />
   }
 
   return (
-    <div className="flex-1 flex items-center justify-center bg-slate-50 dark:bg-slate-900">
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-8 w-full max-w-3xl text-center">
+    <div className="flex-1 flex items-center justify-center bg-side-panel">
+      <div className="bg-card rounded-xl shadow-lg border border-border p-8 w-full max-w-3xl text-center">
         <img
           src="/MissionDesignerStartGraphic.png"
           alt="Mission Designer"
           className="mx-auto mb-6 w-full h-auto rounded-lg bg-white"
         />
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-200">Welcome to Mission Designer</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 mb-6">
+        <h1 className="text-2xl font-bold text-foreground">Welcome to Mission Designer</h1>
+        <p className="text-sm text-muted-foreground mt-1 mb-6">
           Create and manage team-scoped Workflows, Workflow Libraries, Environment Specifications, and Action
           Specifications. Please select a starting team.
         </p>
 
         {teams.length === 0 ? (
           <div className="space-y-4">
-            <p className="text-sm text-slate-400 dark:text-slate-500">
+            <p className="text-sm text-muted-foreground">
               You don't belong to any team yet — ask an administrator to add you.
             </p>
             <Button disabled className="w-full" size="lg">
@@ -100,7 +100,7 @@ export function WorkflowPlaceholder() {
                 aria-label="Starting team"
                 value={teamId}
                 onChange={(e) => setTeamId(e.target.value)}
-                className="w-full h-10 rounded-md border border-slate-200 dark:border-slate-700 bg-transparent px-2 text-sm text-slate-700 dark:text-slate-200"
+                className="w-full h-10 rounded-md border border-border bg-transparent px-2 text-sm text-foreground"
               >
                 {teams.map((t) => (
                   <option key={t.id} value={t.id}>

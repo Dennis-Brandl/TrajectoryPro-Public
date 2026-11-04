@@ -57,4 +57,32 @@ describe('LoginPage', () => {
     render(<LoginPage />)
     expect(screen.getByText(/loading/i)).toBeTruthy()
   })
+
+  it('renders in the suite sign-in frame without the old login classes', () => {
+    sessionState.mockReturnValue({ data: null, isPending: false })
+    const { container } = render(<LoginPage />)
+    expect(screen.getByAltText('Mission Designer')).toBeTruthy()
+    expect(screen.getByText(/Design and manage workflows/)).toBeTruthy()
+    expect(container.querySelector('.login-bg, .login-card')).toBeNull()
+  })
+
+  it('shows the health error in place of the form', async () => {
+    sessionState.mockReturnValue({ data: null, isPending: false })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.reject(new Error('down'))),
+    )
+    render(<LoginPage />)
+    expect(await screen.findByText(/Unable to connect to the server/)).toBeTruthy()
+    expect(screen.queryByTestId('login-form')).toBeNull()
+  })
+
+  it('loading state uses no login classes', () => {
+    sessionState.mockReturnValue({ data: null, isPending: true })
+    const { container } = render(<LoginPage />)
+    expect(container.querySelector('.login-bg')).toBeNull()
+    expect(container.innerHTML).not.toMatch(/F4F1DE|D4AF37/)
+    expect(container.textContent).not.toContain(String.fromCharCode(0xfffd))
+    expect(container.textContent).toContain('Brandl · Apache')
+  })
 })

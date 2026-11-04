@@ -96,13 +96,15 @@ export function ChangeStateDialog({ spec, library, open, onOpenChange, onSuccess
         </DialogHeader>
         <div className="space-y-4">
           <div className="text-sm">
-            <span className="text-slate-500">Current state: </span>
+            <span className="text-muted-foreground">Current state: </span>
             <span className="font-medium">{spec.state}</span>
           </div>
           <div className="space-y-1">
             <Label htmlFor="new-state">New state</Label>
             {targets.length === 0 ? (
-              <p className="text-xs text-slate-500 italic">No state changes are available to you for this item.</p>
+              <p className="text-xs text-muted-foreground italic">
+                No state changes are available to you for this item.
+              </p>
             ) : (
               <Select value={newState} onValueChange={(v) => setNewState(v as SpecificationState)}>
                 <SelectTrigger id="new-state">
@@ -128,7 +130,7 @@ export function ChangeStateDialog({ spec, library, open, onOpenChange, onSuccess
                 value={effectiveDate}
                 onChange={(e) => setEffectiveDate(e.target.value)}
               />
-              <p className="text-xs text-slate-500">Today's date takes effect immediately.</p>
+              <p className="text-xs text-muted-foreground">Today's date takes effect immediately.</p>
             </div>
           )}
           <div className="space-y-1">

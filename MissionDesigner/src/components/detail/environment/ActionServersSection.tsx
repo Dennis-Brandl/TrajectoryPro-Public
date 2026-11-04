@@ -47,9 +47,9 @@ export function ActionServersSection({
   }
 
   return (
-    <div className={hideHeader ? '' : 'border-t border-slate-200 dark:border-slate-700 pt-3'}>
+    <div className={hideHeader ? '' : 'border-t border-border pt-3'}>
       <div className="flex items-center justify-between mb-2">
-        {!hideHeader && <h3 className="text-sm font-medium text-slate-700 dark:text-slate-200">Action Servers</h3>}
+        {!hideHeader && <h3 className="text-sm font-medium text-foreground">Action Servers</h3>}
         <Button variant="outline" size="sm" onClick={handleAdd} className={hideHeader ? 'ml-auto' : ''}>
           <Plus className="h-3 w-3 mr-1" />
           Add Server
@@ -58,15 +58,10 @@ export function ActionServersSection({
 
       <div className="space-y-2">
         {actionServers.length === 0 ? (
-          <p className="text-sm text-slate-400 dark:text-slate-500 italic text-center py-2">
-            No action servers registered.
-          </p>
+          <p className="text-sm text-muted-foreground italic text-center py-2">No action servers registered.</p>
         ) : (
           actionServers.map((server) => (
-            <div
-              key={server.id}
-              className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2"
-            >
+            <div key={server.id} className="p-3 bg-muted rounded-lg border border-border space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="p-1.5 bg-green-100 dark:bg-green-900/30 rounded shrink-0">
@@ -83,7 +78,7 @@ export function ActionServersSection({
                   variant="ghost"
                   size="sm"
                   onClick={() => onRemove(server.id)}
-                  className="h-8 w-8 p-0 text-slate-400 dark:text-slate-500 hover:text-red-500"
+                  className="h-8 w-8 p-0 text-muted-foreground hover:text-red-500"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

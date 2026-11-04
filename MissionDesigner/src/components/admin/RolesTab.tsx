@@ -91,7 +91,7 @@ export function RolesTab() {
     <>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Roles</h2>
+          <h2 className="text-lg font-semibold text-foreground">Roles</h2>
           <Button
             size="sm"
             onClick={() => {
@@ -117,7 +117,7 @@ export function RolesTab() {
             {roles.map((role) => (
               <div
                 key={role.id}
-                className="flex items-center gap-3 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2"
+                className="flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2"
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">

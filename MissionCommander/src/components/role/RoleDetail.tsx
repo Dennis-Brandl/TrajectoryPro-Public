@@ -60,7 +60,7 @@ export function RoleDetail() {
                 disabled={!canEdit} title={canEdit ? undefined : 'Requires role:edit'}>Edit</Button>
             </RequiresTooltip>
             <RequiresTooltip reason={canDelete ? undefined : 'Requires role:delete'}>
-              <Button type="button" variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}
+              <Button type="button" variant="destructiveOutline" size="sm" onClick={() => setDeleteOpen(true)}
                 disabled={!canDelete} title={canDelete ? undefined : 'Requires role:delete'}>Delete</Button>
             </RequiresTooltip>
           </div>

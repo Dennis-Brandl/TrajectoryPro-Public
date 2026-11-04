@@ -425,7 +425,7 @@ export function NodeInlineEditor({
         {/* User Interaction Step: Form Designer placeholder */}
         {nodeType === 'userInteractionStep' && (
           <CollapsibleSection value="form" title="Form">
-            <div className="rounded border border-dashed border-slate-300 dark:border-slate-600 p-4 text-center text-sm text-slate-500 dark:text-slate-400">
+            <div className="rounded border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
               Form designer available via double-click on canvas node
             </div>
           </CollapsibleSection>
@@ -447,7 +447,7 @@ export function NodeInlineEditor({
           <CollapsibleSection value="script" title="Script">
             <div className="space-y-2">
               <div className="space-y-1">
-                <label className="flex items-center gap-1.5 text-sm text-slate-700 dark:text-slate-200">
+                <label className="flex items-center gap-1.5 text-sm text-foreground">
                   <input
                     type="checkbox"
                     id="script-repeat"
@@ -456,7 +456,7 @@ export function NodeInlineEditor({
                   />
                   Repeat until done
                 </label>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-muted-foreground">
                   When on, the script runs again every cycle until it returns true. Its state object keeps values
                   between runs.
                 </p>
@@ -491,7 +491,7 @@ export function NodeInlineEditor({
                       <Label htmlFor="script-on-time-limit">When the time limit is reached</Label>
                       <select
                         id="script-on-time-limit"
-                        className="h-8 w-full rounded-md border border-slate-300 bg-white px-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+                        className="h-8 w-full rounded-md border border-border bg-background px-2 text-sm"
                         value={draft.scriptOnTimeLimit ?? 'error'}
                         onChange={(e) =>
                           updateDraft({ scriptOnTimeLimit: e.target.value === 'complete' ? 'complete' : undefined })
@@ -520,7 +520,7 @@ export function NodeInlineEditor({
                 <Label htmlFor="gate-mode">Mode</Label>
                 <select
                   id="gate-mode"
-                  className="h-8 w-full rounded-md border border-slate-300 bg-white px-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+                  className="h-8 w-full rounded-md border border-border bg-background px-2 text-sm"
                   value={draft.gateMode ?? 'condition'}
                   onChange={(e) => {
                     const v = e.target.value as 'condition' | 'timer' | 'condition_or_timer'
@@ -531,7 +531,7 @@ export function NodeInlineEditor({
                   <option value="timer">Timer</option>
                   <option value="condition_or_timer">Condition with timeout</option>
                 </select>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-muted-foreground">
                   {(draft.gateMode ?? 'condition') === 'condition'
                     ? 'Opens when the gate script returns TRUE.'
                     : draft.gateMode === 'timer'
@@ -563,13 +563,13 @@ export function NodeInlineEditor({
                       updateDraft({ gateCycleSeconds: Number.isFinite(v) && v >= 1 ? v : 5 })
                     }}
                   />
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-muted-foreground">
                     The gate script re-evaluates on this cycle until it returns TRUE.
                   </p>
                 </div>
               )}
               <div className="space-y-1">
-                <label className="flex items-center gap-1.5 text-sm text-slate-700 dark:text-slate-200">
+                <label className="flex items-center gap-1.5 text-sm text-foreground">
                   <input
                     type="checkbox"
                     id="gate-control-previous-action"
@@ -579,7 +579,7 @@ export function NodeInlineEditor({
                   />
                   Control Previous Action
                 </label>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-muted-foreground">
                   When on, this gate starts as soon as the previous Environment Action starts, and stops that action
                   when it returns TRUE. When off, the gate waits for the previous step to complete.
                 </p>

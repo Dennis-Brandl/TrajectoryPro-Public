@@ -16,7 +16,7 @@ import { environments } from '@/lib/api/environments';
 import { apiErrorMessage } from '@/lib/api/client';
 import type { EnvironmentSpec } from '@/lib/api/types';
 import { useSelectionStore } from '@/stores/selectionStore';
-import { cn } from '@/lib/utils';
+import { cn, treeRowClass, PaneLabel } from '@mission/ui';
 import { groupByWorkCenter } from '@/components/artifact/groupByWorkCenter';
 import { StateBadge } from '@/components/artifact/StateBadge';
 
@@ -45,24 +45,21 @@ export function EnvironmentTree() {
   const groups = groupByWorkCenter(items ?? []);
 
   return (
-    <div className="flex flex-col gap-1 p-2">
+    <div className="flex flex-col">
       {/* No Import/Pull control: M6 moved loading onto the work center. */}
-      <div className="flex items-center px-2 py-1">
-        <span className="text-sm font-medium text-muted-foreground">Environments</span>
-      </div>
+      <PaneLabel>Environments</PaneLabel>
       {loadError && <div className="px-2 text-sm text-destructive">{loadError}</div>}
       {!loadError && items?.length === 0 && (
-        <p className="px-2 text-sm text-muted-foreground">No environments loaded</p>
+        <p className="px-3 py-2 text-xs text-muted-foreground">No environments loaded</p>
       )}
       <div role="list">
         {groups.map((group) => (
           <div key={group.workCenterId} role="listitem">
-            <h3 className="px-2 py-1 text-xs font-semibold uppercase text-muted-foreground">{group.workCenterName}</h3>
+            <h3 className="px-2 pb-0.5 pt-2 text-[11px] font-semibold uppercase text-muted-foreground">{group.workCenterName}</h3>
             <div>
               {group.items.map((spec) => (
                 <button key={spec.id} type="button" onClick={() => selectEnvironment(spec.id)}
-                  className={cn('flex w-full items-center gap-2 rounded py-1 pl-4 pr-2 text-left text-sm',
-                    selectedEnvironmentId === spec.id ? 'bg-accent text-accent-foreground' : 'hover:bg-accent')}>
+                  className={cn(treeRowClass({ selected: selectedEnvironmentId === spec.id, depth: 1 }), 'w-full gap-2 text-left')}>
                   <span className="truncate">{spec.name} v{spec.version}</span>
                   <StateBadge state={spec.state} effectiveFrom={spec.effectiveFrom} />
                 </button>

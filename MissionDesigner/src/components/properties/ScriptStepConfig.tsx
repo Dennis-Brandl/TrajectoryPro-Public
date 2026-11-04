@@ -60,12 +60,10 @@ function ScriptStepConfigComponent({ data, onChange, readOnly = false }: ScriptS
   }, [data.inputs, data.outputs, onChange])
 
   return (
-    <div className="space-y-3 border-t border-slate-200 dark:border-slate-700 pt-3">
+    <div className="space-y-3 border-t border-border pt-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">
-          Script Editor
-        </span>
-        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">JavaScript</span>
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Script Editor</span>
+        <span className="text-[11px] text-muted-foreground font-medium">JavaScript</span>
       </div>
 
       {!readOnly && (
@@ -75,11 +73,8 @@ function ScriptStepConfigComponent({ data, onChange, readOnly = false }: ScriptS
       )}
 
       <div className="space-y-1">
-        <Label className="text-xs text-slate-500 dark:text-slate-400">Source Code</Label>
-        <div
-          className="border border-slate-200 dark:border-slate-700 rounded-md overflow-hidden"
-          onKeyDown={(e) => e.stopPropagation()}
-        >
+        <Label className="text-xs text-muted-foreground">Source Code</Label>
+        <div className="border border-border rounded-md overflow-hidden" onKeyDown={(e) => e.stopPropagation()}>
           <CodeMirror
             value={data.scriptSource || ''}
             onChange={handleSourceChange}

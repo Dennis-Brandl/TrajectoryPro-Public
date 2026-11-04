@@ -14,6 +14,7 @@
 
 import { useNavigate } from 'react-router'
 import { Search } from 'lucide-react'
+import { PaneLabel } from '@mission/ui'
 import { usePanelContext } from '@/layout/PanelContext'
 import { useExplorerData } from '@/features/explorer/hooks'
 
@@ -69,11 +70,7 @@ export default function SearchPanel() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border shrink-0">
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-          Search
-        </span>
-      </div>
+      <PaneLabel>Search</PaneLabel>
 
       <div className="px-2 py-2 border-b border-border shrink-0">
         <div className="flex items-center gap-2 px-2 py-1 rounded bg-muted text-xs focus-within:ring-1 focus-within:ring-primary">
@@ -83,6 +80,7 @@ export default function SearchPanel() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Filter environments, actions, states..."
+            autoFocus
             className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
           />
         </div>
@@ -145,7 +143,7 @@ export default function SearchPanel() {
 function ResultGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="border-b border-border">
-      <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-muted-foreground font-medium bg-muted/30">
+      <div className="px-3 py-1 text-[11px] uppercase tracking-wider text-muted-foreground font-medium bg-muted/30">
         {label}
       </div>
       {children}
@@ -170,7 +168,7 @@ function ResultRow({
     >
       <span className="text-foreground truncate w-full">{primary}</span>
       {secondary && (
-        <span className="text-[10px] text-muted-foreground truncate w-full">{secondary}</span>
+        <span className="text-[11px] text-muted-foreground truncate w-full">{secondary}</span>
       )}
     </button>
   )

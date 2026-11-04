@@ -77,7 +77,7 @@ export function BlockContextMenu({ position, targetBlockId, onClose }: BlockCont
     <div
       ref={menuRef}
       role="menu"
-      className="bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-[160px]"
+      className="bg-card rounded-lg shadow-lg border border-border py-1 min-w-[160px]"
       style={{ position: 'fixed', left: position.x, top: position.y, zIndex: 100 }}
     >
       {targetBlockId ? (
@@ -100,7 +100,7 @@ export function BlockContextMenu({ position, targetBlockId, onClose }: BlockCont
             shortcut="Ctrl+X"
             onClick={run(() => cut(targetBlockId))}
           />
-          <div className="my-1 border-t border-slate-200" />
+          <div className="my-1 border-t border-border" />
           <MenuItem
             icon={<ArrowUpToLine className="h-3.5 w-3.5" />}
             label="Move into row above"
@@ -124,7 +124,7 @@ export function BlockContextMenu({ position, targetBlockId, onClose }: BlockCont
               onClick={run(() => arrangeColumns(targetBlockId, n))}
             />
           ))}
-          <div className="my-1 border-t border-slate-200" />
+          <div className="my-1 border-t border-border" />
           <MenuItem
             icon={<Clipboard className="h-3.5 w-3.5" />}
             label="Paste"
@@ -132,7 +132,7 @@ export function BlockContextMenu({ position, targetBlockId, onClose }: BlockCont
             disabled={!clipboard}
             onClick={run(() => paste())}
           />
-          <div className="my-1 border-t border-slate-200" />
+          <div className="my-1 border-t border-border" />
           <MenuItem
             icon={<Trash2 className="h-3.5 w-3.5 text-red-500" />}
             label="Delete"
@@ -179,15 +179,15 @@ function MenuItem({
       onClick={onClick}
       className={`w-full px-3 py-1.5 text-sm flex items-center gap-2 ${
         disabled
-          ? 'text-slate-300 cursor-not-allowed'
+          ? 'text-muted-foreground cursor-not-allowed'
           : danger
-            ? 'text-red-600 hover:bg-red-50 cursor-pointer'
-            : 'text-slate-700 hover:bg-slate-100 cursor-pointer'
+            ? 'text-destructive hover:bg-destructive/10 cursor-pointer'
+            : 'text-foreground hover:bg-muted cursor-pointer'
       }`}
     >
       {icon}
       <span className="flex-1 text-left">{label}</span>
-      {shortcut && <span className="text-xs text-slate-400 ml-4">{shortcut}</span>}
+      {shortcut && <span className="text-xs text-muted-foreground ml-4">{shortcut}</span>}
     </button>
   )
 }

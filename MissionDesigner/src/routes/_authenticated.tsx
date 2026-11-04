@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { createFileRoute, Outlet, redirect, useNavigate, useRouter } from '@tanstack/react-router'
+import { createFileRoute, Outlet, redirect, useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
 import { authClient, signOut } from '@/lib/auth-client'
-import { Button } from '@mission/ui'
-import { LogOut, User, Settings } from 'lucide-react'
+import { AppHeader } from '@mission/ui'
+import { HeaderToolsProvider, HeaderToolsSlot } from '@/components/shell/HeaderTools'
+import { useTheme } from '@/hooks/useTheme'
 import { BootErrorScreen } from '@/components/BootErrorScreen'
 import { DebugPanel } from '@/components/debug/DebugPanel'
 import { UnsavedChangesAlert } from '@/components/properties/UnsavedChangesAlert'
@@ -68,9 +69,11 @@ export const Route = createFileRoute('/_authenticated')({
   component: AuthenticatedLayout,
 })
 
-function AuthenticatedLayout() {
+export function AuthenticatedLayout() {
+  const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const router = useRouter()
+  const pathname = useRouterState({ select: (st) => st.location.pathname })
   const { user, bootError } = Route.useRouteContext()
 
   const showUnsavedDialog = useWorkflowSessionStore((s) => s.showUnsavedDialog)
@@ -133,44 +136,32 @@ function AuthenticatedLayout() {
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col">
-      {/* Auth header overlay - positioned in the toolbar area */}
-      <div className="absolute top-0 right-0 h-12 flex items-center gap-1 px-4 z-50 text-slate-600 dark:text-slate-200">
-        {import.meta.env.DEV && <DebugPanel />}
-        {isAdmin && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-slate-600 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white"
-            title="Administration"
-            onClick={() => navigate({ to: '/admin' })}
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-        )}
-        <span className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-200 px-1">
-          <User className="h-3.5 w-3.5" />
-          {user?.name || user?.email || ''}
-        </span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleLogout}
-          title="Sign out"
-          className="text-slate-600 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white"
-        >
-          <LogOut className="h-4 w-4" />
-        </Button>
+    <HeaderToolsProvider>
+      <div className="h-screen w-screen flex flex-col">
+        <AppHeader
+          appName="Mission Designer"
+          buildVersion={__APP_VERSION__}
+          tagline="Visual workflow specification editor"
+          tools={<HeaderToolsSlot start={import.meta.env.DEV ? <DebugPanel /> : null} />}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onOpenSettings={isAdmin ? () => navigate({ to: '/admin' }) : undefined}
+          settingsActive={pathname === '/admin' || pathname.startsWith('/admin/')}
+          userName={user?.name || user?.email || ''}
+          onSignOut={() => void handleLogout()}
+        />
+        <div className="min-h-0 flex-1">
+          <Outlet />
+        </div>
+        <SaveErrorToast />
+        <LibrarySaveErrorToast />
+        <UnsavedChangesAlert
+          open={showUnsavedDialog}
+          onSave={() => useWorkflowSessionStore.getState().handleSave()}
+          onDiscard={() => useWorkflowSessionStore.getState().handleDiscard()}
+          onKeepEditing={() => useWorkflowSessionStore.getState().handleKeepEditing()}
+        />
       </div>
-      <Outlet />
-      <SaveErrorToast />
-      <LibrarySaveErrorToast />
-      <UnsavedChangesAlert
-        open={showUnsavedDialog}
-        onSave={() => useWorkflowSessionStore.getState().handleSave()}
-        onDiscard={() => useWorkflowSessionStore.getState().handleDiscard()}
-        onKeepEditing={() => useWorkflowSessionStore.getState().handleKeepEditing()}
-      />
-    </div>
+    </HeaderToolsProvider>
   )
 }

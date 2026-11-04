@@ -71,23 +71,27 @@ export function LoginForm() {
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input id="email" type="email" placeholder="you@example.com" {...register('email')} />
-        {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
+        {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
         <Input id="password" type="password" placeholder="********" {...register('password')} />
-        {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
+        {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
       </div>
 
       {error && (
-        <div role="alert" data-testid="login-error" className="p-3 rounded-md bg-red-50 border border-red-200">
-          <p className="text-sm text-red-600">{error}</p>
+        <div
+          role="alert"
+          data-testid="login-error"
+          className="p-3 rounded-md bg-destructive/10 border border-destructive/30"
+        >
+          <p className="text-sm text-destructive">{error}</p>
         </div>
       )}
 
       <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? 'Signing in...' : 'Sign In'}
+        {isLoading ? 'Signing in...' : 'Sign in'}
       </Button>
     </form>
   )

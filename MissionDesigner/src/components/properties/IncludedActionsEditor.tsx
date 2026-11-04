@@ -62,7 +62,7 @@ export function IncludedActionsEditor({ actions, onChange, readOnly = false }: I
       </div>
 
       {actions.length === 0 ? (
-        <p className="text-xs text-slate-400 dark:text-slate-500 italic py-2">
+        <p className="text-xs text-muted-foreground italic py-2">
           No actions included. Click "Add Actions" to select actions from your action libraries.
         </p>
       ) : (
@@ -70,14 +70,12 @@ export function IncludedActionsEditor({ actions, onChange, readOnly = false }: I
           {actions.map((action, index) => (
             <div
               key={`${action.action_library}::${action.action_name}`}
-              className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 dark:bg-slate-800 rounded-md group"
+              className="flex items-center gap-2 px-2 py-1.5 bg-muted rounded-md group"
             >
               <Zap className="h-3.5 w-3.5 text-amber-600 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <span className="text-sm truncate block">{action.action_name}</span>
-                <span className="text-xs text-slate-400 dark:text-slate-500 truncate block">
-                  {action.action_library}
-                </span>
+                <span className="text-xs text-muted-foreground truncate block">{action.action_library}</span>
               </div>
               {!readOnly && (
                 <Button
@@ -86,7 +84,7 @@ export function IncludedActionsEditor({ actions, onChange, readOnly = false }: I
                   onClick={() => handleRemove(index)}
                   className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
                 >
-                  <X className="h-3 w-3 text-slate-400 dark:text-slate-500 hover:text-red-500" />
+                  <X className="h-3 w-3 text-muted-foreground hover:text-red-500" />
                 </Button>
               )}
             </div>

@@ -52,7 +52,7 @@ export function CreateTeamsStep({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Create your team(s)</h2>
+      <h2 className="text-lg font-semibold text-foreground">Create your team(s)</h2>
       <p className="text-sm text-muted-foreground">
         Teams own libraries and scope who can see and edit them. Create at least one.
       </p>

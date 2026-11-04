@@ -139,9 +139,9 @@ export function IncludedActionsSection({
   }
 
   return (
-    <div className={hideHeader ? '' : 'border-t border-slate-200 dark:border-slate-700 pt-3'}>
+    <div className={hideHeader ? '' : 'border-t border-border pt-3'}>
       <div className="flex items-center justify-between mb-2">
-        {!hideHeader && <h3 className="text-sm font-medium text-slate-700 dark:text-slate-200">Included Actions</h3>}
+        {!hideHeader && <h3 className="text-sm font-medium text-foreground">Included Actions</h3>}
         <div className={`flex items-center gap-2 ${hideHeader ? 'ml-auto' : ''}`}>
           <AlertDialog open={isAddAllDialogOpen} onOpenChange={setIsAddAllDialogOpen}>
             <AlertDialogTrigger asChild>
@@ -175,7 +175,7 @@ export function IncludedActionsSection({
                   </Select>
                 </div>
                 {addAllLibraryId && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-muted-foreground">
                     {(specifications.get(addAllLibraryId) || []).length} action(s) in this library
                   </p>
                 )}
@@ -264,29 +264,29 @@ export function IncludedActionsSection({
 
       <div className="space-y-2">
         {includedActions.length === 0 ? (
-          <p className="text-sm text-slate-400 dark:text-slate-500 italic text-center py-2">
+          <p className="text-sm text-muted-foreground italic text-center py-2">
             No actions included. Add actions individually or add all from a library.
           </p>
         ) : (
           includedActions.map((action, index) => (
             <div
               key={`${action.action_library}-${action.action_name}-${index}`}
-              className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700"
+              className="flex items-center justify-between p-3 bg-side-panel rounded-lg border border-border"
             >
               <div className="flex items-center gap-3">
                 <div className="p-1.5 bg-amber-100 rounded">
                   <Zap className="h-4 w-4 text-amber-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{action.action_name}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">from {action.action_library}</p>
+                  <p className="text-sm font-medium text-foreground">{action.action_name}</p>
+                  <p className="text-xs text-muted-foreground">from {action.action_library}</p>
                 </div>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => onRemove(index)}
-                className="h-8 w-8 p-0 text-slate-400 dark:text-slate-500 hover:text-red-500"
+                className="h-8 w-8 p-0 text-muted-foreground hover:text-red-500"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

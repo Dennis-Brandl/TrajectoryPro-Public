@@ -2,8 +2,6 @@
 
 Mission Autopilot stores and runs the **Actions** that Trajectory workflows call. Actions are written in **Python** and run in a sandbox. This console is the web UI for managing the container — importing environments, writing and testing action code, and monitoring executions.
 
-> **PLEASE NOTE:** Trajectory is a demonstration system, not intended for production environments. The editor and runtime are single-user systems and do not have the security necessary for production use. We recommend loading the applications into a Docker container for your testing.
-
 ---
 
 ## Table of Contents
@@ -21,14 +19,15 @@ Mission Autopilot stores and runs the **Actions** that Trajectory workflows call
 
 ## 1. Getting Started
 
-The console has a top navigation bar and a left activity bar:
+The console has a top bar, a left icon rail and a status bar along the bottom:
 
-- **Top bar** — **Dashboard** (system overview), **Log** (execution history), **Settings** (configuration). **Server** shows the browser-reachable REST URL; **Mission Commander address** (fleet installs only) shows the address the Mission Engine and Mission Commander must use — copy that one into the Mission Commander.
-- **Activity bar** (left icons) — **Explorer** (browse environments and actions), **Instances** (running executions), **Search**.
+- **Top bar** — the app icon (click it to open About), the name **Mission Autopilot** and the suite version. Then, on the right: the **Mission Autopilot Tester** link, **Help**, the theme toggle, **Settings** (the gear icon) and **Sign out**, in that order.
+- **Icon rail** (left) — **Dashboard** (system overview), **Environments** (browse environments and actions), **Instances** (running executions), **Log** (execution history) and **Search**. On **Environments**, **Instances** and **Search**, click the active rail item again to hide or show its tree (Dashboard and Log have no tree).
+- **Status bar** (bottom) — **Server** shows the browser-reachable REST URL; **Mission Commander address** (fleet installs only) shows the address the Mission Engine and Mission Commander must use. Copy that one into the Mission Commander.
 
-**Signing in.** The console asks for the API key when it opens. The key is `ACTIONS_API_KEY` in the `.env` file next to `docker-compose.yml`. It is kept only for the current browser tab; use **Sign out** in the top bar to forget it. The key can no longer be changed from the Settings page.
+**Signing in.** The console opens at the API key screen. The key is `ACTIONS_API_KEY` in the `.env` file next to `docker-compose.yml`. It is kept only for the current browser tab; use **Sign out** in the top bar to forget it. The key can no longer be changed from the Settings page.
 
-Start on the **Dashboard** for an at-a-glance view, then use the Explorer to drill into your environments and actions.
+Start on the **Dashboard** for an at-a-glance view, then use the **Environments** rail item to drill into your environments and actions.
 
 ---
 
@@ -41,7 +40,7 @@ The container is organized into **Environments**, each bundling a set of **Actio
   - **Signature changed** — the imported inputs or outputs differ from the signature the code was written against. The note lists each change (added, removed, or retyped parameter). Fix the code, then click **Mark resolved**.
   - **Not in last import** — the action was removed from the environment in Mission Designer but still has code (or a running instance), so it was kept. Use **Delete** on the note when it is no longer needed; an action without code is removed automatically.
   - Note that Action Property **values** edited in the console are still replaced by the package's values on re-import; re-apply them afterwards.
-- **Browse:** the **Explorer** panel shows a tree of environments and their actions.
+- **Browse:** the **Environments** rail item shows a tree of environments and their actions.
 - **Environment detail** lists each action with its visibility (**observable** or **opaque**) and input/output counts, plus a code-status badge for each state.
 - **Action Properties** appear on both pages: the **Environment** page holds properties shared by every action in the environment; each **Action** page holds that action's own. Both are available to state code — see [The `execute` function: inputs, outputs, and properties](#the-execute-function-inputs-outputs-and-properties).
 
@@ -184,7 +183,7 @@ The **Log** page records completed executions. Filter by action, environment, st
 
 ## 7. Settings
 
-The **Settings** page configures the container:
+The **Settings** page (the gear icon in the top bar) configures the container:
 
 - **Max Log Entries** — how many execution records to keep.
 - **Python Pool Size** — number of sandbox worker processes.

@@ -184,7 +184,7 @@ export function AddAccountDialog({
               checked={lockAdministrator || isAdministrator}
               disabled={submitting || lockAdministrator}
               onChange={() => setIsAdministrator((v) => !v)}
-              className="h-4 w-4 rounded border-gray-300 accent-primary cursor-pointer disabled:opacity-50"
+              className="h-4 w-4 rounded border-border accent-primary cursor-pointer disabled:opacity-50"
             />
             Administrator
           </label>
@@ -207,7 +207,7 @@ export function AddAccountDialog({
                             checked={selected}
                             disabled={submitting}
                             onChange={() => toggleTeam(t.id)}
-                            className="h-4 w-4 rounded border-gray-300 accent-primary cursor-pointer"
+                            className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
                           />
                           <span className="font-medium">{t.name}</span>
                         </label>
@@ -221,7 +221,7 @@ export function AddAccountDialog({
                                   checked={teamRoles.get(t.id)?.has(r.id) ?? false}
                                   disabled={submitting}
                                   onChange={() => toggleRole(t.id, r.id)}
-                                  className="h-3.5 w-3.5 rounded border-gray-300 accent-primary cursor-pointer"
+                                  className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
                                 />
                                 {r.name}
                               </label>

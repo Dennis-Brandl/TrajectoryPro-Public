@@ -85,9 +85,9 @@ export function ResourcesSection({ resources, onAdd, onRemove, onUpdate, hideHea
   }
 
   return (
-    <div className={hideHeader ? '' : 'border-t border-slate-200 dark:border-slate-700 pt-3'}>
+    <div className={hideHeader ? '' : 'border-t border-border pt-3'}>
       <div className="flex items-center justify-between mb-2">
-        {!hideHeader && <h3 className="text-sm font-medium text-slate-700 dark:text-slate-200">Resources</h3>}
+        {!hideHeader && <h3 className="text-sm font-medium text-foreground">Resources</h3>}
         <AlertDialog open={isAddResourceDialogOpen} onOpenChange={setIsAddResourceDialogOpen}>
           <AlertDialogTrigger asChild>
             <Button variant="outline" size="sm">
@@ -176,7 +176,7 @@ export function ResourcesSection({ resources, onAdd, onRemove, onUpdate, hideHea
                   </Button>
                 </div>
               ) : newResourceType === 'Single Use' || newResourceType === 'Sync' ? (
-                <p className="text-xs text-slate-500 dark:text-slate-400">Count: 1 (fixed)</p>
+                <p className="text-xs text-muted-foreground">Count: 1 (fixed)</p>
               ) : (
                 <div className="space-y-1">
                   <Label className="text-sm">Count</Label>
@@ -201,15 +201,12 @@ export function ResourcesSection({ resources, onAdd, onRemove, onUpdate, hideHea
 
       <div className="space-y-2">
         {resources.length === 0 ? (
-          <p className="text-sm text-slate-400 dark:text-slate-500 italic text-center py-2">
+          <p className="text-sm text-muted-foreground italic text-center py-2">
             No resources defined. Click "Add Resource" to define resources for this environment.
           </p>
         ) : (
           resources.map((resource) => (
-            <div
-              key={resource.id}
-              className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2"
-            >
+            <div key={resource.id} className="p-3 bg-side-panel rounded-lg border border-border space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <div className="p-1.5 bg-purple-100 rounded shrink-0">
@@ -228,7 +225,7 @@ export function ResourcesSection({ resources, onAdd, onRemove, onUpdate, hideHea
                   variant="ghost"
                   size="sm"
                   onClick={() => onRemove(resource.id)}
-                  className="h-8 w-8 p-0 text-slate-400 dark:text-slate-500 hover:text-red-500"
+                  className="h-8 w-8 p-0 text-muted-foreground hover:text-red-500"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -257,12 +254,10 @@ export function ResourcesSection({ resources, onAdd, onRemove, onUpdate, hideHea
                     </SelectContent>
                   </Select>
                   {resource.resourceType === 'Named' ? (
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
-                      Count: {resource.names?.length ?? 0}
-                    </span>
+                    <span className="text-xs text-muted-foreground">Count: {resource.names?.length ?? 0}</span>
                   ) : resource.resourceType !== 'Single Use' && resource.resourceType !== 'Sync' ? (
                     <div className="flex items-center gap-1">
-                      <Label className="text-xs text-slate-500 dark:text-slate-400">Count:</Label>
+                      <Label className="text-xs text-muted-foreground">Count:</Label>
                       <Input
                         type="number"
                         min={1}
@@ -276,12 +271,12 @@ export function ResourcesSection({ resources, onAdd, onRemove, onUpdate, hideHea
                       />
                     </div>
                   ) : (
-                    <span className="text-xs text-slate-500 dark:text-slate-400">Count: 1 (fixed)</span>
+                    <span className="text-xs text-muted-foreground">Count: 1 (fixed)</span>
                   )}
                 </div>
                 {resource.resourceType === 'Named' && (
                   <div className="space-y-1 mt-1">
-                    <Label className="text-xs text-slate-500 dark:text-slate-400">Names:</Label>
+                    <Label className="text-xs text-muted-foreground">Names:</Label>
                     {(resource.names || []).map((name, ni) => (
                       <div key={ni} className="flex gap-1 items-center">
                         <Input

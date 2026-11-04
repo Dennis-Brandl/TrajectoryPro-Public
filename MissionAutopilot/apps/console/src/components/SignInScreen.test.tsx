@@ -36,6 +36,18 @@ describe('SignInScreen', () => {
     vi.unstubAllGlobals()
   })
 
+  it('matches the suite sign-in shape: small heading and full-width button', async () => {
+    fetchMock.mockReturnValue(new Promise(() => {}))
+    render(<SignInScreen onSignedIn={vi.fn()} />)
+    const heading = screen.getByRole('heading', { name: 'Sign in' })
+    expect(heading.className).toContain('text-lg')
+    const button = screen.getByRole('button', { name: 'Sign in' }) as HTMLButtonElement
+    expect(button.className).toContain('w-full')
+    submitKey()
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    expect(button.disabled).toBe(true)
+  })
+
   it('stores the key and signs in on 200', async () => {
     fetchMock.mockResolvedValue(new Response('{}', { status: 200 }))
     const onSignedIn = vi.fn()

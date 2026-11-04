@@ -86,7 +86,7 @@ export function ParameterBindingSection({ block: blockProp, onUpdate }: Paramete
       {/* Output Parameter — shows step's output parameters */}
       <div style={fieldStyle}>
         <span
-          className="text-gray-500 dark:text-gray-400"
+          className="text-muted-foreground"
           style={{ fontSize: 11, display: 'block', marginBottom: 2, userSelect: 'none' }}
         >
           Output Parameter
@@ -103,7 +103,7 @@ export function ParameterBindingSection({ block: blockProp, onUpdate }: Paramete
             }
             handleOutputChange(val)
           }}
-          className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
+          className="bg-background text-foreground border border-border"
           style={{
             width: '100%',
             fontSize: 13,
@@ -122,10 +122,10 @@ export function ParameterBindingSection({ block: blockProp, onUpdate }: Paramete
                 {p.name}
               </option>
             ))}
-          <option disabled style={{ borderTop: '1px solid #d1d5db' }}>
+          <option disabled style={{ borderTop: '1px solid var(--border)' }}>
             ───────────
           </option>
-          <option value="__add_output__" className="text-blue-600 dark:text-blue-400">
+          <option value="__add_output__" className="text-link">
             + Add Output Parameter
           </option>
         </select>

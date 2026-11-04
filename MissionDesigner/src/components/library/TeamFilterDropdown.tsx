@@ -48,7 +48,7 @@ export function TeamFilterDropdown() {
         aria-label="Filter by team"
         value={selectedTeamId ?? ''}
         onChange={(e) => setSelectedTeamId(e.target.value)}
-        className="w-full h-8 rounded-md border border-slate-200 dark:border-slate-700 bg-transparent px-2 text-sm text-slate-700 dark:text-slate-200"
+        className="w-full h-8 rounded-md border border-border bg-transparent px-2 text-sm text-foreground"
       >
         {teams.map((t) => (
           <option key={t.id} value={t.id}>

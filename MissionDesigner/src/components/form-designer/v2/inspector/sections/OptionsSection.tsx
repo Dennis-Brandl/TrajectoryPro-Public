@@ -63,7 +63,7 @@ function SortableOptionRow({ item, onLabelChange, onValueChange, onDelete }: Sor
       {/* Grip handle -- only this element gets drag listeners */}
       <span
         {...listeners}
-        className="text-gray-400 dark:text-gray-500"
+        className="text-muted-foreground"
         style={{ cursor: 'grab', display: 'flex', alignItems: 'center', flexShrink: 0 }}
         aria-label="Drag to reorder"
       >
@@ -75,7 +75,7 @@ function SortableOptionRow({ item, onLabelChange, onValueChange, onDelete }: Sor
         type="text"
         value={item.label}
         onChange={(e) => onLabelChange(item.id, e.target.value)}
-        className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
+        className="bg-background text-foreground border border-border"
         style={{
           flex: 2,
           fontSize: 13,
@@ -92,7 +92,7 @@ function SortableOptionRow({ item, onLabelChange, onValueChange, onDelete }: Sor
         type="text"
         value={item.value}
         onChange={(e) => onValueChange(item.id, e.target.value)}
-        className="bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-slate-300 border border-gray-300 dark:border-gray-600"
+        className="bg-muted text-foreground dark:text-muted-foreground border border-border"
         style={{
           flex: 1,
           fontSize: 12,
@@ -109,7 +109,7 @@ function SortableOptionRow({ item, onLabelChange, onValueChange, onDelete }: Sor
       <button
         type="button"
         onClick={() => onDelete(item.id)}
-        className="bg-white dark:bg-slate-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600"
+        className="bg-background text-muted-foreground border border-border"
         style={{
           width: 22,
           height: 22,
@@ -295,7 +295,7 @@ export function OptionsSection({ block: blockProp, onUpdate }: OptionsSectionPro
       {/* List Source toggle */}
       <div style={{ marginBottom: 12 }}>
         <span
-          className="text-gray-500 dark:text-gray-400"
+          className="text-muted-foreground"
           style={{ fontSize: 11, display: 'block', marginBottom: 2, userSelect: 'none' }}
         >
           List Source
@@ -303,7 +303,7 @@ export function OptionsSection({ block: blockProp, onUpdate }: OptionsSectionPro
         <select
           value={sourceMode}
           onChange={(e) => handleSourceModeChange(e.target.value as 'static' | 'input')}
-          className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
+          className="bg-background text-foreground border border-border"
           style={{
             width: '100%',
             fontSize: 13,
@@ -324,7 +324,7 @@ export function OptionsSection({ block: blockProp, onUpdate }: OptionsSectionPro
         <>
           <div style={{ marginBottom: 12 }}>
             <span
-              className="text-gray-500 dark:text-gray-400"
+              className="text-muted-foreground"
               style={{ fontSize: 11, display: 'block', marginBottom: 2, userSelect: 'none' }}
             >
               Input Parameter
@@ -336,7 +336,7 @@ export function OptionsSection({ block: blockProp, onUpdate }: OptionsSectionPro
                   listSource: { mode: 'input', value: e.target.value },
                 } as Partial<Block>)
               }
-              className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
+              className="bg-background text-foreground border border-border"
               style={{
                 width: '100%',
                 fontSize: 13,
@@ -368,10 +368,10 @@ export function OptionsSection({ block: blockProp, onUpdate }: OptionsSectionPro
       {/* Static editor — drag-reorder list (used in 'static' mode and as
           designer-only example items in 'input' mode). */}
       <div style={{ display: 'flex', gap: 6, paddingLeft: 26, marginBottom: 2 }}>
-        <span className="text-gray-400 dark:text-gray-500" style={{ flex: 2, fontSize: 10, userSelect: 'none' }}>
+        <span className="text-muted-foreground" style={{ flex: 2, fontSize: 10, userSelect: 'none' }}>
           Label
         </span>
-        <span className="text-gray-400 dark:text-gray-500" style={{ flex: 1, fontSize: 10, userSelect: 'none' }}>
+        <span className="text-muted-foreground" style={{ flex: 1, fontSize: 10, userSelect: 'none' }}>
           Value
         </span>
         <span style={{ width: 22, flexShrink: 0 }} />
@@ -406,7 +406,7 @@ export function OptionsSection({ block: blockProp, onUpdate }: OptionsSectionPro
           onChange={(e) => setNewLabel(e.target.value)}
           onKeyDown={handleAddKeyDown}
           placeholder="Type and press Enter"
-          className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
+          className="bg-background text-foreground border border-border"
           style={{
             flex: 1,
             fontSize: 13,
@@ -419,7 +419,7 @@ export function OptionsSection({ block: blockProp, onUpdate }: OptionsSectionPro
         <button
           type="button"
           onClick={handleAddOption}
-          className="bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-200 border border-gray-300 dark:border-gray-600"
+          className="bg-background text-foreground border border-border"
           style={{
             fontSize: 12,
             padding: '3px 8px',

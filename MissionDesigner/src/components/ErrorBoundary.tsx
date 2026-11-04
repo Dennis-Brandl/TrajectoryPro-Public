@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import React from 'react'
+import { Button } from '@mission/ui'
 
 interface ErrorBoundaryProps {
   children: React.ReactNode
@@ -48,21 +49,14 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback
       return (
-        <div className="flex items-center justify-center min-h-screen bg-white dark:bg-slate-900 p-8">
+        <div className="flex items-center justify-center min-h-screen bg-background p-8">
           <div className="text-center max-w-md">
             <h1 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-4">Something went wrong</h1>
-            <p className="text-slate-600 dark:text-slate-400 mb-2">
-              {this.state.error?.message || 'An unexpected error occurred'}
-            </p>
-            <p className="text-sm text-slate-500 dark:text-slate-500 mb-6">
+            <p className="text-muted-foreground mb-2">{this.state.error?.message || 'An unexpected error occurred'}</p>
+            <p className="text-sm text-muted-foreground mb-6">
               Please try refreshing the page. If the problem persists, contact support.
             </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium"
-            >
-              Try Again
-            </button>
+            <Button onClick={() => window.location.reload()}>Try Again</Button>
           </div>
         </div>
       )

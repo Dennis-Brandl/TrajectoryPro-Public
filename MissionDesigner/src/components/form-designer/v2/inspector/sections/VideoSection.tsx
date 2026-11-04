@@ -34,7 +34,7 @@ export function VideoSection({
       <div style={fieldStyle}>
         <label
           htmlFor="tfk-video-src"
-          className="text-gray-500 dark:text-gray-400"
+          className="text-muted-foreground"
           style={{ fontSize: 11, display: 'block', marginBottom: 2 }}
         >
           Video URL (YouTube link or direct video file)
@@ -44,7 +44,7 @@ export function VideoSection({
           type="text"
           value={block.src}
           onChange={(e) => onUpdate({ src: e.target.value } as Partial<Block>)}
-          className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
+          className="bg-background text-foreground border border-border"
           style={{
             width: '100%',
             fontSize: 13,
@@ -61,7 +61,7 @@ export function VideoSection({
       <div style={fieldStyle}>
         <label
           htmlFor="tfk-video-poster"
-          className="text-gray-500 dark:text-gray-400"
+          className="text-muted-foreground"
           style={{ fontSize: 11, display: 'block', marginBottom: 2 }}
         >
           Poster Image URL (optional, direct video files only)
@@ -71,7 +71,7 @@ export function VideoSection({
           type="text"
           value={block.posterUrl ?? ''}
           onChange={(e) => onUpdate({ posterUrl: e.target.value || undefined } as Partial<Block>)}
-          className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
+          className="bg-background text-foreground border border-border"
           style={{
             width: '100%',
             fontSize: 13,

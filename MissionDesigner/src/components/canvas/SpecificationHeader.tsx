@@ -156,10 +156,10 @@ export function SpecificationHeader() {
   if (environmentSpecIds.length === 0 && availableEnvironmentSpecs.length === 0) return null
 
   return (
-    <div className="h-10 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 flex items-center px-4 gap-4">
+    <div className="h-10 bg-side-panel border-b border-border flex items-center px-4 gap-4">
       {/* Environment specifications section */}
       <div className="flex items-center gap-2 flex-1">
-        <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">Environments:</span>
+        <span className="text-xs text-muted-foreground whitespace-nowrap">Environments:</span>
 
         {/* Selected environment tags */}
         {environmentSpecIds.length > 0 && (
@@ -173,7 +173,7 @@ export function SpecificationHeader() {
                 >
                   <Server className="h-3 w-3" />
                   <span>{envSpec?.spec.name || 'Unknown'}</span>
-                  {envSpec && <span className="text-emerald-600 text-[10px]">({envSpec.libraryName})</span>}
+                  {envSpec && <span className="text-emerald-600 text-[11px]">({envSpec.libraryName})</span>}
                   <button
                     type="button"
                     onClick={() => handleRemoveEnvironment(envSpecId)}
@@ -197,7 +197,7 @@ export function SpecificationHeader() {
             <SelectContent>
               {Array.from(groupedAvailableSpecs.entries()).map(([libraryName, specs]) => (
                 <SelectGroup key={libraryName}>
-                  <SelectLabel className="text-xs text-slate-500 dark:text-slate-400">{libraryName}</SelectLabel>
+                  <SelectLabel className="text-xs text-muted-foreground">{libraryName}</SelectLabel>
                   {specs.map((envSpec) => (
                     <SelectItem key={envSpec.spec.id} value={envSpec.spec.id}>
                       <div className="flex items-center gap-2">
@@ -211,10 +211,10 @@ export function SpecificationHeader() {
             </SelectContent>
           </Select>
         ) : environmentSpecIds.length === 0 ? (
-          <span className="text-xs text-slate-500 dark:text-slate-400 italic">No environments available</span>
+          <span className="text-xs text-muted-foreground italic">No environments available</span>
         ) : null}
 
-        {isSaving && <span className="text-xs text-slate-500 dark:text-slate-400">Saving...</span>}
+        {isSaving && <span className="text-xs text-muted-foreground">Saving...</span>}
 
         <OutdatedActionsChip />
       </div>

@@ -159,8 +159,8 @@ export function CleanupTab() {
     <div className="space-y-4 pb-24">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Cleanup</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <h2 className="text-lg font-semibold text-foreground">Cleanup</h2>
+          <p className="text-sm text-muted-foreground">
             Detect and reconcile drift between workflow diagrams and the database across every library and user.
           </p>
         </div>
@@ -181,8 +181,8 @@ export function CleanupTab() {
       )}
 
       {phase === 'scanning' && progress && (
-        <div className="rounded-md border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 p-3">
-          <p className="text-sm text-blue-700 dark:text-blue-300">
+        <div className="rounded-md border border-brand-accent/40 bg-selection p-3">
+          <p className="text-sm text-link">
             Scanning{' '}
             {progress.currentLibraryName
               ? `library "${progress.currentLibraryName}" (${progress.currentUserEmail})`
@@ -195,7 +195,7 @@ export function CleanupTab() {
 
       {(phase === 'results' || phase === 'complete') && summary && (
         <>
-          <div className="text-sm text-slate-600 dark:text-slate-300">
+          <div className="text-sm text-muted-foreground">
             <strong>{findings.length} total</strong> · {findings.length - summary.totalReportOnly} fixable ·{' '}
             {summary.totalReportOnly} report-only
           </div>
@@ -212,10 +212,10 @@ export function CleanupTab() {
                   onClick={() => setDriftFilter(active ? null : t)}
                   className={`rounded-full px-2.5 py-1 text-xs border ${
                     active
-                      ? 'bg-blue-600 text-white border-blue-600'
+                      ? 'bg-brand-accent text-white border-brand-accent'
                       : count === 0
-                        ? 'bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700'
-                        : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500'
+                        ? 'bg-muted text-muted-foreground border-border'
+                        : 'bg-background text-muted-foreground border-border hover:border-muted-foreground'
                   }`}
                   disabled={count === 0}
                 >
@@ -227,14 +227,14 @@ export function CleanupTab() {
               <button
                 type="button"
                 onClick={() => setDriftFilter(null)}
-                className="text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 px-2"
+                className="text-xs text-muted-foreground hover:text-foreground px-2"
               >
                 Clear filter
               </button>
             )}
           </div>
 
-          <div className="border border-slate-200 dark:border-slate-700 rounded-md overflow-hidden">
+          <div className="border border-border rounded-md overflow-hidden">
             {groupedByLibrary.map((group) => {
               const collapsed = collapsedLibraries.has(group.libraryId)
               return (
@@ -250,12 +250,11 @@ export function CleanupTab() {
                         return next
                       })
                     }
-                    className="w-full text-left px-3 py-2 bg-slate-100 dark:bg-slate-800 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 bg-muted text-sm font-medium text-foreground hover:bg-muted flex items-center gap-2"
                   >
                     <span className="inline-block w-3">{collapsed ? '▸' : '▾'}</span>
-                    {group.libraryName}{' '}
-                    <span className="text-slate-500 dark:text-slate-400 font-normal">({group.userEmail})</span>
-                    <span className="text-slate-500 dark:text-slate-400 font-normal">
+                    {group.libraryName} <span className="text-muted-foreground font-normal">({group.userEmail})</span>
+                    <span className="text-muted-foreground font-normal">
                       — {group.items.length} finding{group.items.length === 1 ? '' : 's'}
                     </span>
                   </button>
@@ -271,8 +270,8 @@ export function CleanupTab() {
       )}
 
       {phase === 'applying' && (
-        <div className="rounded-md border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 p-3">
-          <p className="text-sm text-blue-700 dark:text-blue-300">Applying fixes...</p>
+        <div className="rounded-md border border-brand-accent/40 bg-selection p-3">
+          <p className="text-sm text-link">Applying fixes...</p>
         </div>
       )}
 
@@ -282,7 +281,7 @@ export function CleanupTab() {
             Cleanup: {applyResponse.applied} applied, {applyResponse.skipped} skipped, {applyResponse.failed} failed
           </p>
           {applyResponse.results.filter((r) => r.result !== 'applied').length > 0 && (
-            <details className="mt-2 text-xs text-slate-700 dark:text-slate-300">
+            <details className="mt-2 text-xs text-foreground dark:text-muted-foreground">
               <summary>View details</summary>
               <ul className="mt-2 space-y-1 font-mono">
                 {applyResponse.results.map((r) => (
@@ -298,7 +297,7 @@ export function CleanupTab() {
       )}
 
       {phase === 'results' && findings.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 px-6 py-3 flex items-center justify-end gap-3 shadow-md">
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border px-6 py-3 flex items-center justify-end gap-3 shadow-md">
           <Button
             variant="outline"
             size="sm"
@@ -312,7 +311,7 @@ export function CleanupTab() {
           >
             Select all safe
           </Button>
-          <span className="text-sm text-slate-600 dark:text-slate-300">{selected.size} selected</span>
+          <span className="text-sm text-muted-foreground">{selected.size} selected</span>
           <Button size="sm" onClick={startApply} disabled={selected.size === 0}>
             Apply selected fixes ({selected.size})
           </Button>

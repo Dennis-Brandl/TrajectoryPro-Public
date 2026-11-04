@@ -103,7 +103,7 @@ function ListItemsEditor({
       {/* List source mode toggle */}
       <div style={fieldStyle}>
         <span
-          className="text-gray-500 dark:text-gray-400"
+          className="text-muted-foreground"
           style={{ fontSize: 11, display: 'block', marginBottom: 2, userSelect: 'none' }}
         >
           List Source
@@ -111,7 +111,7 @@ function ListItemsEditor({
         <select
           value={sourceMode}
           onChange={(e) => handleSourceModeChange(e.target.value as 'static' | 'input')}
-          className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
+          className="bg-background text-foreground border border-border"
           style={{
             width: '100%',
             fontSize: 13,
@@ -130,7 +130,7 @@ function ListItemsEditor({
       {sourceMode === 'input' && (
         <div style={fieldStyle}>
           <span
-            className="text-gray-500 dark:text-gray-400"
+            className="text-muted-foreground"
             style={{ fontSize: 11, display: 'block', marginBottom: 2, userSelect: 'none' }}
           >
             Input Parameter
@@ -142,7 +142,7 @@ function ListItemsEditor({
                 listSource: { mode: 'input', value: e.target.value },
               } as Partial<Block>)
             }
-            className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
+            className="bg-background text-foreground border border-border"
             style={{
               width: '100%',
               fontSize: 13,
@@ -167,10 +167,10 @@ function ListItemsEditor({
         <>
           {/* Column headers */}
           <div style={{ display: 'flex', gap: 6, marginBottom: 2 }}>
-            <span className="text-gray-400 dark:text-gray-500" style={{ flex: 2, fontSize: 10, userSelect: 'none' }}>
+            <span className="text-muted-foreground" style={{ flex: 2, fontSize: 10, userSelect: 'none' }}>
               Label
             </span>
-            <span className="text-gray-400 dark:text-gray-500" style={{ flex: 1, fontSize: 10, userSelect: 'none' }}>
+            <span className="text-muted-foreground" style={{ flex: 1, fontSize: 10, userSelect: 'none' }}>
               Value
             </span>
             <span style={{ width: 22, flexShrink: 0 }} />
@@ -183,7 +183,7 @@ function ListItemsEditor({
                 type="text"
                 value={item.label}
                 onChange={(e) => handleItemLabelChange(index, e.target.value)}
-                className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
+                className="bg-background text-foreground border border-border"
                 style={{ flex: 2, fontSize: 13, padding: '3px 6px', borderRadius: 4, outline: 'none', minWidth: 0 }}
                 placeholder="Label"
               />
@@ -191,7 +191,7 @@ function ListItemsEditor({
                 type="text"
                 value={item.value}
                 onChange={(e) => handleItemValueChange(index, e.target.value)}
-                className="bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-slate-300 border border-gray-300 dark:border-gray-600"
+                className="bg-muted text-foreground dark:text-muted-foreground border border-border"
                 style={{
                   flex: 1,
                   fontSize: 12,
@@ -206,7 +206,7 @@ function ListItemsEditor({
               <button
                 type="button"
                 onClick={() => handleDeleteItem(index)}
-                className="bg-white dark:bg-slate-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600"
+                className="bg-background text-muted-foreground border border-border"
                 style={{
                   width: 22,
                   height: 22,
@@ -241,13 +241,13 @@ function ListItemsEditor({
                 }
               }}
               placeholder="Type and press Enter"
-              className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
+              className="bg-background text-foreground border border-border"
               style={{ flex: 1, fontSize: 13, padding: '3px 6px', borderRadius: 4, outline: 'none', minWidth: 0 }}
             />
             <button
               type="button"
               onClick={handleAddItem}
-              className="bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-200 border border-gray-300 dark:border-gray-600"
+              className="bg-background text-foreground border border-border"
               style={{ fontSize: 12, padding: '3px 8px', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap' }}
             >
               Add
@@ -350,7 +350,7 @@ export function DataSection({ block, onUpdate, allBlocks }: DataSectionProps) {
       {isTextInput && (
         <div style={fieldStyle}>
           <span
-            className="text-gray-500 dark:text-gray-400"
+            className="text-muted-foreground"
             style={{ fontSize: 11, display: 'block', marginBottom: 2, userSelect: 'none' }}
           >
             Input Mode
@@ -358,7 +358,7 @@ export function DataSection({ block, onUpdate, allBlocks }: DataSectionProps) {
           <select
             value={inputMode}
             onChange={(e) => handleInputModeChange(e.target.value as TextInputMode)}
-            className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
+            className="bg-background text-foreground border border-border"
             style={{
               width: '100%',
               fontSize: 13,
@@ -394,7 +394,7 @@ export function DataSection({ block, onUpdate, allBlocks }: DataSectionProps) {
             onChange={() => onUpdate({ required: !required } as Partial<Block>)}
             style={{ cursor: 'pointer' }}
           />
-          <span className="text-gray-700 dark:text-slate-200" style={{ fontSize: 13 }}>
+          <span className="text-foreground" style={{ fontSize: 13 }}>
             Required
           </span>
         </label>
@@ -404,7 +404,7 @@ export function DataSection({ block, onUpdate, allBlocks }: DataSectionProps) {
       {hasLabel && (
         <div style={fieldStyle}>
           <span
-            className="text-gray-500 dark:text-gray-400"
+            className="text-muted-foreground"
             style={{ fontSize: 11, display: 'block', marginBottom: 2, userSelect: 'none' }}
           >
             Label
@@ -413,7 +413,7 @@ export function DataSection({ block, onUpdate, allBlocks }: DataSectionProps) {
             type="text"
             value={label}
             onChange={(e) => onLabelChange(e.target.value)}
-            className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
+            className="bg-background text-foreground border border-border"
             style={{
               width: '100%',
               fontSize: 13,
@@ -441,7 +441,7 @@ export function DataSection({ block, onUpdate, allBlocks }: DataSectionProps) {
         <>
           <div style={fieldStyle}>
             <span
-              className="text-gray-500 dark:text-gray-400"
+              className="text-muted-foreground"
               style={{ fontSize: 11, display: 'block', marginBottom: 2, userSelect: 'none' }}
             >
               Placeholder or Source
@@ -449,7 +449,7 @@ export function DataSection({ block, onUpdate, allBlocks }: DataSectionProps) {
             <select
               value={phMode}
               onChange={(e) => handlePhModeChange(e.target.value as 'text' | 'input')}
-              className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
+              className="bg-background text-foreground border border-border"
               style={{
                 width: '100%',
                 fontSize: 13,
@@ -468,7 +468,7 @@ export function DataSection({ block, onUpdate, allBlocks }: DataSectionProps) {
           {phMode === 'text' && (
             <div style={fieldStyle}>
               <span
-                className="text-gray-500 dark:text-gray-400"
+                className="text-muted-foreground"
                 style={{ fontSize: 11, display: 'block', marginBottom: 2, userSelect: 'none' }}
               >
                 Placeholder Text
@@ -477,7 +477,7 @@ export function DataSection({ block, onUpdate, allBlocks }: DataSectionProps) {
                 type="text"
                 value={placeholder}
                 onChange={(e) => onPlaceholderChange(e.target.value)}
-                className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
+                className="bg-background text-foreground border border-border"
                 style={{
                   width: '100%',
                   fontSize: 13,
@@ -494,7 +494,7 @@ export function DataSection({ block, onUpdate, allBlocks }: DataSectionProps) {
           {phMode === 'input' && (
             <div style={fieldStyle}>
               <span
-                className="text-gray-500 dark:text-gray-400"
+                className="text-muted-foreground"
                 style={{ fontSize: 11, display: 'block', marginBottom: 2, userSelect: 'none' }}
               >
                 Input Parameter
@@ -506,7 +506,7 @@ export function DataSection({ block, onUpdate, allBlocks }: DataSectionProps) {
                     placeholderSource: { mode: 'input', value: e.target.value },
                   } as Partial<Block>)
                 }
-                className="bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-gray-600"
+                className="bg-background text-foreground border border-border"
                 style={{
                   width: '100%',
                   fontSize: 13,

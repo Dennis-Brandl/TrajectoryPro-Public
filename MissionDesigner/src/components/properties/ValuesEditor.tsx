@@ -172,10 +172,10 @@ function ValuesEditorComponent({
           ))}
       </div>
 
-      {values.length === 0 && <p className="text-xs text-slate-500 dark:text-slate-400 italic">{emptyMessage}</p>}
+      {values.length === 0 && <p className="text-xs text-muted-foreground italic">{emptyMessage}</p>}
 
       {values.map((v) => (
-        <div key={v.id} className="border border-slate-200 dark:border-slate-700 rounded-md p-2 space-y-1.5">
+        <div key={v.id} className="border border-border rounded-md p-2 space-y-1.5">
           {/* Property name row */}
           <div className="flex gap-1 items-center">
             <Input
@@ -203,10 +203,7 @@ function ValuesEditorComponent({
             return (
               <div key={entry.id} className="flex gap-1 items-center pl-2">
                 {isProtected || readOnly ? (
-                  <span
-                    className="text-xs text-slate-500 dark:text-slate-400 w-20 shrink-0 truncate"
-                    title={entry.name}
-                  >
+                  <span className="text-xs text-muted-foreground w-20 shrink-0 truncate" title={entry.name}>
                     {entry.name || '(unnamed)'}
                   </span>
                 ) : (
@@ -244,7 +241,7 @@ function ValuesEditorComponent({
             <Button
               variant="ghost"
               size="sm"
-              className="h-5 text-xs text-blue-600 hover:text-blue-800 pl-2"
+              className="h-5 text-xs text-link hover:text-link/80 pl-2"
               onClick={() => addEntry(v.id)}
             >
               <Plus className="h-2.5 w-2.5 mr-0.5" />

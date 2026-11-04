@@ -12,7 +12,7 @@ Mission Designer is a visual workflow specification editor for designing step-by
 4. [Step Palette](#4-step-palette)
 5. [Canvas](#5-canvas)
 6. [Properties Panel](#6-properties-panel)
-7. [Toolbar](#7-toolbar)
+7. [Top Bar](#7-top-bar)
 8. [Node Types Reference](#8-node-types-reference)
 9. [Notation Systems](#9-notation-systems)
 10. [Environment and Action System](#10-environment-and-action-system)
@@ -35,12 +35,12 @@ Mission Designer is a visual workflow specification editor for designing step-by
 1. Open Mission Designer in your browser.
 2. Enter your email and password (minimum 8 characters).
 3. If you are the first user, your account is automatically promoted to Administrator.
-4. New users can register from the login page by clicking "Don't have an account? Register".
+4. Accounts are created by an administrator, or on first run for the first administrator. There is no self-registration link on the sign-in page.
 
 ### Creating Your First Workflow
 
 1. Sign in to reach the main editor.
-2. In the Library Sidebar on the left, select the **Workflows** tab.
+2. On the icon rail on the left, select **Workflows**.
 3. Click **Create Library** at the bottom to create a workflow library.
 4. Enter a name and click **Create**.
 5. Expand the library and click **Add Specification** (+ button) to create a workflow specification.
@@ -54,22 +54,20 @@ Mission Designer is a visual workflow specification editor for designing step-by
 
 ![Editor screen layout](/help-images/2-screen-layout.png)
 
-The editor has four main areas:
+The editor has these main areas:
 
 ```
 +------------------------------------------------------------------+
-| Toolbar: Mission Designer | Notation | Back | Breadcrumb | Undo Redo | Layout | User |
-+----------+------+------------------------------------+-----------+
-|          |      |                                    |           |
-| Library  | Step |         Canvas                     | Properties|
-| Sidebar  |Palette|                                   | Panel     |
-|          |      |                                    |           |
-|          |      |                                    |           |
-+----------+------+------------------------------------+-----------+
+| [icon] Mission Designer version | tools ...  Help Theme Settings Sign out |
++------+---------+------+------------------------------+-----------+
+| Rail | Library | Step | Canvas                       | Properties|
+|      | Sidebar |Palette|                             | Panel     |
++------+---------+------+------------------------------+-----------+
 ```
 
-- **Toolbar** (top) -- Notation switcher, navigation, undo/redo, auto-layout, user menu
-- **Library Sidebar** (far left) -- Browse and manage libraries and specifications
+- **Top bar** -- the app icon (click it to open About), the name **Mission Designer** and the suite version. The workflow tools (notation switcher, navigation, undo/redo, auto-layout) sit next to them. On the right, in this order: **Help**, the theme toggle, **Settings** (the gear, which opens Administration and shows only for administrators), the user name, and **Sign out**.
+- **Icon rail** (far left) -- **Workflows**, **Step Libraries**, **Environments** and **Actions**. Click the active rail item again to hide or show its tree.
+- **Library Sidebar** -- Browse and manage libraries and specifications for the selected rail item
 - **Step Palette** (left of canvas) -- Drag step types onto the canvas
 - **Canvas** (center) -- Visual workflow editor with drag-and-drop nodes and connections
 - **Properties Panel** (right) -- View and edit properties of the selected node or workflow
@@ -82,16 +80,16 @@ When viewing Environment or Action specifications, the canvas area is replaced b
 
 ![Library Sidebar](/help-images/3-library-sidebar.png)
 
-### Entity Type Tabs
+### Icon Rail
 
-Four tabs at the top of the sidebar switch between library types:
+Four items on the icon rail at the left switch between library types:
 
-| Tab              | Icon      | Content                                      |
-| ---------------- | --------- | -------------------------------------------- |
-| **Workflows**    | Workflow  | Workflow libraries and specifications        |
-| **Steps**        | Gear      | Reusable step library templates              |
-| **Environments** | Server    | Environment definitions with action bindings |
-| **Actions**      | Lightning | Action specifications with inputs/outputs    |
+| Rail item          | Icon      | Content                                      |
+| ------------------ | --------- | -------------------------------------------- |
+| **Workflows**      | Workflow  | Workflow libraries and specifications        |
+| **Step Libraries** | Gear      | Reusable step library templates              |
+| **Environments**   | Server    | Environment definitions with action bindings |
+| **Actions**        | Lightning | Action specifications with inputs/outputs    |
 
 ### Searching
 
@@ -166,7 +164,7 @@ See [The User Interface Canvas](#the-user-interface-canvas) under Node Types Ref
 **Execution Steps:**
 | Step | Purpose |
 |------|---------|
-| Script | Execute TypeScript code with input/output parameter access |
+| Script | Execute JavaScript code (run on Mission Engine) with input/output parameter access |
 | Gate | Cyclically re-evaluate a boolean script until it returns TRUE, then continue (ISA-88: "Transition Step") |
 | Child Workflow | Embed or reference a sub-workflow |
 
@@ -386,30 +384,33 @@ Things to know:
 
 ---
 
-## 7. Toolbar
+## 7. Top Bar
 
 ![Toolbar](/help-images/7-toolbar.png)
 
-The toolbar at the top of the screen provides the following controls:
+The top bar at the top of the screen provides the following controls:
 
 | Control                | Description                                                             |
 | ---------------------- | ----------------------------------------------------------------------- |
-| **Mission Designer**   | Application title                                                       |
+| **App icon**           | Click to open About                                                     |
+| **Mission Designer**   | Application name, followed by the suite version                         |
 | **Notation Switcher**  | Dropdown to switch between Flowchart, BPMN, and ISA 88 notation styles  |
 | **Back** button        | Appears when editing a child workflow; returns to the parent workflow   |
 | **Context Breadcrumb** | Shows the current library and specification path                        |
 | **Undo**               | Undo the last change (up to 100 steps)                                  |
 | **Redo**               | Redo a previously undone change                                         |
 | **Auto-layout**        | Automatically arranges all nodes using the dagre graph layout algorithm |
-| **User** icon + name   | Shows the current user's identity                                       |
-| **Account Management** | Manage user accounts (admin only)                                       |
-| **Sign Out**           | End the current session                                                 |
+| **Help**               | Opens this guide in a new tab                                           |
+| **Theme toggle**       | Switches between light and dark                                         |
+| **Settings** (gear)    | Opens Administration (administrators only)                              |
+| **User name**          | Shows the current user's identity                                       |
+| **Sign out**           | End the current session                                                 |
 
 ### Canvas Toolbar (Top-Right of Canvas)
 
-| Button                      | Description                                                                                                                                          |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Export Workflow Package** | Creates a self-contained runtime package (.WFmasterX) containing the workflow, all dependent environment and action libraries, and referenced images |
+| Button                     | Description                                                                                                                                          |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Export as Workflow ZIP** | Creates a self-contained runtime package (.WFmasterX) containing the workflow, all dependent environment and action libraries, and referenced images |
 
 ---
 
@@ -643,7 +644,7 @@ If a check fails, the reason appears on the form. The operator's entries are kep
 
 **Setting up e-signature roles.** Mission Designer and Mission Commander connect roles **by name**:
 
-1. **Maintain the list in Mission Designer.** An administrator opens **Administration** from the toolbar, selects the **E-Signature Roles** tab, adds each role name (for example _Time Sheet Approver_), and clicks **Save**. Names can be up to 64 characters and must be unique, ignoring case.
+1. **Maintain the list in Mission Designer.** An administrator opens **Administration** with the gear in the top bar, selects the **E-Signature Roles** tab, adds each role name (for example _Time Sheet Approver_), and clicks **Save**. Names can be up to 64 characters and must be unique, ignoring case.
 2. **Pick the role on the element.** Authors choose the role in the element's **Role** list. Removing a name from the list does not change existing screens; an element whose role is no longer listed keeps it and shows the warning _not in the E-signature roles list_.
 3. **Load the workflow into Mission Commander.** Loading the workflow package creates any role it names that Mission Commander does not already have. Names must match exactly, including capitalization.
 4. **Give the role to signers in Mission Commander.** Assign the role to the people allowed to sign, in each work center where they will sign. Each user's **login name** is also set in Mission Commander.
@@ -1056,7 +1057,7 @@ Mission Designer supports three visual notation systems. All three represent the
 
 ### Switching Notations
 
-1. Click the notation dropdown in the toolbar (shows current notation, e.g., "Flowchart Style").
+1. Click the notation dropdown in the top bar (shows current notation, e.g., "Flowchart Style").
 2. Select a different notation.
 3. If the canvas has nodes, a confirmation dialog appears explaining the visual changes.
 4. Click **Switch Notation** to confirm.
@@ -1154,13 +1155,14 @@ Every action also returns **Completion.Code** (0 no error, 1 other error, 2 not 
 
 ### Creating Action and Environment Specifications
 
-1. Switch to the **Actions** or **Environments** tab in the Library Sidebar.
+1. Select **Actions** or **Environments** on the icon rail.
 2. Create a library, then add specifications.
 3. For actions: define inputs, outputs, properties, and visibility (opaque/observable).
-4. For environments: the detail view uses a tabbed layout with five tabs:
+4. For environments: the detail view uses a tabbed layout with six tabs:
    - **Included Actions** -- actions available in this environment, referenced by library name and action name
    - **Property Values** -- named value properties scoped to the environment
    - **Action Properties** -- value properties specific to action execution
+   - **Value Types** -- entry templates used when adding a Value Property
    - **Resources** -- shared resources (Single Use, Shared Use, Count Limited, Named, Sync) that steps can acquire/release
    - **Registered Action Servers** -- servers that implement the actions defined in the environment (see below)
 
@@ -1188,7 +1190,7 @@ Resources model shared physical or logical assets that workflow steps must coord
 | Type              | Description                                                                                 | Count                 | Configuration                 |
 | ----------------- | ------------------------------------------------------------------------------------------- | --------------------- | ----------------------------- |
 | **Single Use**    | Exclusive access to a single resource. Only one step can hold it at a time.                 | Fixed (1)             | Name, Description             |
-| **Shared Use**    | Shared access with pool limits. Multiple steps may hold it concurrently.                    | Fixed (1)             | Name, Description             |
+| **Shared Use**    | Shared access with pool limits. Multiple steps may hold it concurrently.                    | User-defined          | Name, Description, Count      |
 | **Count Limited** | A pool of identical units. Steps acquire and release a specified number of units.           | User-defined          | Name, Description, Count      |
 | **Named**         | A pool of individually named items. The acquired item's name is stored in a value property. | Auto (count of names) | Name, Description, Names list |
 | **Sync**          | A synchronization point for passing data between parallel branches via Send/Receive.        | Fixed (1)             | Name, Description             |
@@ -1205,7 +1207,7 @@ To add a resource, click the **+** button and configure:
 1. **Name** (required) -- Unique identifier for the resource. Spaces are automatically removed.
 2. **Type** -- Select from the five resource types.
 3. **Description** (optional) -- Human-readable explanation.
-4. **Count** -- Editable for Count Limited type; auto-calculated for Named type; fixed at 1 for others.
+4. **Count** -- Editable for the Shared Use and Count Limited types; auto-calculated for Named type; fixed at 1 for Single Use and Sync.
 5. **Names** (Named type only) -- A list of individual item names. Add or remove names with the **+** and trash buttons.
 
 ### Resource Commands
@@ -1281,7 +1283,7 @@ The resource selector in the command editor groups available resources by source
 ### Navigating Child Workflows
 
 - **Double-click** an embedded child workflow node to navigate into its canvas.
-- A **Back** button appears in the toolbar to return to the parent workflow.
+- A **Back** button appears in the top bar to return to the parent workflow.
 - Embedded child workflows inherit their parent's environment links.
 
 ### Embedded vs. Referenced
@@ -1314,7 +1316,7 @@ Legacy extensions (`.WFenvir`, `.WFaction`, `.WFslib`, `.WFactionX`) are still a
 
 **From the canvas toolbar (top-right):**
 
-- **Export Workflow Package** -- Creates a .WFmasterX runtime package from the current workflow.
+- **Export as Workflow ZIP** -- Creates a .WFmasterX runtime package from the current workflow.
 
 **From the library sidebar export menu:**
 
@@ -1377,7 +1379,7 @@ The editor produces a workflow specification; the Trajectory Pro Mission Control
 
 ### 1. Export the workflow package
 
-With a workflow open, use the **Export** dropdown in the top-right of the workflow editor pane and choose **Export Workflow Package**. This produces a single `.WFmasterX` file -- a self-contained ZIP that bundles the workflow, every environment and action library it depends on, and all referenced images, so it runs without any other files. (The same dropdown also offers PDF, PNG, and SVG exports for documentation and diagrams.)
+With a workflow open, use the **Export** dropdown in the top-right of the workflow editor pane and choose **Export as Workflow ZIP**. This produces a single `.WFmasterX` file -- a self-contained ZIP that bundles the workflow, every environment and action library it depends on, and all referenced images, so it runs without any other files. (The same dropdown also offers PDF, PNG, and SVG exports for documentation and diagrams.)
 
 ### 2. Load the package into Mission Commander
 
@@ -1495,9 +1497,9 @@ Each user has a set of author roles that control which library types they can cr
 
 ### Special Roles
 
-| Role              | Permission                                                                                                |
-| ----------------- | --------------------------------------------------------------------------------------------------------- |
-| **Administrator** | Manage all user accounts and roles. The first registered user is automatically promoted to administrator. |
+| Role              | Permission                                                                                                            |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **Administrator** | Manage all user accounts and roles. The first user, created on first run, is automatically promoted to administrator. |
 
 ### Teams and the GLOBAL team
 
@@ -1506,11 +1508,11 @@ Each user has a set of author roles that control which library types they can cr
 - To edit GLOBAL libraries, an administrator adds you to the GLOBAL team and gives you a role there, exactly as for any other team. Without a role there, GLOBAL libraries are read-only for you.
 - If your team has a library with the same name as a GLOBAL library, your team's library is the one used.
 - Importing a workflow package links to a GLOBAL library of the same name instead of making a copy in your team.
-- Administrators can move an existing library to or from GLOBAL from **Admin → Libraries → Move library**.
+- Administrators can move an existing library to or from GLOBAL from **Administration → Libraries → Move library**.
 
 ### Account Management
 
-Administrators can manage user accounts by clicking the user icon in the top-right corner. From the Account Management dialog, administrators can:
+Administrators can manage user accounts by clicking the gear (**Settings**) in the top bar. From the Account Management dialog, administrators can:
 
 - View all registered users
 - Assign or remove author roles
@@ -1544,7 +1546,7 @@ Legacy/back-compat extensions still accepted on import:
 
 ### Schema Version
 
-All exports use schema version 4.0. The schema uses snake_case field names in exported JSON (converted from camelCase internal representation). Older schema versions (1.0, 2.0, 3.0) are automatically migrated on import.
+All exports use schema version 5.0. The schema uses snake_case field names in exported JSON (converted from camelCase internal representation). Older schema versions (1.0 through 4.0) are automatically migrated on import.
 
 ### Identifiers
 

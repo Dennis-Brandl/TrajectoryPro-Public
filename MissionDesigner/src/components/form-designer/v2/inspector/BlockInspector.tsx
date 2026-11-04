@@ -35,7 +35,10 @@ export function BlockInspector() {
   const block = selection ? findBlock(document, selection) : undefined
   if (!block) {
     return (
-      <div onKeyDown={(e) => e.stopPropagation()} style={{ padding: 12, fontSize: 12, color: '#64748b' }}>
+      <div
+        onKeyDown={(e) => e.stopPropagation()}
+        style={{ padding: 12, fontSize: 12, color: 'var(--muted-foreground)' }}
+      >
         Select a block
       </div>
     )
@@ -54,7 +57,7 @@ export function BlockInspector() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          borderBottom: '1px solid #e2e8f0',
+          borderBottom: '1px solid var(--border)',
         }}
       >
         <span style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase' }}>{block.type}</span>

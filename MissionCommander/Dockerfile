@@ -51,6 +51,15 @@ COPY mission-control-db/package.json mission-control-db/package-lock.json ./miss
 RUN cd mission-control-db && npm ci
 COPY mission-control-db ./mission-control-db
 
+# ---- MissionDesigner workspace: @mission/ui and @mission/tokens are `file:` deps of the app.
+#      Only manifests + the shared packages are needed, not the Designer app; MissionFormKit
+#      is intentionally not part of this build (neither package needs it).
+COPY MissionDesigner/package.json MissionDesigner/package-lock.json MissionDesigner/.npmrc ./MissionDesigner/
+COPY MissionDesigner/packages ./MissionDesigner/packages
+RUN cd MissionDesigner && npm ci
+# Build design tokens -> dist CSS (index.css imports @mission/tokens/dist/*.css)
+RUN cd MissionDesigner && npm -w @mission/tokens run build
+
 # ---- App dependency manifests (layer-cached unless they change).
 COPY MissionCommander/package.json MissionCommander/package-lock.json ./MissionCommander/
 RUN cd MissionCommander && npm ci

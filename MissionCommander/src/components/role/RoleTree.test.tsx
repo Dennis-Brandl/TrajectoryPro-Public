@@ -46,9 +46,9 @@ describe('RoleTree', () => {
   it('enables New role for a steward (role:create), disables for a viewer', async () => {
     usePrincipalStore.getState().setPrincipal({ id: 's', email: '', loginName: 'admin', displayName: 'S', accessLevel: 'steward', isAdministrator: false, rights: ['role:read', 'role:create'], missionSystemCommanderOf: [] });
     render(<RoleTree onCreateRole={() => {}} />);
-    await waitFor(() => expect(screen.getByRole('button', { name: 'New role' })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'New Role' })).toBeEnabled());
 
     usePrincipalStore.getState().setPrincipal({ id: 'v', email: '', loginName: 'admin', displayName: 'V', accessLevel: 'viewer', isAdministrator: false, rights: ['role:read'], missionSystemCommanderOf: [] });
-    await waitFor(() => expect(screen.getByRole('button', { name: 'New role' })).toBeDisabled());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'New Role' })).toBeDisabled());
   });
 });

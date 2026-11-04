@@ -32,7 +32,7 @@ import { ADMIN_STORAGE_STATE } from './helpers/session'
 
 async function setupWorkflowAndLogin(page: Page) {
   await page.goto('/')
-  await expect(page.getByRole('tab', { name: 'Workflows' })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('button', { name: 'Workflows', exact: true })).toBeVisible({ timeout: 15_000 })
 
   // Create library + workflow spec to activate the canvas
   await page.getByRole('button', { name: 'New Library' }).click()

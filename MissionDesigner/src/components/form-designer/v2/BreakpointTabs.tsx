@@ -29,7 +29,7 @@ export function BreakpointTabs() {
   const active = useFormDocumentStore((s) => s.activeBreakpoint)
   const setActive = useFormDocumentStore((s) => s.setActiveBreakpoint)
   return (
-    <div className="flex items-stretch border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shrink-0">
+    <div className="flex items-stretch border-b border-border bg-background shrink-0">
       {TABS.map(({ key, label, Icon }) => {
         const isActive = active === key
         return (
@@ -38,7 +38,7 @@ export function BreakpointTabs() {
             type="button"
             onClick={() => setActive(key)}
             aria-pressed={isActive}
-            className={isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}
+            className={isActive ? 'text-link' : 'text-muted-foreground'}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -46,7 +46,7 @@ export function BreakpointTabs() {
               height: 36,
               padding: '0 16px',
               border: 'none',
-              borderBottom: isActive ? '2px solid #2563eb' : '2px solid transparent',
+              borderBottom: isActive ? '2px solid var(--brand-accent)' : '2px solid transparent',
               background: 'transparent',
               fontSize: 13,
               fontWeight: isActive ? 600 : 400,

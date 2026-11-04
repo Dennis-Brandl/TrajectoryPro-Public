@@ -121,7 +121,7 @@ export function RoleEditorDialog({ open, onOpenChange, initial, onSaved }: RoleE
             </thead>
             <tbody>
               {RIGHT_VERBS.map(({ verb, label }) => (
-                <tr key={verb} className="border-t border-slate-100 dark:border-slate-800">
+                <tr key={verb} className="border-t border-border">
                   <td className="py-1.5">{label}</td>
                   {RIGHTS_CATEGORIES.map((c) => {
                     const id = rightId(c, verb)
@@ -133,7 +133,7 @@ export function RoleEditorDialog({ open, onOpenChange, initial, onSaved }: RoleE
                           checked={rights.has(id)}
                           disabled={saving}
                           onChange={() => toggleRight(id)}
-                          className="h-4 w-4 rounded border-gray-300 accent-primary cursor-pointer"
+                          className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
                         />
                       </td>
                     )

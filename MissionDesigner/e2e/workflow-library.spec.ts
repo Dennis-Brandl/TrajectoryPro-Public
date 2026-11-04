@@ -17,6 +17,7 @@ import { CURRENT_DATA_SCHEMA_VERSION } from '../src/lib/data-schema-version'
 import { openDb, closeDb } from './helpers/db'
 import { loadAdminState, ADMIN_STORAGE_STATE } from './helpers/session'
 import { workflowName, childName } from './helpers/fixtures'
+import { openRail } from './helpers/rail'
 
 // Inline constants — distinct from the step suite's values so both suites'
 // DB rows can coexist under different teamIds without semantic collision.
@@ -84,7 +85,7 @@ test.describe.serial('Workflow Library E2E', () => {
 
     // Navigate to the root — we should land on the main editor authenticated.
     await sharedPage.goto('/')
-    await expect(sharedPage.getByRole('tab', { name: 'Workflows' })).toBeVisible({ timeout: 10_000 })
+    await expect(sharedPage.getByRole('button', { name: 'Workflows', exact: true })).toBeVisible({ timeout: 10_000 })
   })
 
   test.afterAll(async () => {
@@ -96,7 +97,7 @@ test.describe.serial('Workflow Library E2E', () => {
   test('Phase A1: create 3 workflow libraries', async () => {
     skipIfFailed()
     try {
-      await sharedPage.getByRole('tab', { name: 'Workflows' }).click()
+      await openRail(sharedPage, 'Workflows')
 
       for (const libName of LIBRARY_NAMES) {
         await sharedPage.getByRole('button', { name: 'New Library' }).click()
@@ -178,7 +179,7 @@ test.describe.serial('Workflow Library E2E', () => {
 
       // Reload page, verify UI re-renders from server state
       await sharedPage.reload()
-      await sharedPage.getByRole('tab', { name: 'Workflows' }).click()
+      await openRail(sharedPage, 'Workflows')
       await sharedPage.getByText(libName, { exact: true }).click()
       await expect(sharedPage.getByLabel('Library Description')).toHaveValue(description)
       await expect(sharedPage.getByLabel('Author')).toHaveValue(author)

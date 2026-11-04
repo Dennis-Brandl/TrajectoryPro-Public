@@ -27,7 +27,7 @@ function EdgeConditionEditorComponent({ sourceNodeData, sourceHandleId, sourceNo
   const desc = describeSelect1Option(sourceNodeData, sourceHandleId)
   const option = ((sourceNodeData.select1Options || []) as Select1OptionSpec[]).find((o) => o.id === sourceHandleId)
   const isProperty = sourceNodeData.select1InputValueType === 'property' || option?.valueType === 'property'
-  const muted = 'text-xs text-slate-500 dark:text-slate-400'
+  const muted = 'text-xs text-muted-foreground'
 
   return (
     <div className="space-y-3">
@@ -38,9 +38,7 @@ function EdgeConditionEditorComponent({ sourceNodeData, sourceHandleId, sourceNo
 
       {desc.kind === 'condition' && (
         <div className="space-y-1">
-          <div className="rounded border border-slate-200 dark:border-slate-700 px-2 py-1.5 text-sm font-mono break-all">
-            {desc.text}
-          </div>
+          <div className="rounded border border-border px-2 py-1.5 text-sm font-mono break-all">{desc.text}</div>
           {desc.label && <p className={muted}>Option: {desc.label}</p>}
           {isProperty && <p className={muted}>The value or input is a value property reference.</p>}
         </div>
@@ -56,7 +54,7 @@ function EdgeConditionEditorComponent({ sourceNodeData, sourceHandleId, sourceNo
       )}
       {desc.kind === 'missing' && <p className={muted}>This connection is not linked to a SELECT 1 option.</p>}
 
-      <p className="text-xs text-slate-400 dark:text-slate-500">Edit conditions on the SELECT 1 step.</p>
+      <p className="text-xs text-muted-foreground">Edit conditions on the SELECT 1 step.</p>
     </div>
   )
 }

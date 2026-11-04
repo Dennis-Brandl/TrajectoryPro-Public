@@ -89,7 +89,7 @@ export function WorkflowDetail() {
                 disabled={!canCommand} title={canCommand ? undefined : 'Requires Mission System Commander'}>Create Runtime Workflow…</Button>
             </RequiresTooltip>
             <RequiresTooltip reason={canDelete ? undefined : 'Requires workflow:delete'}>
-              <Button type="button" variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}
+              <Button type="button" variant="destructiveOutline" size="sm" onClick={() => setDeleteOpen(true)}
                 disabled={!canDelete} title={canDelete ? undefined : 'Requires workflow:delete'}>Delete</Button>
             </RequiresTooltip>
           </div>

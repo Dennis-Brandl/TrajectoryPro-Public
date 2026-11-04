@@ -195,9 +195,9 @@ export const LibraryTree = memo(function LibraryTree({
   if (filteredLibraries.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-        <FolderPlus className="h-10 w-10 text-slate-300 mb-3" />
-        <p className="text-sm text-slate-500">No libraries found</p>
-        <p className="text-xs text-slate-400 mt-1">Create your first library using the button below</p>
+        <FolderPlus className="h-10 w-10 text-muted-foreground mb-3" />
+        <p className="text-sm text-muted-foreground">No libraries found</p>
+        <p className="text-xs text-muted-foreground mt-1">Create your first library using the button below</p>
       </div>
     )
   }

@@ -27,12 +27,12 @@ export function ContentSection({ block }: { block: Block }) {
     const preview = contentPreviewText((block as { content: string }).content)
     return (
       <div style={{ padding: '4px 12px 12px' }}>
-        <span className="text-gray-500 dark:text-gray-400" style={{ fontSize: 11, display: 'block', marginBottom: 2 }}>
+        <span className="text-muted-foreground" style={{ fontSize: 11, display: 'block', marginBottom: 2 }}>
           Content
         </span>
         <p
           data-testid="content-preview"
-          className="text-gray-700 dark:text-slate-200"
+          className="text-foreground"
           style={{ fontSize: 12, margin: '0 0 8px', overflowWrap: 'anywhere' }}
         >
           {preview || '(empty)'}
@@ -40,7 +40,7 @@ export function ContentSection({ block }: { block: Block }) {
         <button
           type="button"
           onClick={() => useFormDocumentStore.getState().openContentEditor(block.id)}
-          className="border border-gray-300 dark:border-gray-600"
+          className="border border-border"
           style={{ fontSize: 12, padding: '4px 12px', borderRadius: 4, cursor: 'pointer', width: '100%' }}
         >
           Edit content…

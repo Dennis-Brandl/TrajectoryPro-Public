@@ -251,7 +251,7 @@ export function WorkflowInlineEditor() {
 
         {/* Type (ISA 88 workflow type, optional) */}
         <div className="space-y-0.5">
-          <label htmlFor="workflow-type-name" className="block text-xs font-bold text-slate-500 dark:text-slate-400">
+          <label htmlFor="workflow-type-name" className="block text-xs font-bold text-muted-foreground">
             Type
           </label>
           <TypeNameCombo

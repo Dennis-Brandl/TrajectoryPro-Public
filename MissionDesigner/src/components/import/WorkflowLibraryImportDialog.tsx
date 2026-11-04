@@ -100,7 +100,7 @@ export function WorkflowLibraryImportDialog({ open, plan, onCommit, onCancel }: 
               aria-label="Team"
               value={effectiveTeamId}
               onChange={(e) => setTeamId(e.target.value)}
-              className="h-8 rounded-md border border-slate-200 dark:border-slate-700 bg-transparent px-2"
+              className="h-8 rounded-md border border-border bg-transparent px-2"
             >
               {eligibleTeams.map((t) => (
                 <option key={t.id} value={t.id}>

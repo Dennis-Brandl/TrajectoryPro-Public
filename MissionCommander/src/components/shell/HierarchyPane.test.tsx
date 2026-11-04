@@ -121,10 +121,10 @@ describe('shell wiring for the artifact hierarchies', () => {
 
   // Task 8: History has no tree of its own (it's a cross-work-center page) — the pane is
   // just a short caption, with the actual content living in DetailPanel's HistoryPage.
-  it('renders a caption, not a tree, for the history hierarchy', () => {
+  it('renders nothing for the history hierarchy (a full-width page)', () => {
     useSelectionStore.setState({ activeHierarchy: 'history' });
-    render(<HierarchyPane />);
-    expect(screen.getByText('Execution history across all work centers')).toBeInTheDocument();
+    const { container } = render(<HierarchyPane />);
+    expect(container).toBeEmptyDOMElement();
   });
 
   // History has no per-row selection to gate on (unlike workflow/environment above) — it
@@ -139,10 +139,10 @@ describe('shell wiring for the artifact hierarchies', () => {
 
   // action-matching-mode spec (2026-08-20): Settings has no tree of its own (it's a
   // system-wide page) — the pane is just a short caption, mirroring History above.
-  it('renders a caption, not a tree, for the settings hierarchy', () => {
+  it('renders nothing for the settings hierarchy (a full-width page)', () => {
     useSelectionStore.setState({ activeHierarchy: 'settings' });
-    render(<HierarchyPane />);
-    expect(screen.getByText('System-wide configuration')).toBeInTheDocument();
+    const { container } = render(<HierarchyPane />);
+    expect(container).toBeEmptyDOMElement();
   });
 
   // Settings has no per-row selection to gate on (like History) — it renders

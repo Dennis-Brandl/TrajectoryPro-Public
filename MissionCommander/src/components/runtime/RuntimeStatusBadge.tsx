@@ -14,32 +14,32 @@
 import { runtimeStatusLabel } from '@/lib/runtime-status';
 import type { RuntimeWorkflowStatus } from '@/lib/api/types';
 
-// Same tiny uppercase-pill shape as StateBadge (artifact/StateBadge.tsx). Unlike StateBadge —
-// which is always muted, keying only on the state text itself — this ALSO keys the tone off
-// status, so a glance across a runtime-workflows table picks out `running` and the two error
-// terminals from the quieter waiting/completed states.
+// Same tiny uppercase-pill shape as StateTag, the shared lifecycle-state pill that StateBadge
+// (artifact/StateBadge.tsx) wraps. Unlike StateTag, which colors by lifecycle state text, this
+// keys the tone off runtime status, so a glance across a runtime-workflows table picks out
+// `running` and the two error terminals from the quieter waiting/completed states.
 const TONE: Record<RuntimeWorkflowStatus, string> = {
   pending: 'bg-muted text-muted-foreground',
   queued: 'bg-muted text-muted-foreground',
-  running: 'bg-accent text-accent-foreground',
+  running: 'bg-status-info-bg text-status-info-fg',
   // Transitional statuses reuse their settled neighbor's tone rather than getting one of
   // their own: pausing/resuming are headed for paused's quiet tone, while stopping/aborting
   // are headed for a forced-terminal outcome and get aborted's attention tone (task-19 brief).
   pausing: 'bg-muted text-muted-foreground',
   resuming: 'bg-muted text-muted-foreground',
-  stopping: 'bg-destructive/15 text-destructive',
-  aborting: 'bg-destructive/15 text-destructive',
-  paused: 'bg-muted text-muted-foreground',
-  completed: 'bg-muted text-muted-foreground',
-  aborted: 'bg-destructive/15 text-destructive',
-  errored: 'bg-destructive/15 text-destructive',
+  stopping: 'bg-status-alarm-bg text-status-alarm-fg',
+  aborting: 'bg-status-alarm-bg text-status-alarm-fg',
+  paused: 'bg-status-paused-bg text-status-paused-fg',
+  completed: 'bg-status-ok-bg text-status-ok-fg',
+  aborted: 'bg-status-alarm-bg text-status-alarm-fg',
+  errored: 'bg-status-alarm-bg text-status-alarm-fg',
   stopped: 'bg-muted text-muted-foreground',
 };
 
 export function RuntimeStatusBadge({ status }: { status: RuntimeWorkflowStatus }) {
   return (
     <span
-      className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] uppercase ${TONE[status]}`}
+      className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] uppercase ${TONE[status]}`}
       title={status}
     >
       {runtimeStatusLabel(status)}

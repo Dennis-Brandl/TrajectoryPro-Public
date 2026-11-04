@@ -180,7 +180,7 @@ describe('WorkCenterTree', () => {
     render(<WorkCenterTree onCreateRoot={() => {}} onCreateChild={() => {}} />);
     expect(await screen.findByText('Root')).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Import package' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Import Work Center Package' }));
     await userEvent.upload(
       screen.getByLabelText('Package'),
       new File([new Uint8Array([1, 2, 3])], 'a.WFcenterX'),
@@ -202,9 +202,9 @@ describe('WorkCenterTree', () => {
       const onCreateRoot = vi.fn();
       render(<WorkCenterTree onCreateRoot={onCreateRoot} onCreateChild={() => {}} />);
       expect(await screen.findByText('No work centers yet.')).toBeInTheDocument();
-      await userEvent.click(screen.getByText('Create work center'));
+      await userEvent.click(screen.getByRole('button', { name: 'New Work Center' }));
       expect(onCreateRoot).toHaveBeenCalledTimes(1);
-      await userEvent.click(screen.getByText('Import package'));
+      await userEvent.click(screen.getByRole('button', { name: 'Import Work Center Package' }));
       expect(await screen.findByText('Import a work-center package')).toBeInTheDocument();
     });
 
@@ -212,7 +212,8 @@ describe('WorkCenterTree', () => {
       vi.spyOn(wc.workCenters, 'list').mockResolvedValue({ nodes: [] });
       render(<WorkCenterTree onCreateRoot={() => {}} onCreateChild={() => {}} />);
       expect(await screen.findByText('No work centers yet. Ask an administrator to create one or to give you access.')).toBeInTheDocument();
-      expect(screen.queryByText('Create work center')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'New Work Center' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Import Work Center Package' })).toBeDisabled();
     });
 
     it('nothing shows while the tree is loading', async () => {

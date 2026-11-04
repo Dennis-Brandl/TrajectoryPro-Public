@@ -39,9 +39,9 @@ export function DestructiveConfirmDialog({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
-      <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-md p-6">
-        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Confirm destructive changes</h3>
-        <div className="mt-3 text-sm text-slate-700 dark:text-slate-300 space-y-2">
+      <div className="bg-background rounded-lg shadow-xl w-full max-w-md p-6">
+        <h3 className="text-lg font-semibold text-foreground">Confirm destructive changes</h3>
+        <div className="mt-3 text-sm text-foreground dark:text-muted-foreground space-y-2">
           {orphanCount > 0 && (
             <p>
               Delete <strong>{orphanCount}</strong> orphan workflow{orphanCount === 1 ? '' : 's'} (cascading to{' '}
@@ -58,10 +58,10 @@ export function DestructiveConfirmDialog({
           </p>
         </div>
         <div className="mt-4">
-          <label className="text-xs text-slate-500 dark:text-slate-400">Type DELETE to confirm:</label>
+          <label className="text-xs text-muted-foreground">Type DELETE to confirm:</label>
           <Input
             type="text"
-            className="mt-1 font-mono text-slate-900 dark:text-slate-100"
+            className="mt-1 font-mono text-foreground"
             value={typed}
             onChange={(e) => setTyped(e.target.value)}
             autoFocus

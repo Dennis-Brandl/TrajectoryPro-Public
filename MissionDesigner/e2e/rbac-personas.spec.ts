@@ -24,6 +24,7 @@ import {
 import { ADMIN_STORAGE_STATE, signIn } from './helpers/session'
 import { createUser, createTeam, createLibrary, addMember, setMemberRoles } from './helpers/admin'
 import { openWritableDb, seedRootSpec } from './helpers/seed'
+import { openRail } from './helpers/rail'
 
 /**
  * Design §13 two-user RBAC spec (Slice 7 Phase 2). Two teams (Alpha, Beta) and
@@ -111,9 +112,8 @@ async function openAs(browser: Browser, state: StorageState): Promise<{ ctx: Bro
   const page = await ctx.newPage()
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/')
-  const tab = page.getByRole('tab', { name: 'Workflows' })
-  await expect(tab).toBeVisible({ timeout: 10_000 })
-  await tab.click()
+  await expect(page.getByRole('button', { name: 'Workflows', exact: true })).toBeVisible({ timeout: 10_000 })
+  await openRail(page, 'Workflows')
   return { ctx, page }
 }
 

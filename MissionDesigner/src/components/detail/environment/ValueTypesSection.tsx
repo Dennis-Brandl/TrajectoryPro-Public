@@ -112,9 +112,9 @@ export function ValueTypesSection({
   }
 
   return (
-    <div className={hideHeader ? '' : 'border-t border-slate-200 dark:border-slate-700 pt-3'}>
+    <div className={hideHeader ? '' : 'border-t border-border pt-3'}>
       <div className="flex items-center justify-between mb-2">
-        {!hideHeader && <h3 className="text-sm font-medium text-slate-700 dark:text-slate-200">Value Types</h3>}
+        {!hideHeader && <h3 className="text-sm font-medium text-foreground">Value Types</h3>}
         <AlertDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <AlertDialogTrigger asChild>
             <Button variant="outline" size="sm">
@@ -161,15 +161,12 @@ export function ValueTypesSection({
 
       <div className="space-y-2">
         {valueTypes.length === 0 ? (
-          <p className="text-sm text-slate-400 dark:text-slate-500 italic text-center py-2">
+          <p className="text-sm text-muted-foreground italic text-center py-2">
             No value types defined. Click "Add Value Type" to define entry templates for new Value Properties.
           </p>
         ) : (
           valueTypes.map((vt) => (
-            <div
-              key={vt.id}
-              className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2"
-            >
+            <div key={vt.id} className="p-3 bg-side-panel rounded-lg border border-border space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <div className="p-1.5 bg-teal-100 rounded shrink-0">
@@ -186,7 +183,7 @@ export function ValueTypesSection({
                   variant="ghost"
                   size="sm"
                   onClick={() => onRemove(vt.id)}
-                  className="h-8 w-8 p-0 text-slate-400 dark:text-slate-500 hover:text-red-500"
+                  className="h-8 w-8 p-0 text-muted-foreground hover:text-red-500"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -199,7 +196,7 @@ export function ValueTypesSection({
                   placeholder="Description (optional)"
                 />
                 <div className="space-y-1">
-                  <Label className="text-xs text-slate-500 dark:text-slate-400">Entries:</Label>
+                  <Label className="text-xs text-muted-foreground">Entries:</Label>
                   {vt.entries.map((entry, index) => (
                     <div key={entry.id} className="flex gap-1 items-center">
                       {/* The order here is the order a new Value Property copies the entries in. */}

@@ -22,7 +22,7 @@ test('action matching setting defaults loose, persists a strict flip', async ({ 
   await bootstrapFirstAdmin(request);
   await signIn(page, ADMIN.email, ADMIN.password);
 
-  await page.getByRole('button', { name: 'Settings' }).click(); // activity rail
+  await page.getByRole('button', { name: 'Settings' }).click(); // header gear
   const group = page.getByRole('radiogroup', { name: 'Action matching' });
   await expect(group.getByRole('radio').first()).toBeChecked(); // Loose (default)
 

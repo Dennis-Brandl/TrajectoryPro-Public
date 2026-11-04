@@ -60,6 +60,18 @@ function openMenu() {
 
 beforeEach(() => vi.clearAllMocks())
 
+describe('SpecificationItem row', () => {
+  it('is one line: name, state tag, full name and version in the row title', () => {
+    usePrincipalStore.setState({ principal: p([]) })
+    const { container } = render(<SpecificationItem spec={draft} library={library} {...handlers} />)
+    const row = container.querySelector('[title="WP [1.0.0]"].group') as HTMLElement
+    expect(row).not.toBeNull()
+    expect(screen.queryByText('[1.0.0]')).toBeNull()
+    expect(screen.getByText('Draft').className).toMatch(/uppercase/)
+    expect(row.querySelector('.flex-col')).toBeNull()
+  })
+})
+
 describe('SpecificationItem capability gating', () => {
   it('viewer (no rights) gets no action menu', () => {
     usePrincipalStore.setState({ principal: p([]) })

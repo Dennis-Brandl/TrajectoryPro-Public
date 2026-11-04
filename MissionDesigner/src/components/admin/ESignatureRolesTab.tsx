@@ -75,9 +75,9 @@ export function ESignatureRolesTab() {
   }
 
   return (
-    <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 space-y-3">
+    <div className="rounded-md border border-border bg-background p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">E-Signature Roles</h3>
+        <h3 className="text-sm font-semibold text-foreground">E-Signature Roles</h3>
         <div className="flex items-center gap-3">
           {dirty && <span className="text-xs text-amber-600 dark:text-amber-400">Unsaved changes</span>}
           <Button size="sm" onClick={handleSave} disabled={!dirty || saving}>
@@ -96,7 +96,7 @@ export function ESignatureRolesTab() {
         </div>
       ) : (
         <>
-          <ul className="divide-y divide-slate-200 dark:divide-slate-700">
+          <ul className="divide-y divide-border">
             {draft.length === 0 && <li className="py-2 text-sm text-muted-foreground">No roles yet.</li>}
             {draft.map((name) => (
               <li key={name} className="flex items-center justify-between py-1.5 text-sm">
@@ -130,7 +130,7 @@ export function ESignatureRolesTab() {
                 }}
                 placeholder="e.g. Time Sheet Approver"
                 maxLength={MAX_NAME + 1}
-                className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 text-sm"
+                className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm"
               />
               {addError && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{addError}</p>}
             </div>

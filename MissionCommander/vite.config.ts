@@ -16,8 +16,12 @@ import react from '@vitejs/plugin-react-swc';
 import tailwindcss from '@tailwindcss/vite';
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite';
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
+
+const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
 
 export default defineConfig({
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   plugins: [
     TanStackRouterVite({
       autoCodeSplitting: true,
@@ -27,7 +31,9 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
-  resolve: { alias: { '@': path.resolve(__dirname, './src') } },
+  // @mission/ui is a file: link into MissionDesigner (which has its own react). Keep the
+  // link path so its peer imports resolve from this app's node_modules: one React copy.
+  resolve: { preserveSymlinks: true, alias: { '@': path.resolve(__dirname, './src') } },
   server: {
     port: 5273,
     proxy: { '/api': { target: `http://localhost:${process.env.API_PORT || '3002'}`, changeOrigin: true } },

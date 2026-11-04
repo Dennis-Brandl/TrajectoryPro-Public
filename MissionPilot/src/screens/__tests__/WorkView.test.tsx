@@ -267,7 +267,8 @@ describe('WorkView', () => {
     expect(selectedTab()).toContain('Torque check')
     expect(screen.getByRole('heading', { name: 'Torque check' })).toBeTruthy()
     expect(props.refresh).toHaveBeenCalled()
-    expect(screen.getByText('Submitted Fit bracket · MIX-20261007-003').className).toBe('toast toast-ok')
+    // No pop-up on a finished step: it covered too much of a phone screen.
+    expect(screen.queryByText(/^Submitted /)).toBeNull()
     // Spec §5.6: focus goes to the next pane's heading, never into its form, with a cue.
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Torque check' })))
     expect(document.querySelector('#panel-a-b .task-arrival')!.textContent).toBe('Now on: Torque check · MIX-20261007-004')
@@ -474,7 +475,7 @@ describe('WorkView', () => {
       const { update } = renderWork({ snapshot: snap([claimA]) })
       fireEvent.click(screen.getByRole('tab', { name: /Fit bracket/ }))
       fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
-      await screen.findByText(/Submitted/)
+      await waitFor(() => expect(pane()).toBeNull())
       expect(pane()).toBeNull()
 
       update({ snapshot: snap([nextPass]) })
@@ -489,7 +490,7 @@ describe('WorkView', () => {
       const { update } = renderWork({ snapshot: snap([claimA, claimB]) })
       fireEvent.click(screen.getByRole('tab', { name: /Fit bracket/ }))
       fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
-      await screen.findByText(/Submitted/)
+      await waitFor(() => expect(pane()).toBeNull())
       fireEvent.click(screen.getByRole('tab', { name: 'Inbox' }))
 
       update({ snapshot: snap([nextPass, claimB]) })
@@ -508,7 +509,7 @@ describe('WorkView', () => {
 
       update({ snapshot: snap([nextPass]) })
       await act(async () => finishSubmit())
-      await screen.findByText(/Submitted/)
+      await waitFor(() => expect(pane()).toBeNull())
       update({ snapshot: snap([{ ...nextPass }]) })
 
       expect(pane()).not.toBeNull()
@@ -524,7 +525,7 @@ describe('WorkView', () => {
       const { update } = renderWork({ snapshot: snap([claim]) })
       fireEvent.click(screen.getByRole('tab', { name: /Fit bracket/ }))
       fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
-      await screen.findByText(/Submitted/)
+      await waitFor(() => expect(pane()).toBeNull())
 
       update({ snapshot: snap([{ ...claim }]) })
 

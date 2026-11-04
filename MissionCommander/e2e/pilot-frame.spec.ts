@@ -109,13 +109,12 @@ test('the Pilot frame keeps the three facts on screen at every size, and Submit 
     expect(await smallControls(pilot), `task at ${size.label}`).toEqual([]);
   }
 
-  // R9 (§5.6): Submit on RW-1 moves to the other open claim, with the toast, the banner, and
+  // R9 (§5.6): Submit on RW-1 moves to the other open claim, with the banner and
   // focus on its heading — never inside its form.
   await pilot.setViewportSize({ width: 1920, height: 1080 });
   await tab1.click();
   await pane.getByLabel('Reason').fill('frame check');
   await pilot.getByRole('button', { name: 'Continue', exact: true }).click();
-  await expect(pilot.getByText('Submitted Fill Details · RW-1')).toBeVisible({ timeout: 30_000 });
   await expect(tab1).toHaveCount(0, { timeout: 30_000 });
   await expect(pane.locator('.task-arrival')).toContainText('Now on: Fill Details');
   await expect(pane.locator('.task-arrival')).toContainText('RW-2');

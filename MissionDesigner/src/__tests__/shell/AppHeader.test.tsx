@@ -15,7 +15,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { AppHeader, SUITE_VERSION } from '@mission/ui'
+import { AppHeader } from '@mission/ui'
 
 const user = userEvent.setup()
 
@@ -41,7 +41,7 @@ describe('AppHeader', () => {
     await user.click(screen.getByRole('button', { name: 'About Mission Designer' }))
     const d = screen.getByRole('dialog')
     expect(within(d).getByText('Mission Designer')).toBeTruthy()
-    expect(within(d).getByText(`Version ${SUITE_VERSION}`)).toBeTruthy()
+    expect(within(d).getByText('Version 2.1.1')).toBeTruthy()
     expect(within(d).getByText('Mission Designer build 2.1.1')).toBeTruthy()
     expect(within(d).getByText(/Copyright 2026 Dennis L. Brandl/)).toBeTruthy()
   })
@@ -58,10 +58,9 @@ describe('AppHeader', () => {
     await waitFor(() => expect(document.activeElement).toBe(icon))
   })
 
-  it('shows the suite version, not the build number, in the bar', () => {
+  it("shows the app's own version in the bar", () => {
     renderHeader()
-    expect(screen.getByText(`v${SUITE_VERSION}`)).toBeTruthy()
-    expect(screen.queryByText('v2.1.1')).toBeNull()
+    expect(screen.getByText('v2.1.1')).toBeTruthy()
   })
 
   it('keeps the fixed group in order', () => {

@@ -135,11 +135,6 @@
     box-shadow: var(--pilot-shadow-2);
   }
 
-  /* Spec §5.6 item 1: the submit confirmation in the ok colour. */
-  .toast-ok {
-    border-left: var(--pilot-stripe-w) solid var(--pilot-overlay-ok);
-  }
-
   /* ---------- Task screen (spec §5.4, §5.6, §4 side panel) ---------- */
   /* The step name is in the context bar; the heading stays for screen readers and as
      the after-Submit focus target (§5.6 item 3). */

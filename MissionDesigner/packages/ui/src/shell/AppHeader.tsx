@@ -16,7 +16,6 @@ import { useRef, useState, type ReactNode } from 'react'
 import { HelpCircle, LogOut, Moon, Settings, Sun } from 'lucide-react'
 import { Button } from '../primitives/button'
 import { AboutDialog } from './AboutDialog'
-import { SUITE_VERSION } from './suite-version'
 
 export interface AppHeaderProps {
   appName: string
@@ -70,7 +69,7 @@ export function AppHeader({
         <img src="/ic_launcher_round.png" alt="" className="size-6" />
       </button>
       <span className="shrink-0 whitespace-nowrap text-sm font-semibold">{appName}</span>
-      <span className="mr-3 shrink-0 text-xs text-muted-foreground">v{SUITE_VERSION}</span>
+      <span className="mr-3 shrink-0 text-xs text-muted-foreground">v{buildVersion}</span>
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden text-xs">{tools}</div>
 
       <Button variant="ghost" size="sm" asChild className="shrink-0">

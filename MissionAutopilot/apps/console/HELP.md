@@ -21,7 +21,7 @@ Mission Autopilot stores and runs the **Actions** that Trajectory workflows call
 
 The console has a top bar, a left icon rail and a status bar along the bottom:
 
-- **Top bar** — the app icon (click it to open About), the name **Mission Autopilot** and the suite version. Then, on the right: the **Mission Autopilot Tester** link, **Help**, the theme toggle, **Settings** (the gear icon) and **Sign out**, in that order.
+- **Top bar** — the app icon (click it to open About), the name **Mission Autopilot** and its version. Then, on the right: the **Mission Autopilot Tester** link, **Help**, the theme toggle, **Settings** (the gear icon) and **Sign out**, in that order.
 - **Icon rail** (left) — **Dashboard** (system overview), **Environments** (browse environments and actions), **Instances** (running executions), **Log** (execution history) and **Search**. On **Environments**, **Instances** and **Search**, click the active rail item again to hide or show its tree (Dashboard and Log have no tree).
 - **Status bar** (bottom) — **Server** shows the browser-reachable REST URL; **Mission Commander address** (fleet installs only) shows the address the Mission Engine and Mission Commander must use. Copy that one into the Mission Commander.
 

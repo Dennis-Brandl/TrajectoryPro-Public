@@ -13,17 +13,12 @@
 // limitations under the License.
 import { useEffect, useState } from 'react'
 
-export type ToastTone = 'ok'
-
 export interface ToastMessage {
   id: number
   text: string
-  tone?: ToastTone
 }
 
 const TOAST_DURATION_MS = 5000
-// Spec §5.6 item 1: the submit confirmation stays a little longer than routine notices.
-const OK_TOAST_DURATION_MS = 6000
 
 let nextId = 1
 
@@ -32,16 +27,16 @@ let nextId = 1
 // the toast list lives in that instance's own useState (not in this module),
 // unmounting — e.g. between tests — leaves nothing behind to bleed into the
 // next mount.
-let activeShow: ((text: string, tone?: ToastTone) => void) | null = null
+let activeShow: ((text: string) => void) | null = null
 
 export interface UseToastResult {
-  show(text: string, opts?: { tone?: ToastTone }): void
+  show(text: string): void
 }
 
 export function useToast(): UseToastResult {
   return {
-    show(text: string, opts?: { tone?: ToastTone }) {
-      activeShow?.(text, opts?.tone)
+    show(text: string) {
+      activeShow?.(text)
     },
   }
 }
@@ -50,15 +45,12 @@ export function Toasts() {
   const [toasts, setToasts] = useState<ToastMessage[]>([])
 
   useEffect(() => {
-    activeShow = (text: string, tone?: ToastTone) => {
+    activeShow = (text: string) => {
       const id = nextId++
-      setToasts((prev) => [...prev, { id, text, tone }])
-      setTimeout(
-        () => {
-          setToasts((prev) => prev.filter((t) => t.id !== id))
-        },
-        tone === 'ok' ? OK_TOAST_DURATION_MS : TOAST_DURATION_MS,
-      )
+      setToasts((prev) => [...prev, { id, text }])
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id))
+      }, TOAST_DURATION_MS)
     }
     return () => {
       activeShow = null
@@ -68,7 +60,7 @@ export function Toasts() {
   return (
     <div role="status" className="toast-region">
       {toasts.map((t) => (
-        <p key={t.id} className={t.tone ? `toast toast-${t.tone}` : 'toast'}>
+        <p key={t.id} className="toast">
           {t.text}
         </p>
       ))}

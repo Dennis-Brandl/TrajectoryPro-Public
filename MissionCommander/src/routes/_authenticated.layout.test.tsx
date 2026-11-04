@@ -59,9 +59,9 @@ describe('AuthenticatedLayout shared header', () => {
     expect(screen.getByText('Runs workflows in work centers')).toBeInTheDocument();
   });
 
-  it('shows the suite version in the bar and no diagram image in the header', () => {
+  it("shows the app's own version in the bar and no diagram image in the header", () => {
     render(<AuthenticatedLayout />);
-    expect(screen.getByText('v1.0.0')).toBeInTheDocument();
+    expect(screen.getByText(`v${__APP_VERSION__}`)).toBeInTheDocument();
     const header = screen.getByRole('banner');
     expect(header.querySelector('img[alt]:not([alt=""])')).toBeNull();
   });

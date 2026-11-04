@@ -27,7 +27,7 @@ const CLASSES = [
   'task-actions', 'task-status', 'task-missing', 'task-missing-fields', 'task-waiting', 'task-ready',
   'task-actions-compact', 'task-owns-buttons', 'link-btn', 'task-buttons', 'task-primary', 'release-btn', 'release-confirm',
   'where', 'where-title', 'where-note', 'where-list', 'where-step', 'where-icon', 'where-name', 'where-state',
-  'where-done', 'where-current', 'where-active', 'where-problem', 'where-todo', 'toast-ok',
+  'where-done', 'where-current', 'where-active', 'where-problem', 'where-todo',
 ]
 
 function rule(css: string, sel: string): string {

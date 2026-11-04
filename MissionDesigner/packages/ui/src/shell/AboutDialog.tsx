@@ -23,7 +23,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../primitives/dialog'
-import { SUITE_VERSION } from './suite-version'
 
 const COPYRIGHT = 'Copyright 2026 Dennis L. Brandl. Licensed under the Apache License, Version 2.0.'
 
@@ -55,7 +54,7 @@ export function AboutDialog({ open, onOpenChange, appName, buildVersion, tagline
             <img src="/ic_launcher_round.png" alt="" className="h-12 w-12 shrink-0" />
             <div className="text-left">
               <DialogTitle>{appName}</DialogTitle>
-              <DialogDescription>Version {SUITE_VERSION}</DialogDescription>
+              <DialogDescription>Version {buildVersion}</DialogDescription>
             </div>
           </div>
         </DialogHeader>

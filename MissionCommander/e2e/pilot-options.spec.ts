@@ -93,7 +93,6 @@ test('keyboard shortcuts and the Workstation layout work against the real engine
   await reason.fill('shortcut check');
   await reason.focus();
   await pilot.keyboard.press('Control+Enter');
-  await expect(pilot.getByText('Submitted Fill Details · RW-1')).toBeVisible({ timeout: 30_000 });
   await expect(tab1).toHaveCount(0, { timeout: 30_000 });
 
   // Spec §16: Workstation from the operator menu.

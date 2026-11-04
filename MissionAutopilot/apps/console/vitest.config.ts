@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { readFileSync } from 'node:fs'
 import { defineProject } from 'vitest/config'
 import path from 'path'
 import fs from 'fs'
@@ -35,12 +36,18 @@ const esmAliases = [
     : []
 })
 
+const rootPackage = JSON.parse(
+  readFileSync(new URL('../../package.json', import.meta.url), 'utf-8')
+) as {
+  version: string
+}
+
 export default defineProject({
   // Mirrors vite.config.ts's `define` — this project config is loaded
   // standalone by vitest (not merged with vite.config.ts), so Layout's
   // `__APP_VERSION__` reference needs its own stand-in for tests.
   define: {
-    __APP_VERSION__: JSON.stringify('3.0.0'),
+    __APP_VERSION__: JSON.stringify(rootPackage.version),
   },
   esbuild: { jsx: 'automatic' },
   resolve: {

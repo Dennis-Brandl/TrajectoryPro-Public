@@ -525,13 +525,9 @@ export function WorkView({ wcId, wcName, snapshot: incoming, stale, inboxOffline
                   active={focused === t.assignmentId}
                   me={user}
                   surfaceColor={surfaceColor}
-                  // Spec §5.6 item 1: confirm what was submitted, by step AND runtime ID —
-                  // focus is about to move to the next claim, so the operator needs to know
-                  // the last one landed. A lost race goes through onError instead.
-                  onDone={() => {
-                    show(`Submitted ${taskLabel(t)}`, { tone: 'ok' })
-                    closePane(t.assignmentId, true)
-                  }}
+                  // No confirmation pop-up: it covered too much of a phone screen, and the pane
+                  // closing already shows the step went through. A lost race goes through onError.
+                  onDone={() => closePane(t.assignmentId, true)}
                   arrived={arrival?.id === t.assignmentId}
                   onArrivalSeen={() => setArrival(null)}
                   // Same race-vs-transient split the old App handler had: a lost race

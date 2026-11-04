@@ -65,7 +65,7 @@ The editor has these main areas:
 +------+---------+------+------------------------------+-----------+
 ```
 
-- **Top bar** -- the app icon (click it to open About), the name **Mission Designer** and the suite version. The workflow tools (notation switcher, navigation, undo/redo, auto-layout) sit next to them. On the right, in this order: **Help**, the theme toggle, **Settings** (the gear, which opens Administration and shows only for administrators), the user name, and **Sign out**.
+- **Top bar** -- the app icon (click it to open About), the name **Mission Designer** and its version. The workflow tools (notation switcher, navigation, undo/redo, auto-layout) sit next to them. On the right, in this order: **Help**, the theme toggle, **Settings** (the gear, which opens Administration and shows only for administrators), the user name, and **Sign out**.
 - **Icon rail** (far left) -- **Workflows**, **Step Libraries**, **Environments** and **Actions**. Click the active rail item again to hide or show its tree.
 - **Library Sidebar** -- Browse and manage libraries and specifications for the selected rail item
 - **Step Palette** (left of canvas) -- Drag step types onto the canvas
@@ -393,7 +393,7 @@ The top bar at the top of the screen provides the following controls:
 | Control                | Description                                                             |
 | ---------------------- | ----------------------------------------------------------------------- |
 | **App icon**           | Click to open About                                                     |
-| **Mission Designer**   | Application name, followed by the suite version                         |
+| **Mission Designer**   | Application name, followed by its version                               |
 | **Notation Switcher**  | Dropdown to switch between Flowchart, BPMN, and ISA 88 notation styles  |
 | **Back** button        | Appears when editing a child workflow; returns to the parent workflow   |
 | **Context Breadcrumb** | Shows the current library and specification path                        |

@@ -75,7 +75,7 @@ The usual path through the application:
 
 ![Mission Commander with a work center selected: icon rail, work-center tree and detail panel](/help-images/2-screen-layout.png)
 
-- **Top bar** -- the app icon (click it to open About), the name **Mission Commander** and the suite version. On the right, in this order: **Help** (opens this guide in a new tab), the light/dark theme toggle, **Settings** (the gear icon), your display name, and **Sign out**.
+- **Top bar** -- the app icon (click it to open About), the name **Mission Commander** and its version. On the right, in this order: **Help** (opens this guide in a new tab), the light/dark theme toggle, **Settings** (the gear icon), your display name, and **Sign out**.
 - **Icon rail** (far left) -- switches between the areas of the application. Click the active rail item again to hide or show its tree.
 - **Hierarchy Pane** (left) -- the tree or list for the selected area
 - **Detail Panel** (right) -- details, tabs and actions for whatever you select. **History** and **Settings** use the full width instead of a tree and detail panel.

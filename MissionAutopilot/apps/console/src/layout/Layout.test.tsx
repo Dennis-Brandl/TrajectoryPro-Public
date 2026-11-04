@@ -146,10 +146,12 @@ describe('Layout frame', () => {
     expect(screen.queryByPlaceholderText(/Filter environments/)).not.toBeInTheDocument()
   })
 
-  it('the header icon opens About with the build number', () => {
+  it('the header icon opens About, and every version shown is the build number', () => {
     renderAt('/')
+    expect(screen.getByText(`v${__APP_VERSION__}`)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'About Mission Autopilot' }))
-    expect(screen.getByText('Mission Autopilot build 3.0.0')).toBeInTheDocument()
+    expect(screen.getByText(`Version ${__APP_VERSION__}`)).toBeInTheDocument()
+    expect(screen.getByText(`Mission Autopilot build ${__APP_VERSION__}`)).toBeInTheDocument()
     expect(screen.getByText('Runs the Python code behind environment actions')).toBeInTheDocument()
   })
 

@@ -27,6 +27,7 @@ import { scheduleFlush } from './specificationStore/saveScheduler'
 import { bufferDeletedSubtree, getDeletedSubtree } from './specificationStore/subWorkflowUndo'
 import { parseHistory } from '@/types/specification-history'
 import { CURRENT_DATA_SCHEMA_VERSION } from '@/lib/data-schema-version'
+import { randomUuid } from '@/lib/random-uuid'
 
 // Required for immer to proxy Map and Set. Called once at module init.
 enableMapSet()
@@ -343,10 +344,10 @@ export const useSpecificationStore = create<SpecificationStore>()(
       // (Actions/Environments must keep their OIDs or workflow action-proxy
       // references break). Never overwrite an existing spec — fall back to a
       // fresh id if the requested one is already present.
-      let newId = typeof init.id === 'string' && init.id.length > 0 ? init.id : crypto.randomUUID()
+      let newId = typeof init.id === 'string' && init.id.length > 0 ? init.id : randomUuid()
       set((d) => {
         if (typeof init.id === 'string' && d.specs.has(newId)) {
-          newId = crypto.randomUUID()
+          newId = randomUuid()
         }
         const rootId = parentId ? (d.rootOf.get(parentId) ?? parentId) : newId
         const spec: Specification = {

@@ -17,6 +17,7 @@ import { invokeAction } from '../api/invoke'
 import type { InvokeInputParameter } from '../api/types'
 import { useActiveConnection } from './connections'
 import { useActiveInstance } from './active-instance'
+import { randomUuid } from '../lib/random-uuid'
 
 export interface InvokeArgs {
   action_oid: string
@@ -45,9 +46,9 @@ export function useInvoke(): UseMutationResult<InvokeResultData, Error, InvokeAr
       const hasOverrides = overrides && Object.keys(overrides).length > 0
       return invokeAction(connection, args.action_oid, {
         environment_oid: args.environment_oid,
-        workflow_instance_id: crypto.randomUUID(),
-        step_instance_id: crypto.randomUUID(),
-        step_oid: crypto.randomUUID(),
+        workflow_instance_id: randomUuid(),
+        step_instance_id: randomUuid(),
+        step_oid: randomUuid(),
         input_parameters: args.input_parameters,
         ...(hasOverrides && { action_property_overrides: overrides }),
       })

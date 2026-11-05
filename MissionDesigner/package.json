@@ -1,6 +1,6 @@
 {
   "name": "mission-designer",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Mission Designer - Visual workflow specification editor",
   "license": "Apache-2.0",
   "private": true,

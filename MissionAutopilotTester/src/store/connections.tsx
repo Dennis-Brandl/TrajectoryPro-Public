@@ -15,6 +15,7 @@
 import { createContext, useCallback, useContext, useMemo, useReducer, type ReactNode } from 'react'
 import type { Connection } from '../api/types'
 import { loadLocalStorage, useLocalStoragePersist } from './use-local-storage-persist'
+import { randomUuid } from '../lib/random-uuid'
 
 export const STORAGE_KEY = 'mission-tester:connections:v1'
 
@@ -90,7 +91,7 @@ export function ConnectionsProvider({ children }: { children: ReactNode }) {
 
   const addConnection = useCallback<ConnectionsApi['addConnection']>((fields) => {
     const connection: Connection = {
-      id: crypto.randomUUID(),
+      id: randomUuid(),
       createdAt: new Date().toISOString(),
       url: fields.url,
       ...(fields.name !== undefined && { name: fields.name }),

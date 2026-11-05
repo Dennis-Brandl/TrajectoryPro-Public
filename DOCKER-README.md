@@ -1,6 +1,6 @@
 # Trajectory Pro Mission Control — Docker Deployment Guide
 
-Run the whole suite — **Mission Designer**, **Mission Commander**, **Mission Engine** (which also serves **Mission Pilot**), **Mission Autopilot** (server + console), **Mission Autopilot Tester** and **Mission Broker** — with two commands, or each app on its own. Every app can also be run from source without Docker.
+Run the whole suite — **Mission Designer**, **Mission Commander**, **Mission Engine** (which also serves **Mission Pilot**), **Mission Autopilot** (server + console), **Mission Autopilot Tester** and **Mission Broker** — with two commands, or each app on its own. To run from source without Docker, or to make the apps available on your local network that way, see [`RUN_LOCALLY-README.md`](RUN_LOCALLY-README.md).
 
 ## Layout
 
@@ -108,31 +108,4 @@ Per-app details (config, data, single-app runs) are in [`MissionDesigner/DOCKER-
 
 ## Run everything locally (without Docker)
 
-Each app runs from source with Node.js 20+ (Mission Autopilot also needs Python 3 on PATH as `python`). Mission Designer and the Autopilot console build shared packages from their siblings first, so keep the layout above. Mission Commander and Mission Engine need a Postgres reachable through `DATABASE_URL`. Open separate terminals:
-
-```bash
-# Mission Designer — API :3001 + UI :5174 (dev:all first builds the FormKit tokens, the design tokens and the in-app Help)
-cd MissionDesigner && npm install && npm run dev:all
-
-# Mission Commander — API :3002 (PORT in .env) + UI :5273
-cd MissionCommander && npm install && npm run dev:all
-
-# Mission Engine — :3006 (ENGINE_PORT); the API Mission Pilot talks to
-cd MissionEngine && npm install && npm start
-
-# Mission Pilot — UI :5275, proxies /api to the engine on :3006
-cd MissionPilot && npm install && npm run dev
-
-# Mission Autopilot — server :3002 + console :5176 (needs MissionDesigner as a sibling).
-# The server needs ACTIONS_API_KEY (at least 32 characters) in the shell or MissionAutopilot/.env
-# (scripts/setup-secrets.sh writes it); the console asks for it when you open it.
-cd MissionAutopilot && npm install && npm run dev
-
-# Mission Autopilot Tester — UI on the port Vite prints
-cd MissionAutopilotTester && npm install && npm run dev
-
-# Mission Broker — :3007 (BROKER_PORT); needs DATABASE_URL pointing at Mission Commander's Postgres
-cd MissionBroker && npm install && npm start
-```
-
-Port note: run from source, Mission Commander's API and the Mission Autopilot server both default to `:3002`. Set `PORT` for one of them (Commander reads it from `.env`, and its Vite proxy follows `API_PORT`). In Docker, Commander is published on `:3005` and there is no clash.
+See [`RUN_LOCALLY-README.md`](RUN_LOCALLY-README.md) for the Node.js and Postgres setup, including how to make the apps available on your local network.

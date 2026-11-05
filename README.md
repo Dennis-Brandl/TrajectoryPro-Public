@@ -32,8 +32,10 @@ git clone https://github.com/Dennis-Brandl/TrajectoryPro-Public.git
 
 ## Running
 
-[`DOCKER-README.md`](DOCKER-README.md) runs the whole suite with Docker, or each application
-on its own, and notes how to run each one from source.
+- [`DOCKER-README.md`](DOCKER-README.md) runs the whole suite with Docker, or each application
+  on its own.
+- [`RUN_LOCALLY-README.md`](RUN_LOCALLY-README.md) runs the suite from source with Node.js and
+  Postgres, and makes the apps available on your local network.
 
 ## Guides
 

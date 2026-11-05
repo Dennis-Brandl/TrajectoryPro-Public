@@ -34,6 +34,7 @@ import { useFlowStore } from '@/stores/flowStore'
 import { useLibraryStore } from '@/stores/libraryStore'
 import type { WorkflowNode, StepNodeData } from '@/types/nodes'
 import { cloneFormDocument } from '@/lib/form-document/clone-document'
+import { randomUuid } from '@/lib/random-uuid'
 
 interface CanvasContextMenuProps {
   position: { x: number; y: number } | null
@@ -247,7 +248,7 @@ function NodeContextMenuItems({
 
     const newNode: WorkflowNode = {
       ...targetNode,
-      id: crypto.randomUUID(),
+      id: randomUuid(),
       position: {
         x: targetNode.position.x + 20,
         y: targetNode.position.y + 20,

@@ -34,6 +34,7 @@ import type { ConflictDialogResult } from '@/components/import/ImportConflictDia
 import type { Library } from '@/types/library'
 import type { ImportPlan, PostImportReport } from '@/types/wflibx-import'
 import { importToastMessage, needsImportReport } from '@/components/import/import-report-summary'
+import { randomUuid } from '@/lib/random-uuid'
 import { useSpecCreation } from './spec-creation'
 import { createLibrary as createLibraryFlow } from '@/stores/specificationStore/libraryCrud'
 
@@ -401,7 +402,7 @@ export function useLibraryImport(
       // and requires oid + last_modified_date — these are transient.
       const envelope = {
         local_id: libGroup.libraryName,
-        oid: crypto.randomUUID(),
+        oid: randomUuid(),
         version: '1.0.0',
         last_modified_date: new Date().toISOString(),
         action_specifications: libGroup.actionSpecs.map((a) => a.json),
@@ -458,7 +459,7 @@ export function useLibraryImport(
     //    though it's a transient wrapper, not a persisted library.
     const envEnvelope = {
       local_id: pkg.envName,
-      oid: crypto.randomUUID(),
+      oid: randomUuid(),
       version: '1.0.0',
       last_modified_date: new Date().toISOString(),
       environment_specifications: [pkg.envSpecJson],
@@ -541,7 +542,7 @@ export function useLibraryImport(
         // envelope is only a transient wrapper for validator input.
         const envelope = {
           local_id: pkg.envName,
-          oid: crypto.randomUUID(),
+          oid: randomUuid(),
           version: '1.0.0',
           last_modified_date: new Date().toISOString(),
           environment_specifications: [pkg.envSpecJson],
@@ -602,7 +603,7 @@ export function useLibraryImport(
       const spec = importBatchml(await file.text())
       const envelope = {
         local_id: spec.local_id ?? 'Imported Workflow',
-        oid: crypto.randomUUID(),
+        oid: randomUuid(),
         version: '1.0.0',
         last_modified_date: new Date().toISOString(),
         workflow_specifications: [spec],

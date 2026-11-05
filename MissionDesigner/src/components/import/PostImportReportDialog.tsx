@@ -13,6 +13,8 @@
 // limitations under the License.
 
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Button } from '@mission/ui'
+import { toast } from 'sonner'
+import { copyText } from '@/lib/copy-text'
 import type { PostImportReport } from '@/types/wflibx-import'
 import { REFUSAL_LABEL, changedSinceExportDetail } from './import-report-summary'
 
@@ -30,7 +32,8 @@ export function PostImportReportDialog({ open, report, onClose }: Props) {
     for (const r of report.danglingReferences) {
       lines.push([r.referrerOid, r.referrerName, r.referrerEntityType, r.brokenReferenceTo].join(','))
     }
-    await navigator.clipboard.writeText(lines.join('\n'))
+    const copied = await copyText(lines.join('\n'))
+    if (!copied) toast.error('Could not copy to the clipboard')
   }
 
   return (

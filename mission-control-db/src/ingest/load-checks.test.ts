@@ -14,10 +14,10 @@
 
 import { expect, test } from 'vitest';
 import { makeTestDb } from '../../test/helpers/db.js';
-import { workCenter } from '../db/schema/index.js';
+import { workCenter, environmentSpec } from '../db/schema/index.js';
 import { setEnvironmentBinding } from '../dao/environment-bindings.js';
 import { setActionServerAllowlist, setActionServerTrust } from '../dao/system-settings.js';
-import { actionServerWarnings } from './load-checks.js';
+import { actionServerWarnings, duplicateEnvironmentWarnings } from './load-checks.js';
 
 const env = (over: any = {}) => ({
   oid: 'e1', local_id: 'Line Env', included_actions: [], action_server_specifications: [], ...over,
@@ -77,5 +77,32 @@ test('nested child environments are checked', async () => {
     const w = await actionServerWarnings(db, wcId, (await import('./environment-entry.js')).nestedEnvironmentSpecs(root));
     expect(w).toHaveLength(1);
     expect(w[0]).toContain('"Child Env"');
+  } finally { await close(); }
+});
+
+test('an environment with the same name and version as one under another OID warns', async () => {
+  const { db, close, wcId } = await setup();
+  try {
+    const row = (oid: string, version = '1.1.0', workCenterId = wcId) => ({
+      oid, name: 'Pizza Env', version, state: 'Draft', workCenterId,
+      specJsonb: { oid, local_id: 'Pizza Env', version, state: 'Draft' },
+    });
+    const [other] = await db.insert(workCenter).values({ name: 'Line 2' }).returning();
+    await db.insert(environmentSpec).values([
+      row('f269485a-c710-4257-ba8f-2590b5958110'),
+      row('a9b92372-edc6-4c39-9051-ed44293e4481'),
+      row('a9b92372-edc6-4c39-9051-ed44293e4481', '1.0.0'),
+      row('77777777-0000-0000-0000-000000000000', '1.1.0', other.id),
+    ]);
+    const incoming = { oid: 'a9b92372-edc6-4c39-9051-ed44293e4481', local_id: 'Pizza Env', version: '1.1.0' };
+
+    expect(await duplicateEnvironmentWarnings(db, wcId, [incoming, incoming])).toEqual([
+      'Environment "Pizza Env" version 1.1.0 is now in this work center more than once, under different OIDs '
+        + '(a9b92372… just loaded, f269485a… already here). Mission Designer gives a copied environment a new OID. '
+        + 'Workflows keep using the copy they were loaded with; reload them from the copy you want, then remove the other.',
+    ]);
+    // Other versions of the same OID, and other work centers, don't count.
+    expect(await duplicateEnvironmentWarnings(db, wcId, [{ ...incoming, version: '1.0.0' }])).toEqual([]);
+    expect(await duplicateEnvironmentWarnings(db, other.id, [{ oid: '77777777-0000-0000-0000-000000000000', local_id: 'Pizza Env', version: '1.1.0' }])).toEqual([]);
   } finally { await close(); }
 });

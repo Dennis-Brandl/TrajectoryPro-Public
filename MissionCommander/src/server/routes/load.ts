@@ -17,7 +17,7 @@ import { db } from '../lib/db';
 import { workCenter, workflow, environmentSpec } from 'mission-control-db/src/db/schema/index';
 import { ingestWorkflowPackage } from 'mission-control-db/src/ingest/wfmasterx';
 import { ingestEnvironmentPackage } from 'mission-control-db/src/ingest/wfenvirx';
-import { actionServerWarnings } from 'mission-control-db/src/ingest/load-checks';
+import { actionServerWarnings, duplicateEnvironmentWarnings } from 'mission-control-db/src/ingest/load-checks';
 import { nestedEnvironmentSpecs } from 'mission-control-db/src/ingest/environment-entry';
 import { DaoError } from 'mission-control-db/src/dao/errors';
 import { requireSession, requirePermission, type Vars } from '../middleware/auth';
@@ -99,7 +99,11 @@ loadRoutes.post(
                 ? await db.select({ specJsonb: environmentSpec.specJsonb }).from(environmentSpec)
                     .where(inArray(environmentSpec.id, out.specs.map((s) => s.id)))
                 : [];
-              return actionServerWarnings(db, workCenterId, envRows.map((r) => r.specJsonb));
+              const envSpecs = envRows.map((r) => r.specJsonb);
+              return [
+                ...await actionServerWarnings(db, workCenterId, envSpecs),
+                ...await duplicateEnvironmentWarnings(db, workCenterId, envSpecs),
+              ];
             });
             results.push({
               filename: file.name, workCenterId, kind: 'environment',
@@ -118,7 +122,11 @@ loadRoutes.post(
             const warnings = await withChecks(out.warnings, file.name, workCenterId, async () => {
               const [wfRow] = await db.select({ specJsonb: workflow.specJsonb }).from(workflow)
                 .where(eq(workflow.id, out.workflowId));
-              return actionServerWarnings(db, workCenterId, nestedEnvironmentSpecs(wfRow?.specJsonb));
+              const envSpecs = nestedEnvironmentSpecs(wfRow?.specJsonb);
+              return [
+                ...await actionServerWarnings(db, workCenterId, envSpecs),
+                ...await duplicateEnvironmentWarnings(db, workCenterId, envSpecs),
+              ];
             });
             results.push({
               filename: file.name, workCenterId, kind: 'workflow', status: out.status,

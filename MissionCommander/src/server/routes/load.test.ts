@@ -144,6 +144,25 @@ describe('POST /api/work-centers/:id/load', () => {
       `Environment "EnvX" has no action server bound in this work center. Set it under the work center's environment bindings before running.`);
   });
 
+  it('warns when an environment arrives with the name and version of one already here under another OID', async () => {
+    const wc = await createWorkCenter(db, { name: 'Line 1' });
+    await asSteward();
+    expect((await results(await post(wc.id, form({ files: [{ buf: envPackage(), name: 'line.WFenvirX' }] }))))[0].status)
+      .toBe('loaded');
+
+    // A workflow whose package carries a copy of that environment (same name and version, new OID).
+    const copy = { oid: 'env-2', local_id: 'Line Env', version: '1.0.0', included_actions: [], action_server_specifications: [] };
+    const [r] = await results(await post(wc.id, form({
+      files: [{ buf: wfPackage({ environment_specifications: [copy] }), name: 'bottle.WFmasterX' }],
+    })));
+    expect(r.status).toBe('loaded');
+    expect(r.warnings).toContainEqual(expect.stringContaining('Environment "Line Env" version 1.0.0 is now in this work center more than once'));
+
+    // Loading the original package again is not a new duplicate of itself, but it still sees the copy.
+    const [again] = await results(await post(wc.id, form({ files: [{ buf: envPackage(), name: 'line.WFenvirX' }] })));
+    expect(again.warnings).toContainEqual(expect.stringContaining('(env-1… just loaded, env-2… already here)'));
+  });
+
   it('a failing load check leaves the committed load as loaded, with a note', async () => {
     const wc = await createWorkCenter(db, { name: 'Line 1' });
     await asSteward();

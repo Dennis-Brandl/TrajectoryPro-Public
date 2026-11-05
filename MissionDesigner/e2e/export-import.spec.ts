@@ -34,7 +34,7 @@ import { openRail } from './helpers/rail'
  *
  * Export notes:
  *  - The ExportMenu is a dropdown with "Export" button (Download icon).
- *  - In workflow mode, it shows: "Export as Workflow ZIP", "Export as PNG Workflow", "Export as SVG Workflow".
+ *  - In workflow mode, it shows: "Export as Workflow Package", "Export as PNG Workflow", "Export as SVG Workflow".
  *  - The ImportButton shows "Import Workflow" with an Upload icon.
  *  - Workflow export format: .WFmasterX (ZIP file containing JSON + images/).
  *  - Library export format: .WFlibX (JSON for workflow libraries).
@@ -92,7 +92,7 @@ test.describe('Export and Import', () => {
     await exportBtn.click()
 
     // In workflow mode, the dropdown shows ZIP and image options
-    await expect(page.getByRole('menuitem', { name: /Export as Workflow ZIP/i })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: /Export as Workflow Package/i })).toBeVisible()
     await expect(page.getByRole('menuitem', { name: /Export as PNG/i })).toBeVisible()
     await expect(page.getByRole('menuitem', { name: /Export as SVG/i })).toBeVisible()
   })
@@ -180,13 +180,13 @@ test.describe.serial('Workflow export downloads', () => {
     await expect(page.locator('.react-flow__node')).toHaveCount(2, { timeout: 8_000 })
   })
 
-  test('Export as Workflow ZIP downloads a .WFmasterX file', async ({ page }) => {
+  test('Export as Workflow Package downloads a .WFmasterX file', async ({ page }) => {
     // Scope to the canvas toolbar Export (the sidebar has its own ExportMenu).
     const exportBtn = page.getByTestId('canvas-toolbar').getByRole('button', { name: /Export/i })
     await exportBtn.click()
 
     const downloadPromise = page.waitForEvent('download')
-    await page.getByRole('menuitem', { name: /Export as Workflow ZIP/i }).click()
+    await page.getByRole('menuitem', { name: /Export as Workflow Package/i }).click()
 
     const download = await downloadPromise
     const filename = download.suggestedFilename()
@@ -225,7 +225,7 @@ test.describe.serial('Workflow export downloads', () => {
     const exportBtn = page.getByTestId('canvas-toolbar').getByRole('button', { name: /Export/i })
     await exportBtn.click()
     const downloadPromise = page.waitForEvent('download')
-    await page.getByRole('menuitem', { name: /Export as Workflow ZIP/i }).click()
+    await page.getByRole('menuitem', { name: /Export as Workflow Package/i }).click()
     const download = await downloadPromise
     const tmpPath = path.join(os.tmpdir(), download.suggestedFilename())
     await download.saveAs(tmpPath)

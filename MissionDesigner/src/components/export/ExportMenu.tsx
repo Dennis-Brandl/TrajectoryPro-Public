@@ -84,7 +84,7 @@ export function ExportMenu({
         {onExportJSON !== null && (
           <DropdownMenuItem onClick={onExportJSON ?? undefined} disabled={!onExportJSON} className="cursor-pointer">
             <FileJson className="h-4 w-4" />
-            {jsonLabel ?? (mode === 'library' ? 'Export as JSON Library' : 'Export as Workflow ZIP')}
+            {jsonLabel ?? (mode === 'library' ? 'Export as JSON Library' : 'Export as Workflow Package')}
           </DropdownMenuItem>
         )}
 

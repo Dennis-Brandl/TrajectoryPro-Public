@@ -408,9 +408,9 @@ The top bar at the top of the screen provides the following controls:
 
 ### Canvas Toolbar (Top-Right of Canvas)
 
-| Button                     | Description                                                                                                                                          |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Export as Workflow ZIP** | Creates a self-contained runtime package (.WFmasterX) containing the workflow, all dependent environment and action libraries, and referenced images |
+| Button                         | Description                                                                                                                                          |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Export as Workflow Package** | Creates a self-contained runtime package (.WFmasterX) containing the workflow, all dependent environment and action libraries, and referenced images |
 
 ---
 
@@ -1316,7 +1316,7 @@ Legacy extensions (`.WFenvir`, `.WFaction`, `.WFslib`, `.WFactionX`) are still a
 
 **From the canvas toolbar (top-right):**
 
-- **Export as Workflow ZIP** -- Creates a .WFmasterX runtime package from the current workflow.
+- **Export as Workflow Package** -- Creates a .WFmasterX runtime package from the current workflow.
 
 **From the library sidebar export menu:**
 
@@ -1379,7 +1379,7 @@ The editor produces a workflow specification; the Trajectory Pro Mission Control
 
 ### 1. Export the workflow package
 
-With a workflow open, use the **Export** dropdown in the top-right of the workflow editor pane and choose **Export as Workflow ZIP**. This produces a single `.WFmasterX` file -- a self-contained ZIP that bundles the workflow, every environment and action library it depends on, and all referenced images, so it runs without any other files. (The same dropdown also offers PDF, PNG, and SVG exports for documentation and diagrams.)
+With a workflow open, use the **Export** dropdown in the top-right of the workflow editor pane and choose **Export as Workflow Package**. This produces a single `.WFmasterX` file -- a self-contained ZIP that bundles the workflow, every environment and action library it depends on, and all referenced images, so it runs without any other files. (The same dropdown also offers PDF, PNG, and SVG exports for documentation and diagrams.)
 
 ### 2. Load the package into Mission Commander
 

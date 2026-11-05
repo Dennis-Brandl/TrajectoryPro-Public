@@ -61,7 +61,7 @@ export default function StatusBar() {
       window.location.origin
 
   return (
-    <footer className="flex items-center h-6 px-3 bg-status-bar border-t border-border text-[11px] text-muted-foreground shrink-0">
+    <footer className="flex flex-wrap items-center gap-y-1 min-h-9 px-3 py-1 bg-status-bar border-t border-border text-sm text-muted-foreground shrink-0">
       <span>
         {data
           ? `${data.environments.total_count} environments | ${data.environments.total_actions} actions`
@@ -123,7 +123,7 @@ export default function StatusBar() {
             ) : copyStatus === 'fallback' ? (
               'Select and copy'
             ) : (
-              <Copy className="h-3.5 w-3.5" />
+              <Copy className="h-4 w-4" />
             )}
           </button>
         </div>

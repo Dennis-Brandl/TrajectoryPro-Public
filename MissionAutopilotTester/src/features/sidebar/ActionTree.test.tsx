@@ -141,3 +141,29 @@ describe('ActionTree', () => {
     expect(row.className).toMatch(/active/i)
   })
 })
+
+describe('ActionTree load errors say what went wrong', () => {
+  async function showError(result: Response | Error) {
+    seedConnection()
+    if (result instanceof Error) vi.mocked(fetch).mockRejectedValue(result)
+    else vi.mocked(fetch).mockResolvedValue(result)
+    renderWithProviders(<ActionTree />)
+    return (await screen.findByText(/Failed to load actions/)).textContent
+  }
+
+  it('asks for the API key when the server answers 401', async () => {
+    expect(await showError(new Response('', { status: 401 }))).toMatch(/ACTIONS_API_KEY/)
+  })
+
+  it('asks for the base address when the server answers 404', async () => {
+    expect(await showError(new Response('', { status: 404 }))).toMatch(/without \/trajectory\/v1/)
+  })
+
+  it('names the Docker-only address when the server cannot be reached', async () => {
+    expect(await showError(new TypeError('Failed to fetch'))).toMatch(/mission-autopilot-server/)
+  })
+
+  it('reports the status for any other server answer', async () => {
+    expect(await showError(new Response('', { status: 500 }))).toMatch(/HTTP 500/)
+  })
+})

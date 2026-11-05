@@ -17,7 +17,7 @@ import { Pill } from '../../components/Pill'
 import { useActiveInstance } from '../../store/active-instance'
 import { useCapabilities } from '../../store/use-capabilities'
 import { useActiveConnection } from '../../store/connections'
-import type { ActionCapability, EnvironmentCapability } from '../../api/types'
+import { ApiError, type ActionCapability, type EnvironmentCapability } from '../../api/types'
 import styles from './ActionTree.module.css'
 
 function groupByVisibility(actions: ActionCapability[]): {
@@ -81,6 +81,19 @@ function EnvSection({ env, selectedActionOid, onSelectAction }: EnvSectionProps)
   )
 }
 
+function loadErrorMessage(error: unknown): string {
+  if (!(error instanceof ApiError)) {
+    return 'Failed to load actions: could not reach the server. Use an address your browser can open, such as http://localhost:3002. http://mission-autopilot-server:3002 only works inside Docker.'
+  }
+  if (error.status === 401) {
+    return "Failed to load actions: the server needs a valid key. Edit this connection and enter the server's ACTIONS_API_KEY, or MISSION_BROKER_TOKEN for Mission Broker."
+  }
+  if (error.status === 404) {
+    return 'Failed to load actions: no action server found at this address. Enter the base address only, such as http://localhost:3002, without /trajectory/v1.'
+  }
+  return `Failed to load actions: the server answered HTTP ${error.status}.`
+}
+
 export function ActionTree() {
   const connection = useActiveConnection()
   const capabilities = useCapabilities()
@@ -99,7 +112,7 @@ export function ActionTree() {
     return <p className={styles.message}>Loading actions…</p>
   }
   if (capabilities.isError) {
-    return <p className={styles.error}>Failed to load actions.</p>
+    return <p className={styles.error}>{loadErrorMessage(capabilities.error)}</p>
   }
   if (totalActions === 0) {
     return <p className={styles.message}>No actions on this container.</p>

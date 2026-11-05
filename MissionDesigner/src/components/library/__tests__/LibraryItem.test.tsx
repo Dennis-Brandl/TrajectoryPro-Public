@@ -153,3 +153,29 @@ describe('LibraryItem BatchML import', () => {
     expect(onImportBatchml).not.toHaveBeenCalled()
   })
 })
+
+describe('LibraryItem add specification', () => {
+  it('refuses a name the library already has, instead of creating a duplicate that cannot save', async () => {
+    const { useSpecificationStore } = await import('@/stores/specificationStore')
+    useSpecificationStore.getState().createSpecInMemory({
+      parentId: null,
+      libraryId: 'lib1',
+      init: { name: 'Cook Pizza', data: { nodes: [] } },
+    })
+    const before = useSpecificationStore.getState().specs.size
+
+    usePrincipalStore.setState({ principal: principal(['workflow:create']) })
+    render(<LibraryItem {...props} />)
+    const trigger = screen.getByRole('button', { name: /library actions/i })
+    fireEvent.pointerDown(trigger)
+    fireEvent.click(trigger)
+    fireEvent.click(screen.getByText(/Add Workflow/))
+    fireEvent.change(screen.getByPlaceholderText('Specification name'), { target: { value: ' Cook Pizza ' } })
+
+    expect(screen.getByText(/already has "Cook Pizza" version 1\.0\.0/)).not.toBeNull()
+    const create = screen.getByRole('button', { name: 'Create' })
+    expect((create as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.keyDown(screen.getByPlaceholderText('Specification name'), { key: 'Enter' })
+    expect(useSpecificationStore.getState().specs.size).toBe(before)
+  })
+})

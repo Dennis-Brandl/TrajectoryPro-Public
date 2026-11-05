@@ -258,9 +258,13 @@ export const useLibraryStore = create<LibraryState>()(
       fetchSpecTree: async (libraryId: string) => {
         try {
           const response = await api.getLibraryTree(libraryId)
+          // A spec created while this request was out (say, the one just added
+          // from the sidebar) isn't in the response yet; keep it listed.
+          const { specs, pendingDeletes } = useSpecificationStore.getState()
+          const roots = addMissingRoots(response.roots as SpecTreeNode[], libraryId, specs, pendingDeletes)
           set((s) => {
             const next = new Map(s.specTrees)
-            next.set(libraryId, response.roots as SpecTreeNode[])
+            next.set(libraryId, roots)
             return { specTrees: next }
           })
         } catch (error) {
@@ -491,7 +495,7 @@ useSpecificationStore.subscribe((state, prevState) => {
     let treesChanged = false
     const nextTrees = new Map<string, SpecTreeNode[]>()
     for (const [libId, tree] of s.specTrees) {
-      const patched = patchTreeNodes(tree, specsById)
+      const patched = addMissingRoots(patchTreeNodes(tree, specsById), libId, state.specs, state.pendingDeletes)
       if (patched !== tree) treesChanged = true
       nextTrees.set(libId, patched)
     }
@@ -537,6 +541,41 @@ useSpecificationStore.subscribe((state, prevState) => {
  * the input tree unchanged when no node needs patching, so reference equality
  * upstream is preserved.
  */
+/**
+ * Add a root node for each root spec of `libraryId` that is in memory but not
+ * in `roots`: a spec created since the tree was fetched, saved or not. Keeps
+ * the server's case-insensitive name order. Returns `roots` unchanged when
+ * nothing is missing.
+ */
+function addMissingRoots(
+  roots: SpecTreeNode[],
+  libraryId: string,
+  specs: Map<string, SpecSpec>,
+  pendingDeletes: Set<string>,
+): SpecTreeNode[] {
+  const present = new Set(roots.map((n) => n.id))
+  const missing: SpecTreeNode[] = []
+  for (const spec of specs.values()) {
+    if (spec.libraryId !== libraryId || spec.parentSpecificationId) continue
+    if (present.has(spec.id) || pendingDeletes.has(spec.id)) continue
+    missing.push({
+      id: spec.id,
+      libraryId: spec.libraryId,
+      name: spec.name,
+      description: spec.description,
+      version: spec.version,
+      state: spec.state,
+      createdAt: spec.createdAt,
+      updatedAt: spec.updatedAt,
+      lastEditedByUserId: spec.lastEditedByUserId ?? null,
+      children: [],
+      referencedChildren: [],
+    })
+  }
+  if (missing.length === 0) return roots
+  return [...roots, ...missing].sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
+}
+
 function patchTreeNodes(nodes: SpecTreeNode[], specsById: Map<string, SpecSpec>): SpecTreeNode[] {
   let changed = false
   const patched = nodes.map((node) => {

@@ -117,3 +117,38 @@ describe('specTrees in-memory sync', () => {
     expect(treeAfter2[0].name).toBe('Renamed')
   })
 })
+
+describe('specTrees list specs the server has not returned yet', () => {
+  const emptyTree = { roots: [] }
+
+  it('keeps a new spec that a tree fetch raced past', async () => {
+    const { useSpecificationStore } = await import('../specificationStore')
+    const newId = useSpecificationStore.getState().createSpecInMemory({
+      parentId: null,
+      libraryId: 'lib-race',
+      init: { name: 'RemoveFromOven', data: { nodes: [] } },
+    })
+
+    // The tree request reached the server before the create was saved.
+    mockApi.getLibraryTree.mockResolvedValue(emptyTree)
+    await useLibraryStore.getState().fetchSpecTree('lib-race')
+
+    const tree = useLibraryStore.getState().specTrees.get('lib-race')!
+    expect(tree.map((n) => n.id)).toContain(newId)
+  })
+
+  it('adds a spec created while its library tree is cached', async () => {
+    const { useSpecificationStore } = await import('../specificationStore')
+    mockApi.getLibraryTree.mockResolvedValue(emptyTree)
+    await useLibraryStore.getState().fetchSpecTree('lib-cached')
+
+    const newId = useSpecificationStore.getState().createSpecInMemory({
+      parentId: null,
+      libraryId: 'lib-cached',
+      init: { name: 'Box Pizza', data: { nodes: [] } },
+    })
+
+    const tree = useLibraryStore.getState().specTrees.get('lib-cached')!
+    expect(tree.map((n) => n.id)).toContain(newId)
+  })
+})

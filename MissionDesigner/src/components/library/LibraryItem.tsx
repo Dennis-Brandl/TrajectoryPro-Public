@@ -290,8 +290,29 @@ export function LibraryItem({
     }
   }
 
+  // A new spec starts at version 1.0.0, and the server refuses a second root
+  // spec with the same name and version in one library. Catch it here: once
+  // created, a duplicate can't be saved and every later save fails.
+  const NEW_SPEC_VERSION = '1.0.0'
+  const newSpecNameTaken = useSpecificationStore((s) => {
+    const name = newSpecName.trim()
+    if (!name) return false
+    for (const spec of s.specs.values()) {
+      if (
+        spec.libraryId === library.id &&
+        !spec.parentSpecificationId &&
+        spec.name === name &&
+        spec.version === NEW_SPEC_VERSION &&
+        !s.pendingDeletes.has(spec.id)
+      ) {
+        return true
+      }
+    }
+    return false
+  })
+
   const handleAddSpec = async () => {
-    if (!newSpecName.trim()) {
+    if (!newSpecName.trim() || newSpecNameTaken) {
       return
     }
     setIsCreatingSpec(true)
@@ -453,7 +474,13 @@ export function LibraryItem({
             <DropdownMenuContent align="end">
               {canCreateSpec && (
                 <>
-                  <DropdownMenuItem onClick={() => setShowAddSpecDialog(true)}>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      // Load the library's specs so the duplicate-name check sees them.
+                      void fetchSpecifications(library.id)
+                      setShowAddSpecDialog(true)
+                    }}
+                  >
                     <Plus className="h-4 w-4 mr-2" />
                     {library.entityType === 'action'
                       ? 'Add Action'
@@ -732,10 +759,18 @@ export function LibraryItem({
                 }
               }}
             />
+            {newSpecNameTaken && (
+              <p className="mt-2 text-xs text-destructive">
+                This library already has "{newSpecName.trim()}" version {NEW_SPEC_VERSION}. Choose another name.
+              </p>
+            )}
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isCreatingSpec}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAddSpec} disabled={isCreatingSpec || !newSpecName.trim()}>
+            <AlertDialogAction
+              onClick={handleAddSpec}
+              disabled={isCreatingSpec || !newSpecName.trim() || newSpecNameTaken}
+            >
               {isCreatingSpec ? 'Creating...' : 'Create'}
             </AlertDialogAction>
           </AlertDialogFooter>

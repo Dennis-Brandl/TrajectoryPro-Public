@@ -24,6 +24,8 @@ that runs the fleet.
 | Mission FormKit | `MissionFormKit/` | Shared form document schema, tokens, and renderer used by Mission Designer and Mission Pilot |
 | Mission Control DB | `mission-control-db/` | Shared Postgres schema, migrations, and data access used by Mission Commander and Mission Engine |
 
+See the YouTube video https://youtu.be/x7oWRsJPXIw that provides an overview of TrajectoryPro. 
+
 ## Cloning
 
 ```sh

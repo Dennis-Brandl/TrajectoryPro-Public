@@ -115,10 +115,27 @@ describe('NodeInlineEditor — Gate section (GATE follow-up item 8b)', () => {
     expect(control.checked).toBe(false)
   })
 
-  it('Mode defaults to Condition: no Delay boxes', async () => {
+  it('Mode defaults to Repeat script until TRUE: no Delay boxes', async () => {
     await openGate('gateStep')
     expect((screen.getByLabelText('Mode') as HTMLSelectElement).value).toBe('condition')
     expect(screen.queryByLabelText('Weeks')).toBeNull()
+  })
+
+  it('names the three modes and describes the chosen one', async () => {
+    await openGate('gateStep')
+    const mode = screen.getByLabelText('Mode') as HTMLSelectElement
+    expect([...mode.options].map((o) => o.textContent)).toEqual([
+      'Repeat script until TRUE',
+      'Timer',
+      'Repeat script with timeout',
+    ])
+    expect(screen.getByText('Open the gate when the script returns TRUE.')).toBeTruthy()
+    fireEvent.change(mode, { target: { value: 'timer' } })
+    expect(screen.getByText('Open the gate when the delay has passed.')).toBeTruthy()
+    fireEvent.change(mode, { target: { value: 'condition_or_timer' } })
+    expect(
+      screen.getByText('Open the gate when the script returns TRUE or the delay has passed, whichever comes first.'),
+    ).toBeTruthy()
   })
 
   it('choosing Timer shows the Delay boxes and hides Cycle time and Edit Script', async () => {

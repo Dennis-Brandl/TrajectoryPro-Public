@@ -32,7 +32,7 @@ describe('gateDetailLines (spec 2026-10-13 §4.4)', () => {
 
   it('a condition_or_timer gate shows both the delay and the cycle', () => {
     expect(gateDetailLines(gate({ gateMode: 'condition_or_timer', gateDelay: { minutes: 4 } }))).toEqual([
-      'Mode: Condition with timeout, delay 4 min',
+      'Mode: Repeat script with timeout, delay 4 min',
       'Cycle time: 5 seconds',
     ])
   })

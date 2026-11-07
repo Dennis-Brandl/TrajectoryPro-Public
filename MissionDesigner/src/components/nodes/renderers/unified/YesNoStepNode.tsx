@@ -108,7 +108,7 @@ const YesNoStepNode = memo(({ id, data, selected }: NodeProps<YesNoStepNodeType>
         type="target"
         position={inputPosition}
         className={cn(
-          '!w-3 !h-3 !rounded-full !bg-slate-500 !border-2 !border-white transition-all',
+          '!w-3 !h-3 !rounded-full !bg-slate-500 !border-2 !border-white transition',
           isValidTarget && '!ring-2 !ring-blue-500 !scale-125 !bg-blue-500',
         )}
       />

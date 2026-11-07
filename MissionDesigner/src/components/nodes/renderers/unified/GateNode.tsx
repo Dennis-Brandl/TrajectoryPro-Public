@@ -97,7 +97,7 @@ const GateNode = memo(({ id, data, selected }: NodeProps<GateNodeType>) => {
         type="target"
         position={notation === 'bpmn' ? Position.Left : Position.Top}
         className={cn(
-          '!w-2 !h-2 !rounded-full !bg-amber-500 !border-2 !border-white transition-all',
+          '!w-2 !h-2 !rounded-full !bg-amber-500 !border-2 !border-white transition',
           isValidTarget && '!ring-2 !ring-blue-500 !scale-125 !bg-blue-500',
         )}
       />

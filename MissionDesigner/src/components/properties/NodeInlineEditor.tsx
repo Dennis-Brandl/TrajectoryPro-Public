@@ -527,16 +527,16 @@ export function NodeInlineEditor({
                     updateDraft({ gateMode: v === 'condition' ? undefined : v })
                   }}
                 >
-                  <option value="condition">Condition</option>
+                  <option value="condition">Repeat script until TRUE</option>
                   <option value="timer">Timer</option>
-                  <option value="condition_or_timer">Condition with timeout</option>
+                  <option value="condition_or_timer">Repeat script with timeout</option>
                 </select>
                 <p className="text-xs text-muted-foreground">
                   {(draft.gateMode ?? 'condition') === 'condition'
-                    ? 'Opens when the gate script returns TRUE.'
+                    ? 'Open the gate when the script returns TRUE.'
                     : draft.gateMode === 'timer'
-                      ? 'Opens when the delay has passed since the gate started. No script runs.'
-                      : 'Opens when the script returns TRUE or the delay has passed, whichever comes first.'}
+                      ? 'Open the gate when the delay has passed.'
+                      : 'Open the gate when the script returns TRUE or the delay has passed, whichever comes first.'}
                 </p>
               </div>
               {(draft.gateMode === 'timer' || draft.gateMode === 'condition_or_timer') && (

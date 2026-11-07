@@ -156,7 +156,7 @@ const WaitAnyNode = memo(({ id, selected, data }: NodeProps<WaitAnyNodeType>) =>
             type="target"
             position={Position.Top}
             className={cn(
-              '!w-5 !h-2 !rounded-sm !bg-amber-500 !border !border-amber-700 transition-all',
+              '!w-5 !h-2 !rounded-sm !bg-amber-500 !border !border-amber-700 transition',
               isValidTarget && '!ring-2 !ring-blue-500 !scale-110 !bg-blue-500',
             )}
           />
@@ -176,7 +176,7 @@ const WaitAnyNode = memo(({ id, selected, data }: NodeProps<WaitAnyNodeType>) =>
             position={Position.Left}
             style={{ top: 25 }}
             className={cn(
-              '!w-2 !h-2 !rounded-full !bg-amber-500 !border-2 !border-white transition-all',
+              '!w-2 !h-2 !rounded-full !bg-amber-500 !border-2 !border-white transition',
               isValidTarget && '!ring-2 !ring-blue-500 !scale-125 !bg-blue-500',
             )}
           />
@@ -200,7 +200,7 @@ const WaitAnyNode = memo(({ id, selected, data }: NodeProps<WaitAnyNodeType>) =>
               id={handleId}
               style={{ left: `${((i + 1) / (totalTargetHandles + 1)) * 100}%` }}
               className={cn(
-                '!w-2 !h-2 !rounded-full !bg-amber-500 !border-2 !border-white transition-all',
+                '!w-2 !h-2 !rounded-full !bg-amber-500 !border-2 !border-white transition',
                 isValidTarget && '!ring-2 !ring-blue-500 !scale-125 !bg-blue-500',
               )}
             />
@@ -218,7 +218,7 @@ const WaitAnyNode = memo(({ id, selected, data }: NodeProps<WaitAnyNodeType>) =>
               position={Position.Top}
               id="default"
               className={cn(
-                '!relative !transform-none !left-auto !top-auto !w-2 !h-2 !rounded-full !bg-amber-400 !border !border-amber-600 transition-all',
+                '!relative !transform-none !left-auto !top-auto !w-2 !h-2 !rounded-full !bg-amber-400 !border !border-amber-600 transition',
                 isValidTarget && '!ring-2 !ring-blue-500 !scale-125 !bg-blue-500',
               )}
             />

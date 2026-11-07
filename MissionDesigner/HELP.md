@@ -898,11 +898,12 @@ A script error fails the gate step the same way a Script Step failure does, and 
 
 A gate's **Mode** can be:
 
-- **Condition** — opens when its script returns TRUE (the original gate).
-- **Timer** — opens when the **Delay** has passed since the gate started. No script runs. For
+- **Repeat script until TRUE** — open the gate when the script returns TRUE (the original gate).
+- **Timer** — open the gate when the **Delay** has passed. The delay counts from when the gate
+  started, and no script runs. For
   example, a 4-minute cool-down: set Minutes to 4.
-- **Condition with timeout** — opens when the script returns TRUE or the Delay has passed,
-  whichever comes first.
+- **Repeat script with timeout** — open the gate when the script returns TRUE or the Delay has
+  passed, whichever comes first.
 
 Enter the delay in any combination of weeks, days, hours, minutes and seconds (for example
 2 h 10 min 20 s); blank boxes count as zero, and the total is shown underneath. The longest

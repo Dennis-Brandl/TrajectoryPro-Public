@@ -165,7 +165,7 @@ const Select1Node = memo(({ id, selected, data }: NodeProps<Select1NodeType>) =>
         position={inputPosition}
         style={isBpmn ? { top: 25 } : notation === 'isa88' ? { left: '50%' } : undefined}
         className={cn(
-          '!w-2 !h-2 !rounded-full !bg-amber-500 !border-2 !border-white transition-all',
+          '!w-2 !h-2 !rounded-full !bg-amber-500 !border-2 !border-white transition',
           isValidTarget && '!ring-2 !ring-blue-500 !scale-125 !bg-blue-500',
         )}
       />

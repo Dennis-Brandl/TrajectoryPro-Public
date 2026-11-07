@@ -65,7 +65,7 @@ export function gateDetailLines(data: StepNodeData): string[] {
   const delayText = formatDuration(joinDuration(data.gateDelay))
   if (mode === 'timer') return [`Mode: Timer, delay ${delayText}`]
   if (mode === 'condition_or_timer') {
-    return [`Mode: Condition with timeout, delay ${delayText}`, `Cycle time: ${cycleSeconds} seconds`]
+    return [`Mode: Repeat script with timeout, delay ${delayText}`, `Cycle time: ${cycleSeconds} seconds`]
   }
   return [`Cycle time: ${cycleSeconds} seconds`]
 }

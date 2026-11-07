@@ -157,7 +157,7 @@ const ParallelNode = memo(({ id, selected, data }: NodeProps<ParallelNodeType>) 
             type="target"
             position={Position.Top}
             className={cn(
-              '!w-2 !h-2 !rounded-full !bg-purple-500 !border-2 !border-white transition-all',
+              '!w-2 !h-2 !rounded-full !bg-purple-500 !border-2 !border-white transition',
               isValidTarget && '!ring-2 !ring-blue-500 !scale-125 !bg-blue-500',
             )}
           />
@@ -177,7 +177,7 @@ const ParallelNode = memo(({ id, selected, data }: NodeProps<ParallelNodeType>) 
             position={Position.Left}
             style={{ top: 25 }}
             className={cn(
-              '!w-2 !h-2 !rounded-full !bg-purple-500 !border-2 !border-white transition-all',
+              '!w-2 !h-2 !rounded-full !bg-purple-500 !border-2 !border-white transition',
               isValidTarget && '!ring-2 !ring-blue-500 !scale-125 !bg-blue-500',
             )}
           />
@@ -198,7 +198,7 @@ const ParallelNode = memo(({ id, selected, data }: NodeProps<ParallelNodeType>) 
             position={Position.Top}
             style={{ left: '50%' }}
             className={cn(
-              '!w-2 !h-2 !rounded-full !bg-purple-500 !border-2 !border-white transition-all',
+              '!w-2 !h-2 !rounded-full !bg-purple-500 !border-2 !border-white transition',
               isValidTarget && '!ring-2 !ring-blue-500 !scale-125 !bg-blue-500',
             )}
           />

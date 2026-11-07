@@ -141,7 +141,7 @@ const WorkflowProxyNode = memo(({ id, data, selected }: NodeProps<WorkflowProxyN
       <Handle
         type="target"
         position={config.inputPosition}
-        className={cn(handleBase, 'transition-all', isValidTarget && '!ring-2 !ring-blue-500 !scale-125 !bg-blue-500')}
+        className={cn(handleBase, 'transition', isValidTarget && '!ring-2 !ring-blue-500 !scale-125 !bg-blue-500')}
       />
       <Handle type="source" position={config.outputPosition} className={handleBase} />
       {syncAction && <SyncBadgeForNotation notation={config.notation} action={syncAction} />}

@@ -211,6 +211,11 @@ export function TaskScreen({
         setSignatureError(signatureCopy(err))
         setSignature(cleared)
         setGate(gateFor(doc, values, cleared))
+      } else if (err instanceof ApiError && err.code === 'NOT_RUNNING') {
+        // The workflow couldn't take the submit right now (busy for a moment, or stopping):
+        // the step is still ours, so it must stay open — treating this as a lost race would
+        // hide a live step until it was released and reclaimed.
+        onError(GENERIC_ERROR_COPY, 'other')
       } else if (err instanceof ApiError && (err.status === 403 || err.status === 409)) {
         onError(CHANGED_COPY, 'race')
       } else {

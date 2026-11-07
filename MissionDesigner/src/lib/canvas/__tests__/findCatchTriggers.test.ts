@@ -71,3 +71,15 @@ describe('findCatchTriggers', () => {
     expect(findCatchTriggers(nodes, 'C1')).toHaveLength(1)
   })
 })
+
+describe('findCatchTriggers operator modes', () => {
+  it('Workflow ON Operator Stop sorts after ON TIMEOUT', () => {
+    const out = findCatchTriggers([], 'C1', [
+      { mode: 'OPERATOR_STOP', catch_id: 'C1' },
+      { mode: 'TIMEOUT', catch_id: 'C1' },
+      { mode: 'OPERATOR_ABORT', catch_id: 'C1' },
+      { mode: 'ERROR', catch_id: 'C1' },
+    ])
+    expect(out.map((t) => t.mode)).toEqual(['ERROR', 'TIMEOUT', 'OPERATOR_STOP', 'OPERATOR_ABORT'])
+  })
+})

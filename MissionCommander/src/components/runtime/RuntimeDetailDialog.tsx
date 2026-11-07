@@ -20,7 +20,7 @@ import { useMissionSystemCommander } from '@/stores/principalStore';
 import { runtimeWorkflows } from '@/lib/api/runtime-workflows';
 import { apiErrorMessage } from '@/lib/api/client';
 import { usePolledView } from '@/lib/hooks/usePolledView';
-import { RUNTIME_DELETABLE, RUNTIME_CAN, RUNTIME_TERMINAL } from '@/lib/runtime-status';
+import { RUNTIME_DELETABLE, RUNTIME_CAN, RUNTIME_TERMINAL, canSkipCleanup } from '@/lib/runtime-status';
 import { RuntimeStatusBadge } from './RuntimeStatusBadge';
 import { LiveCreatedRuntimes } from './CreatedRuntimesSection';
 import type { CreatedRuntimeTarget } from '@/lib/api/types';
@@ -31,7 +31,7 @@ import { isForceCompletable } from './force-completable';
 export const RUNTIME_DETAIL_POLL_MS = 2000;
 
 type PendingConfirm =
-  | { kind: 'stop' | 'abort' | 'delete' }
+  | { kind: 'stop' | 'abort' | 'delete' | 'skip-stop' | 'skip-abort' }
   | { kind: 'force-release'; assignmentId: string; stepName: string };
 
 export function RuntimeDetailDialog({ id, onClose, onOpenChild, back }: {
@@ -83,6 +83,8 @@ export function RuntimeDetailDialog({ id, onClose, onOpenChild, back }: {
     { key: 'resume', label: 'Resume', enabled: RUNTIME_CAN.resume.has(status), run: () => void act(() => runtimeWorkflows.resume(s.id), `${rwName} resuming`, 'Resume failed') },
     { key: 'stop', label: 'Request stop', enabled: RUNTIME_CAN.stop.has(status), run: () => setConfirm({ kind: 'stop' }) },
     { key: 'abort', label: 'Abort', enabled: RUNTIME_CAN.abort.has(status), run: () => setConfirm({ kind: 'abort' }) },
+    ...(canSkipCleanup(status, 'stop', view.operatorCleanup) ? [{ key: 'skip-stop', label: 'Stop now (skip cleanup)', enabled: true, run: () => setConfirm({ kind: 'skip-stop' }) }] : []),
+    ...(canSkipCleanup(status, 'abort', view.operatorCleanup) ? [{ key: 'skip-abort', label: 'Abort now (skip cleanup)', enabled: true, run: () => setConfirm({ kind: 'skip-abort' }) }] : []),
     { key: 'delete', label: 'Delete', enabled: RUNTIME_DELETABLE.has(status), run: () => setConfirm({ kind: 'delete' }) },
   ];
 
@@ -103,6 +105,12 @@ export function RuntimeDetailDialog({ id, onClose, onOpenChild, back }: {
       case 'abort':
         void act(() => runtimeWorkflows.abort(s.id), `${rwName} aborting`, 'Abort failed');
         break;
+      case 'skip-stop':
+        void act(() => runtimeWorkflows.skipCleanup(s.id, 'stop'), `${rwName} stopping`, 'Skip cleanup failed');
+        break;
+      case 'skip-abort':
+        void act(() => runtimeWorkflows.skipCleanup(s.id, 'abort'), `${rwName} aborting`, 'Skip cleanup failed');
+        break;
       case 'delete':
         void act(() => runtimeWorkflows.remove(s.id), `${rwName} deleted`, 'Delete failed', true);
         break;
@@ -114,7 +122,9 @@ export function RuntimeDetailDialog({ id, onClose, onOpenChild, back }: {
   };
   const confirmLabel = confirm?.kind === 'force-release'
     ? `Release the claim on “${confirm.stepName}”?`
-    : confirm ? `${confirm.kind === 'stop' ? 'Stop' : confirm.kind === 'abort' ? 'Abort' : 'Delete'} ${rwName}?` : '';
+    : confirm?.kind === 'skip-stop' || confirm?.kind === 'skip-abort'
+      ? `Skip the cleanup and ${confirm.kind === 'skip-stop' ? 'stop' : 'abort'} now? The cleanup steps will be halted.`
+      : confirm ? `${confirm.kind === 'stop' ? 'Stop' : confirm.kind === 'abort' ? 'Abort' : 'Delete'} ${rwName}?` : '';
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>

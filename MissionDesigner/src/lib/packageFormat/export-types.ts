@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import type { StepTryMode, WorkflowTryMode } from '@/lib/try-modes'
 import type { NodeType, SchemaVersion } from '@/types/nodes'
 import type { Library, Specification } from '@/types/library'
 import type { FormDocument } from '@mission/form-schema'
@@ -391,7 +392,7 @@ export interface MasterWorkflowStep extends ManagedElement {
   /** Stable image references for form elements — maps imageOid to filename for runtime resolution */
   form_element_images?: Array<{ image_oid: string; filename: string }>
   /** TRY/CATCH/RETURN: try specifications for ACTION PROXY steps (verbatim inner shape). */
-  try_specifications?: Array<{ mode: 'ERROR' | 'ABORT' | 'TIMEOUT'; catch_id: string; release_on_catch?: boolean }>
+  try_specifications?: Array<{ mode: StepTryMode; catch_id: string; release_on_catch?: boolean }>
   /** TRY/CATCH/RETURN: catch block identifier for CATCH steps. */
   catch_id?: string
   /** TRY/CATCH/RETURN: return configuration for RETURN steps (verbatim inner shape). */
@@ -441,7 +442,7 @@ export interface MasterWorkflowSpecification extends ManagedElement {
   value_property_specifications?: PropertySpecification[]
   starting_parameter_specifications?: ParameterSpecification[]
   /** Workflow-level TRY fallback rows (spec 2026-08-22) — same entry shape as a step's. */
-  try_specifications?: Array<{ mode: 'ERROR' | 'ABORT' | 'TIMEOUT'; catch_id: string; release_on_catch?: boolean }>
+  try_specifications?: Array<{ mode: WorkflowTryMode; catch_id: string; release_on_catch?: boolean }>
   output_parameter_specifications?: OutputParameterSpecification[]
   environment_specifications?: MasterEnvironmentSpecification[]
   /** Nested child workflow tree assembled from ChildSpecification records (new format, Phase 33+). */

@@ -16,6 +16,8 @@ import { expect, test } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { makeTestDb } from '../../test/helpers/db.js';
 import { workCenter, runtimeHistory, appUser, type NewRuntimeHistory } from '../db/schema/index.js';
+import { runtimeControlEvent } from '../db/schema/execution.js';
+import { listControlEvents } from './control-events.js';
 import { writeRuntimeHistory } from '../runtime/engine-access.js';
 import { insertStepRun, listStepRuns } from './step-runs.js';
 import {
@@ -508,5 +510,58 @@ test('detail ignores a malformed [by ...] marker typed into a reason', async () 
     });
     const detail = await getRuntimeHistoryDetail(db, seeded.id);
     expect(detail!.userNames).toEqual({ [bob!.id]: 'bob2' });
+  } finally { await close(); }
+});
+
+async function seedControlEvent(db: any, instanceId: string, over: Record<string, unknown> = {}) {
+  await db.insert(runtimeControlEvent).values({
+    workflowInstanceId: instanceId, verb: 'stop', effect: 'request', fromStatus: 'running', toStatus: 'stopping',
+    actorKind: 'system', actorLabel: 'test', ...over,
+  });
+}
+
+test('detail includes control events oldest first', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    const instanceId = '99999999-9999-4999-8999-999999999991';
+    const seeded = await seedHistory(db, { workflowInstanceId: instanceId });
+    await seedControlEvent(db, instanceId, { verb: 'abort', effect: 'escalate', at: new Date('2026-11-06T10:05:00Z') });
+    await seedControlEvent(db, instanceId, { at: new Date('2026-11-06T10:00:00Z') });
+    const detail = await getRuntimeHistoryDetail(db, seeded.id);
+    expect(detail!.controlEvents.map((e) => e.verb)).toEqual(['stop', 'abort']);
+    expect(detail!.controlEvents[0]!.actorName).toBe('test');
+    const none = await seedHistory(db);
+    expect((await getRuntimeHistoryDetail(db, none.id))!.controlEvents).toEqual([]);
+  } finally { await close(); }
+});
+
+test('deleteRuntimeHistory removes control events', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    const instanceId = '99999999-9999-4999-8999-999999999992';
+    const other = '99999999-9999-4999-8999-999999999993';
+    const seeded = await seedHistory(db, { workflowInstanceId: instanceId });
+    await seedControlEvent(db, instanceId);
+    await seedControlEvent(db, other);
+    await deleteRuntimeHistory(db, seeded.id);
+    expect(await listControlEvents(db, instanceId)).toEqual([]);
+    expect(await listControlEvents(db, other)).toHaveLength(1);
+  } finally { await close(); }
+});
+
+test('purgeRuntimeHistory removes control events of purged rows only', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    const old1 = 'cccccccc-cccc-4ccc-8ccc-ccccccccccc1';
+    const old2 = 'cccccccc-cccc-4ccc-8ccc-ccccccccccc2';
+    const keep = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+    await seedHistory(db, { workflowInstanceId: old1, finishedAt: new Date('2026-01-01') });
+    await seedHistory(db, { workflowInstanceId: old2, finishedAt: new Date('2026-01-02') });
+    await seedHistory(db, { workflowInstanceId: keep, finishedAt: new Date('2026-09-01') });
+    for (const id of [old1, old2, keep]) await seedControlEvent(db, id);
+    expect(await purgeRuntimeHistory(db, { olderThan: new Date('2026-06-01') })).toBe(2);
+    expect(await listControlEvents(db, old1)).toEqual([]);
+    expect(await listControlEvents(db, old2)).toEqual([]);
+    expect(await listControlEvents(db, keep)).toHaveLength(1);
   } finally { await close(); }
 });

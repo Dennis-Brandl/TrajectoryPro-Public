@@ -419,7 +419,7 @@ test('a terminal instance auto-releases: aborted (control pass, settle-before-pe
   await pumpUntilQuiet(db, testDeps()); // parks at 'ui', holding Printer
   expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(1);
 
-  await requestAbort(db, wi.id);
+  await requestAbort(db, wi.id, { kind: 'system', label: 'test' });
   const did = await runControlPass(db, testDeps());
   expect(did).toBe(true);
 
@@ -441,7 +441,7 @@ test('a terminal instance auto-releases: stopped (control pass, settle-before-pe
   await pumpUntilQuiet(db, testDeps()); // parks at 'ui' (WAITING_USER — not a STOP-active state)
   expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(1);
 
-  await requestStop(db, wi.id);
+  await requestStop(db, wi.id, { kind: 'system', label: 'test' });
   const did = await runControlPass(db, testDeps());
   expect(did).toBe(true);
 
@@ -471,7 +471,7 @@ test('auto-release re-grants: A holds a binary-exclusive resource, B is queued; 
   expect(queuedBefore).toHaveLength(1);
   expect(queuedBefore[0]).toMatchObject({ instanceId: b.id, granted: false });
 
-  await requestAbort(db, a.id);
+  await requestAbort(db, a.id, { kind: 'system', label: 'test' });
   const did = await runControlPass(db, testDeps());
   expect(did).toBe(true);
 
@@ -555,7 +555,7 @@ test("auto-release does not grant an instance's own queued waiter back to itself
   expect(selfQueued[0]).toMatchObject({ instanceId: wi.id, stepOid: 'branch-b', granted: false });
   expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(1);
 
-  await requestAbort(db, wi.id);
+  await requestAbort(db, wi.id, { kind: 'system', label: 'test' });
   const did = await runControlPass(db, testDeps());
   expect(did).toBe(true);
 
@@ -602,7 +602,7 @@ test("a waiter granted to this instance but never consumed gives its reserved ca
   // X aborts BEFORE its own next pump ever runs resumeGrantedSteps — the grant is never turned
   // into an envHolds entry. Without the Finding-1 fix, this reserved unit is lost: X's waiter
   // row gets deleted by releaseInstanceHoldings regardless, but nothing gives the capacity back.
-  await requestAbort(db, x.id);
+  await requestAbort(db, x.id, { kind: 'system', label: 'test' });
   const did = await runControlPass(db, testDeps());
   expect(did).toBe(true);
 
@@ -638,7 +638,7 @@ test("the reserved capacity cascades to the NEXT queued instance rather than eva
 
   // X aborts having never consumed its grant — the reservation must cascade to Z, the next
   // waiter in FIFO order, not simply vanish.
-  await requestAbort(db, x.id);
+  await requestAbort(db, x.id, { kind: 'system', label: 'test' });
   const did = await runControlPass(db, testDeps());
   expect(did).toBe(true);
 
@@ -804,7 +804,7 @@ test('C1: an instance QUEUED on an environment resource (holding nothing) delete
   expect(queuedBefore).toHaveLength(1);
   expect(queuedBefore[0]).toMatchObject({ instanceId: b.id, stepOid: 'grab', granted: false });
 
-  await requestAbort(db, b.id);
+  await requestAbort(db, b.id, { kind: 'system', label: 'test' });
   expect(await runControlPass(db, testDeps())).toBe(true);
   expect((await instanceRow(db, b.id)).status).toBe('aborted');
 
@@ -813,7 +813,7 @@ test('C1: an instance QUEUED on an environment resource (holding nothing) delete
 
   // ...and the wedge it caused: A's release must find an EMPTY queue and hand the unit back to
   // the pool, not reserve it for a dead instance's orphaned token.
-  await requestAbort(db, a.id);
+  await requestAbort(db, a.id, { kind: 'system', label: 'test' });
   expect(await runControlPass(db, testDeps())).toBe(true);
   expect((await instanceRow(db, a.id)).status).toBe('aborted');
   expect(await holdersOf(db, a.id)).toEqual([]);
@@ -835,12 +835,12 @@ test('C1: the same holds for an ORDERLY STOP of a queued-but-holding-nothing ins
 
   expect(await waitersOf(db, wc.id, 'Printer')).toHaveLength(1);
 
-  await requestStop(db, b.id);
+  await requestStop(db, b.id, { kind: 'system', label: 'test' });
   expect(await runControlPass(db, testDeps())).toBe(true);
   expect((await instanceRow(db, b.id)).status).toBe('stopped');
   expect(await waitersOf(db, wc.id, 'Printer')).toEqual([]);
 
-  await requestAbort(db, a.id);
+  await requestAbort(db, a.id, { kind: 'system', label: 'test' });
   expect(await runControlPass(db, testDeps())).toBe(true);
   expect(await waitersOf(db, wc.id, 'Printer')).toEqual([]);
   expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(0);
@@ -913,7 +913,7 @@ test('I1: aborting an instance that only WAITED on a countable resource re-runs 
   // B goes terminal holding nothing. Its row must go (C1) AND the queue it was blocking must
   // get a fresh grant pass (I1) — otherwise C sits behind a head that no longer exists, with
   // two free units in the pool and nothing left that will ever call release() on Slots.
-  await requestAbort(db, b.id);
+  await requestAbort(db, b.id, { kind: 'system', label: 'test' });
   expect(await runControlPass(db, testDeps())).toBe(true);
   expect((await instanceRow(db, b.id)).status).toBe('aborted');
 

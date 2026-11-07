@@ -29,6 +29,8 @@ const TONE: Record<RuntimeWorkflowStatus, string> = {
   resuming: 'bg-muted text-muted-foreground',
   stopping: 'bg-status-alarm-bg text-status-alarm-fg',
   aborting: 'bg-status-alarm-bg text-status-alarm-fg',
+  stopping_cleanup: 'bg-status-alarm-bg text-status-alarm-fg',
+  aborting_cleanup: 'bg-status-alarm-bg text-status-alarm-fg',
   paused: 'bg-status-paused-bg text-status-paused-fg',
   completed: 'bg-status-ok-bg text-status-ok-fg',
   aborted: 'bg-status-alarm-bg text-status-alarm-fg',

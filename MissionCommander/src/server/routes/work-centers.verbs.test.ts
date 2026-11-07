@@ -24,7 +24,7 @@ import { app } from '../app';
 // validation, and the Phase 6 status mapping — with the engine mocked.
 vi.mock('../lib/engine-client', () => ({
   EngineUnavailableError: class EngineUnavailableError extends Error {},
-  engineControl: vi.fn(), engineForceRelease: vi.fn(), engineAssign: vi.fn(),
+  engineControl: vi.fn(), engineSkipCleanup: vi.fn(), engineForceRelease: vi.fn(), engineAssign: vi.fn(),
   engineWorkCenterResourceVerb: vi.fn(), engineInstanceResourceVerb: vi.fn(),
   engineSetWorkCenterValue: vi.fn(), engineSetInstanceValue: vi.fn(),
 }));

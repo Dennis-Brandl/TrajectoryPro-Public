@@ -975,12 +975,12 @@ Entry point of an error-handling path, drawn as a small funnel. A Catch carries 
 
 **CATCH outputs.** Every CATCH carries the same four fixed, read-only outputs, which the runtime fills when the catch fires:
 
-| Output    | Value                                             |
-| --------- | ------------------------------------------------- |
-| `Message` | the failed action's error message (empty if none) |
-| `Reason`  | the failure mode: `ERROR`, `ABORT`, or `TIMEOUT`  |
-| `Step`    | the label of the step whose TRY fired             |
-| `StepID`  | the OID of that step                              |
+| Output    | Value                                                                              |
+| --------- | ---------------------------------------------------------------------------------- |
+| `Message` | the failed action's error message (empty if none)                                  |
+| `Reason`  | the failure mode: `ERROR`, `ABORT`, `TIMEOUT`, `OPERATOR_STOP` or `OPERATOR_ABORT` |
+| `Step`    | the label of the step whose TRY fired                                              |
+| `StepID`  | the OID of that step                                                               |
 
 They cannot be added, removed, or edited. To use one inside the catch network, pick it from the **Source** dropdown of a downstream step's input parameter -- the Catch appears there as a step group (`Step: CATCH (<catch_id>)`). Workflows saved before this version that bound an output to a Value Property target keep that binding; it is shown read-only under the output's name.
 
@@ -1017,6 +1017,22 @@ Step fails with mode M
 **Child workflows bubble up.** An uncaught failure inside a Child Workflow step is not the end of the line: it first tries that child's own workflow-level TRY, and if nothing there catches it either, the failure escalates one level up as a failure of the parent's Child Workflow step itself -- which, like any other TRY-capable step, can carry TRY rules of its own. From there the same two-level check repeats at the parent (the Child Workflow step's own TRY, then the parent workflow's TRY), and so on outward until a Catch fires or the root is reached with nothing matching. On a Catch reached this way, `Step` and `StepID` name the Child Workflow step the failure escalated through (not the step that actually failed inside the child), and `Message` carries `Uncaught <MODE> in child workflow '<name>' at step '<step>': <detail>` so the original failure is still identifiable. **RETRY** from a Catch reached this way re-runs the child workflow from scratch, not just the step that failed inside it.
 
 > **`release_on_catch` takes effect.** The **Release resources on catch** checkbox (checked by default, on step-level and workflow-level TRY rows alike) now does what it says: when checked, the failing step's own Release resource commands run before the matching CATCH activates, whichever level of the fallback chain ends up catching the failure.
+
+**Operator Stop and Operator Abort (workflow-level only).** In a workflow's TRY section, **ON** also offers **Operator Stop** and **Operator Abort**. They are not failures: they run a cleanup path when an operator presses Stop or Abort on the running workflow. They are not offered on steps, and they have no **Release resources on catch** setting. At most one rule per mode, and each points at an ordinary Catch node.
+
+When the operator presses Stop (or Abort), the runtime works in three stages:
+
+1. **Halt first.** Everything running is halted before any cleanup starts.
+2. **Cleanup.** The matching Catch path runs. The Catch outputs are `Reason` = `OPERATOR_STOP` or `OPERATOR_ABORT`, `Message` = `Stopped by operator <name>` or `Aborted by operator <name>`, and `Step` and `StepID` are empty. The workflow shows "Stopping (running cleanup)" or "Aborting (running cleanup)".
+3. **Always stopped or aborted.** When the cleanup finishes, whatever happened inside it, the workflow ends as **stopped** (Operator Stop) or **aborted** (Operator Abort). It never ends as errored.
+
+A **Return** in an Operator cleanup always means "finish". **ABANDON** is the natural choice; **RESTART**, **GOTO**, **RETRY** and **COMPLETE** are treated as finish too, and the editor and the export warn you when a Return in such a cleanup uses one of them. The warnings never block export.
+
+The operator can skip the cleanup with **Stop now (skip cleanup)** or **Abort now (skip cleanup)**. A second plain Stop or Abort does not skip it.
+
+> **Distributed Workflow steps are not supported in an Operator cleanup.** A Distributed Workflow action in an Operator Stop or Operator Abort cleanup network raises a warning at export.
+
+> **Child workflows ignore these rows.** Operator Stop and Operator Abort rows run only when the workflow is the top-level runtime. They are ignored when it runs as a child workflow.
 
 ---
 
@@ -1464,19 +1480,12 @@ Mission Designer automatically saves your canvas state to the browser's IndexedD
 
 ### Recovery on App Load
 
-If a draft is detected when you open the application, a dialog appears:
+If unsaved work is found when you open the application, it is restored automatically and a short message in the bottom-right corner says so ("Restored your unsaved work from [timestamp]"). Undo history starts fresh from the restored state.
 
-> **Recover unsaved work?**
-> Found an unsaved draft from [timestamp]. Would you like to continue where you left off?
-
-| Button            | Action                                             |
-| ----------------- | -------------------------------------------------- |
-| **Recover Draft** | Loads the saved state and clears undo history      |
-| **Start Fresh**   | Discards the draft and starts with an empty canvas |
+There is no option to discard the restored work on load, so leaving and coming back to Designer can never wipe the workflow you were editing.
 
 ### When Drafts Are Cleared
 
-- When you choose "Start Fresh" from the recovery dialog
 - When you select and load a workflow specification from the library
 - When you sign out
 

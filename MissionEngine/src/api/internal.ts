@@ -21,10 +21,11 @@
 // Error-envelope convention: every /internal/* error body is `{ error: { code, message } }`
 // with `code` in UPPER_SNAKE (matching DaoError's codes). The CM client reads only `message`
 // and the HTTP status, never `code` — so these strings are engine-local, free to change.
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { timingSafeEqual } from 'node:crypto';
 import { and, eq, inArray, sql } from 'drizzle-orm';
-import { requestPause, requestResume, requestStop, requestAbort } from 'mission-control-db/src/dao/runtime-control';
+import { requestPause, requestResume, requestStop, requestAbort, requestSkipCleanup } from 'mission-control-db/src/dao/runtime-control';
+import type { ControlActor } from 'mission-control-db/src/dao/control-events';
 import { DaoError } from 'mission-control-db/src/dao/errors';
 import { resolveStepAllowedRoles, sweepSoleCandidateClaims } from 'mission-control-db/src/runtime/assignments';
 import { instanceAssignment, stepInstance, workflowInstance, workCenterUserRole } from 'mission-control-db/src/db/schema/index';
@@ -46,7 +47,35 @@ function tokenMatches(got: string, expected: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-const CONTROLS = { pause: requestPause, resume: requestResume, stop: requestStop, abort: requestAbort } as const;
+const SYSTEM_ACTOR: ControlActor = { kind: 'system', label: 'internal' };
+const CONTROLS = {
+  pause: (db: Db, id: string, _actor: ControlActor) => requestPause(db, id),
+  resume: (db: Db, id: string, _actor: ControlActor) => requestResume(db, id),
+  stop: requestStop,
+  abort: requestAbort,
+} as const;
+
+const isStr = (v: unknown): v is string => typeof v === 'string' && v.length > 0;
+
+/** Minimal shape check of a request-body actor. Absent -> the internal system actor; malformed -> null. */
+function parseActor(raw: unknown): ControlActor | null {
+  if (raw === undefined || raw === null) return SYSTEM_ACTOR;
+  if (typeof raw !== 'object') return null;
+  const a = raw as Record<string, unknown>;
+  if (a.kind === 'user') return isStr(a.userId) && UUID_RE.test(a.userId) ? { kind: 'user', userId: a.userId } : null;
+  if (a.kind === 'remote') {
+    if (!isStr(a.label)) return null;
+    if (a.instanceId !== undefined && a.instanceId !== null && !isStr(a.instanceId)) return null;
+    return { kind: 'remote', label: a.label, instanceId: (a.instanceId as string | null | undefined) ?? null };
+  }
+  if (a.kind === 'system') return isStr(a.label) ? { kind: 'system', label: a.label } : null;
+  return null;
+}
+
+function daoErrorResponse(c: Context, err: DaoError) {
+  const status = err.code === 'RUNTIME_NOT_FOUND' ? 404 : err.code === 'USER_NOT_FOUND' ? 400 : 409;
+  return c.json({ error: { code: err.code, message: err.message || err.code } }, status);
+}
 
 export function createInternalApp(db: Db, deps: EngineDeps, hub: OperatorEventHub | null): Hono {
   const app = new Hono();
@@ -65,18 +94,42 @@ export function createInternalApp(db: Db, deps: EngineDeps, hub: OperatorEventHu
       const id = c.req.param('id');
       // Malformed uuid would throw a 22P02 out of the uuid cast — same 404 as unknown.
       if (!UUID_RE.test(id)) return c.json({ error: { code: 'RUNTIME_NOT_FOUND', message: 'not found' } }, 404);
+      const body = (await c.req.json().catch(() => null)) as { actor?: unknown } | null;
+      const actor = parseActor(body?.actor);
+      if (!actor) return c.json({ error: { code: 'VALIDATION', message: 'invalid actor' } }, 400);
       try {
-        await request(db, id);
+        await request(db, id, actor);
         return c.json({ ok: true });
       } catch (err) {
-        if (err instanceof DaoError) {
-          const status = err.code === 'RUNTIME_NOT_FOUND' ? 404 : 409;
-          return c.json({ error: { code: err.code, message: err.message || err.code } }, status);
-        }
+        if (err instanceof DaoError) return daoErrorResponse(c, err);
         throw err;
       }
     });
   }
+
+  // Skip the cleanup network (spec 2026-11-06 U7): the only way past a running OPERATOR_STOP /
+  // OPERATOR_ABORT CATCH; a second plain stop/abort never skips.
+  app.post('/internal/instances/:id/skip-cleanup', async (c) => {
+    const id = c.req.param('id');
+    if (!UUID_RE.test(id)) return c.json({ error: { code: 'RUNTIME_NOT_FOUND', message: 'not found' } }, 404);
+    const body = (await c.req.json().catch(() => null)) as { kind?: unknown; actor?: unknown } | null;
+    if (body?.kind !== 'stop' && body?.kind !== 'abort') {
+      return c.json({ error: { code: 'VALIDATION', message: "kind must be 'stop' or 'abort'" } }, 400);
+    }
+    const actor = parseActor(body.actor);
+    if (!actor) return c.json({ error: { code: 'VALIDATION', message: 'invalid actor' } }, 400);
+    // U7: only a person in Commander can skip the cleanup — never a remote caller or the system.
+    if (actor.kind !== 'user') {
+      return c.json({ error: { code: 'VALIDATION', message: 'only a user may skip the cleanup' } }, 400);
+    }
+    try {
+      await requestSkipCleanup(db, id, body.kind, actor);
+      return c.json({ ok: true });
+    } catch (err) {
+      if (err instanceof DaoError) return daoErrorResponse(c, err);
+      throw err;
+    }
+  });
 
   // Force-release (spec §3): releaseUserOnSignOut's exact SET clause (app.ts:37-47), scoped to
   // ONE assignment and WITHOUT the claimant predicate — that is the entire difference between

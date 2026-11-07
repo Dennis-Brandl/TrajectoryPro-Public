@@ -36,6 +36,8 @@ import type { Db } from '../db.js';
 import type { EngineDeps } from '../config.js';
 import type { FailureMode } from '../spec/types.js';
 import { openContext } from '../core/context.js';
+import { loadEngineState } from '../core/engine-state.js';
+import { isRunningLike, RUNNING_LIKE_STATUSES } from '../core/operator-cleanup.js';
 import { finishStep, failStep, drainCascade, settleIfComplete, settleStoppedIfDrained } from '../core/transition.js';
 import { claimInstanceById } from '../loop.js';
 import { reconcileAndNotify } from '../core/reconcile.js';
@@ -63,14 +65,25 @@ const PARKED_STATES = new Set(['WAITING_ACTION', 'PAUSED']);
 
 /** Task 16: statuses under which a terminal reaching this module is still applied at all — spec
  *  §7's Pause paragraph ("observation continues while paused") and Stop paragraph ("terminals
- *  record honestly" during the drain) both require it. `resuming`/`aborting` are deliberately
- *  excluded: both are handled entirely, atomically, within their OWN control-pass transaction
+ *  record honestly" during the drain) both require it. `aborting` is listed only for an Operator
+ *  Abort halt (isAbortDrain, below); any other aborting instance returns before anything is
+ *  applied, exactly as when it was not listed. `resuming` — and today's no-row abort — are
+ *  handled entirely, atomically, within their OWN control-pass transaction
  *  (core/control.ts), which already flips every row it touches OUT of WAITING_ACTION/PAUSED by
  *  the time it commits — a terminal racing into that narrow window is a harmless miss (this
  *  module's own precheck/re-check already guards against acting on a stale row either way), and
  *  self-heals via the next due-wake poll once the row settles, same as any other SKIP-LOCKED
  *  miss elsewhere in this engine. */
-const OBSERVABLE_STATUSES = new Set(['running', 'paused', 'pausing', 'stopping']);
+const OBSERVABLE_STATUSES = new Set([...RUNNING_LIKE_STATUSES, 'paused', 'pausing', 'stopping', 'aborting']);
+
+/** Spec 2026-11-06 C11: 'aborting' is observed only during an Operator Abort halt — the main
+ *  flow's live actions were sent ABORT and the cleanup waits for their terminals. Any other
+ *  'aborting' instance (no OPERATOR_ABORT row: today's single pass) is left alone, as before. */
+function isAbortDrain(row: WorkflowInstance): boolean {
+  if (row.status !== 'aborting') return false;
+  const oc = loadEngineState(row.engineState).operatorCleanup;
+  return oc?.kind === 'abort' && oc.phase === 'halting';
+}
 
 /** Terminal mapping table ← stateMapping.ts:21-31 (mapServerStateToFailureMode), plus the
  *  engine-only TIMEOUT case the brief calls out explicitly. */
@@ -141,8 +154,10 @@ export async function applyActionTerminal(
     // while the instance is genuinely 'running'. 'paused'/'pausing'/'stopping' still apply the
     // terminal honestly (see below) but never route anything new — see this module's own
     // OBSERVABLE_STATUSES doc comment and spec §7's Pause/Stop paragraphs.
-    const allowCascade = row.status === 'running';
+    const allowCascade = isRunningLike(row.status);
     const stopDrain = row.status === 'stopping';
+    const abortDrain = isAbortDrain(row);
+    if (row.status === 'aborting' && !abortDrain) return;
 
     // Re-read now that the instance is genuinely locked — state may have moved between the
     // pre-check above and acquiring the lock.
@@ -164,6 +179,18 @@ export async function applyActionTerminal(
     const stepDef = stepCtx.spec.steps.find(s => s.oid === current.stepOid);
     if (!stepDef) return; // defensive — every row this engine creates stamps a resolvable stepOid
     const target = { id: current.id, stepOid: current.stepOid };
+
+    if (abortDrain) {
+      // Spec 2026-11-06 C11: the confirmation the Operator Abort halt waits for. Like stopDrain —
+      // no routing, no TRY — but whatever the terminal was, the step ends ABORTED, as today's
+      // abort pass would have left it. The next control pass sees it and moves on to the cleanup.
+      await stepCtx.recordTrace(tx, target.stepOid, 'ABORTED');
+      await tx.update(stepInstance).set({
+        state: 'ABORTED', completedAt: deps.now(), updatedAt: deps.now(), wakeAt: null,
+      }).where(eq(stepInstance.id, target.id));
+      await context.persist(tx);
+      return;
+    }
 
     // GATE spec 2026-08-29 §5.3.4: a STOPPED terminal for an action whose armed gate is
     // OPEN was gate-initiated — route it as a normal completion (outputs mapped if the

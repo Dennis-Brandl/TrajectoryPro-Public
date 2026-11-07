@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { expect, test } from 'vitest';
-import { runtimeStatusLabel, RUNTIME_DELETABLE } from './runtime-status';
+import { runtimeStatusLabel, RUNTIME_DELETABLE, RUNTIME_CAN, canSkipCleanup } from './runtime-status';
 
 test('runtimeStatusLabel maps pending to Waiting', () => {
   expect(runtimeStatusLabel('pending')).toBe('Waiting');
@@ -79,4 +79,30 @@ test('RUNTIME_DELETABLE excludes all four transitional statuses — unchanged by
   expect(RUNTIME_DELETABLE.has('resuming')).toBe(false);
   expect(RUNTIME_DELETABLE.has('stopping')).toBe(false);
   expect(RUNTIME_DELETABLE.has('aborting')).toBe(false);
+});
+
+test('runtimeStatusLabel maps the cleanup statuses', () => {
+  expect(runtimeStatusLabel('stopping_cleanup')).toBe('Stopping (running cleanup)');
+  expect(runtimeStatusLabel('aborting_cleanup')).toBe('Aborting (running cleanup)');
+});
+
+test('Abort is allowed during stopping_cleanup; Request stop is not', () => {
+  expect(RUNTIME_CAN.abort.has('stopping_cleanup')).toBe(true);
+  expect(RUNTIME_CAN.stop.has('stopping_cleanup')).toBe(false);
+});
+
+test('canSkipCleanup truth table', () => {
+  const none = { stop: false, abort: false };
+  const stopOnly = { stop: true, abort: false };
+  const abortOnly = { stop: false, abort: true };
+  expect(canSkipCleanup('stopping_cleanup', 'stop', none)).toBe(true);
+  expect(canSkipCleanup('stopping', 'stop', none)).toBe(false);
+  expect(canSkipCleanup('stopping', 'stop', stopOnly)).toBe(true);
+  expect(canSkipCleanup('stopping', 'stop', abortOnly)).toBe(false);
+  expect(canSkipCleanup('aborting_cleanup', 'abort', none)).toBe(true);
+  expect(canSkipCleanup('aborting', 'abort', none)).toBe(false);
+  expect(canSkipCleanup('aborting', 'abort', abortOnly)).toBe(true);
+  expect(canSkipCleanup('aborting', 'abort', stopOnly)).toBe(false);
+  expect(canSkipCleanup('stopping_cleanup', 'abort', abortOnly)).toBe(false);
+  expect(canSkipCleanup('running', 'stop', stopOnly)).toBe(false);
 });

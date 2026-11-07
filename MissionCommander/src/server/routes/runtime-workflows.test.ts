@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
+import { eq } from 'drizzle-orm';
 import { db } from '../lib/db';
 import { migrateTestDb, resetDb } from '../test/fixture';
 import { mockSessionAs, seedUser, req } from '../test/harness';
-import { workCenter, workflow, stepInstance, instanceAssignment, operatorPresence } from 'mission-control-db/src/db/schema/index';
+import { workflowInstance, workCenter, workflow, stepInstance, instanceAssignment, operatorPresence } from 'mission-control-db/src/db/schema/index';
 import { assignUserToWorkCenter } from 'mission-control-db/src/dao/work-centers';
 import { app } from '../app';
-import { engineAssign, engineControl, engineForceRelease, engineForceComplete, EngineUnavailableError } from '../lib/engine-client';
+import { engineAssign, engineControl, engineSkipCleanup, engineForceRelease, engineForceComplete, EngineUnavailableError } from '../lib/engine-client';
 
 // Engine calls are stubbed at the module boundary (phase 6 §5) — the route layer only
 // authenticates/authorizes/maps; the real HTTP call to the engine is Task 6's concern,
@@ -26,6 +27,7 @@ import { engineAssign, engineControl, engineForceRelease, engineForceComplete, E
 vi.mock('../lib/engine-client', () => ({
   EngineUnavailableError: class EngineUnavailableError extends Error {},
   engineControl: vi.fn(),
+  engineSkipCleanup: vi.fn(),
   engineForceRelease: vi.fn(),
   engineAssign: vi.fn(),
   engineWorkCenterResourceVerb: vi.fn(),
@@ -36,6 +38,7 @@ vi.mock('../lib/engine-client', () => ({
 }));
 
 const mockEngineControl = vi.mocked(engineControl);
+const mockEngineSkipCleanup = vi.mocked(engineSkipCleanup);
 const mockEngineForceRelease = vi.mocked(engineForceRelease);
 const mockEngineAssign = vi.mocked(engineAssign);
 const mockEngineForceComplete = vi.mocked(engineForceComplete);
@@ -70,6 +73,7 @@ beforeEach(async () => {
   mockSessionAs(null);
   mockEngineControl.mockReset();
   mockEngineForceRelease.mockReset();
+  mockEngineSkipCleanup.mockReset();
   mockEngineAssign.mockReset();
   mockEngineForceComplete.mockReset();
 });
@@ -252,6 +256,30 @@ describe('GET /runtime-workflows/:id/live', () => {
   });
 });
 
+describe('GET /runtime-workflows/:id/live operatorCleanup', () => {
+  it('runtime detail reports operatorCleanup flags from the spec', async () => {
+    const { wfA, commanderA, viewer } = await seed();
+    const id = await createInstance(wfA, commanderA);
+    mockSessionAs(viewer);
+    const read = async () => ((await (await req(app, 'GET', `/api/runtime-workflows/${id}/live`)).json()) as
+      { operatorCleanup: { stop: boolean; abort: boolean } }).operatorCleanup;
+    expect(await read()).toEqual({ stop: false, abort: false });
+
+    const [row] = await db.select({ spec: workflowInstance.specJsonb }).from(workflowInstance).where(eq(workflowInstance.id, id));
+    const spec = { ...(row!.spec as Record<string, unknown>), try_specifications: [{ mode: 'OPERATOR_STOP', catch_id: 'c1' }] };
+    await db.update(workflowInstance).set({ specJsonb: spec }).where(eq(workflowInstance.id, id));
+    expect(await read()).toEqual({ stop: true, abort: false });
+
+    const abortOnly = { ...(row!.spec as Record<string, unknown>), try_specifications: [{ mode: 'OPERATOR_ABORT', catch_id: 'c2' }] };
+    await db.update(workflowInstance).set({ specJsonb: abortOnly }).where(eq(workflowInstance.id, id));
+    expect(await read()).toEqual({ stop: false, abort: true });
+
+    const both = { ...(row!.spec as Record<string, unknown>), try_specifications: [{ mode: 'OPERATOR_STOP', catch_id: 'c1' }, { mode: 'OPERATOR_ABORT', catch_id: 'c2' }] };
+    await db.update(workflowInstance).set({ specJsonb: both }).where(eq(workflowInstance.id, id));
+    expect(await read()).toEqual({ stop: true, abort: true });
+  });
+});
+
 describe('GET /work-centers/:id/presence', () => {
   it('returns { presence } for the WC, open to work_center:read', async () => {
     const { wcA, viewer } = await seed();
@@ -365,12 +393,37 @@ describe('POST /runtime-workflows/:id/pause', () => {
     const { wfA, commanderA } = await seed();
     const id = await createInstance(wfA, commanderA);
 
-    for (const verb of ['resume', 'stop', 'abort'] as const) {
+    mockEngineControl.mockResolvedValueOnce({ ok: true });
+    expect((await req(app, 'POST', `/api/runtime-workflows/${id}/resume`)).status).toBe(200);
+    expect(mockEngineControl).toHaveBeenCalledWith('resume', id);
+    for (const verb of ['stop', 'abort'] as const) {
       mockEngineControl.mockResolvedValueOnce({ ok: true });
       const res = await req(app, 'POST', `/api/runtime-workflows/${id}/${verb}`);
       expect(res.status).toBe(200);
-      expect(mockEngineControl).toHaveBeenCalledWith(verb, id);
+      expect(mockEngineControl).toHaveBeenCalledWith(verb, id, { kind: 'user', userId: commanderA });
     }
+  });
+
+  it('stop forwards the session user as actor', async () => {
+    const { wfA, commanderA } = await seed();
+    const id = await createInstance(wfA, commanderA);
+    mockEngineControl.mockResolvedValueOnce({ ok: true });
+    await req(app, 'POST', `/api/runtime-workflows/${id}/stop`);
+    expect(mockEngineControl).toHaveBeenCalledWith('stop', id, { kind: 'user', userId: commanderA });
+  });
+
+  it('skip-cleanup forwards kind and actor; bad kind 400; viewer 403', async () => {
+    const { wfA, commanderA, viewer } = await seed();
+    const id = await createInstance(wfA, commanderA);
+    mockEngineSkipCleanup.mockResolvedValueOnce({ ok: true });
+    const ok = await req(app, 'POST', `/api/runtime-workflows/${id}/skip-cleanup`, { json: { kind: 'abort' } });
+    expect(ok.status).toBe(200);
+    expect(mockEngineSkipCleanup).toHaveBeenCalledWith(id, 'abort', { kind: 'user', userId: commanderA });
+    expect((await req(app, 'POST', `/api/runtime-workflows/${id}/skip-cleanup`, { json: { kind: 'x' } })).status).toBe(400);
+    mockEngineSkipCleanup.mockClear();
+    mockSessionAs(viewer);
+    expect((await req(app, 'POST', `/api/runtime-workflows/${id}/skip-cleanup`, { json: { kind: 'stop' } })).status).toBe(403);
+    expect(mockEngineSkipCleanup).not.toHaveBeenCalled();
   });
 });
 

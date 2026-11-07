@@ -12,10 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const ALL_MODES = ['ERROR', 'ABORT', 'TIMEOUT'] as const
+import {
+  STEP_TRY_MODES,
+  WORKFLOW_TRY_MODES,
+  TRY_MODE_LABELS,
+  isOperatorMode,
+  type WorkflowTryMode,
+} from '@/lib/try-modes'
+
+const CHILD_WORKFLOW_HINT =
+  'Operator Stop and Operator Abort run only when this workflow is the top-level runtime; they are ignored when it runs as a child workflow.'
 
 export interface TrySpec {
-  mode: 'ERROR' | 'ABORT' | 'TIMEOUT'
+  mode: WorkflowTryMode
   catch_id: string
   release_on_catch?: boolean
 }
@@ -25,9 +34,12 @@ interface Props {
   onChange: (next: TrySpec[]) => void
   availableCatches: Array<{ catchId: string }>
   hideHeading?: boolean
+  /** 'workflow' also offers the Operator Stop / Operator Abort modes. Default 'step'. */
+  level?: 'step' | 'workflow'
 }
 
-export function TryEditor({ value, onChange, availableCatches, hideHeading = false }: Props) {
+export function TryEditor({ value, onChange, availableCatches, hideHeading = false, level = 'step' }: Props) {
+  const ALL_MODES: readonly WorkflowTryMode[] = level === 'workflow' ? WORKFLOW_TRY_MODES : STEP_TRY_MODES
   const used = new Set(value.map((t) => t.mode))
   const firstMode = ALL_MODES.find((m) => !used.has(m)) ?? 'ERROR'
   const firstCatch = availableCatches[0]?.catchId ?? ''
@@ -49,6 +61,7 @@ export function TryEditor({ value, onChange, availableCatches, hideHeading = fal
           + Add TRY
         </button>
       </div>
+      {level === 'workflow' && <p className="mt-1 text-[11px] text-muted-foreground">{CHILD_WORKFLOW_HINT}</p>}
       <ul role="list" className="mt-2 space-y-2">
         {value.map((row, i) => (
           <li role="listitem" key={row.mode} className="flex flex-wrap items-center gap-2 text-xs">
@@ -57,7 +70,7 @@ export function TryEditor({ value, onChange, availableCatches, hideHeading = fal
               <select value={row.mode} onChange={(e) => update(i, { mode: e.target.value as TrySpec['mode'] })}>
                 {ALL_MODES.filter((m) => m === row.mode || !used.has(m)).map((m) => (
                   <option key={m} value={m}>
-                    {m}
+                    {TRY_MODE_LABELS[m]}
                   </option>
                 ))}
               </select>
@@ -72,14 +85,16 @@ export function TryEditor({ value, onChange, availableCatches, hideHeading = fal
                 ))}
               </select>
             </label>
-            <label className="flex items-center gap-1">
-              <input
-                type="checkbox"
-                checked={row.release_on_catch !== false}
-                onChange={(e) => update(i, { release_on_catch: e.target.checked })}
-              />
-              Release resources on catch
-            </label>
+            {!isOperatorMode(row.mode) && (
+              <label className="flex items-center gap-1">
+                <input
+                  type="checkbox"
+                  checked={row.release_on_catch !== false}
+                  onChange={(e) => update(i, { release_on_catch: e.target.checked })}
+                />
+                Release resources on catch
+              </label>
+            )}
             <button type="button" aria-label="Remove TRY" onClick={() => remove(i)}>
               ✕
             </button>

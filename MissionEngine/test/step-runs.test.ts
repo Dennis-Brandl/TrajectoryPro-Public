@@ -268,7 +268,7 @@ test('stop records stopped rows for active steps', async () => {
   const wi = await seedQueued(db, LOOP_SPEC);
   await pumpUntilQuiet(db, deps);
   expect((await stepRow(db, wi.id, 'ask')).state).toBe('WAITING_USER');
-  await requestStop(db, wi.id);
+  await requestStop(db, wi.id, { kind: 'system', label: 'test' });
   await runControlPass(db, deps);
   expect(await statusOf(db, wi.id)).toBe('stopped');
   const rows = await runsOf(db, wi.id, 'ask');
@@ -379,7 +379,7 @@ for (const pass of [1, 2] as const) {
   test(`abort with the child parked on pass ${pass} records proxy run ${pass} on the child`, async () => {
     const { db, close } = await makeTestDb();
     const wi = await parkChildOnPass(db, pass);
-    await requestAbort(db, wi.id);
+    await requestAbort(db, wi.id, { kind: 'system', label: 'test' });
     await runControlPass(db, testDeps());
     expect(await statusOf(db, wi.id)).toBe('aborted');
     const form = await runsOf(db, wi.id, 'c-form');
@@ -486,7 +486,7 @@ test('an aborted run keeps its aborted rows and gets no extra cancelled ones', a
   };
   const wi = await seedQueued(db, spec);
   await pumpUntilQuiet(db, deps);
-  await requestAbort(db, wi.id);
+  await requestAbort(db, wi.id, { kind: 'system', label: 'test' });
   await runControlPass(db, deps);
   expect(await statusOf(db, wi.id)).toBe('aborted');
   expect((await runsOf(db, wi.id, 'g')).map(r => r.result)).toEqual(['aborted']);

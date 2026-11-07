@@ -148,7 +148,7 @@ describe('HistoryPage — fetch + table', () => {
     vi.mocked(runtimeHistory.listAll).mockResolvedValue({ history: [ROW], total: 1, page: 1, pageSize: 50 });
     const detail: RuntimeHistoryDetail = {
       ...ROW, startingParams: null, trace: [], properties: null, stepParams: null, stepNames: null, signatures: [], stepRuns: [], startedByLoginName: null, startedByUserId: null, userNames: {},
-      createdByLabel: null, createdByInstanceId: null, outputs: null,
+      createdByLabel: null, createdByInstanceId: null, outputs: null, controlEvents: [],
     };
     vi.mocked(runtimeHistory.detail).mockResolvedValue(detail);
     render(<HistoryPage />);

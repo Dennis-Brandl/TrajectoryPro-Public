@@ -15,6 +15,7 @@ import type { RoutingResult, CatchContext, PendingResourceState, FailureMode } f
 import type { SerializedResources } from './resources.js';
 import type { EnvHold } from './env-resource-bridge.js';
 import type { ScriptOutputs } from './step-handlers.js';
+import type { CleanupKind } from './operator-cleanup.js';
 
 /** Task 16 (review fix, Critical 1 + controller Ruling A): a failure terminal that reached an
  *  action-backed step while dispatch was frozen (paused/pausing) — deferred rather than resolved
@@ -215,6 +216,42 @@ export interface EngineState {
    *  WARNING for the current run of failures, so it is written once. Cleared with
    *  pollFailingSince. */
   pollWarned: string[];
+  /** Operator Stop / Operator Abort cleanup (spec 2026-11-06 §5): the root's cleanup CATCH
+   *  network run, persisted so an engine restart mid-cleanup resumes it. null when no cleanup
+   *  has started (always null for an instance whose root spec has no Operator row). */
+  operatorCleanup: OperatorCleanup | null;
+}
+
+/** Spec 2026-11-06 §5: one Operator Stop / Operator Abort cleanup run. */
+export interface OperatorCleanup {
+  kind: CleanupKind;
+  phase: 'halting' | 'cleanup';
+  catchOid: string;
+  /** ISO */
+  haltStartedAt: string;
+  cleanupStartedAt: string | null;
+  /** resource keys (Task 6) */
+  inheritedHolds: string[];
+  /** stepOid -> keys (Task 6) */
+  inheritedUse: Record<string, string[]>;
+  /** step_instance row ids of the main flow's live actions sent ABORT by an Operator Abort halt,
+   *  still awaiting their terminal (Task 7, C11). Row ids, not step oids: a child workflow used
+   *  twice can repeat a step oid. */
+  abortPending: string[];
+  /** Live actions torn down with the ended cleanup network, still owed a best-effort ABORT +
+   *  DELETE. Written in the same transaction as the teardown and drained after commit by the
+   *  loop (operator-cleanup-flow.ts finalizeOrphanedActions), so an engine restart in between
+   *  still sends them. Stays readable on the settled instance row. */
+  pendingAborts: PendingCleanupAbort[];
+}
+
+/** One torn-down cleanup action owed ABORT + DELETE (see OperatorCleanup.pendingAborts). */
+export interface PendingCleanupAbort {
+  stepRowId: string;
+  serverUri: string;
+  actionInstanceId: string;
+  /** ISO — when the teardown queued it. */
+  queuedAt: string;
 }
 
 export function defaultEngineState(): EngineState {
@@ -245,6 +282,7 @@ export function defaultEngineState(): EngineState {
     pauseRefused: [],
     pollFailingSince: {},
     pollWarned: [],
+    operatorCleanup: null,
   };
 }
 
@@ -282,5 +320,6 @@ export function loadEngineState(row: unknown): EngineState {
     pauseRefused: r.pauseRefused ?? [],
     pollFailingSince: r.pollFailingSince ?? {},
     pollWarned: r.pollWarned ?? [],
+    operatorCleanup: r.operatorCleanup ? { ...r.operatorCleanup, pendingAborts: r.operatorCleanup.pendingAborts ?? [] } : null,
   };
 }

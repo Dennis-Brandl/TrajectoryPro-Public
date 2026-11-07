@@ -846,8 +846,8 @@ describe.skipIf(!url)('mission engine — real Postgres concurrency (Task 18)', 
       // claimable — see the comment above the outer try. Swallow (but log) a cleanup failure
       // here rather than letting it MASK whatever the real test failure was, if any.
       try {
-        await requestAbort(db!, a);
-        await requestAbort(db!, b);
+        await requestAbort(db!, a, { kind: 'system', label: 'test' });
+        await requestAbort(db!, b, { kind: 'system', label: 'test' });
         // runControlPass processes one transitional instance per call and some instances need
         // more than one pass to settle fully (e.g. 'aborting' -> 'aborted') — drain rather than
         // assume a fixed count.
@@ -1235,7 +1235,7 @@ describe.skipIf(!url)('mission engine — real Postgres concurrency (Task 18)', 
         return (res.rowCount ?? 0) > 0;
       });
 
-      await requestAbort(db!, a);
+      await requestAbort(db!, a, { kind: 'system', label: 'test' });
       const did = await runControlPass(db!, testDeps());
       expect(did).toBe(true);
 
@@ -1627,7 +1627,7 @@ describe.skipIf(!url)('mission engine — real Postgres concurrency (Task 18)', 
       // The server drops off and the engine's capabilities cache is cold (as after an engine restart).
       stub.control.setCapabilitiesAvailable(false);
       client.invalidateCapabilities(stub.uri);
-      await requestStop(db!, id);
+      await requestStop(db!, id, { kind: 'system', label: 'test' });
       for (let i = 0; i < 5; i++) await runOnce(db!, deps);
       const stopCalls = () => sendSpy.mock.calls.filter((c) => c[2] === 'STOP');
       expect(stopCalls()).toHaveLength(0);
@@ -1710,7 +1710,7 @@ describe.skipIf(!url)('mission engine — real Postgres concurrency (Task 18)', 
     try {
       const stopCalls = () => sendSpy.mock.calls.filter((c) => c[2] === 'STOP');
       stub.control.setCommandResponse(503);
-      await requestStop(db!, id);
+      await requestStop(db!, id, { kind: 'system', label: 'test' });
       for (let i = 0; i < 20 && stopCalls().length < 1; i++) await runOnce(db!, deps);
       for (let i = 0; i < 5; i++) await runOnce(db!, deps);
       expect(stopCalls()).toHaveLength(1);
@@ -1752,7 +1752,7 @@ describe.skipIf(!url)('mission engine — real Postgres concurrency (Task 18)', 
     try {
       const stopCalls = () => sendSpy.mock.calls.filter((c) => c[2] === 'STOP');
       stub.control.setCommandResponse(503);
-      await requestStop(db!, id);
+      await requestStop(db!, id, { kind: 'system', label: 'test' });
       for (let i = 0; i < 20 && stopCalls().length < 1; i++) await runOnce(db!, deps);
       expect(stopCalls()).toHaveLength(1);
       expect(holder).toBeDefined();

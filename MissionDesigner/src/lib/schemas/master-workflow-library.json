@@ -794,7 +794,7 @@
               "properties": {
                 "mode": {
                   "type": "string",
-                  "enum": ["ERROR", "ABORT", "TIMEOUT"],
+                  "enum": ["ERROR", "ABORT", "TIMEOUT", "OPERATOR_STOP", "OPERATOR_ABORT"],
                   "description": "The fault condition this row handles."
                 },
                 "catch_id": {

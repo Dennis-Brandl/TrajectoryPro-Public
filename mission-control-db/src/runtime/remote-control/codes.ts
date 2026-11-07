@@ -28,6 +28,7 @@ export class RemoteError extends Error {
 const STATE_NAMES: Record<string, string> = {
   pending: 'Created', queued: 'Starting', running: 'Running', pausing: 'Suspending', paused: 'Suspended',
   resuming: 'Unsuspending', stopping: 'Stopping', aborting: 'Aborting',
+  stopping_cleanup: 'Stopping', aborting_cleanup: 'Aborting',
   completed: 'Completed', stopped: 'Stopped', aborted: 'Aborted', errored: 'Errored',
 };
 

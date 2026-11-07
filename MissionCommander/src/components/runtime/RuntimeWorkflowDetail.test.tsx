@@ -44,6 +44,7 @@ const DETAIL: RuntimeWorkflowLiveDetail = {
   ],
   trace: [],
   signatures: [],
+  operatorCleanup: { stop: false, abort: false },
 };
 
 const signed: StepSignatureView = {
@@ -165,7 +166,7 @@ describe('RuntimeWorkflowDetail', () => {
       masterName: 'Mix', masterOid: 'o', masterVersion: '1.0.0', masterState: 'Effective', finalState: 'completed',
       startedAt: null, finishedAt: '2026-08-27T00:00:00Z', createdAt: '2026-08-27T00:00:00Z',
       startingParams: null, trace: [], properties: null, stepParams: null, stepNames: null, signatures: [], stepRuns: [], startedByLoginName: null, startedByUserId: null, userNames: {},
-      createdByLabel: null, createdByInstanceId: null, outputs: null,
+      createdByLabel: null, createdByInstanceId: null, outputs: null, controlEvents: [],
     });
     render(<RuntimeWorkflowDetail />);
     await userEvent.click(await screen.findByRole('button', { name: 'Open RW-3' }));
@@ -174,5 +175,31 @@ describe('RuntimeWorkflowDetail', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Open RW-2' }));
     expect(useSelectionStore.getState().activeHierarchy).toBe('runtime');
     expect(useSelectionStore.getState().selectedRuntimeWorkflowId).toBe('c1');
+  });
+});
+
+describe('RuntimeWorkflowDetail — operator cleanup', () => {
+  it('Stop now (skip cleanup) in stopping_cleanup confirms then calls skipCleanup; Request stop disabled', async () => {
+    vi.spyOn(api.runtimeWorkflows, 'live').mockResolvedValue({ ...DETAIL, summary: { ...DETAIL.summary, status: 'stopping_cleanup' } });
+    const skip = vi.spyOn(api.runtimeWorkflows, 'skipCleanup').mockResolvedValue({ ok: true });
+    render(<RuntimeWorkflowDetail />);
+    await screen.findByRole('heading', { name: 'MIX-20261007-001 Mix' });
+    expect(screen.getByRole('button', { name: 'Request stop MIX-20261007-001' })).toBeDisabled();
+    await userEvent.click(screen.getByRole('button', { name: 'Stop now (skip cleanup) MIX-20261007-001' }));
+    expect(skip).not.toHaveBeenCalled();
+    expect(screen.getByText('Skip the cleanup and stop now? The cleanup steps will be halted.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    await waitFor(() => expect(skip).toHaveBeenCalledWith('rw1', 'stop'));
+  });
+
+  it('aborting with an OPERATOR_ABORT row offers Abort now (skip cleanup); without one it does not', async () => {
+    vi.spyOn(api.runtimeWorkflows, 'live').mockResolvedValue({ ...DETAIL, summary: { ...DETAIL.summary, status: 'aborting' } });
+    const { unmount } = render(<RuntimeWorkflowDetail />);
+    await screen.findByRole('heading', { name: 'MIX-20261007-001 Mix' });
+    expect(screen.queryByRole('button', { name: 'Abort now (skip cleanup) MIX-20261007-001' })).not.toBeInTheDocument();
+    unmount();
+    vi.spyOn(api.runtimeWorkflows, 'live').mockResolvedValue({ ...DETAIL, operatorCleanup: { stop: false, abort: true }, summary: { ...DETAIL.summary, status: 'aborting' } });
+    render(<RuntimeWorkflowDetail />);
+    expect(await screen.findByRole('button', { name: 'Abort now (skip cleanup) MIX-20261007-001' })).toBeEnabled();
   });
 });

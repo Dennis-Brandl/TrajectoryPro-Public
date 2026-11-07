@@ -108,7 +108,7 @@ test('stop cancels the offer: assignment -> cancelled, instance -> stopped', asy
   await pumpUntilQuiet(db, testDeps());
   expect((await assignmentsFor(db, wi.id))[0].status).toBe('offered');
 
-  await requestStop(db, wi.id);
+  await requestStop(db, wi.id, { kind: 'system', label: 'test' });
   await pumpUntilQuiet(db, testDeps());
 
   const rows = await assignmentsFor(db, wi.id);
@@ -127,7 +127,7 @@ test('abort cancels the offer: assignment -> cancelled, instance -> aborted', as
   await pumpUntilQuiet(db, testDeps());
   expect((await assignmentsFor(db, wi.id))[0].status).toBe('offered');
 
-  await requestAbort(db, wi.id);
+  await requestAbort(db, wi.id, { kind: 'system', label: 'test' });
   await pumpUntilQuiet(db, testDeps());
 
   const rows = await assignmentsFor(db, wi.id);

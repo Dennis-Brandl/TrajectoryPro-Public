@@ -17,6 +17,7 @@ import { eq } from 'drizzle-orm';
 import { makeTestDb } from '../../../test/helpers/db.js';
 import { runtimeCols } from '../../../test/helpers/instances.js';
 import { workCenter, workflow, workflowInstance, stepInstance, runtimeHistory } from '../../db/schema/index.js';
+import { listControlEvents } from '../../dao/control-events.js';
 import { setControlGrant } from '../../dao/control-grants.js';
 import { setActionMatchingMode } from '../../dao/system-settings.js';
 import { loadCaller, createRuntime, commandRuntime, getRuntimeState, getRuntimeOutputs, RemoteError } from './index.js';
@@ -194,6 +195,62 @@ test('commands follow ruling R6', async () => {
     const c4 = await mk();
     await commandRuntime(db, caller, c4.id, 'start'); // queued
     expect((await commandRuntime(db, caller, c4.id, 'stop')).state).toBe('Aborting');
+  } finally { await close(); }
+});
+
+async function cleanupWorld() {
+  const { db, close } = await makeTestDb();
+  const w = await world(db);
+  const caller = await w.callerFor();
+  const c = await createRuntime(db, await w.callerFor(), { workCenter: '', workflow: 'Mix', startingParameters: '', start: false, now: NOW });
+  const setStatus = (status: string) => db.update(workflowInstance).set({ status }).where(eq(workflowInstance.id, c.id));
+  return { db, close, caller, c, setStatus };
+}
+
+test('stop on stopping_cleanup is a no-op and records no event', async () => {
+  const { db, close, caller, c, setStatus } = await cleanupWorld();
+  try {
+    await setStatus('stopping_cleanup');
+    expect((await commandRuntime(db, caller, c.id, 'stop')).state).toBe('Stopping');
+    expect(await listControlEvents(db, c.id)).toHaveLength(0);
+    await setStatus('aborting_cleanup');
+    expect((await commandRuntime(db, caller, c.id, 'abort')).state).toBe('Aborting');
+    expect(await listControlEvents(db, c.id)).toHaveLength(0);
+  } finally { await close(); }
+});
+
+test('abort on stopping_cleanup escalates and records a remote event', async () => {
+  const { db, close, caller, c, setStatus } = await cleanupWorld();
+  try {
+    await setStatus('stopping_cleanup');
+    expect((await commandRuntime(db, caller, c.id, 'abort')).state).toBe('Aborting');
+    const events = await listControlEvents(db, c.id);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ verb: 'abort', effect: 'escalate', actorKind: 'remote', actorName: 'Line A/RW-1' });
+  } finally { await close(); }
+});
+
+test('stop on running records a remote actor label', async () => {
+  const { db, close, caller, c, setStatus } = await cleanupWorld();
+  try {
+    await setStatus('running');
+    await commandRuntime(db, caller, c.id, 'stop');
+    const events = await listControlEvents(db, c.id);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ verb: 'stop', effect: 'request', actorKind: 'remote', actorName: 'Line A/RW-1', actorInstanceId: caller.instanceId });
+  } finally { await close(); }
+});
+
+test('stop on a queued runtime aborts it but records the Stop that was sent', async () => {
+  const { db, close, caller, c, setStatus } = await cleanupWorld();
+  try {
+    await setStatus('queued');
+    expect((await commandRuntime(db, caller, c.id, 'stop')).state).toBe('Aborting');
+    const events = await listControlEvents(db, c.id);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      verb: 'stop', effect: 'request', fromStatus: 'queued', toStatus: 'aborting', actorKind: 'remote', actorInstanceId: caller.instanceId,
+    });
   } finally { await close(); }
 });
 

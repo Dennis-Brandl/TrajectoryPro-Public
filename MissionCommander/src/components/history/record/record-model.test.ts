@@ -34,7 +34,7 @@ function base(over: Partial<RuntimeHistoryDetail> = {}): RuntimeHistoryDetail {
     startingParams: { size: 'large', crust: 'thin' }, trace: [], properties: { total: '12.50' }, stepParams: null,
     stepNames: { eo: 'Enter Order', at: 'Add Topping', pr: 'Price', qa: 'QA Approve' },
     signatures: [], stepRuns: [], startedByLoginName: 'jdoe', startedByUserId: 'u1', userNames: { u9: 'asmith' },
-    createdByLabel: null, createdByInstanceId: null, outputs: [{ name: 'receipt', value: 'R-1' }], ...over,
+    createdByLabel: null, createdByInstanceId: null, controlEvents: [], outputs: [{ name: 'receipt', value: 'R-1' }], ...over,
   };
 }
 
@@ -278,5 +278,56 @@ describe('step-run labels', () => {
 describe('pdfFileName', () => {
   it('sanitises', () => {
     expect(pdfFileName({ runtimeLabel: 'RW/7: "x"', masterName: 'Pizza*Order' })).toBe('RW_7_ _x_ - Pizza_Order.pdf');
+  });
+});
+
+describe('operator trace attribution and unnamed requesters', () => {
+  it('a "(by label)" OPERATOR trace row is attributed to the label; [by uuid] unchanged', () => {
+    const m = buildRecordModel(base({
+      trace: [
+        { step_oid: '', state: 'OPERATOR', order: 1, timestamp: Date.parse('2026-10-27T15:01:00Z'), error: 'Operator Stop cleanup started (by WC1/R-0007)' },
+        { step_oid: '', state: 'OPERATOR', order: 2, timestamp: Date.parse('2026-10-27T15:02:00Z'), error: 'Operator Stop cleanup started [by u9]' },
+      ],
+    }), opts);
+    expect(m.log.map(r => r.kind === 'event' && `${r.text}|${r.performedBy}`)).toEqual([
+      'Operator Stop cleanup started|WC1/R-0007',
+      'Operator Stop cleanup started|asmith',
+    ]);
+  });
+  it('an empty actorName falls back to Unknown requester', () => {
+    const m = buildRecordModel(base({ controlEvents: [{
+      at: '2026-10-27T15:02:00Z', verb: 'stop', effect: 'request', fromStatus: 'running', toStatus: 'stopping_cleanup',
+      actorKind: 'user', actorUserId: null, actorName: '', actorInstanceId: null,
+    }] }), opts);
+    expect(m.log.map(r => r.kind === 'event' && r.performedBy)).toEqual(['Unknown requester']);
+  });
+});
+
+describe('control events', () => {
+  const ev = (over: Partial<RuntimeHistoryDetail['controlEvents'][number]>): RuntimeHistoryDetail['controlEvents'][number] => ({
+    at: '2026-10-27T15:02:00Z', verb: 'stop', effect: 'request', fromStatus: 'running', toStatus: 'stopping_cleanup',
+    actorKind: 'user', actorUserId: 'u1', actorName: 'Jane Doe', actorInstanceId: null, ...over,
+  });
+  it('control events become event rows performed by the requester', () => {
+    const m = buildRecordModel(base({
+      stepRuns: [
+        run({ stepOid: 'eo', stepName: 'Enter Order', startedAt: '2026-10-27T15:00:00Z', finishedAt: '2026-10-27T15:01:00Z' }),
+        run({ stepOid: 'pr', stepName: 'Price', startedAt: '2026-10-27T15:05:00Z', finishedAt: '2026-10-27T15:06:00Z' }),
+      ],
+      controlEvents: [
+        ev({}),
+        ev({ at: '2026-10-27T15:03:00Z', verb: 'abort', effect: 'escalate', actorName: 'Sam Lee' }),
+        ev({ at: '2026-10-27T15:04:00Z', verb: 'abort', effect: 'skip_cleanup', actorName: 'Sam Lee' }),
+        ev({ at: '2026-10-27T15:04:30Z', verb: 'abort', effect: 'request', actorKind: 'remote', actorUserId: null, actorName: 'Remote WF' }),
+      ],
+    }), opts);
+    expect(m.log.map(r => r.kind === 'run' ? `run:${r.step}` : `event:${r.text}|${r.step}|${r.performedBy}`)).toEqual([
+      'run:Enter Order',
+      'event:Stop requested|(runtime)|Jane Doe',
+      'event:Abort requested (escalated)|(runtime)|Sam Lee',
+      'event:Abort cleanup skipped|(runtime)|Sam Lee',
+      'event:Abort requested|(runtime)|Remote WF',
+      'run:Price',
+    ]);
   });
 });

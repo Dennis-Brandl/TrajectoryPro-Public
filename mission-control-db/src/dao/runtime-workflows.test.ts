@@ -580,6 +580,21 @@ test('getRuntimeWorkflowLiveStates: latest row per stepOid, assignment.mine, chi
   await close();
 });
 
+test('cleanup statuses count as active: filter, chip counts and leaves', async () => {
+  const { db, close } = await makeTestDb();
+  const { wc, wf, user } = await seed(db);
+  for (const status of ['stopping_cleanup', 'aborting_cleanup', 'completed']) {
+    const created = await createRuntimeWorkflow(db, { workflowId: wf.id, params: {}, userId: user.id });
+    await db.update(workflowInstance).set({ status }).where(eq(workflowInstance.id, created.id));
+  }
+  const active = await listRuntimeWorkflowsPage(db, wc.id, { filter: 'active' });
+  expect(active.items.map((i) => i.status).sort()).toEqual(['aborting_cleanup', 'stopping_cleanup']);
+  expect(active.statusCounts).toEqual({ active: 2, pending: 0, finished: 1 });
+  const leaves = await listActiveRuntimeLeaves(db);
+  expect(leaves.map((l) => l.status).sort()).toEqual(['aborting_cleanup', 'stopping_cleanup']);
+  await close();
+});
+
 test('listActiveRuntimeLeaves: active statuses only, cross-WC, ordered, lean projection', async () => {
   const { db, close } = await makeTestDb();
   const { wc, wf } = await seed(db);

@@ -20,7 +20,7 @@ import { useSelectionStore } from '@/stores/selectionStore';
 import { runtimeWorkflows } from '@/lib/api/runtime-workflows';
 import { ApiError, apiErrorMessage } from '@/lib/api/client';
 import { usePolledView } from '@/lib/hooks/usePolledView';
-import { RUNTIME_CAN, RUNTIME_TERMINAL } from '@/lib/runtime-status';
+import { RUNTIME_CAN, RUNTIME_TERMINAL, canSkipCleanup } from '@/lib/runtime-status';
 import { RuntimeStatusBadge } from './RuntimeStatusBadge';
 import { AssignClaimDialog } from './AssignClaimDialog';
 import { RuntimeDiagramCard } from './RuntimeDiagramCard';
@@ -35,7 +35,7 @@ import { isForceCompletable } from './force-completable';
 export const RUNTIME_PANE_POLL_MS = 2000;
 
 type PendingConfirm =
-  | { kind: 'stop' | 'abort' }
+  | { kind: 'stop' | 'abort' | 'skip-stop' | 'skip-abort' }
   | { kind: 'force-release'; assignmentId: string; stepName: string };
 // detail === null means the instance vanished (finished + reaped, or deleted): the 404 is
 // folded into the view so the pane shows a calm notice instead of an error-toast loop.
@@ -103,6 +103,8 @@ export function RuntimeWorkflowDetail() {
     { key: 'resume', label: 'Resume', enabled: RUNTIME_CAN.resume.has(status), run: () => void act(() => runtimeWorkflows.resume(s.id), `${rwName} resuming`, 'Resume failed') },
     { key: 'stop', label: 'Request stop', enabled: RUNTIME_CAN.stop.has(status), run: () => setConfirm({ kind: 'stop' }) },
     { key: 'abort', label: 'Abort', enabled: RUNTIME_CAN.abort.has(status), run: () => setConfirm({ kind: 'abort' }) },
+    ...(canSkipCleanup(status, 'stop', view.detail.operatorCleanup) ? [{ key: 'skip-stop', label: 'Stop now (skip cleanup)', enabled: true, run: () => setConfirm({ kind: 'skip-stop' }) }] : []),
+    ...(canSkipCleanup(status, 'abort', view.detail.operatorCleanup) ? [{ key: 'skip-abort', label: 'Abort now (skip cleanup)', enabled: true, run: () => setConfirm({ kind: 'skip-abort' }) }] : []),
   ];
 
   const runConfirmed = () => {
@@ -119,6 +121,12 @@ export function RuntimeWorkflowDetail() {
       case 'abort':
         void act(() => runtimeWorkflows.abort(s.id), `${rwName} aborting`, 'Abort failed');
         break;
+      case 'skip-stop':
+        void act(() => runtimeWorkflows.skipCleanup(s.id, 'stop'), `${rwName} stopping`, 'Skip cleanup failed');
+        break;
+      case 'skip-abort':
+        void act(() => runtimeWorkflows.skipCleanup(s.id, 'abort'), `${rwName} aborting`, 'Skip cleanup failed');
+        break;
       default: {
         const _exhaustive: never = confirm;
         throw new Error(`RuntimeWorkflowDetail: unhandled confirm kind ${JSON.stringify(_exhaustive)}`);
@@ -127,7 +135,9 @@ export function RuntimeWorkflowDetail() {
   };
   const confirmLabel = confirm?.kind === 'force-release'
     ? `Release the claim on “${confirm.stepName}”?`
-    : confirm ? `${confirm.kind === 'stop' ? 'Stop' : 'Abort'} ${rwName}?` : '';
+    : confirm?.kind === 'skip-stop' || confirm?.kind === 'skip-abort'
+      ? `Skip the cleanup and ${confirm.kind === 'skip-stop' ? 'stop' : 'abort'} now? The cleanup steps will be halted.`
+      : confirm ? `${confirm.kind === 'stop' ? 'Stop' : 'Abort'} ${rwName}?` : '';
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-y-auto p-4">

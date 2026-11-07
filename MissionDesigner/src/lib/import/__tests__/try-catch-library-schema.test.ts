@@ -206,3 +206,28 @@ describe('importWorkflow — library fallback accepts CATCH/RETURN steps', () =>
     expect('error' in result).toBe(false)
   })
 })
+
+describe('operator modes in the library schema', () => {
+  const lib = (wfTry: unknown, stepTry: unknown) => ({
+    ...managedElement('Op Lib', 'lib-op-001'),
+    workflow_specifications: [
+      {
+        ...managedElement('Op Workflow', 'wf-op-001'),
+        steps: [
+          minimalStep('s-ap', 'Run', 'ACTION PROXY', {
+            action_visibility: 'opaque',
+            action_proxy_config: { action_oid: 'a', environment_oid: 'e' },
+            ...(stepTry ? { try_specifications: stepTry } : {}),
+          }),
+        ],
+        connections: [],
+        ...(wfTry ? { try_specifications: wfTry } : {}),
+      },
+    ],
+  })
+  it('library schema accepts OPERATOR_ABORT at workflow level and rejects it on a step', () => {
+    const row = [{ mode: 'OPERATOR_ABORT', catch_id: 'C' }]
+    expect(validateWorkflowLibrary(lib(row, null)).success).toBe(true)
+    expect(validateWorkflowLibrary(lib(null, row)).success).toBe(false)
+  })
+})

@@ -23,7 +23,7 @@ import { LibrarySidebar } from '@/components/library'
 import { EnvironmentDetailView, ActionDetailView, LibraryDetailView, WorkflowPlaceholder } from '@/components/detail'
 import { NotationSwitcher } from '@/components/toolbar/NotationSwitcher'
 import { ContextBreadcrumb } from '@/components/toolbar/ContextBreadcrumb'
-import { DraftRecoveryDialog, LegacyUpgradeDialog } from '@/components/draft'
+import { DraftRestoredNotice, LegacyUpgradeDialog } from '@/components/draft'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { HeaderTools } from '@/components/shell/HeaderTools'
 import { LibraryRail } from '@/components/shell/LibraryRail'
@@ -434,8 +434,8 @@ function WorkflowEditorInner() {
 
   return (
     <div className="h-full w-full flex flex-col">
-      {/* Draft recovery dialog - shown when persisted draft exists */}
-      <DraftRecoveryDialog />
+      {/* Unsaved work from a previous visit is always restored (no discard option) */}
+      <DraftRestoredNotice />
 
       {/* Legacy upgrade notification - shown once after v4.0 migration strips legacy nodes */}
       <LegacyUpgradeDialog />

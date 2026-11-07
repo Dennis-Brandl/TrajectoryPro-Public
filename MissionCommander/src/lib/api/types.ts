@@ -149,7 +149,10 @@ export type StepSignatureView = {
   roleName: string | null; meaning: string | null; decision: string | null;
   outcome: 'signed' | 'failed'; failureCode: string | null; signedAt: string;
 };
-export type RuntimeWorkflowLiveDetail = { summary: RuntimeWorkflowSummary; steps: RuntimeLiveStep[]; trace: RuntimeTraceEntryView[]; signatures: StepSignatureView[] };
+export type RuntimeWorkflowLiveDetail = {
+  summary: RuntimeWorkflowSummary; steps: RuntimeLiveStep[]; trace: RuntimeTraceEntryView[]; signatures: StepSignatureView[];
+  operatorCleanup: { stop: boolean; abort: boolean };
+};
 export type WorkCenterPresenceEntry = { userId: string; name: string | null; status: 'online' | 'away'; since: string };
 
 // GET/PUT /api/work-centers/:id/environment-bindings — which Action Server a work center's
@@ -167,7 +170,9 @@ export type ControlGrantList = { outgoing: ControlGrant[]; incoming: ControlGran
 // Phase 7 (CM history log management) — Dates arrive as strings (guards below). The
 // final-state union and the trace-entry shape come straight from the package.
 export type { RuntimeFinalState as RuntimeHistoryFinalState, TraceEntry as RuntimeHistoryTraceEntry } from 'mission-control-db';
-import type { RuntimeFinalState as RuntimeHistoryFinalState, TraceEntry as RuntimeHistoryTraceEntry } from 'mission-control-db';
+import type { RuntimeFinalState as RuntimeHistoryFinalState, TraceEntry as RuntimeHistoryTraceEntry, ControlEventView as DbControlEventView } from 'mission-control-db';
+/** Who sent each Stop/Abort/skip (spec 2026-11-06 U8); `at` is an ISO string on the wire. */
+export type ControlEventView = Serialized<DbControlEventView>;
 export type RuntimeHistorySummary = {
   id: string; workflowInstanceId: string | null; workCenterId: string | null; workCenterName: string;
   runtimeNumber: number; runtimeLabel: string; masterName: string; masterOid: string; masterVersion: string; masterState: string;
@@ -188,6 +193,7 @@ export type RuntimeHistoryDetail = RuntimeHistorySummary & {
   userNames: Record<string, string>;
   createdByLabel: string | null; createdByInstanceId: string | null;
   outputs: Array<{ name: string; value: string }> | null;
+  controlEvents: ControlEventView[];
 };
 export type StepRunView = {
   id: string; stepInstanceId: string | null; stepOid: string; stepName: string; stepType: string; runNumber: number;

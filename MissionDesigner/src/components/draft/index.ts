@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { DraftRecoveryDialog } from './DraftRecoveryDialog'
+export { DraftRestoredNotice } from './DraftRestoredNotice'
 export { LegacyUpgradeDialog } from './LegacyUpgradeDialog'

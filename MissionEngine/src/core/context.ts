@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import { and, asc, eq, sql } from 'drizzle-orm';
-import { workflowInstance, traceEntry, workCenter, appUser, type StepRunResult } from 'mission-control-db/src/db/schema/index';
+import { and, asc, eq, isNotNull, notInArray, sql } from 'drizzle-orm';
+import { workflowInstance, stepInstance, traceEntry, workCenter, appUser, type StepRunResult } from 'mission-control-db/src/db/schema/index';
 import { writeRuntimeHistory } from 'mission-control-db/src/runtime/engine-access';
 import { workflowOutputs } from 'mission-control-db/src/runtime/workflow-outputs';
 import { loadSharedValueProperties, writeSharedValueProperties } from 'mission-control-db/src/runtime/wc-value-properties';
@@ -34,6 +34,7 @@ import {
 import { isEnvironmentCommand, collectEnvironmentScope, type EnvironmentScope } from './env-scope.js';
 import { assembleReferenceTrace, type RawTraceRow } from './trace-assembly.js';
 import { recordStepRun, recordFailedActiveRuns } from './step-run.js';
+import { CLEANUP_STATUS, FINAL_STATUS, HALT_STATUS, queueCleanupAborts } from './operator-cleanup.js';
 
 export type TerminalStatus = 'completed' | 'aborted' | 'stopped' | 'errored';
 
@@ -1301,6 +1302,32 @@ async function autoReleaseEnvHoldings(tx: Db, context: WorkflowContext): Promise
   }).where(eq(workflowInstance.id, context.id));
 }
 
+/** Spec 2026-11-06 (Operator cleanup): every action still live on one of this instance's step
+ *  rows goes into operatorCleanup.pendingAborts (ABORT + DELETE after commit, by the loop), and
+ *  that list is written to engine_state now, in the caller's transaction — whether or not the
+ *  caller persists afterwards. Used by settles that end a cleanup without endOperatorCleanup's
+ *  teardown; a caller that marks the rows terminal first queues them itself before doing so. */
+export async function queueLiveCleanupActions(tx: Db, context: WorkflowContext): Promise<void> {
+  const oc = context.state.operatorCleanup;
+  if (!oc) return;
+  const rows = await tx.select({
+    id: stepInstance.id, serverUri: stepInstance.actionServerUri, actionInstanceId: stepInstance.actionInstanceId,
+  }).from(stepInstance).where(and(
+    eq(stepInstance.workflowInstanceId, context.id),
+    notInArray(stepInstance.state, ['COMPLETED', 'ERRORED', 'ABORTED', 'CANCELLED']),
+    isNotNull(stepInstance.actionInstanceId), isNotNull(stepInstance.actionServerUri),
+  ));
+  const queued = queueCleanupAborts(context, rows.map(r => ({
+    stepRowId: r.id, serverUri: r.serverUri!, actionInstanceId: r.actionInstanceId!,
+  })));
+  if (!queued) return;
+  await tx.update(workflowInstance).set({
+    // The whole in-memory operatorCleanup (it holds the new entries): also right when the caller
+    // has not persisted the cleanup phase yet.
+    engineState: sql`jsonb_set(coalesce(${workflowInstance.engineState}, '{}'::jsonb), '{operatorCleanup}', ${JSON.stringify(oc)}::jsonb)`,
+  }).where(eq(workflowInstance.id, context.id));
+}
+
 /** Stamp a terminal status + matching final_state + completed_at in one UPDATE, AND (Task 17,
  *  spec §9) write the matching `runtime_history` row in the SAME transaction — every terminal
  *  settle in this engine (instance.ts's invalid-spec-at-start path, transition.ts's completion/
@@ -1344,8 +1371,38 @@ export async function settleTerminal(
   finalState: TerminalStatus,
   now: () => Date,
   from: string = 'running',
+  /** Spec 2026-11-06: why an Operator cleanup ended, when this settle ends one through the
+   *  redirect below ("step failed: <msg>", "engine error: <msg>", …). */
+  cleanupEndReason: string = 'step failed',
 ): Promise<void> {
   context.assertHydrated(); // M1 fix — see WorkflowContext.assertHydrated's own doc comment
+  // Spec 2026-11-06 U3 / C2 catch-all: while an Operator cleanup network runs, any settle the
+  // network's steps reach on a path not hooked explicitly (errorReturnStep, settleFailedInstance,
+  // …) ends the cleanup with the command's final status instead — never 'errored' / 'aborted' /
+  // 'completed' — including a settle from the skip's re-halt (HALT_STATUS[kind] while the phase
+  // is still 'cleanup'). operatorCleanup is null for an instance with no Operator row, so this never
+  // fires there.
+  //
+  // A settle from 'running' (the default) can never match while a cleanup runs — the instance is
+  // in its cleanup status — so it is always moved there, even when the requested status already
+  // is the final one (an Abort cleanup asked to settle 'aborted'): otherwise the UPDATE would
+  // match nothing and leave the instance stuck after its rows were torn down. endOperatorCleanup
+  // and the halt passes always pass an explicit `from`, so they are unaffected.
+  const oc = context.state.operatorCleanup;
+  let cleanupEnded = false;
+  if (oc?.phase === 'cleanup') {
+    if (status !== FINAL_STATUS[oc.kind]
+      && (from === 'running' || from === CLEANUP_STATUS[oc.kind] || from === HALT_STATUS[oc.kind])) {
+      status = finalState = FINAL_STATUS[oc.kind];
+      // The skip's re-halt (HALT_STATUS, U3 still binding) settles from where it is; otherwise the
+      // instance is in its cleanup status.
+      if (from !== HALT_STATUS[oc.kind]) from = CLEANUP_STATUS[oc.kind];
+      cleanupEnded = true;
+    } else if (from === 'running') {
+      from = CLEANUP_STATUS[oc.kind];
+      cleanupEnded = true;
+    }
+  }
   const instanceId = context.id;
   const at = now();
   const [updated] = await tx.update(workflowInstance).set({
@@ -1367,6 +1424,15 @@ export async function settleTerminal(
       createdBy: workflowInstance.createdBy,
     });
   if (!updated) return; // already settled by an earlier call — first-terminal-wins, no history write
+
+  if (cleanupEnded) {
+    await context.recordTrace(tx, null, 'OPERATOR', undefined,
+      `${oc!.kind === 'stop' ? 'Operator Stop' : 'Operator Abort'} cleanup ended: ${cleanupEndReason}`);
+    // Live cleanup actions on other branches are not torn down here (only endOperatorCleanup
+    // does that): ABORT + DELETE them after commit through the durable pendingAborts queue,
+    // written in this same transaction.
+    await queueLiveCleanupActions(tx, context);
+  }
 
   // Phase 2a (Task 5): auto-release every environment resource this instance still holds.
   // Deliberately AFTER the guard above, not merely after the UPDATE — releasing before it would

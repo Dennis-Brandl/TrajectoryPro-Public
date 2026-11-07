@@ -17,12 +17,14 @@ import type { Db } from '../db.js';
 import type { EngineDeps } from '../config.js';
 import type {
   ResourceCommandSpecification, WorkflowConnection, FailureMode, MasterWorkflowStep, CatchContext,
-  MasterWorkflowSpecification, TrySpecification,
+  MasterWorkflowSpecification, WorkflowTrySpecification,
 } from '../spec/types.js';
 import {
   WorkflowContext, openContext, settleTerminal, findSpecByOid, knownStepOids, knownStepOidsUnder,
   envSweepTokens, captureEnvReservations, releaseEnvReservations,
 } from './context.js';
+import { isRunningLike, RUNNING_LIKE_STATUSES, isCleanupActive, useInheritedHold, releasesInheritedHold, forgetInheritedHold, envHoldKey } from './operator-cleanup.js';
+import { afterHaltDrained, endOperatorCleanup, type LiveActionRef } from './operator-cleanup-flow.js';
 import { canonicalStepType, needsUserAction, executeScript, handleSelect1, activateCatchStep, executeGateScript, gateMode, gateUsesBindings, nextGateWake, runRepeatingScript, commitScriptOutputs, nextScriptWake, scriptRepeat } from './step-handlers.js';
 import { notifyWorkCenter } from './reconcile.js';
 import { ACTIVE_ROW_STATES, recordStepRun } from './step-run.js';
@@ -227,6 +229,13 @@ function attemptResourceCommands(
       );
     }
     const { mgr, key, token, env } = tier;
+    // Spec 2026-11-06 U6: a cleanup step's Acquire on a unit the workflow already held when the
+    // cleanup began is granted at once without asking the manager (a named Acquire leaves its
+    // target property as it is) — no new hold, so no envHolds entry either.
+    if ((cmd.command_type === 'Acquire' || cmd.command_type === 'Acquire Pool Amount')
+      && useInheritedHold(context.root, stepOid, env ? envHoldKey(key) : key)) {
+      continue;
+    }
     let blocked = false;
     let grantedName: string | null = null;
     switch (cmd.command_type) {
@@ -325,6 +334,12 @@ export function releaseResourceCompletionCommands(
       // posture must not soften just because this is the release side of the same command.
       const tier = resolveResourceTier(context, stepOid, cmd);
       if (!tier.mgr) continue;
+      // Spec 2026-11-06 U6: the matching Acquire was satisfied by an inherited hold, so this
+      // Release has nothing of its own to give back — the hold is released at settle, as today.
+      const holdKey = tier.env ? envHoldKey(tier.key) : tier.key;
+      if (releasesInheritedHold(context.root, stepOid, holdKey)) continue;
+      // A real Release during the cleanup gives the inherited hold back for good.
+      forgetInheritedHold(context.root, holdKey);
       const name = cmd.target ? context.props.get(cmd.target) : undefined;
       if (!tier.env) {
         tier.mgr.release(tier.key, cmd.amount, name);
@@ -770,6 +785,7 @@ async function materializeAndActivate(
   tx: Db, context: WorkflowContext, stepOid: string, stepDef: MasterWorkflowStep, deps: EngineDeps,
 ): Promise<{ settled: boolean; completed: boolean }> {
   if (context.dead) return { settled: false, completed: false }; // torn-down subtree (spec §3.3)
+  if (await refuseOutsideCleanup(tx, context, stepOid, deps)) return { settled: true, completed: false };
   const [existing] = await tx.select().from(stepInstance)
     .where(and(eq(stepInstance.workflowInstanceId, context.id), eq(stepInstance.stepOid, stepOid)));
 
@@ -945,6 +961,7 @@ export async function drainCascade(tx: Db, context: WorkflowContext, seed: strin
           if (!stepDef) continue; // dangling target — the validator rejects this before instance start
 
           if (canonicalStepType(stepDef.step_type) === 'WAIT ALL') {
+            if (await refuseOutsideCleanup(tx, context, stepDef.oid, deps)) return true;
             const justCompleted = await waitAllArrival(tx, context, stepDef, stepOid, deps);
             if (justCompleted) context.cascadeQueue.push(stepDef.oid);
           } else {
@@ -979,11 +996,12 @@ export async function drainCascade(tx: Db, context: WorkflowContext, seed: strin
  *  (that's drainCascade's job) but "this exact target needs activating right now": GOTO/RETRY's
  *  direct re-entry, or a failStep-armed CATCH's entry point. Continues the cascade if the
  *  target itself completes. Returns settled. */
-async function activateAndCascade(
+export async function activateAndCascade(
   tx: Db, context: WorkflowContext, targetOid: string, sourceOid: string, deps: EngineDeps,
 ): Promise<boolean> {
   const stepDef = context.spec.steps.find(s => s.oid === targetOid);
   if (!stepDef) return false; // dangling target — validator-guarded, defensive no-op
+  if (await refuseOutsideCleanup(tx, context, targetOid, deps)) return true;
 
   if (canonicalStepType(stepDef.step_type) === 'WAIT ALL') {
     const justCompleted = await waitAllArrival(tx, context, stepDef, sourceOid, deps);
@@ -1034,11 +1052,20 @@ export async function hasActiveSteps(tx: Db, instanceId: string): Promise<boolea
  *  supporting in-flight action) and by monitor.ts's applyActionTerminal (the stopDrain path,
  *  right after honestly recording one action step's terminal during an orderly stop) —
  *  whichever caller happens to observe the LAST active step reach a terminal is the one that
- *  settles the instance 'stopped'. Returns whether it settled. */
+ *  settles the instance 'stopped'.
+ *
+ *  Spec 2026-11-06 §5.1: the drained point is handed to afterHaltDrained, which settles exactly
+ *  as before when the root has no OPERATOR_STOP row (C9), or starts the cleanup network instead.
+ *  Returns whether the halt finished — settled, or handed over to the cleanup (the instance has
+ *  left 'stopping' either way). */
 export async function settleStoppedIfDrained(tx: Db, context: WorkflowContext, deps: EngineDeps): Promise<boolean> {
   if (await hasActiveSteps(tx, context.id)) return false;
-  await settleTerminal(tx, context, 'stopped', 'stopped', deps.now, 'stopping');
-  return true;
+  if (await afterHaltDrained(tx, context, 'stop', deps)) return true;
+  // Not settled: either the cleanup started (the instance left 'stopping') or afterHaltDrained
+  // refused to end a running cleanup (still 'stopping' — not progress, so the loop must not spin).
+  const [inst] = await tx.select({ status: workflowInstance.status }).from(workflowInstance)
+    .where(eq(workflowInstance.id, context.id));
+  return inst?.status !== 'stopping';
 }
 
 // ── TRY/CATCH/RETURN failure routing (reference engine.ts:262-441) ──
@@ -1342,6 +1369,80 @@ async function returnAbandon(tx: Db, context: WorkflowContext, deps: EngineDeps)
   releaseAllInstanceResources(context, known);
 }
 
+/** Spec 2026-11-06 §5.1 step 5 (endOperatorCleanup): tear down every non-terminal row of the
+ *  instance the way returnAbandon does for the root context — active rows (and, through
+ *  tearDownActiveChild, every live child subtree) get a cancelled step run, an IDLE trace and are
+ *  deleted; READY rows are CANCELLED — then release resources. Returns the live action instances
+ *  those rows had, for the caller to ABORT + DELETE after commit (never inside the transaction). */
+export async function tearDownForOperatorEnd(tx: Db, root: WorkflowContext, deps: EngineDeps): Promise<LiveActionRef[]> {
+  const all = await tx.select().from(stepInstance).where(eq(stepInstance.workflowInstanceId, root.id));
+  const live: LiveActionRef[] = all
+    .filter(r => !TERMINAL_STEP_STATES.has(r.state) && r.actionInstanceId && r.actionServerUri)
+    .map(r => ({ stepRowId: r.id, serverUri: r.actionServerUri!, actionInstanceId: r.actionInstanceId! }));
+  const known = knownStepOids(root); // before tearDownActiveChild drops the childActive links
+  for (const row of all) {
+    if (row.nodeOid !== root.spec.oid) continue; // child rows go with their proxy, below
+    if (ACTIVE_ROW_STATES.has(row.state)) {
+      await tearDownActiveChild(tx, root, row.stepOid);
+      await recordStepRun(tx, root, row.stepOid, 'cancelled');
+      await root.recordTrace(tx, row.stepOid, 'IDLE');
+      await tx.delete(stepInstance).where(eq(stepInstance.id, row.id));
+    } else if (row.state === 'READY') {
+      await tx.update(stepInstance).set({ state: 'CANCELLED', updatedAt: deps.now() }).where(eq(stepInstance.id, row.id));
+    }
+  }
+  releaseAllInstanceResources(root, known);
+  return live;
+}
+
+/** The step oids of one catch_id's network (CATCH through RETURN), or an empty set. */
+export function catchNetworkOids(context: WorkflowContext, catchId: string): Set<string> {
+  return buildPartition(context).networksByCatchId.get(catchId) ?? new Set<string>();
+}
+
+/** Spec 2026-11-06 §5.4: the root steps that may run while an Operator cleanup is active — the
+ *  Operator CATCH's network plus every CATCH network reachable from its steps' own step-level TRY
+ *  rows (transitively). Empty when no cleanup is recorded. */
+export function cleanupAllowedOids(root: WorkflowContext): Set<string> {
+  const allowed = new Set<string>();
+  const oc = root.state.operatorCleanup;
+  const opCatch = oc ? root.spec.steps.find(s => s.oid === oc.catchOid) : undefined;
+  if (!opCatch?.catch_id) return allowed;
+  const partition = buildPartition(root);
+  const pending = [opCatch.catch_id];
+  const seen = new Set<string>();
+  while (pending.length > 0) {
+    const cid = pending.pop()!;
+    if (seen.has(cid)) continue;
+    seen.add(cid);
+    for (const oid of partition.networksByCatchId.get(cid) ?? []) {
+      allowed.add(oid);
+      const def = root.spec.steps.find(s => s.oid === oid);
+      for (const t of def?.try_specifications ?? []) if (t.catch_id) pending.push(t.catch_id);
+    }
+  }
+  return allowed;
+}
+
+/** Defence in depth for §5.4: while an Operator cleanup is active, a ROOT step outside
+ *  cleanupAllowedOids must never activate (the main flow is halted). Should one be reached, it is
+ *  refused, logged loudly, and the cleanup ends as failed (U3 / C2: the command's final status)
+ *  rather than running the main flow. Returns true when it refused (the instance settled).
+ *  Child-workflow contexts are never refused here. No cleanup → false at once (C9). */
+async function refuseOutsideCleanup(tx: Db, context: WorkflowContext, stepOid: string, deps: EngineDeps): Promise<boolean> {
+  if (!context.isRoot || !isCleanupActive(context)) return false;
+  if (cleanupAllowedOids(context).has(stepOid)) return false;
+  const name = context.spec.steps.find(s => s.oid === stepOid)?.local_id ?? stepOid;
+  console.error(
+    `[mission-engine] instance ${context.id}: step '${name}' is outside the Operator cleanup ` +
+    'network and may not run while the cleanup is active — ending the cleanup',
+  );
+  await endOperatorCleanup(tx, context, deps, {
+    kind: 'failure', message: `step '${name}' is outside the cleanup network`,
+  });
+  return true;
+}
+
 /** Reference engine.ts:390 returnRestart: full workflow-global teardown (every step idled and
  *  deleted — trace stays append-only, only the LIVE row goes away), every EngineState map
  *  cleared, resources released, and — CLEAN only — Value Properties re-initialised to their
@@ -1492,7 +1593,9 @@ async function errorReturnStep(
     return false;
   }
   await context.persist(tx);
-  await settleTerminal(tx, context, 'errored', 'errored', deps.now);
+  // In an Operator cleanup the settle is redirected to the command's final status (context.ts);
+  // the reason names this RETURN's own failure.
+  await settleTerminal(tx, context, 'errored', 'errored', deps.now, 'running', `step failed: ${reason}`);
   return true;
 }
 
@@ -1540,6 +1643,28 @@ async function dispatchReturn(
 
   const catchOid = findActiveCatchForReturn(context, target.stepOid);
   const ctx = catchOid ? context.state.activeCatches[catchOid] : undefined;
+
+  // Spec 2026-11-06 C5: any RETURN in the Operator cleanup network ends the cleanup, whatever its
+  // command — there is no main flow to go back to.
+  if (catchOid && context.isRoot && isCleanupActive(context) && context.state.operatorCleanup?.catchOid === catchOid) {
+    await endOperatorCleanup(tx, context, deps, { kind: 'return' });
+    return true;
+  }
+  // §5.4 "nothing outside the cleanup network may activate": a RETURN of a CATCH nested inside the
+  // cleanup (a cleanup step's own step-level TRY) whose command would leave the cleanup — ABANDON
+  // and RESTART act on the whole (halted) workflow, a GOTO may target a main-flow step — ends the
+  // cleanup instead, like the Operator CATCH's own RETURN (C5). A GOTO that stays inside the
+  // cleanup, RETRY and COMPLETE (both re-run / complete the failed cleanup step) work as usual.
+  // A child workflow's own RETURNs (a WORKFLOW PROXY in the cleanup) are its own business.
+  if (context.isRoot && isCleanupActive(context)) {
+    const leaves = rc.command === 'ABANDON' || rc.command === 'RESTART'
+      || (rc.command === 'GOTO' && !cleanupAllowedOids(context).has(rc.goto_step_oid!));
+    if (leaves) {
+      if (catchOid) delete context.state.activeCatches[catchOid];
+      await endOperatorCleanup(tx, context, deps, { kind: 'return' });
+      return true;
+    }
+  }
 
   let settledTerminal = false;
   switch (rc.command) {
@@ -1725,12 +1850,17 @@ export async function failStep(
   // ENCLOSING spec's workflow-level row (a child consults its own rows, never the root's).
   // Defensive posture matches the old single-tier code: a row whose catch_id doesn't resolve
   // to a real CATCH here is skipped (the validator rejects that spec at instance start).
-  let matching: TrySpecification | undefined;
+  //
+  // Spec 2026-11-06 C6: while an Operator cleanup runs, only the step-level row is consulted, at
+  // every level (a child re-enters here through escalateChildFailure, so the same rule applies):
+  // a workflow-level ERROR/TIMEOUT/ABORT row never catches a cleanup-step failure.
+  const inCleanup = isCleanupActive(context.root);
+  let matching: WorkflowTrySpecification | undefined;
   let catchStep: MasterWorkflowStep | undefined;
   if (mode) {
     for (const candidate of [
       stepDef?.try_specifications?.find(t => t.mode === mode),
-      context.spec.try_specifications?.find(t => t.mode === mode),
+      inCleanup ? undefined : context.spec.try_specifications?.find(t => t.mode === mode),
     ]) {
       if (!candidate) continue;
       const cs = findCatchByCatchId(context, candidate.catch_id);
@@ -1752,6 +1882,11 @@ export async function failStep(
       // child-context early-return (silent branch death) is gone. persist/settle go through
       // the ROOT: a view's persist() throws by design (context.ts).
       await context.root.persist(tx);
+      if (inCleanup) {
+        // C6 / U3: a re-entry inside the cleanup ends the cleanup — never 'aborted'.
+        await endOperatorCleanup(tx, context.root, deps, { kind: 'failure', message: reason });
+        return true;
+      }
       await settleTerminal(tx, context.root, 'aborted', 'aborted', deps.now);
       return true;
     }
@@ -1838,6 +1973,12 @@ export async function failStep(
     return false;
   }
   await context.persist(tx);
+  if (inCleanup) {
+    // C6 / U3: an uncaught cleanup failure ends the cleanup; the workflow ends with the
+    // command's final status, never 'errored'.
+    await endOperatorCleanup(tx, context, deps, { kind: 'failure', message: error ?? mode ?? 'failed' });
+    return true;
+  }
   await settleTerminal(tx, context, 'errored', 'errored', deps.now);
   return true;
 }
@@ -2427,6 +2568,15 @@ async function completeChildWorkflow(
  */
 export async function settleIfComplete(tx: Db, root: WorkflowContext, nodeOid: string, deps: EngineDeps): Promise<void> {
   if (nodeOid === root.spec.oid) {
+    // Spec 2026-11-06 §5.1 step 5: a cleanup network that runs out of work without reaching a
+    // RETURN ends the cleanup; the instance never settles 'completed' while one is active.
+    if (isCleanupActive(root)) {
+      const live = await tx.select({ id: stepInstance.id }).from(stepInstance).where(and(
+        eq(stepInstance.workflowInstanceId, root.id), inArray(stepInstance.state, NON_TERMINAL_STEP_STATES),
+      )).limit(1);
+      if (live.length === 0) await endOperatorCleanup(tx, root, deps, { kind: 'drained' });
+      return;
+    }
     if (await isWorkflowComplete(tx, root.id, root.spec.oid)) {
       await settleTerminal(tx, root, 'completed', 'completed', deps.now);
     }
@@ -2534,7 +2684,7 @@ export async function processReadyStep(tx: Db, instanceId: string, deps: EngineD
   // the WORKER LOOP path safe; this call also runs from inside submit.ts's own transaction,
   // which does its OWN single running-check up front and then keeps calling this in a loop —
   // so this function must re-verify on every single call, not trust its caller's earlier check.
-  if (row.status !== 'running') return false;
+  if (!isRunningLike(row.status)) return false;
   const context = await openContext(tx, row, deps);
 
   const readyRows = await tx.select().from(stepInstance)
@@ -2588,6 +2738,7 @@ export async function processReadyStep(tx: Db, instanceId: string, deps: EngineD
   const stepCtx = context.contextForNode(target.nodeOid);
   const stepDef = stepCtx.spec.steps.find(s => s.oid === target.stepOid);
   if (!stepDef) throw new Error(`step "${target.stepOid}" not found in spec "${stepCtx.spec.oid}"`);
+  if (await refuseOutsideCleanup(tx, stepCtx, target.stepOid, deps)) return true;
 
   if (stepDef.resource_command_specifications?.length) {
     const granted = tryActivateResources(stepCtx, target.stepOid, stepDef.resource_command_specifications);

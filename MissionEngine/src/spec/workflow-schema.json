@@ -421,11 +421,20 @@
         }
       }
     },
-    "TrySpecification": {
+    "StepTrySpecification": {
       "type": "object",
       "required": ["mode", "catch_id"],
       "properties": {
         "mode": { "type": "string", "enum": ["ERROR", "ABORT", "TIMEOUT"] },
+        "catch_id": { "type": "string", "minLength": 1 },
+        "release_on_catch": { "type": "boolean" }
+      }
+    },
+    "WorkflowTrySpecification": {
+      "type": "object",
+      "required": ["mode", "catch_id"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["ERROR", "ABORT", "TIMEOUT", "OPERATOR_STOP", "OPERATOR_ABORT"] },
         "catch_id": { "type": "string", "minLength": 1 },
         "release_on_catch": { "type": "boolean" }
       }
@@ -638,7 +647,7 @@
             },
             "try_specifications": {
               "type": "array",
-              "items": { "$ref": "#/$defs/TrySpecification" }
+              "items": { "$ref": "#/$defs/StepTrySpecification" }
             },
             "catch_id": { "type": "string", "minLength": 1 },
             "return_config": { "$ref": "#/$defs/ReturnConfig" }
@@ -667,7 +676,7 @@
             },
             "try_specifications": {
               "type": "array",
-              "items": { "$ref": "#/$defs/TrySpecification" }
+              "items": { "$ref": "#/$defs/WorkflowTrySpecification" }
             },
             "starting_parameter_specifications": {
               "type": "array",
@@ -729,7 +738,7 @@
         },
         "try_specifications": {
           "type": "array",
-          "items": { "$ref": "#/$defs/TrySpecification" }
+          "items": { "$ref": "#/$defs/WorkflowTrySpecification" }
         },
         "starting_parameter_specifications": {
           "type": "array",

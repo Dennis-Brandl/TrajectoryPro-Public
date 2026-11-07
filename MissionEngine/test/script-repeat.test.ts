@@ -219,8 +219,8 @@ test('stop cancels a waiting script; abort flips it ABORTED', async () => {
   const a = await seedQueued(db, repeatSpec('wf-rs-9', COUNT_FOREVER, {}));
   const b = await seedQueued(db, repeatSpec('wf-rs-10', COUNT_FOREVER, {}));
   await pumpUntilQuiet(db, deps);
-  await requestStop(db, a.id);
-  await requestAbort(db, b.id);
+  await requestStop(db, a.id, { kind: 'system', label: 'test' });
+  await requestAbort(db, b.id, { kind: 'system', label: 'test' });
   await pumpUntilQuiet(db, deps);
   const stopped = await scriptRow(db, a.id);
   expect(stopped.state).toBe('CANCELLED');

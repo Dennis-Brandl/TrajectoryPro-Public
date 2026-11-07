@@ -13,13 +13,14 @@
 // limitations under the License.
 import { sql, inArray, eq, and, isNotNull, lte, ne, type SQL } from 'drizzle-orm';
 import { workflowInstance, stepInstance } from 'mission-control-db/src/db/schema/index';
+import { isRunningLike, RUNNING_LIKE_STATUSES, isCleanupActive, engineErrorReason } from './core/operator-cleanup.js';
 import { acquireQueuedRuntimeWorkflows } from 'mission-control-db/src/runtime/engine-access';
 import { getActionMatchingMode } from 'mission-control-db/src/dao/system-settings';
 import type { Db } from './db.js';
 import type { EngineDeps } from './config.js';
 import { startInstanceFromQueued } from './core/instance.js';
 import { processReadyStep, NON_TERMINAL_STEP_STATES, StartRecoveryFailedError } from './core/transition.js';
-import { openContext, settleTerminal, findSpecByOid } from './core/context.js';
+import { openContext, settleTerminal, findSpecByOid, queueLiveCleanupActions } from './core/context.js';
 import { recordFailedActiveRuns } from './core/step-run.js';
 import { loadEngineState } from './core/engine-state.js';
 import type { MasterWorkflowSpecification } from './spec/types.js';
@@ -27,6 +28,7 @@ import { ActionInstanceLost, ActionStatusFailed, BrokerTokenRejected, ActionsKey
 import { applyActionTerminal, startActionMonitoring, closeMonitoring, ACTION_TERMINAL_BY_SERVER_STATE } from './actions/monitor.js';
 import { runControlPass, logWaitingForServer, clearWaitingLog, PAUSE_UNKNOWN_LIMIT_MS } from './core/control.js';
 import { runSweep } from './core/sweep.js';
+import { finalizeOrphanedActions } from './core/operator-cleanup-flow.js';
 import { reconcileAndNotify } from './core/reconcile.js';
 import { processDueGateWork } from './core/gate.js';
 import { processDueInputBindingWork } from './core/input-bindings.js';
@@ -185,7 +187,7 @@ export async function settleFailedInstance(db: Db, instanceId: string, err: unkn
 
     const [row] = await tx.select().from(workflowInstance).where(eq(workflowInstance.id, instanceId));
     if (!row) return;
-    if (row.status !== 'running') {
+    if (!isRunningLike(row.status)) {
       // Under real multi-worker concurrency (startLoop runs N slots), the transition that
       // threw and rolled back released this row's lock BEFORE this recovery transaction ever
       // ran — a different worker can legitimately re-claim and finish (or otherwise resolve)
@@ -198,6 +200,9 @@ export async function settleFailedInstance(db: Db, instanceId: string, err: unkn
     const context = await openContext(tx, row, deps);
     await context.recordTrace(tx, null, 'ERRORED', undefined, message);
     await recordFailedActiveRuns(tx, context, message);
+    // Spec 2026-11-06: a cleanup's live actions are aborted after commit — queued before the
+    // update below marks their rows terminal.
+    if (isCleanupActive(context)) await queueLiveCleanupActions(tx, context);
     await context.persist(tx);
 
     await tx.update(stepInstance).set({
@@ -207,7 +212,7 @@ export async function settleFailedInstance(db: Db, instanceId: string, err: unkn
       inArray(stepInstance.state, NON_TERMINAL_STEP_STATES),
     ));
 
-    await settleTerminal(tx, context, 'errored', 'errored', deps.now);
+    await settleTerminal(tx, context, 'errored', 'errored', deps.now, row.status, engineErrorReason(message));
     await reconcileAndNotify(tx, instanceId, deps);
   });
 }
@@ -255,10 +260,18 @@ const ACTIONABLE_STEP_STATES = ['WAITING_ACTION', 'PAUSED'];
  *  during an orderly stop's drain (the whole point of `stopping` is waiting for exactly these
  *  terminals to arrive). READY-step activation (processReadyStep's own claim, above) stays
  *  'running'-only — that half of the freeze is structural and unaffected; this is due-wake's own,
- *  narrower claim for rows that are ALREADY active. 'resuming'/'aborting' are excluded — both
- *  settle within one short, atomic control-pass transaction that itself resolves every row it
- *  touches. */
-const DUE_WORK_STATUSES = ['running', 'paused', 'pausing', 'stopping'];
+ *  narrower claim for rows that are ALREADY active. 'resuming' is excluded, and so is 'aborting'
+ *  outside an Operator Abort halt (ABORTING_ONLY_IN_ABORT_HALT) — both settle within one short,
+ *  atomic control-pass transaction that itself resolves every row it touches. */
+const DUE_WORK_STATUSES = [...RUNNING_LIKE_STATUSES, 'paused', 'pausing', 'stopping', 'aborting'];
+
+/** Spec 2026-11-06 C11: an 'aborting' instance is due-work eligible only during an Operator Abort
+ *  halt (its aborted actions' status checks are what confirm the halt). Any other aborting
+ *  instance — today's single-pass abort, no OPERATOR_ABORT row — is never claimed here, as
+ *  before 'aborting' was listed. */
+const ABORTING_ONLY_IN_ABORT_HALT = sql`(${workflowInstance.status} <> 'aborting' or (
+  ${workflowInstance.engineState} #>> '{operatorCleanup,kind}' = 'abort'
+  and ${workflowInstance.engineState} #>> '{operatorCleanup,phase}' = 'halting'))`;
 
 /**
  * Claim ONE instance (in a due-work-eligible status — see DUE_WORK_STATUSES) with a due action
@@ -285,7 +298,9 @@ async function claimDueActionStep(db: Db, deps: EngineDeps): Promise<ClaimedDueA
     if (dueCandidates.length === 0) return null;
     const candidateIds = [...new Set(dueCandidates.map(r => r.workflowInstanceId))];
 
-    const instanceId = await claimInstanceForWork(tx, DUE_WORK_STATUSES, inArray(workflowInstance.id, candidateIds));
+    const instanceId = await claimInstanceForWork(
+      tx, DUE_WORK_STATUSES, and(inArray(workflowInstance.id, candidateIds), ABORTING_ONLY_IN_ABORT_HALT)!,
+    );
     if (!instanceId) return null;
 
     const [row] = await tx.select().from(workflowInstance).where(eq(workflowInstance.id, instanceId));
@@ -596,7 +611,7 @@ export async function processDueActionWork(db: Db, deps: EngineDeps): Promise<bo
     // needs to keep operating under those statuses — only the invoke branch is narrowed here.
     // claimDueActionStep's own re-arm-forward-by-invokeGraceSecs already ran before this check, so
     // this row won't be reclaimed again for a while regardless of the decline.
-    if (claimed.status !== 'running') return false;
+    if (!isRunningLike(claimed.status)) return false;
     await invokeDueStep(db, deps, claimed);
   } else {
     await pollDueStep(db, deps, claimed);
@@ -678,6 +693,10 @@ export function startSweepTimer(db: Db, deps: EngineDeps): () => void {
  */
 async function runOneUnit(db: Db, deps: EngineDeps): Promise<boolean> {
   try {
+    // Spec 2026-11-06: actions torn down with an ended Operator cleanup network get their
+    // best-effort ABORT + DELETE here, after the ending transaction committed (empty queue: no-op).
+    if (await finalizeOrphanedActions(db, deps)) return true;
+
     // C1: acquire + instance-start is ONE atomic transaction. Splitting them across two
     // separate db.transaction calls meant a crash — or any throw inside the second one, which
     // was silently swallowed — left a durably 'running' instance with zero step rows: the
@@ -725,7 +744,7 @@ async function runOneUnit(db: Db, deps: EngineDeps): Promise<boolean> {
     let claimedInstanceId: string | null = null;
     try {
       const didWork = await db.transaction(async (tx) => {
-        claimedInstanceId = await claimInstanceForWork(tx, ['running'], READY_STEP_EXISTS);
+        claimedInstanceId = await claimInstanceForWork(tx, [...RUNNING_LIKE_STATUSES], READY_STEP_EXISTS);
         if (!claimedInstanceId) return false;
         const did = await processReadyStep(tx, claimedInstanceId, deps);
         await reconcileAndNotify(tx, claimedInstanceId, deps);

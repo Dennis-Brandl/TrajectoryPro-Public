@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { STEP_TRY_MODES, WORKFLOW_TRY_MODES } from '@/lib/try-modes'
 import type { FormDocument } from '@mission/form-schema'
 import { joinDuration, type DurationParts } from '@/lib/duration'
 import type { ResourceCommandSpecification, MasterWorkflowStep } from './export-types'
@@ -235,18 +236,20 @@ export function extractFormElementImages(
 // TRY/CATCH/RETURN Extractors
 // =============================================================================
 
-const VALID_TRY_MODES = new Set(['ERROR', 'ABORT', 'TIMEOUT'])
+const VALID_STEP_TRY_MODES = new Set<string>(STEP_TRY_MODES)
+const VALID_WORKFLOW_TRY_MODES = new Set<string>(WORKFLOW_TRY_MODES)
 
 /**
  * Extracts try_specifications from a node's data (verbatim inner shape — no field renaming).
  */
-export function extractTrySpecifications(data: Record<string, unknown>) {
+export function extractTrySpecifications(data: Record<string, unknown>, level: 'step' | 'workflow' = 'step') {
+  const validModes = level === 'workflow' ? VALID_WORKFLOW_TRY_MODES : VALID_STEP_TRY_MODES
   const ts = data?.trySpecifications
   if (!Array.isArray(ts) || ts.length === 0) return undefined
   const cleaned = ts.filter(
     (t) =>
       t &&
-      VALID_TRY_MODES.has((t as { mode?: string }).mode ?? '') &&
+      validModes.has((t as { mode?: string }).mode ?? '') &&
       typeof (t as { catch_id?: unknown }).catch_id === 'string',
   )
   return cleaned.length ? cleaned : undefined

@@ -212,7 +212,9 @@ function tryCatchValidation(workflow: Record<string, unknown>): ValidationResult
   // Spec 2026-08-29 §5.6/§6.6: GATE joins the set — a throwing/timing-out gate script or a
   // failed Action Property fetch fails the step (mode ERROR), same posture as SCRIPT.
   const TRY_SCOPED = new Set(['ACTION PROXY', 'SCRIPT', 'USER INTERACTION', 'YES NO', 'WORKFLOW PROXY', 'GATE']);
-  const MODES = new Set(['ERROR', 'ABORT', 'TIMEOUT']);
+  const STEP_MODES = new Set(['ERROR', 'ABORT', 'TIMEOUT']);
+  // Spec 2026-11-06: the two Operator modes exist at workflow level only.
+  const WORKFLOW_MODES = new Set(['ERROR', 'ABORT', 'TIMEOUT', 'OPERATOR_STOP', 'OPERATOR_ABORT']);
   const COMMANDS = new Set(['ABANDON', 'RESTART', 'GOTO', 'RETRY', 'COMPLETE']);
 
   for (const step of steps) {
@@ -235,7 +237,7 @@ function tryCatchValidation(workflow: Record<string, unknown>): ValidationResult
       }
       const seen = new Set<string>();
       for (const t of tries) {
-        if (!MODES.has(t.mode)) return fail('INVALID_TRY_MODE', `invalid try mode '${t.mode}'`, oid);
+        if (!STEP_MODES.has(t.mode)) return fail('INVALID_TRY_MODE', `invalid try mode '${t.mode}'`, oid);
         if (seen.has(t.mode)) return fail('DUPLICATE_TRY_MODE', `mode '${t.mode}' appears more than once`, oid);
         seen.add(t.mode);
       }
@@ -255,12 +257,13 @@ function tryCatchValidation(workflow: Record<string, unknown>): ValidationResult
     }
   }
 
-  // Spec 2026-08-22 §5: workflow-level rows get the same mode rules as a step's.
+  // Spec 2026-08-22 §5: workflow-level rows get the same duplicate rules as a step's; the
+  // mode set is wider (spec 2026-11-06: OPERATOR_STOP / OPERATOR_ABORT).
   const wfTries = workflow['try_specifications'] as Array<{ mode: string; catch_id: string }> | undefined;
   if (wfTries && wfTries.length > 0) {
     const seenWf = new Set<string>();
     for (const t of wfTries) {
-      if (!MODES.has(t.mode)) return fail('INVALID_TRY_MODE', `invalid workflow-level try mode '${t.mode}'`);
+      if (!WORKFLOW_MODES.has(t.mode)) return fail('INVALID_TRY_MODE', `invalid workflow-level try mode '${t.mode}'`);
       if (seenWf.has(t.mode)) return fail('DUPLICATE_TRY_MODE', `workflow-level mode '${t.mode}' appears more than once`);
       seenWf.add(t.mode);
     }

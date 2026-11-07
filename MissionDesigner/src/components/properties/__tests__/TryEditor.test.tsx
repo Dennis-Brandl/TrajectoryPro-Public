@@ -64,3 +64,51 @@ describe('TryEditor', () => {
     expect(getByText(/Add TRY/i)).toBeTruthy()
   })
 })
+
+describe('TryEditor operator modes', () => {
+  it('step level never offers Operator modes', () => {
+    const { container } = render(
+      <TryEditor value={[{ mode: 'ERROR', catch_id: 'OvenFailed' }]} onChange={vi.fn()} availableCatches={catches} />,
+    )
+    const opts = Array.from(container.querySelectorAll('option')).map((o) => o.value)
+    expect(opts).not.toContain('OPERATOR_STOP')
+    expect(opts).not.toContain('OPERATOR_ABORT')
+  })
+  it('workflow level offers Operator Stop and Operator Abort labels', () => {
+    const { getByText } = render(
+      <TryEditor
+        level="workflow"
+        value={[{ mode: 'ERROR', catch_id: 'OvenFailed' }]}
+        onChange={vi.fn()}
+        availableCatches={catches}
+      />,
+    )
+    expect(getByText('Operator Stop')).toBeTruthy()
+    expect(getByText('Operator Abort')).toBeTruthy()
+  })
+  it('workflow level shows the child-workflow hint', () => {
+    const { getByText } = render(
+      <TryEditor level="workflow" value={[]} onChange={vi.fn()} availableCatches={catches} />,
+    )
+    expect(
+      getByText(
+        'Operator Stop and Operator Abort run only when this workflow is the top-level runtime; they are ignored when it runs as a child workflow.',
+      ),
+    ).toBeTruthy()
+  })
+  it('step level has no hint', () => {
+    const { queryByText } = render(<TryEditor value={[]} onChange={vi.fn()} availableCatches={catches} />)
+    expect(queryByText(/top-level runtime/)).toBeNull()
+  })
+  it('release checkbox hidden on an Operator row', () => {
+    const { queryByRole } = render(
+      <TryEditor
+        level="workflow"
+        value={[{ mode: 'OPERATOR_STOP', catch_id: 'OvenFailed' }]}
+        onChange={vi.fn()}
+        availableCatches={catches}
+      />,
+    )
+    expect(queryByRole('checkbox')).toBeNull()
+  })
+})

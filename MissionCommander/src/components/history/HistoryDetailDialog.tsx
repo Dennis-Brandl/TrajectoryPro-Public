@@ -27,6 +27,7 @@ import { RuntimeStatusBadge } from '@/components/runtime/RuntimeStatusBadge';
 import { SignaturesSection } from '@/components/runtime/SignaturesSection';
 import { StaticCreatedRuntimes } from '@/components/runtime/CreatedRuntimesSection';
 import { formatDuration } from './format-duration';
+import { controlEventText, requesterName } from './control-event-text';
 import { activationRunNumbers, stepRunPathText } from './record/step-run-labels';
 import type { CreatedRuntimeTarget, RuntimeHistoryDetail } from '@/lib/api/types';
 
@@ -187,6 +188,19 @@ export function HistoryDetailDialog({ id, onClose, onDeleted, onOpenChild, back 
 
         {onOpenChild && view.workflowInstanceId && (
           <StaticCreatedRuntimes instanceId={view.workflowInstanceId} onOpen={(t) => onOpenChild(t, view.runtimeLabel)} />
+        )}
+
+        {view.controlEvents.length > 0 && (
+          <div className="space-y-1">
+            <h3 className="text-sm font-medium">Control requests</h3>
+            <ul className="space-y-0.5 text-xs text-muted-foreground">
+              {view.controlEvents.map((e, i) => (
+                <li key={i}>
+                  {controlEventText(e)} by {requesterName(e.actorName)} · {new Date(e.at).toLocaleString()}
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
         <div className="space-y-1">

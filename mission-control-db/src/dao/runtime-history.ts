@@ -14,9 +14,10 @@
 
 import { and, desc, eq, gte, ilike, inArray, isNotNull, isNull, lt, lte, sql } from 'drizzle-orm';
 import { runtimeHistory, type RuntimeFinalState } from '../db/schema/index.js';
-import { stepSignature, stepRun } from '../db/schema/execution.js';
+import { stepSignature, stepRun, runtimeControlEvent } from '../db/schema/execution.js';
 import { appUser } from '../db/schema/identity.js';
 import { listStepRuns, deleteStepRunsForInstances, type StepRunView } from './step-runs.js';
+import { listControlEvents, deleteControlEventsForInstances, type ControlEventView } from './control-events.js';
 import { DaoError } from './errors.js';
 import { listStepSignatures, deleteStepSignaturesForInstances, type StepSignatureView } from './step-signatures.js';
 import type { Schema } from '../db/client.js';
@@ -41,6 +42,8 @@ export type RuntimeHistoryDetail = RuntimeHistorySummary & {
   stepParams: unknown | null; stepNames: Record<string, string> | null;
   signatures: StepSignatureView[];
   stepRuns: StepRunView[];
+  /** Who sent every Stop/Abort/skip-cleanup, oldest first (spec 2026-11-06 U8). */
+  controlEvents: ControlEventView[];
   startedByUserId: string | null; startedByLoginName: string | null;
   /** login names for every uuid that appears as `[by <uuid>]` in the trace error texts; unknown ids omitted. */
   userNames: Record<string, string>;
@@ -110,6 +113,7 @@ export async function getRuntimeHistoryDetail(db: Db, id: string): Promise<Runti
   if (!row) return undefined;
   const signatures = row.workflowInstanceId ? await listStepSignatures(db, row.workflowInstanceId) : [];
   const stepRuns = row.workflowInstanceId ? await listStepRuns(db, row.workflowInstanceId) : [];
+  const controlEvents = row.workflowInstanceId ? await listControlEvents(db, row.workflowInstanceId) : [];
   const ids = new Set<string>();
   for (const m of JSON.stringify(row.trace ?? []).matchAll(/\[by ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\]/gi)) ids.add(m[1]!.toLowerCase());
   const userNames: Record<string, string> = {};
@@ -118,7 +122,7 @@ export async function getRuntimeHistoryDetail(db: Db, id: string): Promise<Runti
       .where(inArray(appUser.id, [...ids]));
     for (const u of users) userNames[u.id] = u.loginName;
   }
-  return { ...(row as Omit<RuntimeHistoryDetail, 'signatures' | 'stepRuns' | 'userNames'>), signatures, stepRuns, userNames };
+  return { ...(row as Omit<RuntimeHistoryDetail, 'signatures' | 'stepRuns' | 'controlEvents' | 'userNames'>), signatures, stepRuns, controlEvents, userNames };
 }
 
 export async function deleteRuntimeHistory(db: Db, id: string): Promise<void> {
@@ -128,6 +132,7 @@ export async function deleteRuntimeHistory(db: Db, id: string): Promise<void> {
     if (row.workflowInstanceId) {
       await deleteStepSignaturesForInstances(tx, [row.workflowInstanceId]);
       await deleteStepRunsForInstances(tx, [row.workflowInstanceId]);
+      await deleteControlEventsForInstances(tx, [row.workflowInstanceId]);
     }
     await tx.delete(runtimeHistory).where(eq(runtimeHistory.id, id));
   });
@@ -170,6 +175,13 @@ export async function purgeRuntimeHistory(
     await tx.delete(stepRun).where(
       inArray(
         stepRun.workflowInstanceId,
+        tx.select({ id: runtimeHistory.workflowInstanceId }).from(runtimeHistory)
+          .where(and(...purgeConds(opts), isNotNull(runtimeHistory.workflowInstanceId))),
+      ),
+    );
+    await tx.delete(runtimeControlEvent).where(
+      inArray(
+        runtimeControlEvent.workflowInstanceId,
         tx.select({ id: runtimeHistory.workflowInstanceId }).from(runtimeHistory)
           .where(and(...purgeConds(opts), isNotNull(runtimeHistory.workflowInstanceId))),
       ),

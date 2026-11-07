@@ -27,6 +27,7 @@ import type { Db } from '../db.js';
 import type { EngineDeps } from '../config.js';
 import type { MasterWorkflowStep } from '../spec/types.js';
 import { WorkflowContext, openContext } from './context.js';
+import { isRunningLike, RUNNING_LIKE_STATUSES } from './operator-cleanup.js';
 import { executeGateScript, gateMode, gateExpired, gateUsesBindings, nextGateWake, formatDuration, scriptExpired, scriptUsesBindings, nextScriptWake } from './step-handlers.js';
 import { failStep, settleIfComplete, completeWaitingStep, TERMINAL_STEP_STATES } from './transition.js';
 import { evaluateScriptOnClaim } from './repeating-script.js';
@@ -269,7 +270,7 @@ export async function processDueGateWork(db: Db, deps: EngineDeps): Promise<bool
         ));
       if (dueCandidates.length === 0) return false;
       const candidateIds = [...new Set(dueCandidates.map(r => r.workflowInstanceId))];
-      const instanceId = await claimInstanceForWork(tx, ['running'], inArray(workflowInstance.id, candidateIds));
+      const instanceId = await claimInstanceForWork(tx, [...RUNNING_LIKE_STATUSES], inArray(workflowInstance.id, candidateIds));
       if (!instanceId) return false;
       claimedInstanceId = instanceId;
       const [wfRow] = await tx.select().from(workflowInstance).where(eq(workflowInstance.id, instanceId));
@@ -339,7 +340,7 @@ export async function processDueGateWork(db: Db, deps: EngineDeps): Promise<bool
       const claimedId = await claimInstanceById(tx, gateFetch.instanceId);
       if (!claimedId) return;
       const [wfRow] = await tx.select().from(workflowInstance).where(eq(workflowInstance.id, claimedId));
-      if (!wfRow || wfRow.status !== 'running') return;
+      if (!wfRow || !isRunningLike(wfRow.status)) return;
       const [current] = await tx.select().from(stepInstance).where(eq(stepInstance.id, gateFetch.stepInstanceId));
       if (!current || current.state !== gateFetch.state) return; // resolved/cancelled in the gap
       const context = await openContext(tx, wfRow, deps);

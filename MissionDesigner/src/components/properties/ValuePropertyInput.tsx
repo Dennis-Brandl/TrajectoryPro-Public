@@ -13,17 +13,7 @@
 // limitations under the License.
 
 import { memo, useMemo } from 'react'
-import { Input } from '@mission/ui'
-import { ChevronDown } from 'lucide-react'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@mission/ui'
+import { AutocompleteInput, type ComboboxGroup } from '@mission/ui/combobox'
 import { useAvailableValueProperties } from '@/hooks/useAvailableValueProperties'
 import { useAvailableActionProperties } from '@/hooks/useAvailableActionProperties'
 import { buildDotNotation, HIDDEN_ENTRY_NAMES } from '@/lib/value-utils'
@@ -46,33 +36,28 @@ interface ValuePropertyInputProps {
   includeActionProperties?: boolean
 }
 
-interface RefGroup {
-  label: string
-  refs: Array<{ ref: string; display: string }>
-}
-
-/** Property and Property.Entry rows for a list of ValueSpec groups (hidden entries skipped). */
-function toRefGroups(groups: Array<{ label: string; values: ValueSpec[] }>): RefGroup[] {
-  const result: RefGroup[] = []
+/** Property and indented Property.Entry rows for a list of ValueSpec groups (hidden entries skipped). */
+function toComboboxGroups(groups: Array<{ label: string; values: ValueSpec[] }>): ComboboxGroup[] {
+  const result: ComboboxGroup[] = []
   for (const group of groups) {
-    const refs: Array<{ ref: string; display: string }> = []
+    const items: ComboboxGroup['items'] = []
     for (const v of group.values) {
       if (!v.name) continue
-      refs.push({ ref: v.name, display: v.name })
+      items.push({ value: v.name })
       for (const entry of v.entries ?? []) {
         if (!entry.name || HIDDEN_ENTRY_NAMES.has(entry.name)) continue
-        const ref = buildDotNotation(v.name, entry.name)
-        refs.push({ ref, display: `  ${ref}` })
+        items.push({ value: buildDotNotation(v.name, entry.name), indent: true })
       }
     }
-    if (refs.length > 0) result.push({ label: group.label, refs })
+    if (items.length > 0) result.push({ heading: group.label, items })
   }
   return result
 }
 
 /**
- * A text input with an adjacent dropdown picker for selecting Value Property entries.
- * Shows Property.Entry dot notation items grouped by workflow level.
+ * A text input whose suggestion list (workflow parameters, Value Property entries,
+ * Action Properties) filters on what is typed; the ▾ button shows the whole list.
+ * The field stays free text: a reference that is not listed can still be typed.
  */
 function ValuePropertyInputComponent({
   value,
@@ -86,71 +71,31 @@ function ValuePropertyInputComponent({
   const { groups } = useAvailableValueProperties()
   const { groups: actionGroups } = useAvailableActionProperties()
 
-  // Build flat list of entry ref items grouped by workflow level
-  const entryGroups = useMemo(() => toRefGroups(groups), [groups])
-  const actionEntryGroups = useMemo(
-    () => (includeActionProperties ? toRefGroups(actionGroups) : []),
-    [actionGroups, includeActionProperties],
+  const pickerGroups = useMemo<ComboboxGroup[]>(
+    () => [
+      ...(extraGroups ?? [])
+        .filter((g) => g.items.length > 0)
+        .map((g) => ({
+          heading: g.label,
+          items: g.items.map((i) => ({ value: i.value, label: i.display, searchText: i.display })),
+        })),
+      ...toComboboxGroups(groups),
+      ...(includeActionProperties ? toComboboxGroups(actionGroups) : []),
+    ],
+    [extraGroups, groups, actionGroups, includeActionProperties],
   )
 
-  const hasProperties =
-    entryGroups.length > 0 || actionEntryGroups.length > 0 || (extraGroups && extraGroups.length > 0)
-
   return (
-    <div className={`flex ${className}`}>
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="h-7 text-sm flex-1 rounded-r-none border-r-0"
-        readOnly={readOnly}
-      />
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          disabled={readOnly || !hasProperties}
-          className="h-7 px-1 border border-input rounded-r-md bg-transparent hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-        >
-          <ChevronDown className="h-3 w-3 text-muted-foreground" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="max-h-96 overflow-y-auto">
-          {extraGroups?.map((group, gi) => (
-            <DropdownMenuGroup key={`extra-${gi}`}>
-              {gi > 0 && <DropdownMenuSeparator />}
-              <DropdownMenuLabel className="text-xs text-muted-foreground">{group.label}</DropdownMenuLabel>
-              {group.items.map((item) => (
-                <DropdownMenuItem key={item.value} onSelect={() => onChange(item.value)} className="text-sm">
-                  {item.display}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuGroup>
-          ))}
-          {entryGroups.map((group, gi) => (
-            <DropdownMenuGroup key={gi}>
-              {(gi > 0 || (extraGroups && extraGroups.length > 0)) && <DropdownMenuSeparator />}
-              <DropdownMenuLabel className="text-xs text-muted-foreground">{group.label}</DropdownMenuLabel>
-              {group.refs.map((item) => (
-                <DropdownMenuItem key={item.ref} onSelect={() => onChange(item.ref)} className="text-sm">
-                  {item.display}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuGroup>
-          ))}
-          {actionEntryGroups.map((group, gi) => (
-            <DropdownMenuGroup key={`action-${gi}`}>
-              {(gi > 0 || entryGroups.length > 0 || (extraGroups && extraGroups.length > 0)) && (
-                <DropdownMenuSeparator />
-              )}
-              <DropdownMenuLabel className="text-xs text-muted-foreground">{group.label}</DropdownMenuLabel>
-              {group.refs.map((item) => (
-                <DropdownMenuItem key={item.ref} onSelect={() => onChange(item.ref)} className="text-sm">
-                  {item.display}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuGroup>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+    <AutocompleteInput
+      groups={pickerGroups}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      readOnly={readOnly}
+      className={className}
+      inputClassName="h-7"
+      toggleLabel="Show sources"
+    />
   )
 }
 

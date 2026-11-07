@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import type { WorkflowTryMode } from '@/lib/try-modes'
 import type { Node } from '@xyflow/react'
 import type { FormDocument } from '@mission/form-schema'
 import type { DurationParts } from '@/lib/duration'
@@ -341,7 +342,7 @@ export interface Select1OptionSpec {
 /** TRY row shape — shared verbatim by step-level `trySpecifications` and the workflow-level
  *  `workflowTrySpecifications` (exported as `try_specifications` at both levels). */
 export interface TrySpec {
-  mode: 'ERROR' | 'ABORT' | 'TIMEOUT'
+  mode: WorkflowTryMode
   catch_id: string
   release_on_catch?: boolean
 }

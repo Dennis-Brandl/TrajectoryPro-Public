@@ -547,11 +547,13 @@ The sequence restarts at 1 whenever the rendered date/time portion of the format
 | **Starting**  | Start requested                                          |
 | **Started**   | Running                                                  |
 | **Pausing…**  | Pause requested; running actions are being paused. If an action server can't be reached, the run waits up to 2 minutes, then shows Paused with a warning on that step: its action may still be running. A run may briefly go from Paused back to Pausing… while the engine retries. |
-| **Paused**    | Paused                                                   |
+| **Paused**    | Paused. Operators can still complete their steps in Pilot; the results are kept, and the workflow continues from them when you resume. |
 | **Resuming…** | Resume requested                                         |
 | **Stopping…** | Stop requested; the run is ending cleanly. If an action server can't be reached, the STOP is sent as soon as it answers. |
+| **Stopping (running cleanup)** | A stop was requested and the workflow's **Operator Stop** cleanup is running. The run ends as Stopped when the cleanup finishes. |
 | **Stopped**   | Ended by a stop                                          |
 | **Aborting…** | Abort requested                                          |
+| **Aborting (running cleanup)** | An abort was requested and the workflow's **Operator Abort** cleanup is running. The run ends as Aborted when the cleanup finishes. |
 | **Aborted**   | Ended by an abort                                        |
 | **Completed** | Finished normally                                        |
 | **Errored**   | Ended by an error that no TRY rule caught                |
@@ -582,7 +584,13 @@ Select **Runtime** on the icon rail. The Hierarchy Pane shows the work-center tr
 | **Pause**        | Started                                                   | Pauses the run                |
 | **Resume**       | Paused                                                    | Resumes a paused run          |
 | **Request stop** | Started, Pausing or Paused                                | Ends the run cleanly          |
-| **Abort**        | Starting, Started, Pausing, Paused, Resuming or Stopping  | Ends the run immediately      |
+| **Abort**        | Starting, Started, Pausing, Paused, Resuming, Stopping or Stopping (running cleanup) | Ends the run immediately (runs the Operator Abort cleanup first, if the workflow has one) |
+| **Stop now (skip cleanup)** | Stopping (running cleanup), or Stopping when the workflow defines an Operator Stop | Halts the cleanup steps and finishes the stop now |
+| **Abort now (skip cleanup)** | Aborting (running cleanup), or Aborting when the workflow defines an Operator Abort | Halts the cleanup steps and finishes the abort now |
+
+#### Cleanup on Stop and Abort
+
+A workflow runs cleanup only when its author gave it an **Operator Stop** or **Operator Abort** handler in the Designer. Without one, **Request stop** and **Abort** behave as they always have. With one, the run shows **Stopping (running cleanup)** or **Aborting (running cleanup)** while the handler's steps run, then ends as Stopped or Aborted, never Errored. During a stop cleanup, **Request stop** is not offered; **Abort** is, and it escalates to the Operator Abort cleanup. **Stop now (skip cleanup)** and **Abort now (skip cleanup)** appear only while a cleanup can be running; both ask for confirmation, and the cleanup steps are halted.
 
 #### The Live Diagram
 
@@ -775,6 +783,7 @@ The entry shows the work center, the start and finish times and the duration, fo
 - **Show properties** -- the run's value properties when it finished
 - **Show starting params** -- the starting parameters it was created with
 - **Show step params** -- each step's input and output parameters
+- **Control requests** -- above the trace, who sent each Stop, Abort and skip-cleanup request and when (for example `Stop requested by Jane Doe`). The record PDF lists the same requests in its step log, with the requester under **Performed by**.
 
 If another runtime workflow created this one through a Distributed Workflow action, the header also says **Created by** with that runtime's work center and label (for example `Line A/RW-12`). The runtime detail shows the same line while the runtime is live.
 

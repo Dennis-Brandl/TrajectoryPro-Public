@@ -41,7 +41,7 @@ function detail(over: Partial<RuntimeHistoryDetail> = {}): RuntimeHistoryDetail 
     finalState: 'completed', startedAt: '2026-08-01T00:00:00.000Z', finishedAt: '2026-08-01T00:00:12.000Z',
     createdAt: '2026-08-01T00:00:00.000Z',
     startingParams: null, trace: [], properties: null, stepParams: null, stepNames: null, signatures: [], stepRuns: [], startedByLoginName: null, startedByUserId: null, userNames: {},
-    createdByLabel: null, createdByInstanceId: null, outputs: null,
+    createdByLabel: null, createdByInstanceId: null, outputs: null, controlEvents: [],
     ...over,
   };
 }
@@ -435,5 +435,29 @@ describe('HistoryDetailDialog — fetch (one-shot, no polling)', () => {
   it('shows the creating runtime when there is one', async () => {
     await renderDialog(detail({ createdByLabel: 'Line A/RW-12', createdByInstanceId: 'x' }));
     expect(screen.getByText('Created by Line A/RW-12', { exact: false })).toBeInTheDocument();
+  });
+});
+
+describe('HistoryDetailDialog control requests', () => {
+  it('lists control requests with the requester name', async () => {
+    await renderDialog(detail({ controlEvents: [
+      { at: '2026-08-01T00:00:03.000Z', verb: 'stop', effect: 'request', fromStatus: 'running', toStatus: 'stopping_cleanup', actorKind: 'user', actorUserId: 'u1', actorName: 'Jane Doe', actorInstanceId: null },
+      { at: '2026-08-01T00:00:04.000Z', verb: 'stop', effect: 'skip_cleanup', fromStatus: 'stopping_cleanup', toStatus: 'stopped', actorKind: 'user', actorUserId: 'u1', actorName: 'Jane Doe', actorInstanceId: null },
+      { at: '2026-08-01T00:00:05.000Z', verb: 'abort', effect: 'escalate', fromStatus: 'stopping_cleanup', toStatus: 'aborting_cleanup', actorKind: 'user', actorUserId: 'u2', actorName: 'Sam Lee', actorInstanceId: null },
+    ] }));
+    expect(screen.getByText('Control requests')).toBeTruthy();
+    expect(screen.getByText(/^Stop requested by Jane Doe · /)).toBeTruthy();
+    expect(screen.getByText(/^Stop cleanup skipped by Jane Doe · /)).toBeTruthy();
+    expect(screen.getByText(/^Abort escalated by Sam Lee · /)).toBeTruthy();
+  });
+  it('an empty actorName shows Unknown requester', async () => {
+    await renderDialog(detail({ controlEvents: [
+      { at: '2026-08-01T00:00:03.000Z', verb: 'abort', effect: 'request', fromStatus: 'running', toStatus: 'aborting', actorKind: 'user', actorUserId: null, actorName: '', actorInstanceId: null },
+    ] }));
+    expect(screen.getByText(/^Abort requested by Unknown requester · /)).toBeTruthy();
+  });
+  it('shows no Control requests heading when there are none', async () => {
+    await renderDialog(detail());
+    expect(screen.queryByText('Control requests')).toBeNull();
   });
 });

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { TRY_MODE_LABELS } from '@/lib/try-modes'
 import type { CatchTrigger } from '@/lib/canvas/findCatchTriggers'
 
 interface Props {
@@ -37,7 +38,7 @@ export function CatchTriggeredBy({ triggers, onSelect }: Props) {
               >
                 <span className="truncate">{t.stepLabel}</span>
                 <span className="ml-2 shrink-0 rounded bg-orange-100 px-1 text-[11px] font-mono text-orange-800">
-                  ON {t.mode}
+                  ON {TRY_MODE_LABELS[t.mode]}
                 </span>
               </button>
             </li>

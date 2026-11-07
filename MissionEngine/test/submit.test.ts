@@ -25,6 +25,7 @@ import { pumpUntilQuiet, testDeps } from './helpers/pump.js';
 import { workCenter, workflow, workflowInstance, stepInstance, traceEntry, instanceAssignment, appUser } from 'mission-control-db/src/db/schema/index';
 import { submitUserAction, EngineError } from '../src/core/submit.js';
 import { runOnce } from '../src/loop.js';
+import { requestPause, requestResume } from 'mission-control-db/src/dao/runtime-control';
 
 const step = (oid: string, step_type: string, extra: Record<string, unknown> = {}) => ({
   local_id: oid, oid, step_type, version: '1.0.0', last_modified_date: '2026-01-01', ...extra,
@@ -182,17 +183,74 @@ test('C1: a SCRIPT failure discovered mid-pump settles errored and is never over
   await close();
 });
 
-// ── submit on a non-running instance throws NOT_RUNNING ──
+// ── submit while paused: the step completes now, its successors wait for resume ──
 
-test('submit on a non-running (e.g. paused) instance throws EngineError(NOT_RUNNING)', async () => {
+test('submit while paused completes the step, holds routing, and resume continues the workflow', async () => {
   const { db, close } = await makeTestDb();
   const wi = await seedQueued(db, UI_SPEC, 'wf-ui-paused');
   await pumpUntilQuiet(db, testDeps());
+  await requestPause(db, wi.id);
+  await pumpUntilQuiet(db, testDeps());
+  expect((await db.select().from(workflowInstance).where(eq(workflowInstance.id, wi.id)))[0].status).toBe('paused');
+
+  await submitUserAction(db, wi.id, {
+    step_oid: 'ui', action: 'button_press', button_output: 'done', form_values: { name: 'Alice' },
+  }, 0, testDeps());
+  await pumpUntilQuiet(db, testDeps());
+
+  expect((await stepRow(db, wi.id, 'ui')).state).toBe('COMPLETED');
+  expect(await stepRow(db, wi.id, 'e1')).toBeUndefined(); // no successor while paused
+  let [row] = await db.select().from(workflowInstance).where(eq(workflowInstance.id, wi.id));
+  expect(row.status).toBe('paused');
+  expect(row.propertyStore).toMatchObject({ 'Response.Name': 'Alice' });
+
+  await requestResume(db, wi.id);
+  await pumpUntilQuiet(db, testDeps());
+  [row] = await db.select().from(workflowInstance).where(eq(workflowInstance.id, wi.id));
+  expect(row.status).toBe('completed');
+  await close();
+});
+
+test('submit while pausing (pause pass not yet run) is also held until resume', async () => {
+  const { db, close } = await makeTestDb();
+  const wi = await seedQueued(db, UI_SPEC, 'wf-ui-pausing');
+  await pumpUntilQuiet(db, testDeps());
+  await requestPause(db, wi.id); // status 'pausing' until the control pass runs
+
+  await submitUserAction(db, wi.id, { step_oid: 'ui', action: 'button_press', button_output: 'done' }, 0, testDeps());
+  expect((await stepRow(db, wi.id, 'ui')).state).toBe('COMPLETED');
+  expect(await stepRow(db, wi.id, 'e1')).toBeUndefined();
+
+  await pumpUntilQuiet(db, testDeps()); // pause pass lands: paused
+  await requestResume(db, wi.id);
+  await pumpUntilQuiet(db, testDeps());
+  const [row] = await db.select().from(workflowInstance).where(eq(workflowInstance.id, wi.id));
+  expect(row.status).toBe('completed');
+  await close();
+});
+
+test('a fail action while paused is still refused with NOT_RUNNING', async () => {
+  const { db, close } = await makeTestDb();
+  const wi = await seedQueued(db, UI_SPEC, 'wf-ui-paused-fail');
+  await pumpUntilQuiet(db, testDeps());
   await db.update(workflowInstance).set({ status: 'paused' }).where(eq(workflowInstance.id, wi.id));
+
+  const err = await submitUserAction(db, wi.id, { step_oid: 'ui', action: 'fail', failure_mode: 'ERROR', error: 'x' }, 0, testDeps())
+    .catch((e) => e);
+  expect(err).toBeInstanceOf(EngineError);
+  expect((err as EngineError).code).toBe('NOT_RUNNING');
+  expect((await stepRow(db, wi.id, 'ui')).state).toBe('WAITING_USER');
+  await close();
+});
+
+test('submit on a stopping instance still throws NOT_RUNNING', async () => {
+  const { db, close } = await makeTestDb();
+  const wi = await seedQueued(db, UI_SPEC, 'wf-ui-stopping');
+  await pumpUntilQuiet(db, testDeps());
+  await db.update(workflowInstance).set({ status: 'stopping' }).where(eq(workflowInstance.id, wi.id));
 
   const err = await submitUserAction(db, wi.id, { step_oid: 'ui', action: 'button_press', button_output: 'done' }, 0, testDeps())
     .catch((e) => e);
-  expect(err).toBeInstanceOf(EngineError);
   expect((err as EngineError).code).toBe('NOT_RUNNING');
   await close();
 });

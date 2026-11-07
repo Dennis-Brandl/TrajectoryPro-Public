@@ -24,6 +24,7 @@ import { workflowInstance, stepInstance } from 'mission-control-db/src/db/schema
 import type { Db } from '../db.js';
 import type { EngineDeps } from '../config.js';
 import { openContext } from './context.js';
+import { isRunningLike, RUNNING_LIKE_STATUSES } from './operator-cleanup.js';
 import { failStep, drainCascade, settleIfComplete, runStepActivation } from './transition.js';
 import { claimInstanceForWork, claimInstanceById, settleFailedInstance, logInstanceSettledError } from '../loop.js';
 import { reconcileAndNotify } from './reconcile.js';
@@ -55,7 +56,7 @@ export async function processDueInputBindingWork(db: Db, deps: EngineDeps): Prom
         ));
       if (dueCandidates.length === 0) return false;
       const candidateIds = [...new Set(dueCandidates.map(r => r.workflowInstanceId))];
-      const instanceId = await claimInstanceForWork(tx, ['running'], inArray(workflowInstance.id, candidateIds));
+      const instanceId = await claimInstanceForWork(tx, [...RUNNING_LIKE_STATUSES], inArray(workflowInstance.id, candidateIds));
       if (!instanceId) return false;
       claimedInstanceId = instanceId;
       const [wfRow] = await tx.select().from(workflowInstance).where(eq(workflowInstance.id, instanceId));
@@ -94,7 +95,7 @@ export async function processDueInputBindingWork(db: Db, deps: EngineDeps): Prom
       const claimedId = await claimInstanceById(tx, inputFetch.instanceId);
       if (!claimedId) return;
       const [wfRow] = await tx.select().from(workflowInstance).where(eq(workflowInstance.id, claimedId));
-      if (!wfRow || wfRow.status !== 'running') return;
+      if (!wfRow || !isRunningLike(wfRow.status)) return;
       const [current] = await tx.select().from(stepInstance).where(eq(stepInstance.id, inputFetch.stepInstanceId));
       if (!current || current.state !== 'WAITING_PROPERTIES') return; // resolved/cancelled in the gap
       const context = await openContext(tx, wfRow, deps);

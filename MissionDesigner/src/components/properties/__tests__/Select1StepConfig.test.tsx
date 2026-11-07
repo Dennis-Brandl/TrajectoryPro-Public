@@ -74,7 +74,7 @@ describe('Select1StepConfig — Input Parameter Name Source picker', () => {
 
     // The Input Parameter Name input is the first ValuePropertyInput; its
     // dropdown trigger is the chevron button immediately following it.
-    const triggers = screen.getAllByRole('button').filter((b) => b.getAttribute('aria-haspopup') === 'menu')
+    const triggers = screen.getAllByRole('button', { name: 'Show sources' })
     expect(triggers.length).toBeGreaterThanOrEqual(1)
     openDropdown(triggers[0])
 
@@ -99,7 +99,7 @@ describe('Select1StepConfig — Input Parameter Name Source picker', () => {
 
     render(<Select1StepConfig data={data} nodeId="select-node" onChange={onChange} />)
 
-    const triggers = screen.getAllByRole('button').filter((b) => b.getAttribute('aria-haspopup') === 'menu')
+    const triggers = screen.getAllByRole('button', { name: 'Show sources' })
     openDropdown(triggers[0])
 
     fireEvent.click(screen.getByText('result'))
@@ -134,7 +134,7 @@ describe('Select1StepConfig — Input Parameter Name Source picker', () => {
       select1Options: [option],
     }
     render(<Select1StepConfig data={data} nodeId="select-node" onChange={vi.fn()} />)
-    const triggers = screen.getAllByRole('button').filter((b) => b.getAttribute('aria-haspopup') === 'menu')
+    const triggers = screen.getAllByRole('button', { name: 'Show sources' })
     expect(triggers.length).toBe(2)
     // First chevron = the compare-input picker (rendered above the options).
     openDropdown(triggers[0])
@@ -173,8 +173,8 @@ describe('Select1StepConfig — Option comparison value Source picker', () => {
     render(<Select1StepConfig data={data} nodeId="select-node" onChange={vi.fn()} />)
 
     // The per-option dropdown trigger is the chevron next to the option's
-    // value input. Locate by aria-haspopup attribute.
-    const triggers = screen.getAllByRole('button').filter((b) => b.getAttribute('aria-haspopup') === 'menu')
+    // value input. Locate by the ▾ button's accessible name.
+    const triggers = screen.getAllByRole('button', { name: 'Show sources' })
     expect(triggers.length).toBeGreaterThanOrEqual(1)
     // The top-level Input Parameter Name is in literal mode here, so the
     // only chevron belongs to the option picker.
@@ -209,7 +209,7 @@ describe('Select1StepConfig — Option comparison value Source picker', () => {
 
     render(<Select1StepConfig data={data} nodeId="select-node" onChange={onChange} />)
 
-    const triggers = screen.getAllByRole('button').filter((b) => b.getAttribute('aria-haspopup') === 'menu')
+    const triggers = screen.getAllByRole('button', { name: 'Show sources' })
     openDropdown(triggers[0])
     fireEvent.click(screen.getByText('result'))
 

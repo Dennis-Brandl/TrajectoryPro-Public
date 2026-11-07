@@ -355,6 +355,21 @@ describe('TaskScreen', () => {
     expect(onDone).not.toHaveBeenCalled()
   })
 
+  it('submit rejecting with 409 NOT_RUNNING keeps the task open (generic copy, "other"), never a race', async () => {
+    vi.mocked(api.submit).mockRejectedValue(new ApiError(409, 'NOT_RUNNING'))
+    const t = task({ formDocument: null })
+    const onDone = vi.fn()
+    const onError = vi.fn()
+
+    render(<TaskScreen task={t} onDone={onDone} onError={onError} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+
+    await waitFor(() => expect(onError).toHaveBeenCalledWith('Something went wrong — try again.', 'other'))
+    expect(onError).not.toHaveBeenCalledWith(expect.anything(), 'race')
+    expect(onDone).not.toHaveBeenCalled()
+  })
+
   it('submit rejecting with a 403 ApiError also calls onError with the race copy + kind', async () => {
     vi.mocked(api.submit).mockRejectedValue(new ApiError(403))
     const t = task({ formDocument: null })

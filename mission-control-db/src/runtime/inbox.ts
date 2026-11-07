@@ -217,7 +217,7 @@ export function isAssignmentVisibleTo(
   return false;
 }
 
-const LIVE_INSTANCE_STATUSES = ['running', 'pausing', 'paused', 'resuming'] as const;
+const LIVE_INSTANCE_STATUSES = ['running', 'pausing', 'paused', 'resuming', 'stopping_cleanup', 'aborting_cleanup'] as const;
 
 // Any timed gate or repeating script anywhere in the frozen recipe — evaluated by Postgres, so an
 // instance whose waits are all plain condition gates never ships its spec_jsonb to this
@@ -258,7 +258,7 @@ export async function listWaitingTimedSteps(db: Db, workCenterId: string): Promi
       stepName: typeof def?.local_id === 'string' ? def.local_id : null,
       runtimeLabel: r.runtimeLabel, masterName: r.masterName, masterVersion: r.masterVersion,
       workflowPath: workflowPathOf(specJsonb, r.nodeOid),
-      paused: r.status !== 'running', timer,
+      paused: r.status === 'paused' || r.status === 'pausing' || r.status === 'resuming', timer,
     });
   }
   // Soonest deadline first; a repeating script with no time limit has none, so it goes last.

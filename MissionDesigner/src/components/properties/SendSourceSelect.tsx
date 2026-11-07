@@ -13,16 +13,7 @@
 // limitations under the License.
 
 import { memo, useCallback, useMemo, useState } from 'react'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from '@mission/ui'
+import { SearchableSelect, type ComboboxGroup } from '@mission/ui/combobox'
 import { Input } from '@mission/ui'
 import { useAvailableValueProperties } from '@/hooks/useAvailableValueProperties'
 import { buildDotNotation, HIDDEN_ENTRY_NAMES } from '@/lib/value-utils'
@@ -34,7 +25,7 @@ interface SendSourceSelectProps {
 }
 
 /**
- * Dropdown select for choosing the source of a Sync Send command.
+ * Searchable picker (filters as you type) for choosing the source of a Sync Send command.
  * Options: (none), value property names, value property entries (dot notation),
  * or a literal value entered via text input.
  */
@@ -72,8 +63,6 @@ function SendSourceSelectComponent({ value, onChange, readOnly = false }: SendSo
     return result
   }, [groups])
 
-  const hasOptions = items.length > 0
-
   const handleSelectChange = useCallback(
     (v: string) => {
       if (v === '__none__') {
@@ -102,45 +91,44 @@ function SendSourceSelectComponent({ value, onChange, readOnly = false }: SendSo
 
   const isUnresolved = !!value && !isKnownRef && !literalMode
 
+  // Picker rows, in the old Select's order; "Literal value..." stays visible while filtering.
+  const pickerGroups = useMemo<ComboboxGroup[]>(() => {
+    const result: ComboboxGroup[] = [{ items: [{ value: '__none__', label: '(none)', searchText: '(none)' }] }]
+    for (const group of items) {
+      result.push({
+        heading: group.groupLabel,
+        items: group.entries.map((item) => ({
+          value: item.ref,
+          label: item.label.trim(),
+          indent: item.label !== item.ref,
+        })),
+      })
+    }
+    if (isUnresolved) {
+      result.push({
+        heading: <span className="text-amber-600">Unresolved</span>,
+        items: [{ value: value!, label: `${value} (unresolved)`, className: 'text-amber-700' }],
+      })
+    }
+    result.push({
+      pinned: true,
+      items: [{ value: '__literal__', label: <span className="text-link">Literal value...</span> }],
+    })
+    return result
+  }, [items, isUnresolved, value])
+
   return (
     <div className="space-y-1">
-      <Select value={selectValue} onValueChange={handleSelectChange} disabled={readOnly}>
-        <SelectTrigger className={`h-7 text-xs ${isUnresolved ? 'border-amber-400 text-amber-700' : ''}`}>
-          <SelectValue placeholder="Select source...">{triggerText}</SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="__none__">(none)</SelectItem>
-
-          {hasOptions && <SelectSeparator />}
-          {items.map((group, gi) => (
-            <SelectGroup key={gi}>
-              <SelectLabel>{group.groupLabel}</SelectLabel>
-              {group.entries.map((item) => (
-                <SelectItem key={item.ref} value={item.ref}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          ))}
-
-          {isUnresolved && (
-            <>
-              <SelectSeparator />
-              <SelectGroup>
-                <SelectLabel className="text-amber-600">Unresolved</SelectLabel>
-                <SelectItem value={value!} className="text-amber-700">
-                  {value} (unresolved)
-                </SelectItem>
-              </SelectGroup>
-            </>
-          )}
-
-          <SelectSeparator />
-          <SelectItem value="__literal__">
-            <span className="text-link">Literal value...</span>
-          </SelectItem>
-        </SelectContent>
-      </Select>
+      <SearchableSelect
+        groups={pickerGroups}
+        value={selectValue || '__none__'}
+        onSelect={handleSelectChange}
+        triggerText={triggerText}
+        placeholder="Select source..."
+        searchPlaceholder="Type to filter sources..."
+        disabled={readOnly}
+        className={`h-7 text-xs ${isUnresolved ? 'border-amber-400 text-amber-700' : ''}`}
+      />
 
       {literalMode && (
         <Input

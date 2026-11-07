@@ -766,7 +766,7 @@ export const useFlowStore = create<FlowState>()(
               state.workflowResources?.length > 0 ||
               state.workflowTrySpecifications?.length > 0)
           if (hasContent) {
-            // Draft exists with content - mark for recovery dialog
+            // Draft exists with content - flag it so DraftRestoredNotice can announce the restore
             // Use setTimeout to defer until after React is fully initialized
             setTimeout(() => {
               useFlowStore.setState({

@@ -18,6 +18,7 @@ const LABELS: Record<RuntimeWorkflowStatus, string> = {
   pausing: 'Pausing…', resuming: 'Resuming…', stopping: 'Stopping…', aborting: 'Aborting…',
   paused: 'Paused', completed: 'Completed', aborted: 'Aborted',
   errored: 'Errored', stopped: 'Stopped',
+  stopping_cleanup: 'Stopping (running cleanup)', aborting_cleanup: 'Aborting (running cleanup)',
 };
 export function runtimeStatusLabel(status: RuntimeWorkflowStatus): string {
   return LABELS[status] ?? status;
@@ -33,6 +34,17 @@ export const RUNTIME_CAN: Record<'start' | 'pause' | 'resume' | 'stop' | 'abort'
   pause: new Set(['running']),
   resume: new Set(['paused']),
   stop: new Set(['running', 'paused', 'pausing']),
-  abort: new Set(['queued', 'running', 'pausing', 'paused', 'resuming', 'stopping']),
+  abort: new Set(['queued', 'running', 'pausing', 'paused', 'resuming', 'stopping', 'stopping_cleanup']),
 };
 export const RUNTIME_TERMINAL: ReadonlySet<RuntimeWorkflowStatus> = new Set(['completed', 'aborted', 'errored', 'stopped']);
+
+/** "Stop now / Abort now (skip cleanup)": offered while the cleanup runs, or while a
+ *  Stop/Abort is still settling and the spec defines the matching Operator row. The server
+ *  re-checks (spec 2026-11-06 U7). */
+export function canSkipCleanup(
+  status: RuntimeWorkflowStatus, kind: 'stop' | 'abort', operatorCleanup: { stop: boolean; abort: boolean },
+): boolean {
+  return kind === 'stop'
+    ? status === 'stopping_cleanup' || (status === 'stopping' && operatorCleanup.stop)
+    : status === 'aborting_cleanup' || (status === 'aborting' && operatorCleanup.abort);
+}

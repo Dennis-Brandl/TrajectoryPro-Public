@@ -66,6 +66,10 @@ export type { StepSignature, NewStepSignature, StepSignatureView } from './dao/s
 
 // Step-run records (spec 2026-10-27: runtime workflow record PDF).
 export type { StepRunView } from './dao/step-runs.js';
+// Operator Stop/Abort control-request record (spec 2026-11-06 U8).
+export type { ControlActor, ControlVerb, ControlEffect, ControlEventView } from './dao/control-events.js';
+export type { RuntimeControlEvent, NewRuntimeControlEvent } from './db/schema/execution.js';
+export { RUNTIME_CLEANUP_STATUSES } from './db/schema/execution.js';
 export type { StepRun, NewStepRun, StepRunResult, StepRunKind, StepRunPathEntry } from './db/schema/execution.js';
 export { STEP_RUN_RESULTS, STEP_RUN_KINDS } from './db/schema/execution.js';
 

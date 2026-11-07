@@ -34,6 +34,7 @@ import type { Db } from '../db.js';
 import type { EngineDeps } from '../config.js';
 import type { UserAction } from '../spec/types.js';
 import { openContext } from './context.js';
+import { isRunningLike, RUNNING_LIKE_STATUSES } from './operator-cleanup.js';
 import { canonicalStepType, getFormElements, handleUserAction } from './step-handlers.js';
 import { failStep, finishStep, settleIfComplete, drainCascade } from './transition.js';
 import { claimInstanceById } from '../loop.js';
@@ -45,6 +46,9 @@ import type { VerifiedSignature } from './esignature.js';
  *  the reporter/HTTP layer). v1 uses two codes: `NOT_RUNNING` (the instance can't be worked
  *  right now) and `NOT_CLAIMANT` (Task 10: the caller doesn't hold the live claim on the
  *  target step). */
+/** Statuses in which a user-step completion is accepted but its routing is held for resume. */
+const HOLD_ROUTING_STATUSES: ReadonlySet<string> = new Set(['paused', 'pausing', 'resuming']);
+
 export class EngineError extends Error {
   constructor(public readonly code: string, message?: string) {
     super(message ?? code);
@@ -111,7 +115,12 @@ async function submitCore(
   claim?: SubmitClaim,
 ): Promise<void> {
     const [row] = await tx.select().from(workflowInstance).where(eq(workflowInstance.id, instanceId));
-    if (!row || row.status !== 'running') {
+    // A paused (or pausing/resuming) instance still accepts an operator's completion of a user
+    // step: the step completes and its outputs land now, but its successors wait in
+    // deferredRouting until the resume pass drains them — the same hold an action completion
+    // gets while paused (monitor.ts). A 'fail' is still refused while paused.
+    const holdRouting = !!row && HOLD_ROUTING_STATUSES.has(row.status) && action.action !== 'fail';
+    if (!row || !(isRunningLike(row.status) || holdRouting)) {
       throw new EngineError('NOT_RUNNING', `workflow_instance ${instanceId} is not running`);
     }
 
@@ -288,6 +297,14 @@ async function submitCore(
     // "settled" signal right below.
     const settledMidCompletion = await finishStep(tx, stepCtx, target, stepDef, deps, idx);
     if (settledMidCompletion) return;
+
+    if (holdRouting) {
+      if (!context.root.state.deferredRouting.includes(target.stepOid)) {
+        context.root.state.deferredRouting.push(target.stepOid);
+      }
+      await context.persist(tx);
+      return;
+    }
 
     const cascadeSettled = await drainCascade(tx, stepCtx, [target.stepOid], deps);
     if (cascadeSettled) return;

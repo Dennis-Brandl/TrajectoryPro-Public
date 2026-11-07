@@ -13,16 +13,8 @@
 // limitations under the License.
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from '@mission/ui'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@mission/ui'
+import { SearchableSelect, type ComboboxGroup } from '@mission/ui/combobox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@mission/ui'
 import { Button } from '@mission/ui'
 import { Input } from '@mission/ui'
@@ -60,8 +52,8 @@ interface OutputParameterSelectProps {
 }
 
 /**
- * Dropdown select for choosing an output target from available Value Property entries.
- * Shows Property.Entry dot notation items grouped by source workflow level.
+ * Searchable picker for choosing an output target from available Value Property entries.
+ * Shows Property.Entry dot notation items grouped by source workflow level, filtered as you type.
  * Includes dialogs to add new properties or entries inline.
  */
 function OutputParameterSelectComponent({
@@ -259,109 +251,82 @@ function OutputParameterSelectComponent({
     setShowAddEntryDialog(false)
   }, [newEntryName, selectedPropertyId, groups, onChange])
 
-  const hasOptions = entryItems.length > 0
+  // Picker rows, in the old Select's order; the Add... actions stay visible while filtering.
+  const pickerGroups = useMemo<ComboboxGroup[]>(() => {
+    const paramGroup = (heading: string, params: Array<{ name: string }>): ComboboxGroup[] =>
+      params.length > 0 ? [{ heading, items: params.map((p) => ({ value: p.name })) }] : []
+    const result: ComboboxGroup[] = [{ items: [{ value: '__none__', label: '(none)', searchText: '(none)' }] }]
+    for (const group of entryItems) {
+      result.push({
+        heading: group.groupLabel,
+        items: group.refs.map((item) => ({
+          value: item.ref,
+          label: item.label.trim(),
+          indent: item.label !== item.ref,
+        })),
+      })
+    }
+    result.push(
+      ...paramGroup('Workflow Output Parameters', workflowOutputParams),
+      ...paramGroup('Workflow Input Parameters', workflowInputParams),
+      ...paramGroup('Parent Output Parameters', parentOutputParams),
+      ...paramGroup('Parent Input Parameters', parentInputParams),
+    )
+    if (isUnresolved) {
+      result.push({
+        heading: <span className="text-amber-600">Unresolved</span>,
+        items: [{ value: value!, label: `${value} (unresolved)`, className: 'text-amber-700' }],
+      })
+    }
+    if (!readOnlyActions) {
+      result.push({
+        pinned: true,
+        items: [
+          {
+            value: '__add_property__',
+            label: (
+              <span className="flex items-center gap-1 text-link">
+                <Plus className="h-3 w-3" />
+                Add Value Property...
+              </span>
+            ),
+          },
+          {
+            value: '__add_entry__',
+            label: (
+              <span className="flex items-center gap-1 text-link">
+                <Plus className="h-3 w-3" />
+                Add Entry to Property...
+              </span>
+            ),
+          },
+        ],
+      })
+    }
+    return result
+  }, [
+    entryItems,
+    workflowOutputParams,
+    workflowInputParams,
+    parentOutputParams,
+    parentInputParams,
+    isUnresolved,
+    value,
+    readOnlyActions,
+  ])
 
   return (
     <>
-      <Select value={value || ''} onValueChange={handleValueChange} disabled={readOnly}>
-        <SelectTrigger className={`h-7 text-sm ${isUnresolved ? 'border-amber-400 text-amber-700' : ''}`}>
-          <SelectValue placeholder="Select value destination...">{triggerText}</SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="__none__">(none)</SelectItem>
-          {hasOptions && <SelectSeparator />}
-          {entryItems.map((group, gi) => (
-            <SelectGroup key={gi}>
-              <SelectLabel>{group.groupLabel}</SelectLabel>
-              {group.refs.map((item) => (
-                <SelectItem key={item.ref} value={item.ref}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          ))}
-          {workflowOutputParams.length > 0 && (
-            <>
-              <SelectSeparator />
-              <SelectGroup>
-                <SelectLabel>Workflow Output Parameters</SelectLabel>
-                {workflowOutputParams.map((p) => (
-                  <SelectItem key={`wf-out-${p.id}`} value={p.name}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </>
-          )}
-          {workflowInputParams.length > 0 && (
-            <>
-              <SelectSeparator />
-              <SelectGroup>
-                <SelectLabel>Workflow Input Parameters</SelectLabel>
-                {workflowInputParams.map((p) => (
-                  <SelectItem key={`wf-in-${p.id}`} value={p.name}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </>
-          )}
-          {parentOutputParams.length > 0 && (
-            <>
-              <SelectSeparator />
-              <SelectGroup>
-                <SelectLabel>Parent Output Parameters</SelectLabel>
-                {parentOutputParams.map((p) => (
-                  <SelectItem key={`parent-out-${p.id}`} value={p.name}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </>
-          )}
-          {parentInputParams.length > 0 && (
-            <>
-              <SelectSeparator />
-              <SelectGroup>
-                <SelectLabel>Parent Input Parameters</SelectLabel>
-                {parentInputParams.map((p) => (
-                  <SelectItem key={`parent-in-${p.id}`} value={p.name}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </>
-          )}
-          {isUnresolved && (
-            <>
-              <SelectSeparator />
-              <SelectGroup>
-                <SelectLabel className="text-amber-600">Unresolved</SelectLabel>
-                <SelectItem value={value!} className="text-amber-700">
-                  {value} (unresolved)
-                </SelectItem>
-              </SelectGroup>
-            </>
-          )}
-          {!readOnlyActions && (
-            <>
-              <SelectSeparator />
-              <SelectItem value="__add_property__">
-                <span className="flex items-center gap-1 text-link">
-                  <Plus className="h-3 w-3" />
-                  Add Value Property...
-                </span>
-              </SelectItem>
-              <SelectItem value="__add_entry__">
-                <span className="flex items-center gap-1 text-link">
-                  <Plus className="h-3 w-3" />
-                  Add Entry to Property...
-                </span>
-              </SelectItem>
-            </>
-          )}
-        </SelectContent>
-      </Select>
+      <SearchableSelect
+        groups={pickerGroups}
+        value={value || '__none__'}
+        onSelect={handleValueChange}
+        triggerText={triggerText}
+        placeholder="Select value destination..."
+        searchPlaceholder="Type to filter destinations..."
+        disabled={readOnly}
+        className={`h-7 text-sm ${isUnresolved ? 'border-amber-400 text-amber-700' : ''}`}
+      />
 
       {/* Add Value Property dialog */}
       <Dialog open={showAddPropertyDialog} onOpenChange={setShowAddPropertyDialog}>

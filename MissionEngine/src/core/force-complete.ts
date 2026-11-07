@@ -32,6 +32,7 @@ import { gateMode } from './step-handlers.js';
 import { reconcileAndNotify, notifyWorkCenter } from './reconcile.js';
 import { completeRepeatingScript } from './repeating-script.js';
 import { VerbError } from './registry-verbs.js';
+import { isRunningLike, RUNNING_LIKE_STATUSES } from './operator-cleanup.js';
 
 export type ForceCompleteInput = {
   instanceId: string; stepInstanceId: string; actorUserId: string;
@@ -42,7 +43,7 @@ export type ForceCompleteInput = {
 
 function refuseUnlessRunning(status: string): void {
   if (status === 'paused' || status === 'pausing') throw new VerbError('INSTANCE_PAUSED', 'Resume the workflow first');
-  if (status !== 'running') throw new VerbError('RUNTIME_INVALID_STATE', `runtime workflow is ${status}`);
+  if (!isRunningLike(status)) throw new VerbError('RUNTIME_INVALID_STATE', `runtime workflow is ${status}`);
 }
 
 export async function forceCompleteStep(

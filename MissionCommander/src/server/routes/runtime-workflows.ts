@@ -29,7 +29,7 @@ import { MAX_STARTING_PARAMS, MAX_STARTING_PARAM_VALUE_LENGTH } from 'mission-co
 import { requireSession, requirePermission, requireMissionSystemCommander, type Vars } from '../middleware/auth';
 import { requireUuidParams } from '../middleware/validate';
 import { httpError, sendError } from '../lib/errors';
-import { engineControl, engineForceRelease, engineAssign, engineInstanceResourceVerb, engineSetInstanceValue, engineForceComplete } from '../lib/engine-client';
+import { engineControl, engineSkipCleanup, engineForceRelease, engineAssign, engineInstanceResourceVerb, engineSetInstanceValue, engineForceComplete } from '../lib/engine-client';
 import { proxyEngine } from '../lib/engine-proxy';
 import { RESOURCE_VERBS, instanceResourceVerbBody, instanceValueBody } from '../lib/shared-state-bodies';
 
@@ -245,9 +245,25 @@ for (const verb of CONTROL_VERBS) {
     requireUuidParams('id'),
     // Non-null: ':id' is mandatory in the pattern (same rationale as the start route above).
     requireMissionSystemCommander((c) => workCenterIdForInstance(db, c.req.param('id')!)),
-    (c) => proxyEngine(c, () => engineControl(verb, c.req.param('id')), `${verb} failed`),
+    (c) => proxyEngine(c, () => (verb === 'stop' || verb === 'abort'
+      ? engineControl(verb, c.req.param('id'), { kind: 'user', userId: c.get('principal').userId })
+      : engineControl(verb, c.req.param('id'))), `${verb} failed`),
   );
 }
+
+// Skip a running Operator Stop/Abort cleanup network (spec 2026-11-06 U7): same guard and proxy.
+const skipCleanupBody = z.object({ kind: z.enum(['stop', 'abort']) }).strict();
+runtimeWorkflowRoutes.post(
+  '/runtime-workflows/:id/skip-cleanup',
+  requireUuidParams('id'),
+  requireMissionSystemCommander((c) => workCenterIdForInstance(db, c.req.param('id')!)),
+  async (c) => {
+    const parsed = skipCleanupBody.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return httpError(c, 400, 'validation', 'kind must be stop or abort');
+    const { kind } = parsed.data;
+    return proxyEngine(c, () => engineSkipCleanup(c.req.param('id'), kind, { kind: 'user', userId: c.get('principal').userId }), 'Skip cleanup failed');
+  },
+);
 
 runtimeWorkflowRoutes.post(
   '/assignments/:id/force-release',

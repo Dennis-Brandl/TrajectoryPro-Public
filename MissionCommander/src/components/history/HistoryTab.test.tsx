@@ -140,7 +140,7 @@ describe('HistoryTab', () => {
     });
     const detail: RuntimeHistoryDetail = {
       ...ROW, startingParams: null, trace: [], properties: null, stepParams: null, stepNames: null, signatures: [], stepRuns: [], startedByLoginName: null, startedByUserId: null, userNames: {},
-      createdByLabel: null, createdByInstanceId: null, outputs: null,
+      createdByLabel: null, createdByInstanceId: null, outputs: null, controlEvents: [],
     };
     vi.mocked(runtimeHistory.detail).mockResolvedValue(detail);
     render(<HistoryTab workCenterId="w1" />);

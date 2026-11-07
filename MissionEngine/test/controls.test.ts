@@ -1334,7 +1334,7 @@ test('New-Critical-1 + New-Important-2 fix: stop resolves an already-deferred fa
     actionInstanceId: null, actionServerUri: null, startedAt: new Date(),
   });
 
-  await requestStop(db, wi.id);
+  await requestStop(db, wi.id, { kind: 'system', label: 'test' });
   const did = await runControlPass(db, deps);
   expect(did).toBe(true);
 
@@ -1763,7 +1763,7 @@ test('pause over an instance with an active child workflow: proxy row and child 
 test('abort over an instance with an active child workflow: both the proxy row and the child step are ABORTED', async () => {
   const { db, close } = await makeTestDb();
   const wi = await seedActiveChild(db);
-  await requestAbort(db, wi.id);
+  await requestAbort(db, wi.id, { kind: 'system', label: 'test' });
   const deps = testDeps();
 
   await pumpUntilQuiet(db, deps);
@@ -1792,7 +1792,7 @@ test('abort over an instance with an active child workflow: both the proxy row a
 test('stop over an instance with an active child workflow: child form cancelled, proxy row cancelled, instance settles stopped', async () => {
   const { db, close } = await makeTestDb();
   const wi = await seedActiveChild(db);
-  await requestStop(db, wi.id);
+  await requestStop(db, wi.id, { kind: 'system', label: 'test' });
   const deps = testDeps();
 
   await pumpUntilQuiet(db, deps);
@@ -1870,7 +1870,7 @@ test('stop over nested child workflows: proxy cancellation cascades bottom-up un
   expect((await stepRow(db, wi.id, 'c-proxy')).state).toBe('WAITING_ACTION');
   expect((await stepRow(db, wi.id, 'g-form')).state).toBe('WAITING_USER');
 
-  await requestStop(db, wi.id);
+  await requestStop(db, wi.id, { kind: 'system', label: 'test' });
   await pumpUntilQuiet(db, deps);
 
   expect((await stepRow(db, wi.id, 'g-form')).state).toBe('CANCELLED');
@@ -2026,7 +2026,7 @@ test('DAO round trip: stop cancels the parked step and settles stopped', async (
   const wi = await seedQueued(db, UI_ONLY_SPEC, 'wf-roundtrip-2');
   await pumpUntilQuiet(db, deps);
 
-  await requestStop(db, wi.id);
+  await requestStop(db, wi.id, { kind: 'system', label: 'test' });
   expect((await instanceRow(db, wi.id)).status).toBe('stopping');
   await pumpUntilQuiet(db, deps);
 
@@ -2044,7 +2044,7 @@ test('DAO round trip: abort from running settles aborted', async () => {
   const wi = await seedQueued(db, UI_ONLY_SPEC, 'wf-roundtrip-3');
   await pumpUntilQuiet(db, deps);
 
-  await requestAbort(db, wi.id);
+  await requestAbort(db, wi.id, { kind: 'system', label: 'test' });
   expect((await instanceRow(db, wi.id)).status).toBe('aborting');
   await pumpUntilQuiet(db, deps);
 
@@ -2089,7 +2089,7 @@ test('M2 fix: an invoke racing a concurrent abort must not stamp the action id o
     async begin(): Promise<ActionBeginResult> {
       // Simulate the race: the control pass commits its ENTIRE abort — including settling the
       // instance — before this "network call" resolves back to invokeDueStep.
-      await requestAbort(db, wi.id);
+      await requestAbort(db, wi.id, { kind: 'system', label: 'test' });
       await runControlPass(db, deps);
       return { ok: true, instanceId: 'server-instance-x', serverUri: 'http://fake-origin', invokedActionOid: 'act-pause' };
     },

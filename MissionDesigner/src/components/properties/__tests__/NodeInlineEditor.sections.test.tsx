@@ -190,7 +190,7 @@ describe('NodeInlineEditor — Input Parameters picker offers Action Properties 
     } as Partial<StepNodeData>)
     await act(async () => {})
     fireEvent.click(await screen.findByText('Input Parameters')) // Radix content mounts on expand
-    const triggers = screen.getAllByRole('button').filter((b) => b.getAttribute('aria-haspopup') === 'menu')
+    const triggers = screen.getAllByRole('button', { name: 'Show sources' })
     fireEvent.pointerDown(triggers[0], { button: 0, ctrlKey: false })
     fireEvent.click(triggers[0])
     expect(await screen.findByText('Env: Kitchen (Action Properties)')).toBeTruthy()

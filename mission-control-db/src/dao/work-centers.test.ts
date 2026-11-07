@@ -328,7 +328,7 @@ test('assignUserToWorkCenter partial-upserts missionSystemCommander and priority
 });
 
 test('deleteWorkCenter rejects deletion while runtime workflows are in an active status', async () => {
-  // Test each of the 7 RUNTIME_ACTIVE_STATUSES: the delete must fail regardless of confirmed flag
+  // Test every RUNTIME_ACTIVE_STATUSES entry (cleanup statuses included): the delete must fail regardless of confirmed flag
   const { db, close } = await makeTestDb();
   try {
     const [wc] = await db.insert(workCenter).values({ name: 'Active' }).returning();

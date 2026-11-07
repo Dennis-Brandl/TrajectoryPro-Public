@@ -21,6 +21,7 @@
 // summary (engine wording, kept for logs and tests — the panes toast their own copy, D24) while
 // the Phase 6 controls keep answering a bare `{ ok: true }`.
 import type { ResourceVerb } from './shared-state-bodies';
+import type { ControlActor } from 'mission-control-db';
 
 export class EngineUnavailableError extends Error {}
 
@@ -68,8 +69,14 @@ async function engineVerb(path: string, body: unknown): Promise<EngineVerbResult
   return { ok: true, summary: typeof okBody?.summary === 'string' ? okBody.summary : 'Done' };
 }
 
-export const engineControl = (verb: 'pause' | 'resume' | 'stop' | 'abort', instanceId: string): Promise<EngineResult> =>
-  enginePost(`/internal/instances/${instanceId}/${verb}`);
+/** Who sent a Stop/Abort/skip (recorded by the engine, spec 2026-11-06 U8). */
+export type { ControlActor };
+
+export const engineControl = (verb: 'pause' | 'resume' | 'stop' | 'abort', instanceId: string, actor?: ControlActor): Promise<EngineResult> =>
+  enginePost(`/internal/instances/${instanceId}/${verb}`, actor ? { actor } : undefined);
+
+export const engineSkipCleanup = (instanceId: string, kind: 'stop' | 'abort', actor: ControlActor): Promise<EngineResult> =>
+  enginePost(`/internal/instances/${instanceId}/skip-cleanup`, { kind, actor });
 
 export const engineForceRelease = (assignmentId: string): Promise<EngineResult> =>
   enginePost(`/internal/assignments/${assignmentId}/force-release`);

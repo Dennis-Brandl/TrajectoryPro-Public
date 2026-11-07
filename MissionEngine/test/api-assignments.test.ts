@@ -23,7 +23,7 @@ import {
   workCenter, workCenterUser, workflow, workflowNode, workflowAllowedRole, role, workCenterUserRole,
   workflowInstance, stepInstance, instanceAssignment,
 } from 'mission-control-db/src/db/schema/index';
-import { requestPause } from 'mission-control-db/src/dao/runtime-control';
+import { requestPause, requestResume } from 'mission-control-db/src/dao/runtime-control';
 import { makeApi, type ApiHarness } from './helpers/api.js';
 import { pumpUntilQuiet } from './helpers/pump.js';
 
@@ -447,7 +447,7 @@ test('submit guard: not my claim -> 409 { code: "NOT_CLAIMANT" }', async () => {
   await close();
 });
 
-test('submit guard: instance paused -> 409 { code: "NOT_RUNNING" }', async () => {
+test('submit while paused -> 200; the step completes and the workflow continues after resume', async () => {
   const { db, app, cookieFor, seedOperator, deps, close } = await makeApi();
   const wi = await seedQueued(db, UI_SPEC, 'wf-guard-paused');
   await pumpUntilQuiet(db, deps);
@@ -464,9 +464,13 @@ test('submit guard: instance paused -> 409 { code: "NOT_RUNNING" }', async () =>
   const res = await app.request(`/api/assignments/${assignmentId}/submit`, {
     method: 'POST', headers: jsonHeaders(cookie), body: JSON.stringify({ kind: 'complete' }),
   });
-  expect(res.status).toBe(409);
-  const body = await res.json() as { code?: string };
-  expect(body.code).toBe('NOT_RUNNING');
+  expect(res.status).toBe(200);
+  await pumpUntilQuiet(db, deps);
+  expect((await instanceRow(db, wi.id)).status).toBe('paused');
+
+  await requestResume(db, wi.id);
+  await pumpUntilQuiet(db, deps);
+  expect((await instanceRow(db, wi.id)).status).toBe('completed');
   await close();
 });
 

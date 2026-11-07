@@ -54,6 +54,9 @@ import { claimInstanceForWork, claimInstanceById } from '../loop.js';
 import { closeMonitoring } from '../actions/monitor.js';
 import type { ActionClient } from '../actions/client.js';
 import { reconcileAndNotify } from './reconcile.js';
+import { operatorRowFor, wantsConfirmedAbort, OPERATOR_ABORT_CONFIRM_TIMEOUT_MS, engineErrorReason } from './operator-cleanup.js';
+import { afterHaltDrained } from './operator-cleanup-flow.js';
+import { canonicalStepType } from './step-handlers.js';
 import { ACTIVE_ROW_STATES, recordStepRun, recordFailedActiveRuns } from './step-run.js';
 import { warmCapabilities, markOriginUnreachable } from './capability-warmup.js';
 import {
@@ -523,7 +526,20 @@ async function runStopping(
 
   const rows = await tx.select().from(stepInstance).where(eq(stepInstance.workflowInstanceId, context.id));
 
+  // Spec 2026-11-06 §7 (halt-termination boundary): with a root OPERATOR_STOP row, a parked
+  // WAIT ALL is cancelled like any other wait, so the halt always reaches its drained point —
+  // the cleanup can start, or (a skip, C4 / C13, including the skip's halt of a running cleanup
+  // network) the instance settles; a skip can never hang on a join. Without a row it stays
+  // untouched, as today (C9).
+  const cancelParkedJoins = operatorRowFor(context.root.spec, 'stop') !== undefined;
+
   for (const row of rows) {
+    if (cancelParkedJoins && row.state === 'EXECUTING' && row.actionInstanceId === null) {
+      await recordStepRun(tx, context.contextForNode(row.nodeOid), row.stepOid, 'stopped');
+      await tx.update(stepInstance).set({ state: 'CANCELLED', wakeAt: null, updatedAt: deps.now() }).where(eq(stepInstance.id, row.id));
+      didWork = true;
+      continue;
+    }
     // GATE spec 2026-08-29 §5.7: a gate is a poller with nothing external to drain — cancel it
     // outright alongside a never-started READY step or a parked WAITING_USER row, rather than
     // leaving it to cycle forever with no live counterpart to wait on. `wake_at` is explicitly
@@ -604,7 +620,8 @@ async function runStopping(
         didWork = true;
       }
     }
-    // EXECUTING (parked WAIT ALL): left untouched, counted below.
+    // EXECUTING (parked WAIT ALL): left untouched, counted below (cancelled above only with an
+    // Operator Stop row).
   }
 
   const settled = await settleStoppedIfDrained(tx, context, deps);
@@ -639,12 +656,31 @@ async function runStopping(
  * anything. Abort from `queued` (never started — no step_instance rows exist at all) falls out of
  * this same code path for free: the row scan finds nothing, the loop is a no-op, and the instance
  * settles immediately with an empty trace.
+ *
+ * Spec 2026-11-06 §5.2: with a root OPERATOR_ABORT row on a started runtime
+ * (wantsConfirmedAbort) the abort is instead a confirmed halt over several passes
+ * (beginConfirmedAbort / continueConfirmedAbort), then the cleanup network, then `aborted`.
+ * Without one this pass is byte for byte today's (C9); it only adds the end trace of a Stop
+ * cleanup it escalates (C4) or of an Abort cleanup the operator skipped.
  */
 async function runAborting(
-  tx: Db, context: WorkflowContext, client: ActionClient | null, deps: EngineDeps,
-): Promise<Array<{ serverUri: string; actionInstanceId: string }>> {
+  tx: Db, context: WorkflowContext, client: ActionClient | null, deps: EngineDeps, skip: string | null,
+): Promise<AbortPassResult> {
   const rows = await tx.select().from(stepInstance).where(eq(stepInstance.workflowInstanceId, context.id));
   const toFinalize: Array<{ serverUri: string; actionInstanceId: string }> = [];
+
+  // Spec 2026-11-06 §5.2 / C11: with a root OPERATOR_ABORT row the halt waits for the aborted
+  // actions to confirm, then runs the cleanup. Every other case below is today's single pass.
+  const oc = context.root.state.operatorCleanup;
+  if (oc?.kind === 'abort' && oc.phase === 'halting' && skip !== 'abort') {
+    return continueConfirmedAbort(tx, context, rows, deps);
+  }
+  if (wantsConfirmedAbort(context.root, skip, rows.length > 0)) {
+    return beginConfirmedAbort(tx, context, rows, client, deps);
+  }
+  // C4: Abort while a Stop cleanup runs, with no OPERATOR_ABORT row — the stop cleanup ends here
+  // and its network is aborted with the rest.
+  if (oc?.kind === 'stop' && oc.phase === 'cleanup') await endStopCleanupForAbort(tx, context);
 
   for (const row of rows) {
     if (row.state === 'READY') {
@@ -665,9 +701,127 @@ async function runAborting(
     }
   }
 
+  // C4 "Abort now (skip cleanup)" while the Operator Abort cleanup ran: its network was aborted
+  // above; the cleanup ends as skipped (a skip during the halt never started one — no trace).
+  if (oc?.kind === 'abort' && oc.phase === 'cleanup' && skip === 'abort') {
+    await context.recordTrace(tx, null, 'OPERATOR', undefined, 'Operator Abort cleanup ended: skipped by operator');
+    delete context.root.state.activeCatches[oc.catchOid];
+  }
+
   await settleTerminal(tx, context, 'aborted', 'aborted', deps.now, 'aborting');
   await context.persist(tx);
-  return toFinalize;
+  return { toFinalize, abortOnly: [], didWork: true };
+}
+
+type ActionRef = { serverUri: string; actionInstanceId: string };
+type StepRow = typeof stepInstance.$inferSelect;
+
+/** What an aborting pass leaves to send after commit: `toFinalize` gets ABORT + DELETE (today's
+ *  pair), `abortOnly` just ABORT — an Operator Abort halt's live action, whose instance must stay
+ *  until it reports its terminal (C11). */
+interface AbortPassResult { toFinalize: ActionRef[]; abortOnly: ActionRef[]; didWork: boolean }
+
+/** C4: the Stop cleanup that was running ends, escalated, before the abort halt. */
+async function endStopCleanupForAbort(tx: Db, context: WorkflowContext): Promise<void> {
+  const oc = context.root.state.operatorCleanup!;
+  await context.recordTrace(tx, null, 'OPERATOR', undefined, 'Operator Stop cleanup ended: escalated to Operator Abort');
+  delete context.root.state.activeCatches[oc.catchOid];
+}
+
+/** Today's per-row abort: ABORTED trace + row; an action's ABORT + DELETE queued for after commit. */
+async function abortRowNow(
+  tx: Db, context: WorkflowContext, row: StepRow, client: ActionClient | null, deps: EngineDeps, toFinalize: ActionRef[],
+): Promise<void> {
+  await context.contextForNode(row.nodeOid).recordTrace(tx, row.stepOid, 'ABORTED');
+  await tx.update(stepInstance).set({
+    state: 'ABORTED', completedAt: deps.now(), updatedAt: deps.now(), wakeAt: null,
+  }).where(eq(stepInstance.id, row.id));
+  if (client && row.actionInstanceId && row.actionServerUri) {
+    closeMonitoring(row.id);
+    toFinalize.push({ serverUri: row.actionServerUri, actionInstanceId: row.actionInstanceId });
+  }
+}
+
+/**
+ * First pass of a confirmed Operator Abort (§5.2, C11): READY rows are cancelled and every active
+ * row without a live action is ABORTED exactly as today. A live action (invoked, parked in
+ * WAITING_ACTION / PAUSED, no failure already deferred for it) is instead sent ABORT after commit
+ * and left as it is — still monitored, not deleted — until its terminal arrives (monitor.ts's
+ * abortDrain) or the confirm time limit passes. With none, the cleanup starts in this pass.
+ */
+async function beginConfirmedAbort(
+  tx: Db, context: WorkflowContext, rows: StepRow[], client: ActionClient | null, deps: EngineDeps,
+): Promise<AbortPassResult> {
+  const root = context.root;
+  const prev = root.state.operatorCleanup;
+  if (prev?.kind === 'stop' && prev.phase === 'cleanup') await endStopCleanupForAbort(tx, context);
+
+  const toFinalize: ActionRef[] = [];
+  const abortOnly: ActionRef[] = [];
+  const abortPending: string[] = [];
+  const deferred = new Set(root.state.deferredFailures.map(f => f.stepOid));
+  for (const row of rows) {
+    if (row.state === 'READY') {
+      await tx.update(stepInstance).set({ state: 'CANCELLED', updatedAt: deps.now() }).where(eq(stepInstance.id, row.id));
+      continue;
+    }
+    if (!ACTIVE_ROW_STATES.has(row.state)) continue;
+    const live = client && row.actionInstanceId && row.actionServerUri
+      && (row.state === 'WAITING_ACTION' || row.state === 'PAUSED') && !deferred.has(row.stepOid);
+    if (live) {
+      abortPending.push(row.id);
+      abortOnly.push({ serverUri: row.actionServerUri!, actionInstanceId: row.actionInstanceId! });
+      // Check its status promptly once the ABORT has gone out.
+      await tx.update(stepInstance).set({ wakeAt: deps.now(), updatedAt: deps.now() }).where(eq(stepInstance.id, row.id));
+      continue;
+    }
+    await abortRowNow(tx, context, row, client, deps, toFinalize);
+  }
+
+  const row = operatorRowFor(root.spec, 'abort')!;
+  const catchStep = root.spec.steps.find(s => canonicalStepType(s.step_type) === 'CATCH' && s.catch_id === row.catch_id);
+  root.state.operatorCleanup = {
+    kind: 'abort', phase: 'halting', catchOid: catchStep?.oid ?? '',
+    haltStartedAt: deps.now().toISOString(), cleanupStartedAt: null,
+    inheritedHolds: [], inheritedUse: {}, abortPending,
+    pendingAborts: prev?.pendingAborts ?? [],
+  };
+
+  if (abortPending.length === 0) await afterHaltDrained(tx, root, 'abort', deps);
+  await context.persist(tx);
+  return { toFinalize, abortOnly, didWork: true };
+}
+
+/**
+ * Later passes of a confirmed Operator Abort halt: rows that reached a terminal leave
+ * `abortPending`. Once it is empty, or OPERATOR_ABORT_CONFIRM_TIMEOUT_MS has passed since the
+ * halt began, the rows still waiting are ABORTED (ABORT + DELETE after commit, as today) and the
+ * cleanup starts (afterHaltDrained). Otherwise nothing new happened: not work, so the loop idles.
+ */
+async function continueConfirmedAbort(
+  tx: Db, context: WorkflowContext, rows: StepRow[], deps: EngineDeps,
+): Promise<AbortPassResult> {
+  const root = context.root;
+  const oc = root.state.operatorCleanup!;
+  const byId = new Map(rows.map(r => [r.id, r]));
+  const before = oc.abortPending.length;
+  oc.abortPending = oc.abortPending.filter(id => {
+    const r = byId.get(id);
+    return r !== undefined && ACTIVE_ROW_STATES.has(r.state);
+  });
+  const timedOut = deps.now().getTime() - Date.parse(oc.haltStartedAt) >= OPERATOR_ABORT_CONFIRM_TIMEOUT_MS;
+  if (oc.abortPending.length > 0 && !timedOut) {
+    await context.persist(tx); // also rotates updated_at, so other transitional instances get their turn
+    return { toFinalize: [], abortOnly: [], didWork: oc.abortPending.length !== before };
+  }
+
+  const toFinalize: ActionRef[] = [];
+  const client = deps.invoker.client;
+  for (const id of oc.abortPending) await abortRowNow(tx, context, byId.get(id)!, client, deps, toFinalize);
+  oc.abortPending = [];
+  await afterHaltDrained(tx, root, 'abort', deps);
+  await context.persist(tx);
+  return { toFinalize, abortOnly: [], didWork: true };
 }
 
 /**
@@ -729,7 +883,7 @@ export async function recoverFailedControlPass(db: Db, instanceId: string, err: 
       // claimed in (pausing/resuming/stopping/aborting), not settleTerminal's 'running' default;
       // safe to trust the value captured above (line 385) since this transaction holds the row's
       // FOR UPDATE lock for its entire duration and nothing else here writes `status` first.
-      await settleTerminal(tx, context, 'errored', 'errored', deps.now, row.status);
+      await settleTerminal(tx, context, 'errored', 'errored', deps.now, row.status, engineErrorReason(message));
       await reconcileAndNotify(tx, instanceId, deps);
       return;
     }
@@ -756,6 +910,7 @@ export async function recoverFailedControlPass(db: Db, instanceId: string, err: 
  */
 export async function runControlPass(db: Db, deps: EngineDeps): Promise<boolean> {
   let toFinalize: Array<{ serverUri: string; actionInstanceId: string }> = [];
+  let abortOnly: Array<{ serverUri: string; actionInstanceId: string }> = [];
   let afterCommit: AfterCommitCommand[] = [];
   let claimedInstanceId: string | null = null;
 
@@ -789,7 +944,13 @@ export async function runControlPass(db: Db, deps: EngineDeps): Promise<boolean>
         case 'pausing':  result = await runPausing(tx, context, client, deps, afterCommit); break;
         case 'resuming': await runResuming(tx, context, client, deps, afterCommit); result = true; break;
         case 'stopping': result = await runStopping(tx, context, client, deps, afterCommit); break;
-        case 'aborting': toFinalize = await runAborting(tx, context, client, deps); result = true; break;
+        case 'aborting': {
+          const r = await runAborting(tx, context, client, deps, row.cleanupSkip ?? null);
+          toFinalize = r.toFinalize;
+          abortOnly = r.abortOnly;
+          result = r.didWork;
+          break;
+        }
         default: return false; // defensive — the claim query's own status filter already excludes this
       }
       await reconcileAndNotify(tx, instanceId, deps);
@@ -800,6 +961,9 @@ export async function runControlPass(db: Db, deps: EngineDeps): Promise<boolean>
     for (const { serverUri, actionInstanceId } of toFinalize) {
       await deps.invoker.client?.sendCommand(serverUri, actionInstanceId, 'ABORT').catch(() => {});
       await deps.invoker.client?.deleteInstance(serverUri, actionInstanceId).catch(() => {});
+    }
+    for (const { serverUri, actionInstanceId } of abortOnly) {
+      await deps.invoker.client?.sendCommand(serverUri, actionInstanceId, 'ABORT').catch(() => {});
     }
 
     return did || undid;

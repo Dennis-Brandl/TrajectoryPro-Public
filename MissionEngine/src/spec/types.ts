@@ -424,6 +424,20 @@ export interface TrySpecification {
   release_on_catch?: boolean;
 }
 
+/** Spec 2026-11-06: workflow-level-only TRY modes fired by an operator's Stop / Abort. */
+export type OperatorMode = 'OPERATOR_STOP' | 'OPERATOR_ABORT';
+export type WorkflowTryMode = FailureMode | OperatorMode;
+
+export interface WorkflowTrySpecification {
+  mode: WorkflowTryMode;
+  catch_id: string;
+  release_on_catch?: boolean;
+}
+
+export function isOperatorMode(m: string): m is OperatorMode {
+  return m === 'OPERATOR_STOP' || m === 'OPERATOR_ABORT';
+}
+
 export interface ReturnConfig {
   command: 'ABANDON' | 'RESTART' | 'GOTO' | 'RETRY' | 'COMPLETE';
   restart_mode?: 'CLEAN' | 'KEEP';
@@ -464,7 +478,7 @@ export interface MasterWorkflowSpecification extends ManagedElement {
   /** Spec 2026-08-22 (workflow-level TRY fallback): workflow-level error-handler rows,
    *  consulted by failStep when the failing step has no matching TRY of its own (§3.1 tier 2).
    *  Same entry shape as a step's try_specifications; at most one row per mode. */
-  try_specifications?: TrySpecification[];
+  try_specifications?: WorkflowTrySpecification[];
   starting_parameter_specifications?: ParameterSpecification[];
   output_parameter_specifications?: OutputParameterSpecification[];
   value_property_specifications?: PropertySpecification[];
@@ -505,7 +519,7 @@ export interface CatchContext {
   catch_oid: string;
   trigger_step_oid: string;
   trigger_step_name: string;
-  trigger_reason: FailureMode;
+  trigger_reason: WorkflowTryMode;
   error_message: string | null;
   activated_at: string;
 }

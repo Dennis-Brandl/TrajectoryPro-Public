@@ -306,6 +306,8 @@ export type RuntimeTraceEntryView = { stepOid: string | null; stepName: string |
 export type RuntimeWorkflowLiveDetail = {
   summary: RuntimeWorkflowSummary; steps: RuntimeLiveStep[]; trace: RuntimeTraceEntryView[];
   signatures: StepSignatureView[];
+  /** Whether the spec defines an Operator Stop / Operator Abort cleanup row (spec 2026-11-06). */
+  operatorCleanup: { stop: boolean; abort: boolean };
 };
 
 const TRACE_TAIL_LIMIT = 50;
@@ -380,9 +382,14 @@ export async function getRuntimeWorkflowLive(db: Db, id: string): Promise<Runtim
 
   const signatures = await listStepSignatures(db, id);
 
+  const rootTries = (specJsonb as { try_specifications?: unknown } | null)?.try_specifications;
+  const hasMode = (mode: string) => Array.isArray(rootTries)
+    && rootTries.some((t) => (t as { mode?: unknown } | null)?.mode === mode);
+
   return {
     summary,
     signatures,
+    operatorCleanup: { stop: hasMode('OPERATOR_STOP'), abort: hasMode('OPERATOR_ABORT') },
     steps: stepRows.map((r) => {
       const a = assignmentByStep.get(r.id);
       return {

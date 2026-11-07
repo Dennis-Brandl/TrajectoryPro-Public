@@ -25,6 +25,11 @@ import { ContinueNowControl } from '../../inbox/ContinueNowControl'
 import { colorFor, findSpecByOid, glyphFor, humaniseState, LEGEND, resolveDisplayState } from './state'
 import type { PilotLiveStep, PilotRuntimeWorkflow, DiagramStep, InboxTask } from '../../api/types'
 
+// Continue-now is accepted while running and while Operator Stop/Abort cleanup runs.
+function gateCanContinue(status: string | undefined): boolean {
+  return status === 'running' || status === 'stopping_cleanup' || status === 'aborting_cleanup'
+}
+
 export interface WorkflowsScreenProps {
   wcId: string
   active: boolean
@@ -231,8 +236,8 @@ export function WorkflowsScreen({ wcId, active, online, focusedTask, onOpenTask,
               <div className="wf-tooltip-actions">
                 {entry?.gateTimer && entry.stepInstanceId && selectedId && (
                   <ContinueNowControl instanceId={selectedId} stepInstanceId={entry.stepInstanceId} stepName={tooltip.step.name}
-                    disabled={!online || live?.status !== 'running'}
-                    disabledReason={live?.status !== 'running' ? 'Resume the workflow first' : 'Offline'}
+                    disabled={!online || !gateCanContinue(live?.status)}
+                    disabledReason={!gateCanContinue(live?.status) ? 'Resume the workflow first' : 'Offline'}
                     onDone={() => setTooltip(null)} />
                 )}
                 {openable && (

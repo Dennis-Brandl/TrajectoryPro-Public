@@ -14,6 +14,7 @@
 
 import type { RuntimeHistoryDetail, StepRunView, StepSignatureView } from '../../../lib/api/types';
 import { formatDuration } from '../format-duration';
+import { controlEventRecordText, requesterName } from '../control-event-text';
 import { makeTimeFormatter } from './record-time';
 import { positionsInGroups, stepRunGroupKey, stepRunPathText } from './step-run-labels';
 
@@ -139,13 +140,20 @@ export function buildRecordModel(detail: RuntimeHistoryDetail, opts: { timeZone:
   for (const t of detail.trace) {
     if (t.state !== 'OPERATOR') continue;
     const by = /\s*\[by ([^\]]+)\]\s*$/.exec(t.error ?? '');
+    const byLabel = by ? null : /\s*\(by ([^)]+)\)\s*$/.exec(t.error ?? '');
     keyed.push({
       sortMs: t.timestamp,
       row: {
         kind: 'event', time: fmt.time(t.timestamp, reference), step: t.step_oid === '' ? '(runtime)' : nameOf(t.step_oid), depth: 0,
-        text: (t.error ?? '').replace(/\s*\[by [^\]]+\]\s*$/, '') || 'Operator action',
-        performedBy: (by ? detail.userNames[by[1]] : undefined) ?? NOT_RECORDED,
+        text: (t.error ?? '').replace(/\s*(\[by [^\]]+\]|\(by [^)]+\))\s*$/, '') || 'Operator action',
+        performedBy: (by ? detail.userNames[by[1]] : byLabel ? byLabel[1] : undefined) ?? NOT_RECORDED,
       },
+    });
+  }
+  for (const e of detail.controlEvents) {
+    keyed.push({
+      sortMs: new Date(e.at).getTime(),
+      row: { kind: 'event', time: fmt.time(e.at, reference), step: '(runtime)', depth: 0, text: controlEventRecordText(e), performedBy: requesterName(e.actorName) },
     });
   }
   for (const s of detail.signatures) {

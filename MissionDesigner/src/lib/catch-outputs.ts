@@ -20,7 +20,7 @@ export const CATCH_OUTPUT_NAMES = ['Message', 'Reason', 'Step', 'StepID'] as con
 
 const DESCRIPTIONS: Record<string, string> = {
   Message: 'Error message from the failed action (empty if none)',
-  Reason: 'Failure mode that fired: ERROR, ABORT, or TIMEOUT',
+  Reason: 'Failure mode that fired: ERROR, ABORT, TIMEOUT, OPERATOR_STOP or OPERATOR_ABORT',
   Step: 'Label of the step whose TRY fired',
   StepID: 'OID of the step whose TRY fired',
 }

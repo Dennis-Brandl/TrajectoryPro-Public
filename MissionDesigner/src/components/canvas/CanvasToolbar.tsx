@@ -48,6 +48,7 @@ import type { Edge } from '@xyflow/react'
 import type { WorkflowNode } from '@/types/nodes'
 import { validateWorkflowWithChildren } from '@/lib/export/workflow-validation'
 import type { ValidationError } from '@/lib/export/workflow-validation'
+import { collectOperatorCleanupWarnings, formatOperatorCleanupWarnings } from '@/lib/export/operator-cleanup-warnings'
 import { ValidationErrorDialog } from '@/components/export/ValidationErrorDialog'
 
 /**
@@ -62,6 +63,12 @@ function toastGateWarnings(warnings: string[]): void {
   toast.warning(`Gate binding ambiguity — the export bound the first declaring environment: ${warnings.join(' · ')}`, {
     duration: 10_000,
   })
+}
+
+/** Operator Stop / Abort cleanup advisories (spec 2026-11-06 C5, C14); never blocks export. */
+function toastOperatorCleanupWarnings(warnings: string[]): void {
+  if (warnings.length === 0) return
+  toast.warning(formatOperatorCleanupWarnings(warnings), { duration: 10_000 })
 }
 
 export function CanvasToolbar() {
@@ -186,6 +193,9 @@ export function CanvasToolbar() {
       setShowValidationDialog(true)
       return
     }
+    toastOperatorCleanupWarnings(
+      collectOperatorCleanupWarnings(nodes, edges, useFlowStore.getState().workflowTrySpecifications),
+    )
     await handleCreateRuntimePackage()
   }
 

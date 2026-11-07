@@ -26,7 +26,7 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@/lib/api/runtime-workflows', () => ({
   runtimeWorkflows: {
     live: vi.fn(), start: vi.fn(), pause: vi.fn(), resume: vi.fn(),
-    stop: vi.fn(), abort: vi.fn(), remove: vi.fn(), forceRelease: vi.fn(),
+    stop: vi.fn(), abort: vi.fn(), remove: vi.fn(), forceRelease: vi.fn(), skipCleanup: vi.fn(),
   },
 }));
 
@@ -41,6 +41,7 @@ function detail(status: RuntimeWorkflowStatus, over: Partial<RuntimeWorkflowLive
     steps: [],
     trace: [],
     signatures: [],
+    operatorCleanup: { stop: false, abort: false },
     ...over,
   };
 }
@@ -425,5 +426,41 @@ describe('RuntimeDetailDialog — lineage', () => {
     d.summary.createdByLabel = 'Line A/RW-12';
     await renderDialog(d);
     expect(screen.getByText('Created by Line A/RW-12', { exact: false })).toBeInTheDocument();
+  });
+});
+
+describe('RuntimeDetailDialog — operator cleanup', () => {
+  it('shows Stop now (skip cleanup) in stopping_cleanup and calls skipCleanup after confirm', async () => {
+    vi.mocked(runtimeWorkflows.skipCleanup).mockResolvedValue({ ok: true });
+    await renderDialog(detail('stopping_cleanup'));
+    await userEvent.click(screen.getByRole('button', { name: 'Stop now (skip cleanup) MIX-20261007-001' }));
+    expect(runtimeWorkflows.skipCleanup).not.toHaveBeenCalled();
+    expect(await screen.findByText('Skip the cleanup and stop now? The cleanup steps will be halted.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    await waitFor(() => expect(runtimeWorkflows.skipCleanup).toHaveBeenCalledWith('rw1', 'stop'));
+    expect(screen.queryByRole('button', { name: 'Abort now (skip cleanup) MIX-20261007-001' })).not.toBeInTheDocument();
+  });
+
+  it('shows Abort now (skip cleanup) in aborting_cleanup and calls skipCleanup after confirm', async () => {
+    vi.mocked(runtimeWorkflows.skipCleanup).mockResolvedValue({ ok: true });
+    await renderDialog(detail('aborting_cleanup'));
+    await userEvent.click(screen.getByRole('button', { name: 'Abort now (skip cleanup) MIX-20261007-001' }));
+    expect(await screen.findByText('Skip the cleanup and abort now? The cleanup steps will be halted.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    await waitFor(() => expect(runtimeWorkflows.skipCleanup).toHaveBeenCalledWith('rw1', 'abort'));
+  });
+
+  it('hides Request stop in stopping_cleanup (disabled) but keeps Abort enabled', async () => {
+    await renderDialog(detail('stopping_cleanup'));
+    expect(screen.getByRole('button', { name: 'Request stop MIX-20261007-001' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Abort MIX-20261007-001' })).toBeEnabled();
+  });
+
+  it('no skip button in stopping without an OPERATOR_STOP row; present with one', async () => {
+    const { unmount } = await renderDialog(detail('stopping'));
+    expect(screen.queryByRole('button', { name: 'Stop now (skip cleanup) MIX-20261007-001' })).not.toBeInTheDocument();
+    unmount();
+    await renderDialog(detail('stopping', { operatorCleanup: { stop: true, abort: false } }));
+    expect(screen.getByRole('button', { name: 'Stop now (skip cleanup) MIX-20261007-001' })).toBeEnabled();
   });
 });

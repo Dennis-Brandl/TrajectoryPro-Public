@@ -184,3 +184,18 @@ describe('child workflow export — workflow-level try_specifications', () => {
     expect(child.try_specifications).toEqual([{ mode: 'TIMEOUT', catch_id: 'CHILD_C' }])
   })
 })
+
+describe('operator modes round trip', () => {
+  it('exports and re-imports OPERATOR_STOP workflow row', () => {
+    const rows = [
+      { mode: 'OPERATOR_STOP', catch_id: 'WF' },
+      { mode: 'OPERATOR_ABORT', catch_id: 'WF2' },
+    ]
+    const spec = makeSpec('wf-op', { workflowTrySpecifications: rows })
+    const exported = exportWorkflow(spec, baseNodes, baseEdges)
+    expect(exported.try_specifications).toEqual(rows)
+    const result = importWorkflow(JSON.parse(JSON.stringify(exported)))
+    if ('error' in result) throw new Error(result.error)
+    expect(result.workflowTrySpecifications).toEqual(rows)
+  })
+})

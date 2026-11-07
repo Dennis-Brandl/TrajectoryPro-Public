@@ -22,9 +22,11 @@ import { environmentSpec } from './environments.js';
 // Status vocabularies — the single source of truth. The CHECK constraints below are
 // GENERATED from these arrays (sqlInList), so a vocabulary edit cannot silently diverge
 // from the DB constraint; consumers import the arrays/types instead of hand-mirroring.
-export const RUNTIME_WORKFLOW_STATUSES = ['pending','queued','running','pausing','paused','resuming','stopping','aborting','completed','aborted','errored','stopped'] as const;
+export const RUNTIME_WORKFLOW_STATUSES = ['pending','queued','running','pausing','paused','resuming','stopping','aborting','completed','aborted','errored','stopped','stopping_cleanup','aborting_cleanup'] as const;
 export type RuntimeWorkflowStatus = (typeof RUNTIME_WORKFLOW_STATUSES)[number];
-export const RUNTIME_ACTIVE_STATUSES = ['queued','running','pausing','paused','resuming','stopping','aborting'] as const;
+export const RUNTIME_ACTIVE_STATUSES = ['queued','running','pausing','paused','resuming','stopping','aborting','stopping_cleanup','aborting_cleanup'] as const;
+/** Operator Stop/Abort: the run is executing the workflow's cleanup CATCH network (spec 2026-11-06). */
+export const RUNTIME_CLEANUP_STATUSES = ['stopping_cleanup', 'aborting_cleanup'] as const;
 export const ENGINE_STEP_STATES = ['READY','EXECUTING','WAITING_ACTION','WAITING_USER','WAITING_GATE','WAITING_PROPERTIES','WAITING_SCRIPT','PAUSED','COMPLETED','ERRORED','ABORTED','CANCELLED'] as const;
 export type EngineStepState = (typeof ENGINE_STEP_STATES)[number];
 export const RUNTIME_DELETABLE_STATUSES = ['pending','completed','aborted','stopped','errored'] as const;
@@ -33,6 +35,11 @@ export type RuntimeFinalState = (typeof RUNTIME_FINAL_STATES)[number];
 export const ASSIGNMENT_STATUSES = ['offered', 'claimed', 'completed', 'cancelled'] as const;
 export type AssignmentStatus = (typeof ASSIGNMENT_STATUSES)[number];
 export const LIVE_ASSIGNMENT_STATUSES = ['offered', 'claimed'] as const;
+/** Operator Stop/Abort (spec 2026-11-06): runtime_control_event vocabularies; CONTROL_VERBS is
+ *  also workflow_instance.cleanup_skip's. */
+export const CONTROL_VERBS = ['stop', 'abort'] as const;
+export const CONTROL_EFFECTS = ['request', 'escalate', 'skip_cleanup'] as const;
+export const CONTROL_ACTOR_KINDS = ['user', 'remote', 'system'] as const;
 
 /** Renders ('a','b',…) for a CHECK in-list. The output must stay byte-identical to the
  *  hand-written lists the migrations shipped with, so `drizzle-kit generate` keeps
@@ -78,6 +85,8 @@ export const workflowInstance = pgTable('workflow_instance', {
   // the step (same id, fresh started_at), so the step id alone would hand pass 2 pass 1's child.
   createdByStepStartedAt: timestamp('created_by_step_started_at', { withTimezone: true }),
   createdByLabel: text('created_by_label'),
+  // Operator Stop/Abort: set by requestSkipCleanup so the engine abandons a running cleanup.
+  cleanupSkip: text('cleanup_skip'),
 }, (t) => [
   // A workflow belongs to exactly one work center, so an instance's work center must agree
   // with its workflow's. Pinned here rather than trusted (spec §4.4).
@@ -96,6 +105,7 @@ export const workflowInstance = pgTable('workflow_instance', {
     .where(sql`${t.createdByStepInstanceId} is not null`),
   index('workflow_instance_created_by_idx').on(t.createdByInstanceId),
   check('workflow_instance_status_ck', sql`${t.status} in ${sqlInList(RUNTIME_WORKFLOW_STATUSES)}`),
+  check('workflow_instance_cleanup_skip_ck', sql`${t.cleanupSkip} in ${sqlInList(CONTROL_VERBS)}`),
   uniqueIndex('workflow_instance_wc_number_uq').on(t.workCenterId, t.runtimeNumber),
   uniqueIndex('workflow_instance_wc_label_uq').on(t.workCenterId, t.runtimeLabel),
   // Retention sweep (engine core/sweep.ts): oldest-first scan of one work center's finished runs.
@@ -305,6 +315,33 @@ export const stepRun = pgTable('step_run', {
   check('step_run_result_ck', sql`${t.result} in ${sqlInList(STEP_RUN_RESULTS)}`),
   check('step_run_kind_ck', sql`${t.performedByKind} in ${sqlInList(STEP_RUN_KINDS)}`),
 ]);
+// Append-only record of who sent every Stop/Abort/skip (spec 2026-11-06 U8, regulatory).
+// workflow_instance_id is a soft link, NO FK: rows must outlive the live instance, like step_run.
+export const runtimeControlEvent = pgTable('runtime_control_event', {
+  id: bigint('id', { mode: 'number' }).generatedAlwaysAsIdentity().primaryKey(),
+  workflowInstanceId: uuid('workflow_instance_id').notNull(),
+  verb: text('verb').notNull(),
+  effect: text('effect').notNull(),
+  fromStatus: text('from_status').notNull(),
+  toStatus: text('to_status').notNull(),
+  actorKind: text('actor_kind').notNull(),
+  actorUserId: uuid('actor_user_id').references(() => appUser.id, { onDelete: 'set null' }),
+  actorLoginName: text('actor_login_name'),
+  actorDisplayName: text('actor_display_name'),
+  actorLabel: text('actor_label'),
+  // U8: a remote sender's own runtime (the parent / calling instance). Soft link, NO FK: it may be
+  // deleted long before this record.
+  actorInstanceId: uuid('actor_instance_id'),
+  at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('runtime_control_event_instance_idx').on(t.workflowInstanceId),
+  check('runtime_control_event_verb_ck', sql`${t.verb} in ${sqlInList(CONTROL_VERBS)}`),
+  check('runtime_control_event_effect_ck', sql`${t.effect} in ${sqlInList(CONTROL_EFFECTS)}`),
+  check('runtime_control_event_actor_kind_ck', sql`${t.actorKind} in ${sqlInList(CONTROL_ACTOR_KINDS)}`),
+]);
+export type RuntimeControlEvent = typeof runtimeControlEvent.$inferSelect;
+export type NewRuntimeControlEvent = typeof runtimeControlEvent.$inferInsert;
+
 export type StepRun = typeof stepRun.$inferSelect;
 export type NewStepRun = typeof stepRun.$inferInsert;
 

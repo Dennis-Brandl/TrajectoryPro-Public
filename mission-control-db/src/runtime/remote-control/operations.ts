@@ -110,6 +110,7 @@ export async function commandRuntime(db: Db, caller: Caller, ref: string, verb: 
     throw wrong(t, state, verb);
   }
   const status = t.live.status;
+  const actor = { kind: 'remote', label: `${caller.workCenterName}/${caller.runtimeLabel}`, instanceId: caller.instanceId } as const;
   const done = (s: string): RuntimeRef => ({ id: t.id, label: t.label, state: runtimeStateName(s) });
   const finished = FINAL.has(status);
   try {
@@ -119,15 +120,16 @@ export async function commandRuntime(db: Db, caller: Caller, ref: string, verb: 
         if (['queued', 'running', 'pausing', 'paused', 'resuming'].includes(status)) return done(status);
         throw wrong(t, runtimeStateName(status), verb);
       case 'stop':
-        if (finished || status === 'stopping') return done(status);
+        if (finished || status === 'stopping' || status === 'stopping_cleanup') return done(status);
         if (status === 'pending') { await deleteRuntimeWorkflow(db, t.id); return { id: t.id, label: t.label, state: 'Stopped' }; }
-        if (status === 'queued') { await requestAbort(db, t.id); return liveRef(db, t.id); }
-        if (['running', 'paused', 'pausing'].includes(status)) { await requestStop(db, t.id); return liveRef(db, t.id); }
+        // A queued runtime has nothing to stop: it is aborted, but the record shows the Stop sent (U8).
+        if (status === 'queued') { await requestAbort(db, t.id, actor, { recordAsVerb: 'stop' }); return liveRef(db, t.id); }
+        if (['running', 'paused', 'pausing'].includes(status)) { await requestStop(db, t.id, actor); return liveRef(db, t.id); }
         throw wrong(t, runtimeStateName(status), verb);
       case 'abort':
-        if (finished || status === 'aborting') return done(status);
+        if (finished || status === 'aborting' || status === 'aborting_cleanup') return done(status);
         if (status === 'pending') { await deleteRuntimeWorkflow(db, t.id); return { id: t.id, label: t.label, state: 'Aborted' }; }
-        await requestAbort(db, t.id); return liveRef(db, t.id);
+        await requestAbort(db, t.id, actor); return liveRef(db, t.id);
       case 'suspend':
         if (status === 'running') { await requestPause(db, t.id); return liveRef(db, t.id); }
         if (status === 'pausing' || status === 'paused') return done(status);

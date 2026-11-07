@@ -52,9 +52,12 @@ beforeEach(() => {
   useLibraryStore.setState({ specifications: new Map(), selectedSpecificationId: null })
 })
 
-/** Open the Radix DropdownMenu trigger in jsdom (needs pointerDown before click). */
+/** The ▾ button beside each Source field that shows the whole suggestion list. */
+function sourceToggles() {
+  return screen.getAllByRole('button', { name: 'Show sources' })
+}
+
 function openDropdown(button: HTMLElement) {
-  fireEvent.pointerDown(button, { button: 0, ctrlKey: false })
   fireEvent.click(button)
 }
 
@@ -70,9 +73,8 @@ describe('InputsEditor Source dropdown groups', () => {
 
     render(<InputsEditor inputs={inputs} onChange={vi.fn()} nodeId="self" />)
 
-    // Open the ValuePropertyInput dropdown for the first input row.
-    // Radix DropdownMenuTrigger buttons carry aria-haspopup="menu".
-    const triggers = screen.getAllByRole('button').filter((b) => b.getAttribute('aria-haspopup') === 'menu')
+    // Open the ValuePropertyInput suggestion list for the first input row.
+    const triggers = sourceToggles()
     expect(triggers.length).toBeGreaterThanOrEqual(1)
     openDropdown(triggers[0])
 
@@ -134,18 +136,18 @@ describe('InputsEditor Source dropdown — Action Properties (spec 2026-09-04 §
   it('lists environment Action Properties (group + Group.Entry, Description hidden) when includeActionProperties is set', () => {
     seedEnvWithActionProperties()
     render(<InputsEditor inputs={inputs} onChange={vi.fn()} nodeId="self" includeActionProperties />)
-    const triggers = screen.getAllByRole('button').filter((b) => b.getAttribute('aria-haspopup') === 'menu')
+    const triggers = sourceToggles()
     openDropdown(triggers[0])
     expect(screen.getByText('Env: Kitchen (Action Properties)')).toBeTruthy()
     expect(screen.getByText('Sensor')).toBeTruthy()
-    expect(screen.getByText(/Sensor\.Value/)).toBeTruthy()
+    expect(screen.getByText('Sensor.Value')).toBeTruthy()
     expect(screen.queryByText(/Sensor\.Description/)).toBeNull()
   })
 
   it('omits them without the prop', () => {
     seedEnvWithActionProperties()
     render(<InputsEditor inputs={inputs} onChange={vi.fn()} nodeId="self" />)
-    const triggers = screen.getAllByRole('button').filter((b) => b.getAttribute('aria-haspopup') === 'menu')
+    const triggers = sourceToggles()
     // With nothing else to offer the trigger is disabled — the dropdown has no action-property groups.
     expect(triggers[0].hasAttribute('disabled')).toBe(true)
     expect(screen.queryByText('Env: Kitchen (Action Properties)')).toBeNull()
@@ -155,9 +157,31 @@ describe('InputsEditor Source dropdown — Action Properties (spec 2026-09-04 §
     seedEnvWithActionProperties()
     const onChange = vi.fn()
     render(<InputsEditor inputs={inputs} onChange={onChange} nodeId="self" includeActionProperties />)
-    const triggers = screen.getAllByRole('button').filter((b) => b.getAttribute('aria-haspopup') === 'menu')
+    const triggers = sourceToggles()
     openDropdown(triggers[0])
-    fireEvent.click(screen.getByText(/Sensor\.Value/))
+    fireEvent.click(screen.getByText('Sensor.Value'))
     expect(onChange).toHaveBeenCalledWith([{ ...inputs[0], value: 'Sensor.Value' }])
+  })
+})
+
+describe('InputsEditor Source field — filter as you type', () => {
+  const inputs: ParameterSpec[] = [{ id: 'i1', name: 'in1', valueType: 'property', value: '', description: '' }]
+
+  it('typing filters the suggestions (case-insensitive substring) and keeps the typed text', () => {
+    useFlowStore.setState({ workflowInputs: [makeParam('flowTemperature'), makeParam('flowPressure')] })
+    const onChange = vi.fn()
+    render(<InputsEditor inputs={inputs} onChange={onChange} nodeId="self" />)
+    const field = screen.getByRole('combobox')
+    fireEvent.change(field, { target: { value: 'TEMP' } })
+    expect(onChange).toHaveBeenCalledWith([{ ...inputs[0], value: 'TEMP' }])
+    expect(screen.getByText('flowTemperature')).toBeTruthy()
+    expect(screen.queryByText('flowPressure')).toBeNull()
+  })
+
+  it('hides the list when nothing matches (free text is still allowed)', () => {
+    useFlowStore.setState({ workflowInputs: [makeParam('flowTemperature')] })
+    render(<InputsEditor inputs={inputs} onChange={vi.fn()} nodeId="self" />)
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'zzz' } })
+    expect(screen.queryByText('Workflow Input Parameters')).toBeNull()
   })
 })

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { afterEach, expect, test, vi } from 'vitest';
-import { engineAssign, engineControl, engineForceRelease, EngineUnavailableError, engineWorkCenterResourceVerb, engineInstanceResourceVerb, engineSetWorkCenterValue, engineSetInstanceValue } from './engine-client';
+import { engineAssign, engineControl, engineSkipCleanup, engineForceRelease, EngineUnavailableError, engineWorkCenterResourceVerb, engineInstanceResourceVerb, engineSetWorkCenterValue, engineSetInstanceValue } from './engine-client';
 
 const okResponse = () => new Response(JSON.stringify({ ok: true }), { status: 200 });
 
@@ -27,6 +27,21 @@ test('engineControl posts to the engine with the token header', async () => {
   expect(result).toEqual({ ok: true });
   expect(fetchSpy).toHaveBeenCalledWith('http://engine.test:3006/internal/instances/abc-123/pause',
     { method: 'POST', headers: { 'x-internal-token': 'tok-1' } });
+});
+
+test('engineControl stop posts the actor; engineSkipCleanup posts kind and actor', async () => {
+  vi.stubEnv('ENGINE_BASE_URL', 'http://engine.test:3006');
+  vi.stubEnv('ENGINE_INTERNAL_TOKEN', 'tok-1');
+  const fetchSpy = vi.fn(async () => okResponse());
+  vi.stubGlobal('fetch', fetchSpy);
+  const actor = { kind: 'user', userId: 'u-1' } as const;
+  await engineControl('stop', 'i-1', actor);
+  await engineSkipCleanup('i-1', 'abort', actor);
+  const calls = fetchSpy.mock.calls as unknown as Array<[string, RequestInit]>;
+  expect(calls[0][0]).toBe('http://engine.test:3006/internal/instances/i-1/stop');
+  expect(JSON.parse(calls[0][1].body as string)).toEqual({ actor });
+  expect(calls[1][0]).toBe('http://engine.test:3006/internal/instances/i-1/skip-cleanup');
+  expect(JSON.parse(calls[1][1].body as string)).toEqual({ kind: 'abort', actor });
 });
 
 test('engineAssign posts the userId body with the token header', async () => {

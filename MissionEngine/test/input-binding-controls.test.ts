@@ -117,7 +117,7 @@ test('stop cancels a WAITING_PROPERTIES step outright — wake_at cleared, no tr
   const deps = makeHttpDeps(stub, makeClock());
   const wi = await parkOne(db, deps, boundScriptSpec('wf-ibc-stop'));
 
-  await requestStop(db, wi.id);
+  await requestStop(db, wi.id, { kind: 'system', label: 'test' });
   await pumpUntilQuiet(db, deps);
 
   const row = await stepRow(db, wi.id, 'sc');
@@ -135,7 +135,7 @@ test('abort flips a WAITING_PROPERTIES step ABORTED with trace, instance settles
   const deps = makeHttpDeps(stub, makeClock());
   const wi = await parkOne(db, deps, boundScriptSpec('wf-ibc-abort'));
 
-  await requestAbort(db, wi.id);
+  await requestAbort(db, wi.id, { kind: 'system', label: 'test' });
   await pumpUntilQuiet(db, deps);
 
   const row = await stepRow(db, wi.id, 'sc');

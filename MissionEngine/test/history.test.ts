@@ -196,7 +196,7 @@ test('settling an already-terminal instance a second time writes no additional h
 test('abort from queued (never started): history row has empty trace and null startedAt', async () => {
   const { db, close } = await makeTestDb();
   const wi = await seedQueued(db, HIST_SPEC, 'wf-hist-abortq');
-  await requestAbort(db, wi.id);
+  await requestAbort(db, wi.id, { kind: 'system', label: 'test' });
 
   const deps = testDeps({ now: () => FIXED });
   const did = await runControlPass(db, deps);

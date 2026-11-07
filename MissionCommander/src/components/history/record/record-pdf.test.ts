@@ -33,7 +33,7 @@ function mockupDetail(): RuntimeHistoryDetail {
     startedAt: '2026-10-27T14:14:03Z', finishedAt: '2026-10-27T14:21:47Z', createdAt: '2026-10-27T14:14:03Z',
     startingParams: { Size: 'large', Crust: 'chicago' }, trace: [], properties: { Cost: '9.66' }, stepParams: null,
     stepNames: {}, startedByLoginName: 'jdoe', startedByUserId: 'u1', userNames: {},
-    createdByLabel: null, createdByInstanceId: null, outputs: [{ name: 'Toppings', value: '["cheese","ham","olives"]' }],
+    createdByLabel: null, createdByInstanceId: null, outputs: [{ name: 'Toppings', value: '["cheese","ham","olives"]' }], controlEvents: [],
     stepRuns: [
       run({ stepOid: 'eo', stepName: 'Enter Order', startedAt: '2026-10-27T14:14:05Z', finishedAt: '2026-10-27T14:15:10Z', inputParameters: { Size: 'large' }, outputParameters: { Customer: 'Smith' } }),
       run({ stepOid: 'at', stepName: 'Add Topping', startedAt: '2026-10-27T14:15:12Z', finishedAt: '2026-10-27T14:16:01Z', inputParameters: { Toppings: '[]' }, outputParameters: { Toppings: '["cheese"]' } }),
@@ -84,6 +84,19 @@ function expectNoBlankPages(doc: jsPDF, pageCount: number) {
     expect(textOps(pageContent(doc, i)), `page ${i}`).toBeGreaterThan(2);
   }
 }
+
+describe('renderRecordPdf control events', () => {
+  it('PDF text contains "Stop requested" and "Jane Doe"', () => {
+    const detail = { ...mockupDetail(), controlEvents: [{
+      at: '2026-10-27T14:16:00Z', verb: 'stop' as const, effect: 'request' as const, fromStatus: 'running', toStatus: 'stopping_cleanup',
+      actorKind: 'user' as const, actorUserId: 'u1', actorName: 'Jane Doe', actorInstanceId: null,
+    }] };
+    const { doc } = renderRecordPdf(buildRecordModel(detail, { timeZone: 'America/Chicago', now: new Date('2026-10-27T19:02:00Z'), loginName: 'admin' }));
+    const all = Array.from({ length: doc.getNumberOfPages() }, (_, i) => pageContent(doc, i + 1)).join('\n');
+    expect(all).toContain('(Stop requested) Tj');
+    expect(all).toContain('(Jane Doe) Tj');
+  });
+});
 
 describe('renderRecordPdf', () => {
   it('small run fits on one page', () => {

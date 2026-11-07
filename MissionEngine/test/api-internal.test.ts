@@ -18,6 +18,7 @@ import {
   workCenter, workflow, workflowInstance, instanceAssignment, stepInstance, appUser, workCenterUser,
   workflowNode, workflowAllowedRole, role, workCenterUserRole, wcResource, wcValueProperty,
 } from 'mission-control-db/src/db/schema/index';
+import { listControlEvents } from 'mission-control-db/src/dao/control-events';
 import { makeTestDb } from './helpers/db.js';
 import { testDeps } from './helpers/pump.js';
 import { createInternalApp } from '../src/api/internal.js';
@@ -73,6 +74,76 @@ test('four controls: happy path writes the transitional status', async () => {
     const [row] = await db.select({ status: workflowInstance.status }).from(workflowInstance).where(eq(workflowInstance.id, id));
     expect(row.status).toBe(to);
   }
+  await close();
+});
+
+test('stop with actor body records that actor', async () => {
+  const { db, close } = await makeTestDb();
+  const app = makeApp(db, 'secret-1');
+  const id = await seed(db, 'running');
+  const [u] = await db.insert(appUser).values({ loginName: 'op1', displayName: 'Op One', email: 'op1@x.test' } as any).returning();
+  const res = await postJson(app, `/internal/instances/${id}/stop`, { actor: { kind: 'user', userId: u.id } }, 'secret-1');
+  expect(res.status).toBe(200);
+  const events = await listControlEvents(db, id);
+  expect(events).toHaveLength(1);
+  expect(events[0]).toMatchObject({ verb: 'stop', actorKind: 'user', actorUserId: u.id, actorName: 'Op One' });
+  // unknown user -> 400; malformed actor -> 400
+  const id2 = await seed(db, 'running');
+  expect((await postJson(app, `/internal/instances/${id2}/stop`, { actor: { kind: 'user', userId: '00000000-0000-0000-0000-000000000000' } }, 'secret-1')).status).toBe(400);
+  expect((await postJson(app, `/internal/instances/${id2}/stop`, { actor: { kind: 'bogus' } }, 'secret-1')).status).toBe(400);
+  await close();
+});
+
+test('stop without a body records the internal system actor', async () => {
+  const { db, close } = await makeTestDb();
+  const app = makeApp(db, 'secret-1');
+  const id = await seed(db, 'running');
+  expect((await post(app, `/internal/instances/${id}/stop`, 'secret-1')).status).toBe(200);
+  expect((await listControlEvents(db, id))[0]).toMatchObject({ actorKind: 'system', actorName: 'internal' });
+  await close();
+});
+
+test('skip-cleanup moves stopping_cleanup to stopping', async () => {
+  const { db, close } = await makeTestDb();
+  const app = makeApp(db, 'secret-1');
+  const id = await seed(db, 'stopping_cleanup');
+  const [u] = await db.insert(appUser).values({ loginName: 'op2', displayName: 'Op Two', email: 'op2@x.test' } as any).returning();
+  const actor = { kind: 'user', userId: u.id };
+  const res = await postJson(app, `/internal/instances/${id}/skip-cleanup`, { kind: 'stop', actor }, 'secret-1');
+  expect(res.status).toBe(200);
+  const [row] = await db.select({ status: workflowInstance.status }).from(workflowInstance).where(eq(workflowInstance.id, id));
+  expect(row.status).toBe('stopping');
+  expect((await listControlEvents(db, id))[0]).toMatchObject({ effect: 'skip_cleanup', actorKind: 'user', actorUserId: u.id });
+  // wrong state -> 409
+  expect((await postJson(app, `/internal/instances/${id}/skip-cleanup`, { kind: 'abort', actor }, 'secret-1')).status).toBe(409);
+  await close();
+});
+
+test('skip-cleanup: only a person may skip (U7) — remote, system or no actor -> 400, nothing written', async () => {
+  const { db, close } = await makeTestDb();
+  const app = makeApp(db, 'secret-1');
+  const id = await seed(db, 'stopping_cleanup');
+  for (const body of [
+    { kind: 'stop' },
+    { kind: 'stop', actor: { kind: 'system', label: 't' } },
+    { kind: 'stop', actor: { kind: 'remote', label: 'WC/RW-9', instanceId: null } },
+  ]) {
+    const res = await postJson(app, `/internal/instances/${id}/skip-cleanup`, body, 'secret-1');
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.code).toBe('VALIDATION');
+  }
+  const [row] = await db.select({ status: workflowInstance.status }).from(workflowInstance).where(eq(workflowInstance.id, id));
+  expect(row.status).toBe('stopping_cleanup');
+  expect(await listControlEvents(db, id)).toEqual([]);
+  await close();
+});
+
+test("skip-cleanup with kind 'x' -> 400", async () => {
+  const { db, close } = await makeTestDb();
+  const app = makeApp(db, 'secret-1');
+  const id = await seed(db, 'stopping_cleanup');
+  expect((await postJson(app, `/internal/instances/${id}/skip-cleanup`, { kind: 'x' }, 'secret-1')).status).toBe(400);
+  expect((await post(app, `/internal/instances/${id}/skip-cleanup`, 'secret-1')).status).toBe(400);
   await close();
 });
 

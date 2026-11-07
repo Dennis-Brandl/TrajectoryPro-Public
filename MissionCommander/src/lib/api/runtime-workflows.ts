@@ -33,6 +33,7 @@ export const runtimeWorkflows = {
   resume: (id: string) => post(`/api/runtime-workflows/${id}/resume`, {}) as Promise<{ ok: true }>,
   stop: (id: string) => post(`/api/runtime-workflows/${id}/stop`, {}) as Promise<{ ok: true }>,
   abort: (id: string) => post(`/api/runtime-workflows/${id}/abort`, {}) as Promise<{ ok: true }>,
+  skipCleanup: (id: string, kind: 'stop' | 'abort') => post(`/api/runtime-workflows/${id}/skip-cleanup`, { kind }) as Promise<{ ok: true }>,
   forceRelease: (assignmentId: string) => post(`/api/assignments/${assignmentId}/force-release`, {}) as Promise<{ ok: true }>,
   remove: (id: string) => del(`/api/runtime-workflows/${id}`) as Promise<undefined>,
   activeTree: () => get('/api/runtime-workflows/active') as Promise<RuntimeActiveTree>,

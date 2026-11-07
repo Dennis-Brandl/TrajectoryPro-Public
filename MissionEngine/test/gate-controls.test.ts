@@ -98,7 +98,7 @@ test('stop cancels a waiting gate outright — no trace row, wake_at cleared, in
   await pumpUntilQuiet(db, deps);
   expect((await stepRow(db, wi.id, 'g')).state).toBe('WAITING_GATE');
 
-  await requestStop(db, wi.id);
+  await requestStop(db, wi.id, { kind: 'system', label: 'test' });
   await pumpUntilQuiet(db, deps);
 
   const gate = await stepRow(db, wi.id, 'g');
@@ -125,7 +125,7 @@ test('abort flips a waiting gate ABORTED with trace, instance settles aborted', 
   await pumpUntilQuiet(db, deps);
   expect((await stepRow(db, wi.id, 'g')).state).toBe('WAITING_GATE');
 
-  await requestAbort(db, wi.id);
+  await requestAbort(db, wi.id, { kind: 'system', label: 'test' });
   await pumpUntilQuiet(db, deps);
 
   const gate = await stepRow(db, wi.id, 'g');

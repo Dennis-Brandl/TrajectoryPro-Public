@@ -25,6 +25,7 @@ import { OutputsEditor } from './OutputsEditor'
 import { ValuesEditor } from './ValuesEditor'
 import { ResourcesEditor } from './ResourcesEditor'
 import { TryEditor, type TrySpec } from './TryEditor'
+import { collectOperatorCleanupWarnings } from '@/lib/export/operator-cleanup-warnings'
 import { useIsChildWorkflow } from '@/hooks/useIsChildWorkflow'
 import { useAvailableValueTypes } from '@/hooks/useAvailableValueTypes'
 import type { ParameterSpec, ValueSpec, ResourceSpec } from '@/types/nodes'
@@ -78,6 +79,7 @@ export function WorkflowInlineEditor() {
   const specifications = useLibraryStore((state) => state.specifications)
 
   const allNodes = useFlowStore((s) => s.nodes)
+  const allEdges = useFlowStore((s) => s.edges)
   const availableCatches = allNodes
     .filter((n) => n.type === 'catch' && (n.data as { catchId?: string }).catchId)
     .map((n) => ({ catchId: (n.data as { catchId: string }).catchId }))
@@ -98,6 +100,11 @@ export function WorkflowInlineEditor() {
     resources: structuredClone(workflowResources),
     tries: structuredClone(workflowTrySpecifications),
   }))
+
+  const operatorWarnings = useMemo(
+    () => collectOperatorCleanupWarnings(allNodes, allEdges, draft.tries),
+    [allNodes, allEdges, draft.tries],
+  )
 
   const currentSpecRef = useRef(currentSpecification)
   currentSpecRef.current = currentSpecification
@@ -314,7 +321,17 @@ export function WorkflowInlineEditor() {
             onChange={(tries) => updateDraft({ tries })}
             availableCatches={availableCatches}
             hideHeading
+            level="workflow"
           />
+          {operatorWarnings.length > 0 && (
+            <ul role="list" aria-label="Operator cleanup warnings" className="mt-2 space-y-1">
+              {operatorWarnings.map((w) => (
+                <li role="listitem" key={w} className="text-[11px] text-amber-600">
+                  {w}
+                </li>
+              ))}
+            </ul>
+          )}
         </CollapsibleSection>
       </Accordion.Root>
     </div>

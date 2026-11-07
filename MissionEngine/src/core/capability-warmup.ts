@@ -27,6 +27,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { workflowInstance, stepInstance } from 'mission-control-db/src/db/schema/index';
 import type { Db } from '../db.js';
 import type { ActionClient } from '../actions/client.js';
+import { isRunningLike, RUNNING_LIKE_STATUSES } from './operator-cleanup.js';
 
 /** The step states whose action a PAUSE/STOP decision can be about. */
 const COMMANDABLE_STATES = ['WAITING_ACTION', 'PAUSED'];
@@ -133,7 +134,7 @@ async function gateOrigins(db: Db, now: Date): Promise<Array<string | null>> {
       sql`${stepInstance.stepOid} = ${armed}->>'predecessorOid'`,
     ))
     .where(and(
-      eq(workflowInstance.status, 'running'),
+      inArray(workflowInstance.status, [...RUNNING_LIKE_STATUSES]),
       eq(gate.state, 'WAITING_GATE'), isNotNull(gate.wakeAt), lte(gate.wakeAt, now),
       sql`coalesce((${armed}->>'stopSent')::boolean, true) = false`,
       isNotNull(stepInstance.actionServerUri), isNotNull(stepInstance.actionInstanceId),

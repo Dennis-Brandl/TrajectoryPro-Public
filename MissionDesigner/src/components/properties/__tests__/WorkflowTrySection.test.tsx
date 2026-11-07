@@ -79,3 +79,26 @@ describe('findCatchTriggers — workflow-level rows', () => {
     expect(findCatchTriggers([], 'C1', [{ mode: 'ERROR', catch_id: 'OTHER' }])).toEqual([])
   })
 })
+
+describe('WorkflowInlineEditor Operator TRY rows', () => {
+  it('offers Operator modes and lists cleanup warnings in amber', () => {
+    const ret = {
+      id: 'r1',
+      type: 'return',
+      position: { x: 0, y: 0 },
+      data: { label: 'Done', stepType: 'return', returnConfig: { command: 'RETRY' } },
+    } as unknown as WorkflowNode
+    useFlowStore.setState({
+      nodes: [catchNode, ret],
+      edges: [{ id: 'e1', source: 'c1', target: 'r1' }],
+      workflowTrySpecifications: [{ mode: 'OPERATOR_STOP', catch_id: 'C1' }],
+    })
+    render(<WorkflowInlineEditor />)
+    fireEvent.click(screen.getByText('TRY / Error Handling'))
+    expect(screen.getByText('Operator Stop')).toBeTruthy()
+    expect(screen.getByText(/top-level runtime/)).toBeTruthy()
+    expect(
+      screen.getByText('RETURN "Done" is in the Operator Stop cleanup; its RETRY command is treated as finish.'),
+    ).toBeTruthy()
+  })
+})

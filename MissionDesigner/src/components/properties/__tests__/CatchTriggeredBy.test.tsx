@@ -46,3 +46,15 @@ describe('CatchTriggeredBy', () => {
     expect(onSelect).toHaveBeenCalledWith('s1')
   })
 })
+
+describe('CatchTriggeredBy operator modes', () => {
+  it('renders ON Operator Stop', () => {
+    render(
+      <CatchTriggeredBy
+        triggers={[{ stepId: '', stepLabel: 'Workflow', mode: 'OPERATOR_STOP' }]}
+        onSelect={() => {}}
+      />,
+    )
+    expect(screen.getByText('ON Operator Stop')).toBeTruthy()
+  })
+})

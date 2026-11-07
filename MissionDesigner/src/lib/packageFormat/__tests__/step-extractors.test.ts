@@ -45,3 +45,18 @@ describe('extractReturnConfig', () => {
 describe('extractCatchId', () => {
   it('returns the string', () => expect(extractCatchId({ catchId: 'OvenFailed' })).toBe('OvenFailed'))
 })
+
+describe('extractTrySpecifications operator modes', () => {
+  const rows = [
+    { mode: 'OPERATOR_STOP', catch_id: 'C' },
+    { mode: 'OPERATOR_ABORT', catch_id: 'D' },
+    { mode: 'ERROR', catch_id: 'E' },
+  ]
+  it('step level drops OPERATOR_STOP', () => {
+    expect(extractTrySpecifications({ trySpecifications: rows })).toEqual([{ mode: 'ERROR', catch_id: 'E' }])
+    expect(extractTrySpecifications({ trySpecifications: [rows[0]] }, 'step')).toBeUndefined()
+  })
+  it('workflow level keeps OPERATOR_STOP and OPERATOR_ABORT', () => {
+    expect(extractTrySpecifications({ trySpecifications: rows }, 'workflow')).toEqual(rows)
+  })
+})

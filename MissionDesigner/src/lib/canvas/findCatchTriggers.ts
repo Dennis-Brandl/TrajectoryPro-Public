@@ -13,19 +13,26 @@
 // limitations under the License.
 
 import type { WorkflowNode } from '@/types/nodes'
+import type { WorkflowTryMode } from '@/lib/try-modes'
 
 export interface CatchTrigger {
   stepId: string
   stepLabel: string
-  mode: 'ERROR' | 'ABORT' | 'TIMEOUT'
+  mode: WorkflowTryMode
 }
 
 interface TrySpecLike {
-  mode: 'ERROR' | 'ABORT' | 'TIMEOUT'
+  mode: WorkflowTryMode
   catch_id: string
 }
 
-const MODE_ORDER: Record<CatchTrigger['mode'], number> = { ERROR: 0, ABORT: 1, TIMEOUT: 2 }
+const MODE_ORDER: Record<CatchTrigger['mode'], number> = {
+  ERROR: 0,
+  ABORT: 1,
+  TIMEOUT: 2,
+  OPERATOR_STOP: 3,
+  OPERATOR_ABORT: 4,
+}
 
 /**
  * Reverse-lookup: every TRY (step + mode) that routes to the given catch_id.
@@ -56,11 +63,13 @@ export function findCatchTriggers(
     }
   }
   out.sort((a, b) =>
-    a.stepId === ''
-      ? -1
-      : b.stepId === ''
-        ? 1
-        : a.stepLabel.localeCompare(b.stepLabel) || MODE_ORDER[a.mode] - MODE_ORDER[b.mode],
+    a.stepId === '' && b.stepId === ''
+      ? MODE_ORDER[a.mode] - MODE_ORDER[b.mode]
+      : a.stepId === ''
+        ? -1
+        : b.stepId === ''
+          ? 1
+          : a.stepLabel.localeCompare(b.stepLabel) || MODE_ORDER[a.mode] - MODE_ORDER[b.mode],
   )
   return out
 }

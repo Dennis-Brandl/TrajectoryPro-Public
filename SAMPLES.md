@@ -71,7 +71,7 @@ This is a secret key that allows Mission Engine and the console to communicate w
 After signing in, go to the **Environments** page and use **Upload Package** to import the following files. These files contain the sample environments and associated Python code:
 - Cross Workflow Sync.WFenvirBundleX
 - Kitchen.WFenvirBundleX
-- Moma Jane's Pizza Environment.WFenvirBundleX
+- Mama Jane's Pizza Environment.WFenvirBundleX
 - TRY-CATCH Environment.WFenvirBundleX
 
 ### Linking Mission Commander to the Action Servers
@@ -113,7 +113,7 @@ To run them:
 - In the Mission Commander **Settings** screen, make sure http://mission-broker:3007 is in the list of trusted servers.
 - In the Work Center, under the **Env Specs** tab, set the action server for each environment and click **Save**:
   - *Distributed Workflow Management*: http://mission-broker:3007
-  - *Moma Jane's Pizza Environment*: http://mission-autopilot-server:3002
+  - *Mama Jane's Pizza Environment*: http://mission-autopilot-server:3002
 - A workflow can always control runtime workflows in its own Work Center. To reach another Work Center, it needs a grant on the **Controls** tab of the Work Center that does the controlling.
 
 See [The Distributed Workflow Library](docs/DISTRIBUTED_WORKFLOW_LIBRARY.md) for the full guide.

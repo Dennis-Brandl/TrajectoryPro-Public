@@ -396,7 +396,7 @@ The header shows the user's name, email and login name, with these controls:
 
 Tabs:
 
-- **Work Centers** -- every work center the user belongs to, whether they are Mission System Commander there, and the roles they hold there. **Add Role** opens the roles dialog for that work center. Membership and the Mission System Commander flag are changed on the work center's **Users** tab.
+- **Work Centers** -- every work center the user belongs to, whether they are Mission System Commander there, and the roles they hold there. **Add Work Center** adds the user to another work center. The **Mission System Commander** box grants or takes away that right in a work center. **Add Role** opens the roles dialog for that work center. **✕** removes the user from the work center, along with the roles they held there, after you confirm. These are the same changes as on the work center's **Users** tab, and need the same right.
 - **Sessions** (administrators) -- the user's active sign-ins, with created and expiry times. **Revoke** ends one and **Revoke all** ends every one. Your own current session is marked _Current_.
 
 ---
@@ -802,7 +802,7 @@ Administrators can click **Purge…** on the History page to delete every entry 
 
 ### Opening Mission XO
 
-Click **Open Mission XO** in Mission Commander's top bar, or go to the same server address followed by `/xo/` (for example `http://localhost:3005/xo/`). Mission XO uses the same sign-in as Mission Commander: signed in to one, you are signed in to the other.
+Click **Open Mission XO** in Mission Commander's top bar, or go to the same server address followed by `/xo/` (for example `http://localhost:3005/xo/`). Mission XO uses the same accounts and passwords as Mission Commander, but you sign in to it separately. The two sign-ins are independent: you can be signed in to Commander as one person and to Mission XO as another in the same browser, and signing in or out of one never changes the other.
 
 Mission XO lays itself out for the screen it is on: a rail on the left on a desktop, tabs across the top on a tablet, and a bottom bar on a phone. On a phone or tablet you can add it to the home screen and it opens like an app.
 

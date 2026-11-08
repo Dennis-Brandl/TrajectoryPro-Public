@@ -18,6 +18,7 @@ import { getSetupStatus } from '@/lib/auth/setupClient';
 import { runBoot } from '@/lib/auth/boot';
 import { usePrincipalStore } from '@/stores/principalStore';
 import { useTheme } from '@/hooks/useTheme';
+import { useSignedInUserCheck } from '@/hooks/useSignedInUserCheck';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { ImpersonationBanner } from '@/components/shell/ImpersonationBanner';
 
@@ -40,6 +41,7 @@ export function AuthenticatedLayout() {
   const navigate = useNavigate();
   const principal = usePrincipalStore((s) => s.principal);
   const { theme, toggleTheme } = useTheme();
+  useSignedInUserCheck(principal?.id);
   const logout = async () => { await signOut(); usePrincipalStore.getState().clearPrincipal(); navigate({ to: '/login' }); };
   const activeHierarchy = useSelectionStore((s) => s.activeHierarchy);
   const setHierarchy = useSelectionStore((s) => s.setHierarchy);

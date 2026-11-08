@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import { betterAuth } from 'better-auth';
+import { betterAuth, type BetterAuthOptions } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { APIError } from 'better-auth/api';
 import { admin } from 'better-auth/plugins';
@@ -61,19 +61,10 @@ export function trustedOrigins(): string[] {
   ];
 }
 
-export const auth = betterAuth({
+// Settings both sign-ins share: one user table, one session table, one secret.
+const shared = {
   secret: authSecret,
   baseURL,
-  // Let the DB fill every id from its uuid defaultRandom() (app_user.id is uuid).
-  // cookiePrefix: app-distinct — the three Mission Suite better-auth apps share the
-  // localhost cookie jar (per HOST, not per port); the default prefix made them clobber
-  // each other's session token (2026-08-20). See auth.cookie.test.ts.
-  // ipAddress: the rate limit keys on the IP clientIpMiddleware resolves (client-ip.ts).
-  advanced: {
-    database: { generateId: false },
-    cookiePrefix: 'mission-commander',
-    ipAddress: { ipAddressHeaders: [CLIENT_IP_HEADER] },
-  },
   database: drizzleAdapter(db, {
     provider: 'pg',
     // Map better-auth's `user` model onto the existing app_user table; session/
@@ -86,13 +77,6 @@ export const auth = betterAuth({
       verification: schema.verification,
     },
   }),
-  emailAndPassword: { enabled: true, disableSignUp: false },
-  // Admin plugin (spec §6.2): set-user-password, session management, impersonation.
-  // Authorization rides app_user.role, which is a pure MIRROR of access_level
-  // (dao/access.ts setAccessLevel) — 'admin' ⇔ our Administrator tier. The plugin's
-  // conflicting endpoints are blocked by adminGate (middleware/admin-gate.ts).
-  // Defaults are stated explicitly: they must match roleForLevel()'s values.
-  plugins: [admin({ defaultRole: 'user', adminRoles: ['admin'] })],
   user: {
     modelName: 'user', // resolved to appUser via the schema map above
     // better-auth field → Drizzle *property key* (NOT the SQL column name). The
@@ -109,6 +93,40 @@ export const auth = betterAuth({
       updatedAt: 'updatedAt',
     },
   },
+  trustedOrigins,
+} satisfies BetterAuthOptions;
+
+// A disabled account never gets a session — sign-in and admin impersonation alike.
+// (requireSession already rejects disabled users on API calls; this closes creation.)
+const refuseDisabled = {
+  create: {
+    before: async (session: { userId: string }) => {
+      if (await isUserDisabled(db, session.userId)) {
+        throw new APIError('FORBIDDEN', { message: ACCOUNT_DISABLED_MESSAGE, code: 'ACCOUNT_DISABLED' });
+      }
+    },
+  },
+};
+
+export const auth = betterAuth({
+  ...shared,
+  // Let the DB fill every id from its uuid defaultRandom() (app_user.id is uuid).
+  // cookiePrefix: app-distinct — the three Mission Suite better-auth apps share the
+  // localhost cookie jar (per HOST, not per port); the default prefix made them clobber
+  // each other's session token (2026-08-20). See auth.cookie.test.ts.
+  // ipAddress: the rate limit keys on the IP clientIpMiddleware resolves (client-ip.ts).
+  advanced: {
+    database: { generateId: false },
+    cookiePrefix: 'mission-commander',
+    ipAddress: { ipAddressHeaders: [CLIENT_IP_HEADER] },
+  },
+  emailAndPassword: { enabled: true, disableSignUp: false },
+  // Admin plugin (spec §6.2): set-user-password, session management, impersonation.
+  // Authorization rides app_user.role, which is a pure MIRROR of access_level
+  // (dao/access.ts setAccessLevel) — 'admin' ⇔ our Administrator tier. The plugin's
+  // conflicting endpoints are blocked by adminGate (middleware/admin-gate.ts).
+  // Defaults are stated explicitly: they must match roleForLevel()'s values.
+  plugins: [admin({ defaultRole: 'user', adminRoles: ['admin'] })],
   databaseHooks: {
     user: {
       create: {
@@ -124,17 +142,27 @@ export const auth = betterAuth({
         },
       },
     },
-    session: {
-      create: {
-        // A disabled account never gets a session — sign-in and admin impersonation alike.
-        // (requireSession already rejects disabled users on API calls; this closes creation.)
-        before: async (session) => {
-          if (await isUserDisabled(db, session.userId)) {
-            throw new APIError('FORBIDDEN', { message: ACCOUNT_DISABLED_MESSAGE, code: 'ACCOUNT_DISABLED' });
-          }
-        },
-      },
-    },
+    session: refuseDisabled,
   },
-  trustedOrigins,
+});
+
+/** The URL prefix of Mission XO's own sign-in. */
+export const XO_AUTH_BASE_PATH = '/api/xo-auth';
+
+// Mission XO's own sign-in (2026-11-08). XO runs on this server at /xo/, the same host as
+// Commander, so with one cookie a sign-in to XO replaced Commander's session in the same
+// browser: a Commander tab still showing George acted as whoever had just signed in to XO.
+// XO now keeps its session in its own cookie; requireSession reads it only for requests
+// XO marks (lib/app-header.ts). Same users, passwords and session table; sign-in only —
+// accounts are made in Commander, so sign-up is off, and there is no admin plugin.
+export const xoAuth = betterAuth({
+  ...shared,
+  basePath: XO_AUTH_BASE_PATH,
+  advanced: {
+    database: { generateId: false },
+    cookiePrefix: 'mission-xo',
+    ipAddress: { ipAddressHeaders: [CLIENT_IP_HEADER] },
+  },
+  emailAndPassword: { enabled: true, disableSignUp: true },
+  databaseHooks: { session: refuseDisabled },
 });

@@ -41,7 +41,24 @@ vi.mock('../lib/auth', () => ({
     },
     handler: () => new Response(null, { status: 404 }),
   },
+  // Mission XO's own sign-in: a separate session, set with mockXoSessionAs.
+  xoAuth: {
+    api: {
+      getSession: vi.fn(async () => {
+        const uid = (globalThis as { __cmTestXoUserId?: string }).__cmTestXoUserId;
+        return uid ? { user: { id: uid } } : null;
+      }),
+    },
+    handler: () => new Response(null, { status: 404 }),
+  },
+  XO_AUTH_BASE_PATH: '/api/xo-auth',
 }));
+
+/** Signs Mission XO's own session in as userId (null signs it out); Commander's is untouched. */
+export function mockXoSessionAs(userId: string | null): void {
+  if (userId) (globalThis as { __cmTestXoUserId?: string }).__cmTestXoUserId = userId;
+  else delete (globalThis as { __cmTestXoUserId?: string }).__cmTestXoUserId;
+}
 
 export function mockSessionAs(userId: string | null): void {
   if (userId) (globalThis as { __cmTestUserId?: string }).__cmTestUserId = userId;

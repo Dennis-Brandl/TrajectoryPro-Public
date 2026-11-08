@@ -13,7 +13,8 @@
 // limitations under the License.
 import type { Context, MiddlewareHandler } from 'hono';
 import { eq } from 'drizzle-orm';
-import { auth } from '../lib/auth';
+import { auth, xoAuth } from '../lib/auth';
+import { APP_HEADER, XO_APP } from '../../lib/app-header';
 import { db } from '../lib/db';
 import { appUser } from 'mission-control-db/src/db/schema/index';
 import { loadPrincipal, hasRight, type Principal } from 'mission-control-db/src/dao/access';
@@ -24,8 +25,11 @@ export type Vars = { principal: Principal };
 
 // Re-reads the principal fresh from the DB on every request (spec §5). Rejects
 // missing sessions, deleted users, and disabled accounts with 401.
+// A request Mission XO marks is checked against XO's own sign-in, never Commander's, and
+// an unmarked one against Commander's only — so each app acts as the account signed in to it.
 export const requireSession: MiddlewareHandler<{ Variables: Vars }> = async (c, next) => {
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  const signIn = c.req.header(APP_HEADER) === XO_APP ? xoAuth : auth;
+  const session = await signIn.api.getSession({ headers: c.req.raw.headers });
   const userId = session?.user?.id;
   if (!userId) return httpError(c, 401, 'unauthorized', 'Authentication required');
 

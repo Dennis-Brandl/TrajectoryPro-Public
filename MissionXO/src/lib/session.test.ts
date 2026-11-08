@@ -13,10 +13,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { installUnauthorizedRedirect } from './session';
-import { setUnauthorizedHandler, get } from '@/lib/api/client';
+import { installUnauthorizedRedirect, installXoAppHeader } from './session';
+import { setUnauthorizedHandler, setAppHeaders, get, post } from '@/lib/api/client';
+import { XO_AUTH_BASE_PATH } from './auth-client';
 
-afterEach(() => { setUnauthorizedHandler(null); vi.unstubAllGlobals(); });
+afterEach(() => { setUnauthorizedHandler(null); setAppHeaders(null); vi.unstubAllGlobals(); });
+
+// 2026-11-08: XO keeps its own sign-in, so every call it makes must say it is XO's.
+describe('installXoAppHeader', () => {
+  it('marks every API call, reads and writes alike, as Mission XO', async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    installXoAppHeader();
+    await get('/api/me');
+    await post('/api/workflows/w1/runtime-workflows', { start: true });
+    for (const [, init] of fetchMock.mock.calls) {
+      expect((init as RequestInit).headers).toMatchObject({ 'X-Mission-App': 'xo' });
+    }
+    expect((fetchMock.mock.calls[1][1] as RequestInit).headers).toMatchObject({ 'content-type': 'application/json' });
+  });
+
+  it("signs in at XO's own path, not Commander's /api/auth", () => {
+    expect(XO_AUTH_BASE_PATH).toBe('/api/xo-auth');
+  });
+});
 
 describe('installUnauthorizedRedirect', () => {
   it('sends a 401 to /xo/login', async () => {

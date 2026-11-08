@@ -15,7 +15,8 @@ import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { Hono } from 'hono';
 import { db } from '../lib/db';
 import { migrateTestDb, resetDb } from '../test/fixture';
-import { mockSessionAs, seedUser, req } from '../test/harness';
+import { mockSessionAs, mockXoSessionAs, seedUser, req } from '../test/harness';
+import { APP_HEADER, XO_APP } from '../../lib/app-header';
 import { requireSession, requirePermission, requireAdministrator, type Vars } from './auth';
 
 function guardedApp() {
@@ -33,6 +34,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await resetDb();
   mockSessionAs(null);
+  mockXoSessionAs(null);
 });
 
 describe('requireSession', () => {
@@ -50,6 +52,42 @@ describe('requireSession', () => {
     const id = await seedUser(db, { email: 'a@x.io', displayName: 'A', accessLevel: 'viewer' });
     mockSessionAs(id);
     expect((await req(guardedApp(), 'GET', '/api/open')).status).toBe(200);
+  });
+});
+
+// 2026-11-08: Commander signed in as George, Mission XO as John Doe in the same browser.
+// Commander's starts must act as George, XO's as John Doe.
+describe('requireSession picks the sign-in of the app that sent the request', () => {
+  function whoApp() {
+    const app = new Hono<{ Variables: Vars }>();
+    app.use('/api/*', requireSession);
+    app.get('/api/who', (c) => c.json({ userId: c.get('principal').userId }));
+    return app;
+  }
+  async function who(headers?: Record<string, string>) {
+    const res = await whoApp().request('/api/who', { headers });
+    return { status: res.status, userId: res.status === 200 ? ((await res.json()) as { userId: string }).userId : null };
+  }
+
+  it("uses Commander's session for an unmarked request and XO's for one XO marks", async () => {
+    const george = await seedUser(db, { email: 'g@x.io', displayName: 'George', accessLevel: 'administrator' });
+    const john = await seedUser(db, { email: 'j@x.io', displayName: 'John', accessLevel: 'steward' });
+    mockSessionAs(george);
+    mockXoSessionAs(john);
+    expect(await who()).toEqual({ status: 200, userId: george });
+    expect(await who({ [APP_HEADER]: XO_APP })).toEqual({ status: 200, userId: john });
+  });
+
+  it("an XO request with no XO sign-in is 401, even while Commander is signed in", async () => {
+    const george = await seedUser(db, { email: 'g@x.io', displayName: 'George', accessLevel: 'administrator' });
+    mockSessionAs(george);
+    expect((await who({ [APP_HEADER]: XO_APP })).status).toBe(401);
+  });
+
+  it("a Commander request with only an XO sign-in is 401", async () => {
+    const john = await seedUser(db, { email: 'j@x.io', displayName: 'John', accessLevel: 'steward' });
+    mockXoSessionAs(john);
+    expect((await who()).status).toBe(401);
   });
 });
 

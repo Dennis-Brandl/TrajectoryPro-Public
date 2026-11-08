@@ -16,7 +16,7 @@ import { eq } from 'drizzle-orm';
 import { db } from './db';
 import { appUser } from 'mission-control-db/src/db/schema/index';
 import { migrateTestDb, resetDb } from '../test/fixture';
-import { auth, trustedOrigins } from './auth';
+import { auth, xoAuth, trustedOrigins } from './auth';
 
 beforeAll(async () => {
   await migrateTestDb();
@@ -54,6 +54,42 @@ describe('better-auth ↔ app_user mapping', () => {
     expect(cookie).toContain('mission-commander.session_token'); // app-distinct prefix (2026-08-20)
     const session = await auth.api.getSession({ headers: new Headers({ cookie }) });
     expect(session?.user?.email).toBe('admin@x.io');
+  });
+});
+
+// 2026-11-08: Mission XO is served from this host, so with Commander's cookie a sign-in to
+// XO replaced Commander's session in the same browser. XO has its own cookie now.
+describe("Mission XO's own sign-in", () => {
+  async function signInXo(email: string) {
+    const res = await xoAuth.api.signInEmail({ body: { email, password: 'pw-123456' }, asResponse: true });
+    return res.headers.get('set-cookie') ?? '';
+  }
+  async function signInCommander(email: string) {
+    const res = await auth.api.signInEmail({ body: { email, password: 'pw-123456' }, asResponse: true });
+    return res.headers.get('set-cookie') ?? '';
+  }
+  const cookiePair = (setCookie: string) => setCookie.split(';')[0];
+
+  it("sets a mission-xo cookie that only XO's sign-in reads", async () => {
+    await auth.api.signUpEmail({ body: { email: 'g@x.io', password: 'pw-123456', name: 'George' } });
+    const setCookie = await signInXo('g@x.io');
+    expect(setCookie).toContain('mission-xo.session_token');
+    expect(setCookie).not.toContain('mission-commander.');
+    const cookie = cookiePair(setCookie);
+    expect((await xoAuth.api.getSession({ headers: new Headers({ cookie }) }))?.user?.email).toBe('g@x.io');
+    expect(await auth.api.getSession({ headers: new Headers({ cookie }) })).toBeNull();
+  });
+
+  it('George in Commander and John in XO stay themselves with both cookies in one browser', async () => {
+    await auth.api.signUpEmail({ body: { email: 'g@x.io', password: 'pw-123456', name: 'George' } });
+    await auth.api.signUpEmail({ body: { email: 'j@x.io', password: 'pw-123456', name: 'John' } });
+    const cookie = `${cookiePair(await signInCommander('g@x.io'))}; ${cookiePair(await signInXo('j@x.io'))}`;
+    expect((await auth.api.getSession({ headers: new Headers({ cookie }) }))?.user?.email).toBe('g@x.io');
+    expect((await xoAuth.api.getSession({ headers: new Headers({ cookie }) }))?.user?.email).toBe('j@x.io');
+  });
+
+  it('has sign-up turned off — accounts are made in Commander', async () => {
+    await expect(xoAuth.api.signUpEmail({ body: { email: 'n@x.io', password: 'pw-123456', name: 'New' } })).rejects.toThrow();
   });
 });
 

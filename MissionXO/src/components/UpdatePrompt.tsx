@@ -11,11 +11,28 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+import { useEffect, useRef } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
+import { applyWhenSafe, checkForUpdates } from '~/lib/auto-update';
 
-/** Bar shown on every screen when a new service-worker build is waiting. */
+/**
+ * Keeps XO on the latest build. It checks for a new build every few minutes and when the
+ * tab comes back into view; a new build is applied by itself at a safe moment (tab hidden,
+ * or no typing or tapping for a while), and meanwhile this bar lets the user apply it now.
+ */
 export function UpdatePrompt() {
-  const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW();
+  const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW({
+    onRegisteredSW(_url, registration) {
+      if (registration) checkForUpdates(() => { void registration.update().catch(() => { /* offline */ }); });
+    },
+  });
+  // A ref, so a new function identity on re-render does not restart the idle wait.
+  const apply = useRef(updateServiceWorker);
+  apply.current = updateServiceWorker;
+  useEffect(() => {
+    if (!needRefresh) return;
+    return applyWhenSafe(() => { void apply.current(true); });
+  }, [needRefresh]);
   if (!needRefresh) return null;
   return (
     <div

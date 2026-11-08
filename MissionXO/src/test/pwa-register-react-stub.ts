@@ -13,7 +13,7 @@
 // limitations under the License.
 // Vitest-only stand-in for vite-plugin-pwa's virtual module (it exists only in the real
 // build). Tests that exercise the update bar vi.mock this id with their own state.
-export function useRegisterSW() {
+export function useRegisterSW(_options?: unknown) {
   return {
     needRefresh: [false, () => {}] as const,
     offlineReady: [false, () => {}] as const,

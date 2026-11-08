@@ -25,6 +25,7 @@ vi.mock('virtual:pwa-register/react', () => ({
 }));
 
 import { UpdatePrompt } from './UpdatePrompt';
+import { IDLE_BEFORE_UPDATE_MS } from '~/lib/auto-update';
 
 afterEach(() => { cleanup(); state.updateServiceWorker.mockClear(); });
 
@@ -35,6 +36,19 @@ describe('UpdatePrompt', () => {
     expect(screen.getByText(/A new version is available/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Reload' }));
     expect(state.updateServiceWorker).toHaveBeenCalledWith(true);
+  });
+
+  it('applies a waiting update by itself once nobody has typed or tapped for a while', () => {
+    vi.useFakeTimers();
+    try {
+      state.needRefresh = true;
+      render(<UpdatePrompt />);
+      expect(state.updateServiceWorker).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(IDLE_BEFORE_UPDATE_MS);
+      expect(state.updateServiceWorker).toHaveBeenCalledWith(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('renders nothing when no update is waiting', () => {

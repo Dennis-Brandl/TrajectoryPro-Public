@@ -20,11 +20,11 @@ vi.mock('@tanstack/react-router', async (orig) => {
   const actual = await orig<typeof import('@tanstack/react-router')>();
   return { ...actual, useNavigate: () => navigate };
 });
-vi.mock('@/lib/auth/auth-client', () => ({ signIn: { email: vi.fn() }, useSession: vi.fn() }));
+vi.mock('~/lib/auth-client', () => ({ signIn: { email: vi.fn() }, useSession: vi.fn() }));
 vi.mock('@/lib/auth/setupClient', () => ({ getSetupStatus: vi.fn() }));
 
 import { LoginPage } from './login';
-import { useSession } from '@/lib/auth/auth-client';
+import { useSession } from '~/lib/auth-client';
 import { getSetupStatus } from '@/lib/auth/setupClient';
 
 beforeEach(() => {

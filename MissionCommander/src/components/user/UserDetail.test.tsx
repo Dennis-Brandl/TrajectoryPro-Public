@@ -23,6 +23,7 @@ import * as usersApi from '@/lib/api/users';
 import * as rolesApi from '@/lib/api/roles';
 import * as wcApi from '@/lib/api/work-centers';
 import type { WorkCenterView } from '@/lib/api/types';
+import { ApiError } from '@/lib/api/client';
 import { UserDetail } from './UserDetail';
 
 const { navigateSpy, impersonateUserSpy, listUserSessionsSpy } = vi.hoisted(() => ({
@@ -62,18 +63,19 @@ afterEach(cleanup);
 afterEach(() => vi.restoreAllMocks());
 
 describe('UserDetail', () => {
-  it('renders header with login name, and the read-only Work Centers tab with commander flag and roles', async () => {
+  it('renders header with login name, and the Work Centers tab with commander tick and roles', async () => {
     render(<UserDetail />);
     expect(await screen.findByRole('heading', { name: 'Alice' })).toBeVisible();
     expect(screen.getByText('a@x.io · alice')).toBeVisible();
     // Work Centers is the default tab.
     expect(screen.getByText('Line 1')).toBeVisible();
     expect(screen.getByText('Operator')).toBeVisible();
-    expect(screen.getByRole('cell', { name: 'Yes' })).toBeVisible();
+    expect(screen.getByRole('checkbox', { name: 'Mission System Commander in Line 1' })).toBeChecked();
     expect(screen.queryByRole('tab', { name: 'Roles' })).toBeNull();
     // 2026-09-09: roles are editable per work center from here too (the row's Add Role).
     expect(screen.getByRole('button', { name: 'Add Role in Line 1' })).toBeEnabled();
-    expect(screen.getByText('Membership and Mission System Commander are edited from the work center.')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Add Work Center' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Remove from Line 1' })).toBeEnabled();
   });
 
   it('Edit dialog seeds display name + login name and submits both through users.update', async () => {
@@ -342,5 +344,94 @@ describe('UserDetail — Add Role per work center', () => {
     const button = screen.getByRole('button', { name: 'Add Role in Line 1' });
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute('title', 'Requires work_center:link');
+  });
+});
+
+// 2026-11-08 (user request): a user's work centers are managed from the user too.
+describe('UserDetail — work center membership', () => {
+  const LINE_2 = { id: 'w2', name: 'Line 2', parentWorkCenterId: null, depth: 0, typeName: null };
+  const AFTER_ADD = {
+    ...VIEW,
+    workCenters: [...VIEW.workCenters, {
+      workCenter: { ...VIEW.workCenters[0].workCenter, id: 'w2', name: 'Line 2' }, missionSystemCommander: false, roles: [],
+    }],
+  };
+
+  it('Add Work Center lists only work centers the user is not in, adds the picked one and shows it', async () => {
+    vi.spyOn(wcApi.workCenters, 'list').mockResolvedValue({ nodes: [{ ...LINE_2, id: 'w1', name: 'Line 1' }, LINE_2] });
+    const assign = vi.spyOn(wcApi.workCenters, 'assignUser').mockResolvedValue({} as WorkCenterView);
+    render(<UserDetail />);
+    await screen.findByRole('heading', { name: 'Alice' });
+    vi.mocked(usersApi.users.get).mockResolvedValue(AFTER_ADD as never);
+    await userEvent.click(screen.getByRole('button', { name: 'Add Work Center' }));
+    const dialog = await screen.findByRole('dialog');
+    await within(dialog).findByText('Line 2');
+    expect(within(dialog).queryByText('Line 1')).toBeNull();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('w2', 'u1'));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(await screen.findByRole('checkbox', { name: 'Mission System Commander in Line 2' })).not.toBeChecked();
+    expect(toast.success).toHaveBeenCalledWith('Added to work center');
+  });
+
+  it('a failed add keeps the picker open and says why', async () => {
+    vi.spyOn(wcApi.workCenters, 'list').mockResolvedValue({ nodes: [LINE_2] });
+    vi.spyOn(wcApi.workCenters, 'assignUser').mockRejectedValue(new ApiError(403, 'forbidden', 'Missing permission: work_center:link'));
+    render(<UserDetail />);
+    await screen.findByRole('heading', { name: 'Alice' });
+    await userEvent.click(screen.getByRole('button', { name: 'Add Work Center' }));
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.click(await within(dialog).findByRole('button', { name: 'Add' }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Missing permission: work_center:link'));
+    expect(screen.getByRole('dialog')).toBeVisible();
+  });
+
+  it('the commander tick grants and revokes through the same route as the work center', async () => {
+    const assign = vi.spyOn(wcApi.workCenters, 'assignUser').mockResolvedValue({} as WorkCenterView);
+    render(<UserDetail />);
+    await screen.findByRole('heading', { name: 'Alice' });
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Mission System Commander in Line 1' }));
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('w1', 'u1', { missionSystemCommander: false }));
+    expect(toast.success).toHaveBeenCalledWith('Mission System Commander revoked');
+    expect(usersApi.users.get).toHaveBeenCalledTimes(2); // refetched: the row shows server truth
+  });
+
+  it('Remove asks first, naming the roles that go with it, then removes', async () => {
+    const unassign = vi.spyOn(wcApi.workCenters, 'unassignUser').mockResolvedValue(undefined);
+    render(<UserDetail />);
+    await screen.findByRole('heading', { name: 'Alice' });
+    vi.mocked(usersApi.users.get).mockResolvedValue({ ...VIEW, workCenters: [] } as never);
+    await userEvent.click(screen.getByRole('button', { name: 'Remove from Line 1' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Unassign Alice from Line 1?')).toBeVisible();
+    expect(within(dialog).getByText(/Operator/)).toBeVisible();
+    expect(unassign).not.toHaveBeenCalled();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Unassign' }));
+    await waitFor(() => expect(unassign).toHaveBeenCalledWith('w1', 'u1'));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(await screen.findByText('No work centers')).toBeVisible();
+  });
+
+  it('changing your own membership reloads your own rights', async () => {
+    usePrincipalStore.getState().setPrincipal({ id: 'u1', email: '', loginName: 'alice', displayName: 'Alice', accessLevel: 'administrator', isAdministrator: true, rights: [], missionSystemCommanderOf: ['w1'] });
+    vi.spyOn(wcApi.workCenters, 'assignUser').mockResolvedValue({} as WorkCenterView);
+    render(<UserDetail />);
+    await screen.findByRole('heading', { name: 'Alice' });
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Mission System Commander in Line 1' }));
+    await waitFor(() => expect(runBoot).toHaveBeenCalled());
+  });
+
+  it('every membership control is off without work_center:link', async () => {
+    usePrincipalStore.getState().setPrincipal({ id: 'v', email: '', loginName: 'v', displayName: 'V', accessLevel: 'viewer', isAdministrator: false, rights: ['user:read'], missionSystemCommanderOf: [] });
+    render(<UserDetail />);
+    await screen.findByRole('heading', { name: 'Alice' });
+    for (const control of [
+      screen.getByRole('button', { name: 'Add Work Center' }),
+      screen.getByRole('button', { name: 'Remove from Line 1' }),
+      screen.getByRole('checkbox', { name: 'Mission System Commander in Line 1' }),
+    ]) {
+      expect(control).toBeDisabled();
+      expect(control).toHaveAttribute('title', 'Requires work_center:link');
+    }
   });
 });

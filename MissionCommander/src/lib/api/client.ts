@@ -79,17 +79,29 @@ async function handle(res: Response) {
   }
   return body;
 }
+// Headers sent with every call. Commander sends none; Mission XO sets its app header
+// (lib/app-header.ts) so the server checks XO's own sign-in, not Commander's.
+let appHeaders: Record<string, string> = {};
+/** Set the headers every API call carries (Mission XO). Pass null to clear them. */
+export function setAppHeaders(headers: Record<string, string> | null): void {
+  appHeaders = headers ?? {};
+}
+function withAppHeaders(init: RequestInit): RequestInit {
+  if (Object.keys(appHeaders).length === 0) return init;
+  return { ...init, headers: { ...appHeaders, ...(init.headers as Record<string, string> | undefined) } };
+}
+const send = (p: string, init: RequestInit) => fetch(p, withAppHeaders(init)).then(handle);
 const json = (method: string, body?: unknown): RequestInit => ({
   method, credentials: 'include',
   ...(body !== undefined ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
 });
-export const get = (p: string) => fetch(p, { credentials: 'include' }).then(handle);
-export const post = (p: string, b?: unknown) => fetch(p, json('POST', b)).then(handle);
-export const patch = (p: string, b?: unknown) => fetch(p, json('PATCH', b)).then(handle);
-export const put = (p: string, b?: unknown) => fetch(p, json('PUT', b)).then(handle);
-export const del = (p: string) => fetch(p, json('DELETE')).then(handle);
+export const get = (p: string) => send(p, { credentials: 'include' });
+export const post = (p: string, b?: unknown) => send(p, json('POST', b));
+export const patch = (p: string, b?: unknown) => send(p, json('PATCH', b));
+export const put = (p: string, b?: unknown) => send(p, json('PUT', b));
+export const del = (p: string) => send(p, json('DELETE'));
 // Multipart upload — the only verb that does NOT go through `json()` above. The
 // content-type header is deliberately omitted: the browser sets it itself, including the
 // `boundary=…` the server needs to parse the parts. Hand-setting it breaks the upload.
 export const postForm = (p: string, form: FormData) =>
-  fetch(p, { method: 'POST', credentials: 'include', body: form }).then(handle);
+  send(p, { method: 'POST', credentials: 'include', body: form });

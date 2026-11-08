@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { ApiError, apiErrorMessage, postForm, isUnauthenticatedRoute, setUnauthorizedHandler } from './client';
+import { ApiError, apiErrorMessage, postForm, isUnauthenticatedRoute, setUnauthorizedHandler, setAppHeaders, get } from './client';
 import { api } from './index';
 
 const origFetch = global.fetch;
@@ -126,5 +126,28 @@ describe('postForm', () => {
     mockFetch(400, { error: { code: 'bad_request', message: 'Not a valid WFmasterX package' } });
     await expect(postForm('/api/workflows/import', new FormData()))
       .rejects.toMatchObject({ status: 400, code: 'bad_request', message: 'Not a valid WFmasterX package' });
+  });
+});
+
+describe('setAppHeaders', () => {
+  afterEach(() => setAppHeaders(null));
+
+  it('Commander sends no app header by default', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+    global.fetch = fetchMock;
+    await get('/api/me');
+    expect(fetchMock).toHaveBeenCalledWith('/api/me', { credentials: 'include' });
+  });
+
+  it("adds the set headers to every call, keeping the call's own", async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => new Response('{}', { status: 200 }));
+    global.fetch = fetchMock;
+    setAppHeaders({ 'X-Mission-App': 'xo' });
+    await get('/api/me');
+    await postForm('/api/brand-assets', new FormData());
+    for (const [, init] of fetchMock.mock.calls) {
+      expect((init as RequestInit).headers).toEqual({ 'X-Mission-App': 'xo' });
+      expect((init as RequestInit).credentials).toBe('include');
+    }
   });
 });

@@ -17,7 +17,8 @@ import { logger } from 'hono/logger';
 import { eq } from 'drizzle-orm';
 import { db } from './lib/db';
 import { appUser } from 'mission-control-db/src/db/schema/index';
-import { auth } from './lib/auth';
+import { auth, xoAuth, XO_AUTH_BASE_PATH } from './lib/auth';
+import { APP_HEADER } from '../lib/app-header';
 import { clientIpMiddleware, parseTrustedProxies } from './lib/client-ip';
 import { signupGate } from './middleware/signup-gate';
 import { adminGate } from './middleware/admin-gate';
@@ -68,7 +69,7 @@ app.use(
       return allowed.includes(origin) ? origin : null;
     },
     credentials: true,
-    allowHeaders: ['Content-Type', 'Authorization'],
+    allowHeaders: ['Content-Type', 'Authorization', APP_HEADER],
     allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   }),
 );
@@ -84,6 +85,10 @@ app.use('/api/auth/*', clientIpMiddleware(parseTrustedProxies(process.env.TRUSTE
 app.use('/api/auth/*', signupGate); // must precede adminGate + the auth handler
 app.use('/api/auth/*', adminGate); // default-closed admin allowlist (spec §6.3)
 app.on(['POST', 'GET'], '/api/auth/*', (c) => auth.handler(c.req.raw));
+// Mission XO's own sign-in (lib/auth.ts xoAuth): sign-up is off in its config and it has
+// no admin endpoints, so it needs only the client IP its rate limit keys on.
+app.use(`${XO_AUTH_BASE_PATH}/*`, clientIpMiddleware(parseTrustedProxies(process.env.TRUSTED_PROXIES)));
+app.on(['POST', 'GET'], `${XO_AUTH_BASE_PATH}/*`, (c) => xoAuth.handler(c.req.raw));
 
 app.get('/api/health', (c) => c.json({ status: 'ok' }));
 

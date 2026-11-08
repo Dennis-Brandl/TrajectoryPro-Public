@@ -18,6 +18,7 @@ import { useSelectionStore } from '@/stores/selectionStore';
 import { useHasRight, usePrincipal } from '@/stores/principalStore';
 import { useResourceView } from '@/lib/hooks/useResourceView';
 import { users } from '@/lib/api/users';
+import { workCenters as workCentersApi } from '@/lib/api/work-centers';
 import { apiErrorMessage } from '@/lib/api/client';
 import { ACCESS_LEVELS, type AccessLevel } from '@/lib/access-levels';
 import type { UserView, UserWorkCenterMembership, WorkCenterView } from '@/lib/api/types';
@@ -33,6 +34,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RefreshErrorBanner } from '@/components/shell/RefreshErrorBanner';
 import { RequiresTooltip } from '@/components/shared/RequiresTooltip';
 import { WorkCenterUserRolesDialog } from '@/components/work-center/WorkCenterUserRolesDialog';
+import { LinkPickerModal } from '@/components/work-center/LinkPickerModal';
+import { UnassignUserDialog } from '@/components/work-center/UnassignUserDialog';
 import { SetPasswordDialog } from './SetPasswordDialog';
 import { SessionsTab } from './SessionsTab';
 import { refreshUserTree } from './UserTree';
@@ -53,6 +56,13 @@ export function UserDetail() {
   // The membership row whose roles are being edited (one work center at a time).
   const [rolesFor, setRolesFor] = useState<UserWorkCenterMembership | null>(null);
   const [impersonating, setImpersonating] = useState(false);
+  const [addWcOpen, setAddWcOpen] = useState(false);
+  // The membership row being removed (confirmed in UnassignUserDialog).
+  const [removeFrom, setRemoveFrom] = useState<UserWorkCenterMembership | null>(null);
+  const fetchWorkCenters = useCallback(
+    () => workCentersApi.list().then((r) => r.nodes.map((n) => ({ id: n.id, name: n.name }))),
+    [],
+  );
   // Bumped whenever a server action revokes the target's sessions (set-password,
   // disable) so an open Sessions tab remounts SessionsTab (key) and refetches instead
   // of continuing to show now-dead rows.
@@ -81,6 +91,42 @@ export function UserDetail() {
     const mine = wcView.users.find((u) => u.id === view.user.id)?.roles;
     if (!mine) { refresh(); return; }
     setView({ ...view, workCenters: view.workCenters.map((m) => (m.workCenter.id === workCenterId ? { ...m, roles: mine } : m)) });
+  };
+  // 2026-11-08 (user request): membership is managed from the user too — add, remove and
+  // the Mission System Commander tick, through the same routes and right
+  // (work_center:link) as the work center's Users tab. Each write returns the WORK CENTER's
+  // view, so the user is refetched. Changing your own membership changes your own rights,
+  // so the principal is reloaded too.
+  const afterMembershipChange = async () => {
+    const userId = view.user.id;
+    if (useSelectionStore.getState().selectedUserId === userId) refresh();
+    if (isSelf) await runBoot();
+  };
+  const addToWorkCenter = async (workCenterId: string) => {
+    try {
+      await workCentersApi.assignUser(workCenterId, view.user.id);
+      await afterMembershipChange();
+      toast.success('Added to work center');
+      setAddWcOpen(false);
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Add failed')); // the picker stays open for a retry
+    }
+  };
+  // Rejects on failure: UnassignUserDialog toasts it and stays open.
+  const removeFromWorkCenter = async (workCenterId: string) => {
+    await workCentersApi.unassignUser(workCenterId, view.user.id);
+    setRemoveFrom(null);
+    await afterMembershipChange();
+    toast.success('Removed from work center');
+  };
+  const toggleSystemCommander = async (workCenterId: string, next: boolean) => {
+    try {
+      await workCentersApi.assignUser(workCenterId, view.user.id, { missionSystemCommander: next });
+      await afterMembershipChange();
+      toast.success(next ? 'Mission System Commander granted' : 'Mission System Commander revoked');
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Update failed'));
+    }
   };
   const showImpersonate = canManageAccess && !isSelf && view.user.status !== 'disabled' && view.user.accessLevel !== 'administrator';
   const impersonate = async () => {
@@ -167,6 +213,25 @@ export function UserDetail() {
       <SetPasswordDialog open={passwordOpen} onOpenChange={setPasswordOpen} userId={view.user.id}
         onDone={() => setSessionsEpoch((e) => e + 1)} />
 
+      <LinkPickerModal
+        open={addWcOpen}
+        onOpenChange={setAddWcOpen}
+        title={`Add ${view.user.displayName} to a work center`}
+        fetchItems={fetchWorkCenters}
+        linkedIds={new Set(view.workCenters.map((m) => m.workCenter.id))}
+        onLink={addToWorkCenter}
+        actionLabel="Add"
+      />
+      {removeFrom && (
+        <UnassignUserDialog
+          open onOpenChange={(o) => { if (!o) setRemoveFrom(null); }}
+          userName={view.user.displayName}
+          workCenterName={removeFrom.workCenter.name}
+          roleNames={removeFrom.roles.map((r) => r.name)}
+          onConfirm={() => removeFromWorkCenter(removeFrom.workCenter.id)}
+        />
+      )}
+
       {rolesFor && (
         <WorkCenterUserRolesDialog
           open onOpenChange={(o) => { if (!o) setRolesFor(null); }}
@@ -187,14 +252,35 @@ export function UserDetail() {
           {canManageAccess && <TabsTrigger value="sessions">Sessions</TabsTrigger>}
         </TabsList>
         <TabsContent value="workCenters">
+          <div className="mb-2 flex justify-end">
+            <RequiresTooltip reason={canLink ? undefined : 'Requires work_center:link'}>
+              <Button type="button" size="sm" onClick={() => setAddWcOpen(true)} disabled={!canLink}
+                title={canLink ? undefined : 'Requires work_center:link'}>Add Work Center</Button>
+            </RequiresTooltip>
+          </div>
           {view.workCenters.length === 0 ? <p className="text-sm text-muted-foreground">No work centers</p> : (
             <Table>
-              <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Mission System Commander</TableHead><TableHead>Roles</TableHead></TableRow></TableHeader>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Mission System Commander</TableHead>
+                  <TableHead>Roles</TableHead>
+                  <TableHead><span className="sr-only">Actions</span></TableHead>
+                </TableRow>
+              </TableHeader>
               <TableBody>
                 {view.workCenters.map((m) => (
                   <TableRow key={m.workCenter.id}>
                     <TableCell>{m.workCenter.name}</TableCell>
-                    <TableCell>{m.missionSystemCommander ? 'Yes' : '—'}</TableCell>
+                    <TableCell>
+                      <RequiresTooltip reason={canLink ? undefined : 'Requires work_center:link'}>
+                        <input type="checkbox" className="h-4 w-4 accent-primary"
+                          aria-label={`Mission System Commander in ${m.workCenter.name}`}
+                          checked={m.missionSystemCommander} disabled={!canLink}
+                          title={canLink ? undefined : 'Requires work_center:link'}
+                          onChange={() => toggleSystemCommander(m.workCenter.id, !m.missionSystemCommander)} />
+                      </RequiresTooltip>
+                    </TableCell>
                     <TableCell>
                       <span>{m.roles.length ? m.roles.map((r) => r.name).join(', ') : '—'}</span>
                       <RequiresTooltip reason={canLink ? undefined : 'Requires work_center:link'}>
@@ -203,12 +289,18 @@ export function UserDetail() {
                           title={canLink ? undefined : 'Requires work_center:link'}>Add Role</Button>
                       </RequiresTooltip>
                     </TableCell>
+                    <TableCell>
+                      <RequiresTooltip reason={canLink ? undefined : 'Requires work_center:link'}>
+                        <Button type="button" variant="ghost" size="sm" aria-label={`Remove from ${m.workCenter.name}`}
+                          onClick={() => setRemoveFrom(m)} disabled={!canLink}
+                          title={canLink ? undefined : 'Requires work_center:link'}>✕</Button>
+                      </RequiresTooltip>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           )}
-          <p className="mt-2 text-xs text-muted-foreground">Membership and Mission System Commander are edited from the work center.</p>
         </TabsContent>
         {canManageAccess && (
           <TabsContent value="sessions"><SessionsTab key={sessionsEpoch} userId={view.user.id} /></TabsContent>

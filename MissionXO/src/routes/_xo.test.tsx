@@ -21,11 +21,11 @@ vi.mock('@tanstack/react-router', async (orig) => {
   const actual = await orig<typeof import('@tanstack/react-router')>();
   return { ...actual, Outlet: () => <div>outlet content</div>, useRouter: () => ({ invalidate }), useNavigate: () => navigate };
 });
-vi.mock('@/lib/auth/auth-client', () => ({ authClient: { getSession: vi.fn() }, signOut: vi.fn() }));
+vi.mock('~/lib/auth-client', () => ({ authClient: { getSession: vi.fn() }, signOut: vi.fn() }));
 vi.mock('@/lib/api/me', () => ({ me: vi.fn() }));
 
 import { XoLayout, XoUnreachable, SwitcherButton, Route } from './_xo';
-import { authClient } from '@/lib/auth/auth-client';
+import { authClient } from '~/lib/auth-client';
 import { me as fetchMe } from '@/lib/api/me';
 import { useMeStore } from '~/stores/meStore';
 import { usePrincipalStore } from '@/stores/principalStore';

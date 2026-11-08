@@ -18,10 +18,14 @@
 // clobbered each other's session token (2026-08-20: visiting CM/Pilot made
 // Designer's next save 401). Each app must keep a unique prefix.
 import { describe, it, expect } from 'vitest';
-import { auth } from './auth';
+import { auth, xoAuth } from './auth';
 
 describe('better-auth cookie prefix', () => {
   it("is 'mission-commander' — distinct from Designer and the Engine on the same host", () => {
     expect(auth.options.advanced?.cookiePrefix).toBe('mission-commander');
+  });
+
+  it("Mission XO's sign-in is 'mission-xo' — XO shares Commander's host, so it must not share its cookie", () => {
+    expect(xoAuth.options.advanced?.cookiePrefix).toBe('mission-xo');
   });
 });

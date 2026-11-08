@@ -11,7 +11,7 @@ This guide is organized by task. Find what you want to do and follow the steps.
 1. Open Mission XO in your browser.
 2. Enter your email and password and click **Sign in**.
 
-You use the same account as in Mission Commander. Mission XO is for Stewards and Administrators. If your account is not one of those, XO tells you so and you can sign out.
+You use the same account and password as in Mission Commander, but Mission XO keeps its own sign-in: signing in or out here does not change who is signed in to Commander in the same browser, and the other way round. Mission XO is for Stewards and Administrators. If your account is not one of those, XO tells you so and you can sign out.
 
 ## Choosing a work center
 
@@ -98,7 +98,7 @@ XO adapts to the screen. On a tablet it shows the list and detail side by side. 
 
 To install it like an app, use your browser's own option: **Install** on Chrome and Edge, or **Add to Home Screen** on Safari and Android browsers. XO then opens full screen from its own icon.
 
-When a new version of XO is ready, a bar reads **A new version is available — Reload**. Click **Reload** to switch to the new version.
+XO looks for a new version every few minutes, and whenever you come back to its tab. When one is ready, a bar reads **A new version is available — Reload**. Click **Reload** to switch now. Otherwise XO switches by itself when you leave its tab, or after two minutes without typing or tapping, so a form you are filling in is not lost.
 
 ## What XO does not do
 

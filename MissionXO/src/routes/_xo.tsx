@@ -13,7 +13,7 @@
 // limitations under the License.
 import { createFileRoute, Outlet, redirect, useRouter } from '@tanstack/react-router';
 import { AppHeader } from '@mission/ui';
-import { authClient, signOut } from '@/lib/auth/auth-client';
+import { authClient, signOut } from '~/lib/auth-client';
 import { useTheme } from '@/hooks/useTheme';
 import { useMeStore } from '~/stores/meStore';
 import { usePrincipalStore } from '@/stores/principalStore';

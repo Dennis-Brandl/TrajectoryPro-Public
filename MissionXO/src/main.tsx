@@ -15,9 +15,10 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createRouter, RouterProvider } from '@tanstack/react-router';
 import { routeTree } from './routeTree.gen';
-import { installUnauthorizedRedirect } from './lib/session';
+import { installUnauthorizedRedirect, installXoAppHeader } from './lib/session';
 import './index.css';
 
+installXoAppHeader();
 installUnauthorizedRedirect();
 const router = createRouter({ routeTree, basepath: '/xo' });
 declare module '@tanstack/react-router' { interface Register { router: typeof router } }

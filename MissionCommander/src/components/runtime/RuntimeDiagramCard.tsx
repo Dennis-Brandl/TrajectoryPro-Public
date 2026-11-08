@@ -46,12 +46,14 @@ function GateTimerLine({ timer }: { timer: GateTimer }) {
 // own read routes — recipe fetched once per instance, live states on the Pilot's 2 s
 // cadence, drill-down into WORKFLOW PROXY children. A step tap opens the Phase-1 claim
 // affordances (Assign an offer / Force-release a claim); Phases 2-3 add mode controls here.
-export function RuntimeDiagramCard({ instanceId, canCommand, busy, onAssign, onForceRelease }: {
+export function RuntimeDiagramCard({ instanceId, canCommand, busy, onAssign, onForceRelease, onForceCompleteError }: {
   instanceId: string;
   canCommand: boolean;
   busy: boolean;
   onAssign: (assignmentId: string, stepName: string) => void;
   onForceRelease: (assignmentId: string, stepName: string) => void;
+  /** Passed to the tooltip's Force complete; without it the generic error toast shows. */
+  onForceCompleteError?: (err: unknown) => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [drill, setDrill] = useState<string[]>([]); // child spec oids, root first
@@ -174,7 +176,7 @@ export function RuntimeDiagramCard({ instanceId, canCommand, busy, onAssign, onF
               {canCommand && entry && isForceCompletable(tooltip.step.stepType, entry.state) && entry.stepInstanceId && (
                 <ForceCompleteControl instanceId={instanceId} stepInstanceId={entry.stepInstanceId}
                   stepName={tooltip.step.name} disabled={busy} timer={entry.gateTimer ?? undefined}
-                  onSuccess={() => setTooltip(null)} />
+                  onSuccess={() => setTooltip(null)} onError={onForceCompleteError} />
               )}
               <Button type="button" size="sm" variant="ghost" aria-label="Close" onClick={() => setTooltip(null)}>×</Button>
             </div>

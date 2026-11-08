@@ -29,11 +29,13 @@ function TimerReadout({ timer }: { timer: GateTimer }) {
 
 // Spec 2026-10-13 §5.2/§6.4: Force complete a waiting gate or repeating script. Inline (no nested dialog — it lives inside
 // the runtime detail dialog and the diagram tooltip): the button opens a required-reason field.
-export function ForceCompleteControl({ instanceId, stepInstanceId, stepName, disabled, title, timer, onDone, onSuccess }: {
+export function ForceCompleteControl({ instanceId, stepInstanceId, stepName, disabled, title, timer, onDone, onSuccess, onError }: {
   instanceId: string; stepInstanceId: string; stepName: string;
   disabled?: boolean; title?: string; timer?: GateTimer;
   /** Runs after every attempt (refresh). */ onDone?: () => void;
   /** Runs only when the force succeeded (e.g. close a tooltip); a failure keeps the typed reason. */ onSuccess?: () => void;
+  /** Reports a failure in place of the generic toast (Mission XO shows its View only message on a 403). */
+  onError?: (err: unknown) => void;
 }) {
   const [asking, setAsking] = useState(false);
   const [reason, setReason] = useState('');
@@ -48,7 +50,8 @@ export function ForceCompleteControl({ instanceId, stepInstanceId, stepName, dis
       close();
       onSuccess?.();
     } catch (err) {
-      toast.error(apiErrorMessage(err, 'Force complete failed'));
+      if (onError) onError(err);
+      else toast.error(apiErrorMessage(err, 'Force complete failed'));
     } finally {
       setBusy(false);
       onDone?.();

@@ -64,6 +64,18 @@ describe('ForceCompleteControl', () => {
     expect(onDone).toHaveBeenCalledTimes(1);
     expect(onSuccess).not.toHaveBeenCalled();
   });
+  it('a caller-supplied onError reports the failure instead of the generic toast', async () => {
+    const err = new Error('Forbidden');
+    vi.mocked(runtimeWorkflows.forceComplete).mockRejectedValue(err);
+    const onError = vi.fn();
+    render(<ForceCompleteControl instanceId="i1" stepInstanceId="s1" stepName="G" onError={onError} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Force complete G' }));
+    fireEvent.change(screen.getByLabelText('Reason for forcing G'), { target: { value: 'r' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    await waitFor(() => expect(onError).toHaveBeenCalledWith(err));
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Reason for forcing G')).toHaveValue('r');
+  });
   it('onSuccess runs after a successful force', async () => {
     vi.mocked(runtimeWorkflows.forceComplete).mockResolvedValue({ ok: true, summary: 's' } as never);
     const onSuccess = vi.fn();

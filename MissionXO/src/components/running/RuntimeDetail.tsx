@@ -122,7 +122,8 @@ export function RuntimeDetail({ runtimeId }: { runtimeId: string }) {
   const diagram = (
     <RuntimeDiagramCard instanceId={s.id} canCommand={canAct} busy={busy}
       onAssign={(assignmentId, stepName) => setAssignFor({ assignmentId, stepName })}
-      onForceRelease={(assignmentId, stepName) => setReleaseFor({ assignmentId, stepName })} />
+      onForceRelease={(assignmentId, stepName) => setReleaseFor({ assignmentId, stepName })}
+      onForceCompleteError={(err) => reportControlError(err, 'Force complete failed')} />
   );
 
   return (

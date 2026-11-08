@@ -16,8 +16,10 @@ import { expect, it } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { RUNTIME_CAN } from '@/lib/runtime-status';
 import { useNow } from '@/lib/hooks/useNow';
+import pkg from '../package.json';
 
 it('resolves Commander code through @', () => { expect(RUNTIME_CAN.pause.has('running')).toBe(true); });
 // A Commander hook running under XO's React: fails with "Invalid hook call" if React loads twice.
 it('shares one React with Commander code', () => { expect(typeof renderHook(() => useNow(1000)).result.current).toBe('number'); });
-it('has its own version', () => { expect(__APP_VERSION__).toBe('0.1.0'); });
+// XO's own package.json version, not Commander's (which the shared code would otherwise suggest).
+it('has its own version', () => { expect(__APP_VERSION__).toBe(pkg.version); });

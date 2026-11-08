@@ -30,7 +30,13 @@ import path from 'node:path'
 import { marked } from 'marked'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const ROOT = path.resolve(__dirname, '..')
+function arg(name, fallback) {
+  const i = process.argv.indexOf(`--${name}`)
+  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : fallback
+}
+const ROOT = path.resolve(arg('root', path.resolve(__dirname, '..')))
+const PRODUCT = arg('product', 'Mission Commander')
+const ICON = arg('icon', '/ic_launcher_round.png')
 const SRC = path.join(ROOT, 'HELP.md')
 const OUT_DIR = path.join(ROOT, 'public')
 const OUT = path.join(OUT_DIR, 'help.html')
@@ -85,8 +91,8 @@ const html = `<!doctype html>
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Help — Mission Commander</title>
-<link rel="icon" type="image/png" href="/ic_launcher_round.png" />
+<title>Help — ${PRODUCT}</title>
+<link rel="icon" type="image/png" href="${ICON}" />
 <style>
   :root {
     --bg: #fdfdfb;
@@ -160,9 +166,9 @@ const html = `<!doctype html>
 <div class="layout">
   <aside class="toc">
     <header class="doc-header">
-      <img src="/ic_launcher_round.png" alt="" />
+      <img src="${ICON}" alt="" />
       <div>
-        <div class="product">Mission Commander</div>
+        <div class="product">${PRODUCT}</div>
         <div class="version">Help · v${APP_VERSION}</div>
       </div>
     </header>

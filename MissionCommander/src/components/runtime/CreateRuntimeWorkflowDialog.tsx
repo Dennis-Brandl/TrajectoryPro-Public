@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { runtimeWorkflows } from '@/lib/api/runtime-workflows';
 import { apiErrorMessage } from '@/lib/api/client';
+import { initialParamValues, paramsForCreate } from '@/lib/runtime-params';
 import { runtimeStatusLabel } from '@/lib/runtime-status';
 import type { RuntimeParameterSpec, RuntimeWorkflowSummary } from '@/lib/api/types';
 
@@ -51,9 +52,7 @@ export function CreateRuntimeWorkflowDialog({
         if (reqId.current !== id) return;   // stale response guard
         setSpecs(r.parameters);
         // Literal defaults prefill as entered values; property defaults resolve at start.
-        setValues(Object.fromEntries(
-          r.parameters.filter((p) => p.valueType === 'literal').map((p) => [p.id, p.defaultValue]),
-        ));
+        setValues(initialParamValues(r.parameters));
       },
       (err) => { if (reqId.current === id) toast.error(apiErrorMessage(err, 'Failed to load parameters')); },
     );
@@ -71,7 +70,7 @@ export function CreateRuntimeWorkflowDialog({
     try {
       // Send entered values only: property-param fields left empty are omitted so the
       // engine resolves their defaults at start (spec §4.2 as refined by the plan).
-      const params = Object.fromEntries(Object.entries(values).filter(([, v]) => v !== ''));
+      const params = paramsForCreate(values);
       const rw = await runtimeWorkflows.create(workflowId, params, { start });
       toast.success(`${rw.runtimeLabel} created — ${runtimeStatusLabel(rw.status)}`);
       onCreated?.(rw);

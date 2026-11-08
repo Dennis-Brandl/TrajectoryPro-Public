@@ -31,6 +31,9 @@ export const API_BASE_URL = 'http://localhost:3002';
  *  `use.baseURL` — `page.goto('/login')` etc. resolve against this. */
 export const APP_BASE_URL = 'http://localhost:5274';
 
+/** Mission XO's Vite dev origin (MissionXO, base /xo/, e2e port 5277). */
+export const XO_BASE_URL = 'http://localhost:5277/xo/';
+
 /**
  * Dedicated e2e Postgres connection string. e2e/reset-db.mjs REFUSES to run against a
  * database whose name doesn't contain "e2e" (it drops and recreates the public schema),

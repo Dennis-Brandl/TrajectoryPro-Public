@@ -16,6 +16,7 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { app } from './app';
 import { secretProblems } from './lib/secret-policy';
+import { spaFallbackFile, xoRedirect } from './lib/spa-fallback';
 import { canonicalHost } from './middleware/canonical-host';
 import { db } from './lib/db';
 import { startAuthPurge } from './lib/auth-purge';
@@ -45,13 +46,19 @@ if (fs.existsSync('./public/index.html')) {
   // applies where a browser actually loads the app from this server — in dev and e2e Vite
   // serves the SPA and this block is inert.
   app.use('*', canonicalHost(process.env.BASE_URL));
+  // Mission XO is built into ./public/xo; /xo must end in a slash for its relative assets.
+  app.get('/xo', (c) => c.redirect(xoRedirect(c.req.path) ?? '/xo/', 301));
   app.use('*', serveStatic({ root: './public' }));
   // SPA fallback: TanStack Router owns client-side routing, so any unmatched path that
   // is not an API call must return index.html rather than a 404 — otherwise a deep link
   // or a page refresh on /work-centers breaks.
   app.notFound((c) => {
-    if (c.req.path.startsWith('/api/')) {
+    const kind = spaFallbackFile(c.req.path);
+    if (kind === 'api-404') {
       return c.json({ error: { code: 'not_found', message: 'Not found' } }, 404);
+    }
+    if (kind === 'xo' && fs.existsSync('./public/xo/index.html')) {
+      return c.html(fs.readFileSync('./public/xo/index.html', 'utf-8'));
     }
     return c.html(fs.readFileSync('./public/index.html', 'utf-8'));
   });

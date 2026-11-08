@@ -51,7 +51,7 @@ export async function load(page: Page, file: FilePayload) {
   await expect(dialog).toBeHidden();
 }
 
-export async function assignStewardToWorkCenter(page: Page, wcName: string) {
+export async function assignStewardToWorkCenter(page: Page, wcName: string, opts: { missionSystemCommander?: boolean } = {}) {
   const wcs = (await (await page.request.get('/api/work-centers')).json()) as {
     nodes: Array<{ id: string; name: string }>;
   };
@@ -64,7 +64,7 @@ export async function assignStewardToWorkCenter(page: Page, wcName: string) {
   const steward = users.users.find((u) => u.email === STEWARD.email);
   if (!steward) throw new Error('assignStewardToWorkCenter: STEWARD user not found');
 
-  const assign = await page.request.post(`/api/work-centers/${wc.id}/users/${steward.id}`, { data: {} });
+  const assign = await page.request.post(`/api/work-centers/${wc.id}/users/${steward.id}`, { data: opts });
   expect(assign.ok()).toBeTruthy();
 }
 

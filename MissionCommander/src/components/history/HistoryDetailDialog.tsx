@@ -29,6 +29,7 @@ import { StaticCreatedRuntimes } from '@/components/runtime/CreatedRuntimesSecti
 import { formatDuration } from './format-duration';
 import { controlEventText, requesterName } from './control-event-text';
 import { activationRunNumbers, stepRunPathText } from './record/step-run-labels';
+import { downloadRecordPdf } from './record/download-record-pdf';
 import type { CreatedRuntimeTarget, RuntimeHistoryDetail } from '@/lib/api/types';
 
 /** A key/value map rendered as a definition-list; falls back to "None" for an empty or null
@@ -121,21 +122,12 @@ export function HistoryDetailDialog({ id, onClose, onDeleted, onOpenChild, back 
   // A child step's run count restarts with each run of its sub-workflow, as in the PDF.
   const runNumbers = activationRunNumbers(view.stepRuns);
 
-  // The PDF modules (and jsPDF behind them) load on the first click, not with the main bundle.
   const handleDownloadPdf = async () => {
     if (pdfRunning.current) return;
     pdfRunning.current = true;
     setPdfBusy(true);
     try {
-      const [{ buildRecordModel, pdfFileName }, { renderRecordPdf }] = await Promise.all([
-        import('./record/record-model'), import('./record/record-pdf'),
-      ]);
-      const model = buildRecordModel(view, {
-        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        now: new Date(),
-        loginName: principal?.loginName ?? 'unknown',
-      });
-      renderRecordPdf(model).doc.save(pdfFileName(view));
+      await downloadRecordPdf(view, principal?.loginName ?? 'unknown');
     } catch (err) {
       console.error('[history] PDF export failed:', err);
       toast.error('Could not create the PDF');

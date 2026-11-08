@@ -55,6 +55,11 @@ export function AuthenticatedLayout() {
         settingsActive={activeHierarchy === 'settings'}
         userName={principal?.displayName}
         onSignOut={logout}
+        tools={(
+          <a href="/xo/" target="_blank" rel="noopener" className="rounded px-2 py-1 text-xs font-medium hover:underline">
+            Open Mission XO
+          </a>
+        )}
       />
       <ImpersonationBanner />
       <div className="min-h-0 flex-1"><Outlet /></div>

@@ -29,6 +29,8 @@
 # resolves the path either way, so a lowercase spelling here silently excludes the
 # whole directory and the build fails with "not found" on the first COPY.
 !MissionCommander
+# Mission XO is built into the Commander image (served at /xo/).
+!MissionXO
 !MissionEngine
 # Mission Broker (docker-compose.yml `mission-broker`).
 !MissionBroker

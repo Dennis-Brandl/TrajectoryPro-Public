@@ -22,8 +22,9 @@ Mission Commander is where Trajectory Pro Mission Control workflows are put to w
 14. [Resources and Value Properties](#14-resources-and-value-properties)
 15. [E-signatures](#15-e-signatures)
 16. [History](#16-history)
-17. [Settings](#17-settings)
-18. [File Format Reference](#18-file-format-reference)
+17. [Mission XO](#17-mission-xo)
+18. [Settings](#18-settings)
+19. [File Format Reference](#19-file-format-reference)
 
 ---
 
@@ -75,7 +76,7 @@ The usual path through the application:
 
 ![Mission Commander with a work center selected: icon rail, work-center tree and detail panel](/help-images/2-screen-layout.png)
 
-- **Top bar** -- the app icon (click it to open About), the name **Mission Commander** and its version. On the right, in this order: **Help** (opens this guide in a new tab), the light/dark theme toggle, **Settings** (the gear icon), your display name, and **Sign out**.
+- **Top bar** -- the app icon (click it to open About), the name **Mission Commander**, its version, and **Open Mission XO** (opens [Mission XO](#17-mission-xo) in a new tab). On the right, in this order: **Help** (opens this guide in a new tab), the light/dark theme toggle, **Settings** (the gear icon), your display name, and **Sign out**.
 - **Icon rail** (far left) -- switches between the areas of the application. Click the active rail item again to hide or show its tree.
 - **Hierarchy Pane** (left) -- the tree or list for the selected area
 - **Detail Panel** (right) -- details, tabs and actions for whatever you select. **History** and **Settings** use the full width instead of a tree and detail panel.
@@ -795,7 +796,39 @@ Administrators can click **Purge…** on the History page to delete every entry 
 
 ---
 
-## 17. Settings
+## 17. Mission XO
+
+**Mission XO** is the everyday screen for running one work center. It holds only the runtime part of Mission Commander: starting workflows, watching and controlling the runs, and reading their records. Everything else (users, roles, libraries, packages, work-center setup and settings) stays in Mission Commander.
+
+### Opening Mission XO
+
+Click **Open Mission XO** in Mission Commander's top bar, or go to the same server address followed by `/xo/` (for example `http://localhost:3005/xo/`). Mission XO uses the same sign-in as Mission Commander: signed in to one, you are signed in to the other.
+
+Mission XO lays itself out for the screen it is on: a rail on the left on a desktop, tabs across the top on a tablet, and a bottom bar on a phone. On a phone or tablet you can add it to the home screen and it opens like an app.
+
+### Who Can Use It
+
+Only **Stewards** and **Administrators** can use Mission XO. A Viewer who signs in sees _Mission XO is for Stewards and Administrators_.
+
+Every work center is listed. In a work center where you are not a [Mission System Commander](#mission-system-commander), Mission XO shows **View only**: you can see everything, but the buttons that change things are turned off.
+
+### The Three Views
+
+After you choose a work center, Mission XO opens on **Running**. Three buttons switch between the views:
+
+| View          | What it is for |
+| ------------- | -------------- |
+| **Available** | The workflows you can start in this work center. Pick one, fill in the starting parameters and click **Start**. A draft workflow carries a **Draft** badge. |
+| **Running**   | The work center's runs, with paused and failed runs listed first. Select a run to see its steps and diagram, and to pause, resume, stop, abort, assign a step or force a gate to complete. |
+| **History**   | Finished runs. Select one to read its record, laid out like the PDF, and click **Download PDF** to save it. |
+
+Mission XO always starts a run right away. To create a run that waits to be started, use **Create Runtime Workflow…** in Mission Commander.
+
+Mission XO has its own help guide: click **Help** in Mission XO's top bar.
+
+---
+
+## 18. Settings
 
 Settings apply to the whole system. Open them with the gear icon in the top bar. Saving them requires `settings:edit`.
 
@@ -821,7 +854,7 @@ A change here reaches the engine within a few seconds.
 
 ---
 
-## 18. File Format Reference
+## 19. File Format Reference
 
 | Extension      | Produced by                                                  | Loaded with                                  | Contents                                                                                    |
 | -------------- | ------------------------------------------------------------ | -------------------------------------------- | ------------------------------------------------------------------------------------------- |

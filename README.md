@@ -16,6 +16,7 @@ that runs the fleet.
 | --- | --- | --- |
 | Mission Designer | `MissionDesigner/` | Visual workflow specification editor: workflows, environments, actions, forms, and the packages that carry them |
 | Mission Commander | `MissionCommander/` | Work centers, users and roles, loaded packages, and the creation and control of runtime workflows |
+| Mission XO | `MissionXO/` | Daily runtime console for Stewards: pick a work center, start and control its runtime workflows, read their history; desktop, tablet and phone |
 | Mission Engine | `MissionEngine/` | Executes runtime workflows against the shared database and dispatches environment actions; its image also serves Mission Pilot |
 | Mission Pilot | `MissionPilot/` | Operator task inbox, installable as a PWA: claim, submit, and release workflow steps |
 | Mission Autopilot | `MissionAutopilot/` | Action server and console: hosts the environment actions that workflows call, with handlers written in Python |

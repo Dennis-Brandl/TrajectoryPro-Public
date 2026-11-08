@@ -90,6 +90,15 @@ describe('AuthenticatedLayout shared header', () => {
     expect(help.closest('header')).not.toBeNull();
   });
 
+  it('offers Open Mission XO in the header, in a new tab', () => {
+    render(<AuthenticatedLayout />);
+    const xo = screen.getByRole('link', { name: 'Open Mission XO' });
+    expect(xo).toHaveAttribute('href', '/xo/');
+    expect(xo).toHaveAttribute('target', '_blank');
+    expect(xo).toHaveAttribute('rel', 'noopener');
+    expect(xo.closest('header')).not.toBeNull();
+  });
+
   it('renders the impersonation banner directly under the header', () => {
     render(<AuthenticatedLayout />);
     const header = screen.getByRole('banner');

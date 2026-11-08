@@ -41,7 +41,13 @@ export default defineConfig({
   use: {
     baseURL: APP_BASE_URL,
   },
-  projects: [{ name: 'chromium', use: devices['Desktop Chrome'] }],
+  projects: [
+    { name: 'chromium', use: devices['Desktop Chrome'], testIgnore: /xo-.*\.spec\.ts/ },
+    // Mission XO access specs, one project per layout size (spec: desktop / tablet / phone).
+    { name: 'xo-desktop', testMatch: /xo-.*\.spec\.ts/, use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
+    { name: 'xo-tablet', testMatch: /xo-.*\.spec\.ts/, use: { ...devices['Desktop Chrome'], viewport: { width: 1024, height: 768 } } },
+    { name: 'xo-phone', testMatch: /xo-.*\.spec\.ts/, use: { ...devices['Desktop Chrome'], viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } },
+  ],
   webServer: [
     {
       // reset-db.mjs drops/recreates the schema and re-applies mission-control-db's
@@ -64,7 +70,7 @@ export default defineConfig({
         // browser sign-in from the SPA itself (Chromium sends Origin/Sec-Fetch-Site on
         // same-origin POSTs; verified against the installed better-auth package's
         // origin-check middleware, not assumed).
-        ALLOWED_ORIGINS: APP_BASE_URL,
+        ALLOWED_ORIGINS: `${APP_BASE_URL},http://localhost:5277`,
         // Throwaway secret for the disposable e2e database only.
         BETTER_AUTH_SECRET: 'e2e-test-secret-not-for-production',
         // Phase 6: engine-client.ts calls the Mission Engine's token-gated /internal/* API for
@@ -129,6 +135,14 @@ export default defineConfig({
       reuseExistingServer: false,
       timeout: 120_000,
       env: { DATABASE_URL: E2E_DATABASE_URL, BROKER_PORT: '3007', BROKER_POLL_MS: '1000', MISSION_BROKER_TOKEN: E2E_BROKER_TOKEN },
+    },
+    {
+      // Mission XO dev server (base /xo/); its /api proxy targets the API entry above.
+      command: 'npm --prefix ../MissionXO run dev -- --port 5277 --strictPort',
+      url: 'http://localhost:5277/xo/',
+      reuseExistingServer: false,
+      timeout: 120_000,
+      env: { API_PORT: '3002' },
     },
   ],
 });

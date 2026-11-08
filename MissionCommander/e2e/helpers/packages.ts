@@ -199,13 +199,22 @@ export function machineWorkflowPackage(opts: {
 // packages/form-schema/src/types.ts) declare all four as required, and the real renderer
 // (FormDocumentView.tsx) keys its section/row/block DOM nodes off them — matches the shape
 // MissionEngine/test/form-document.test.ts's own fixtures already use (FORM_DOC).
-export function uiWorkflowPackage(opts: { localId: string; oid: string; version?: string }): FilePayload {
+export function uiWorkflowPackage(opts: {
+  localId: string; oid: string; version?: string;
+  // Optional (omitted by every pre-existing caller, so their zip bytes are unchanged).
+  startingParameterSpecifications?: Array<{
+    id: string; default_value: string; value_type?: 'literal' | 'property'; description?: string;
+  }>;
+}): FilePayload {
   const version = opts.version ?? '1.0.0';
   const lastModified = '2026-01-01T00:00:00Z';
   const s = (suffix: string) => `${opts.oid}-${suffix}`;
   const root = {
     local_id: opts.localId, oid: opts.oid, version, last_modified_date: lastModified,
     state: 'Effective', schemaVersion: '5.0',
+    ...(opts.startingParameterSpecifications
+      ? { starting_parameter_specifications: opts.startingParameterSpecifications }
+      : {}),
     steps: [
       { local_id: 'Begin', oid: s('start'), version: '1.0.0', last_modified_date: lastModified, step_type: 'START' },
       {

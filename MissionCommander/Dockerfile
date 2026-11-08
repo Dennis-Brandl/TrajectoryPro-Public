@@ -64,6 +64,12 @@ RUN cd MissionDesigner && npm -w @mission/tokens run build
 COPY MissionCommander/package.json MissionCommander/package-lock.json ./MissionCommander/
 RUN cd MissionCommander && npm ci
 
+# ---- Mission XO (served at /xo/). It imports Commander's source and resolves bare imports from
+# MissionCommander/node_modules, which is installed above.
+COPY MissionXO/package.json MissionXO/package-lock.json ./MissionXO/
+RUN cd MissionXO && npm ci
+COPY MissionXO ./MissionXO
+
 # ---- App source.
 COPY MissionCommander ./MissionCommander
 
@@ -75,6 +81,9 @@ WORKDIR /app/MissionCommander
 # stale checked-in copy cannot poison the image.
 # The Pilot's curated fonts (spec 2026-10-09 §10) are copied into public/fonts/ for the theme preview.
 RUN node scripts/build-help.mjs && node scripts/copy-fonts.mjs && npx vite build
+
+# Mission XO build (HELP.md -> help.html, then vite) -> /app/MissionXO/dist.
+RUN cd /app/MissionXO && npm run build
 
 # Bundle the server, the migrator, and the seeder into standalone ESM files. The
 # createRequire banner is what lets bundled CJS-only transitive deps (pg and friends)
@@ -110,6 +119,7 @@ COPY --from=builder /app/MissionCommander/server.mjs ./server.mjs
 COPY --from=builder /app/MissionCommander/migrate.mjs ./migrate.mjs
 COPY --from=builder /app/MissionCommander/seed.mjs ./seed.mjs
 COPY --from=builder /app/MissionCommander/dist ./public
+COPY --from=builder /app/MissionXO/dist ./public/xo
 
 # Runtime dependencies esbuild leaves external (jsdom, above).
 COPY --from=builder /app/server-deps/node_modules ./node_modules

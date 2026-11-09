@@ -48,6 +48,7 @@ const emptyReport: ImportReport = {
   links: { created: 0, alreadyPresent: 0 },
   roles: { created: 0 },
   grants: { created: 0, alreadyPresent: 0, unresolved: [] },
+  masterSchedules: { created: 0, alreadyPresent: 0, skipped: [] },
   configChanges: [],
   targetOnlyGrants: [],
   warnings: [],

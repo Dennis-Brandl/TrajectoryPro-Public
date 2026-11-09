@@ -632,7 +632,7 @@ const lastCycleErrorLoggedAt = new Map<string, number>();
  * stderr line, forever). Per-instance failures no longer go through this path at all — see
  * logInstanceSettledError below.
  */
-function logCycleErrorOnce(err: unknown, now: () => Date): void {
+export function logCycleErrorOnce(err: unknown, now: () => Date, source = 'runOnce cycle'): void {
   const message = err instanceof Error ? err.message : String(err);
   const nowMs = now().getTime();
   const last = lastCycleErrorLoggedAt.get(message);
@@ -642,7 +642,7 @@ function logCycleErrorOnce(err: unknown, now: () => Date): void {
     if (oldestKey !== undefined) lastCycleErrorLoggedAt.delete(oldestKey);
   }
   lastCycleErrorLoggedAt.set(message, nowMs);
-  console.error(`[mission-engine] runOnce cycle error: ${message}`);
+  console.error(`[mission-engine] ${source} error: ${message}`);
 }
 
 /** Per-instance transition failures (C2) are settled out of the claim set on their very first

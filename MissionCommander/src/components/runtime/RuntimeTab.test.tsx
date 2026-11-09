@@ -26,7 +26,7 @@ vi.mock('@/lib/api/runtime-workflows', () => ({
 const RUNNING: RuntimeWorkflowMonitorSummary = {
   id: 'rw2', workCenterId: 'w1', runtimeNumber: 2, runtimeLabel: 'RW-2',
   masterName: 'Cap Torque', masterOid: 'o2', masterVersion: '2.0.0', masterState: 'released',
-  status: 'running', createdByName: null,  createdByLabel: null, createdAt: '2026-08-01T00:00:00Z',
+  status: 'running', createdByName: null,  createdByLabel: null, scheduleLabel: null, createdAt: '2026-08-01T00:00:00Z',
   queuedAt: '2026-08-01T00:01:00Z', startedAt: '2026-08-01T00:02:00Z', completedAt: null,
   activeSteps: [], errorText: null,
 };

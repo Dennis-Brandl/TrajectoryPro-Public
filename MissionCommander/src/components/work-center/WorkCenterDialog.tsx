@@ -36,6 +36,13 @@ import { WORK_CENTER_TYPE_NAMES, MAX_TYPE_NAME_LENGTH, TYPE_NAME_TOO_LONG_MESSAG
 // with a sentinel and mapped back to null on submit.
 const ROOT_VALUE = '__root__';
 
+// Same rule the server applies (isValidTimeZone): blank means "use the deployment's zone", anything
+// else must be an IANA zone the runtime knows.
+function isValidTimeZone(tz: string): boolean {
+  if (tz === '') return true;
+  try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); return true; } catch { return false; }
+}
+
 // sortOrder keeps the plan's z.coerce.number().int().optional() verbatim: an empty
 // input coerces to 0, which matches the server default (accepted, not a bug).
 const schema = z.object({
@@ -47,6 +54,7 @@ const schema = z.object({
   sortOrder: z.coerce.number().int().optional(),
   parentWorkCenterId: z.string(),
   runtimeIdTemplate: z.string().optional(),
+  timeZone: z.string().optional().refine((v) => isValidTimeZone((v ?? '').trim()), 'Not a known time zone'),
 }).superRefine((val, ctx) => {
   // Validate against the LIVE name field (falling back to the same 'WORK-CENTER' placeholder
   // the preview below uses when the name is still blank), not a fixed literal — otherwise this
@@ -74,6 +82,7 @@ function defaultValuesFor(initial: WorkCenter | null): FormValues {
     sortOrder: initial?.sortOrder ?? 0,
     parentWorkCenterId: initial?.parentWorkCenterId ?? ROOT_VALUE,
     runtimeIdTemplate: initial?.runtimeIdTemplate ?? '',
+    timeZone: initial?.timeZone ?? '',
   };
 }
 
@@ -158,6 +167,8 @@ export function WorkCenterDialog({ open, onOpenChange, initial, parentWorkCenter
         ? await workCenters.update(initial.id, {
             ...shared,
             parentWorkCenterId: values.parentWorkCenterId === ROOT_VALUE ? null : values.parentWorkCenterId,
+            // Only sent when changed, so saving other fields never touches the zone.
+            ...((values.timeZone ?? '').trim() !== (initial.timeZone ?? '') ? { timeZone: (values.timeZone ?? '').trim() || null } : {}),
           })
         : await workCenters.create({ ...shared, parentWorkCenterId });
       toast.success('Work center saved');
@@ -170,7 +181,7 @@ export function WorkCenterDialog({ open, onOpenChange, initial, parentWorkCenter
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit work center' : 'New work center'}</DialogTitle>
           <DialogDescription>
@@ -261,6 +272,16 @@ export function WorkCenterDialog({ open, onOpenChange, initial, parentWorkCenter
                 />
               )}
             />
+          )}
+          {isEdit && (
+            <div className="space-y-1">
+              <Label htmlFor="wc-time-zone">Time zone</Label>
+              <Input id="wc-time-zone" placeholder="e.g. America/Chicago" {...register('timeZone')} />
+              <p className="text-xs text-muted-foreground">
+                The zone this work center&apos;s schedules run in. Leave blank to use the deployment&apos;s zone.
+              </p>
+              {errors.timeZone && <p className="text-sm text-destructive">{errors.timeZone.message}</p>}
+            </div>
           )}
           <div className="space-y-1">
             <Label htmlFor="wc-sort">Sort order</Label>

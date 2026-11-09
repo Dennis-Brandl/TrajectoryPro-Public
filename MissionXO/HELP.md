@@ -19,7 +19,7 @@ After you sign in, XO opens on **Choose a work center**. Pick the work center yo
 
 Some work centers show **View only**. That means you can see everything but you are not a Mission System Commander there, so the buttons that change things are turned off. Ask an administrator for the role if you need to act.
 
-The work center screen has three tabs: **Available** (the workflows you can start), **Running** and **History**.
+The work center screen has four tabs: **Available** (the workflows you can start), **Running**, **History** and **Schedules**.
 
 ## Starting a workflow
 
@@ -80,6 +80,26 @@ These actions are not shown once the run has ended, or when the work center is *
 
 Use force complete sparingly. It moves the workflow on without the work being done.
 
+## Schedules
+
+The **Schedules** tab shows workflows that start by themselves at set times, and the chains that start when a run ends. Two kinds of schedule are listed:
+
+- **Runtime Schedules** come first. Each is a working copy that is actually starting workflows, with its label (for example `RS-12`), its status (Active, Paused, Cancelled or Finished), and the next start time in the work center's time zone. A **Needs attention** marker means a workflow failed to start, a run was lost, or start times were missed during an outage. Select one to see its workflows as a tree, what each run did, and a log of who did what.
+- **Master Schedules** are the definitions, in a compact list. Click **Enable Recurrence** on one to make a Runtime Schedule that follows its timetable. A dialog shows the first start times and any warning before you confirm. **Run Once** starts the schedule one time, now or at a date and time you choose, and can overlap anything already running. A **Manual** schedule, such as an incident response, has no timetable and starts only this way.
+
+On a Runtime Schedule you can:
+
+- **Pause** it, so nothing new starts. Runs already going carry on.
+- **Resume** it. If starts were missed, or chained workflows are waiting, the Resume dialog asks what to do: **Start all**, **Start only the latest** or **Skip them all** for the missed starts, and a tick box for each waiting chained workflow (ticked means it starts). Nothing is chosen for you when more than one start was missed.
+- **Cancel** it. XO asks for a reason. Nothing new starts, including chains from runs still going. Runs already going carry on.
+- **Remove** it from the list once it is Finished or Cancelled and its runs have ended. The History records of its runs stay.
+- **Disable** or **Re-enable** one workflow in the tree. A disabled workflow does not start, so its own chain cannot start either. It is not caught up when re-enabled.
+- **Dismiss** a failed or lost workflow, or **Dismiss all**, once you have seen it. There is no retry: start the workflow by hand from **Available**.
+
+XO has no editor. Writing and changing a Master Schedule, and deleting one, are done in Mission Commander. In a **View only** work center, the buttons that change things are turned off. The full explanation, with examples, is in the Workflow Schedules section of the Mission Commander help.
+
+![XO's Schedules view on a phone](/xo/help-images/18-xo-schedules-phone.png)
+
 ## History and the record PDF
 
 The **History** tab lists finished runs. Narrow the list with:
@@ -91,6 +111,8 @@ The **History** tab lists finished runs. Narrow the list with:
 Select a run to open its record. The record is laid out the same way as the PDF: the starting parameters, the steps with who performed them and when, signatures, and the outputs. Times are shown in the work center's time zone.
 
 Click **Download PDF** to save the record as a PDF file.
+
+A completed pass of a schedule also appears in the list, with a dashed border, the schedule's name, and a result such as **Done** or **Problems**. Select it to see each workflow the pass started, with its runtime ID, times, how it ended and its starting values. Tap a runtime ID to open that workflow's record. A Result filter shows workflow runs only.
 
 ## Using XO on a tablet or phone
 
@@ -110,3 +132,4 @@ Mission XO is for running the day. These jobs are done in Mission Commander. Use
 - Branding and settings.
 - Deleting history.
 - Creating a run without starting it.
+- Writing and editing Master Schedules.

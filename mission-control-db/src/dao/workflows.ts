@@ -13,8 +13,9 @@
 // limitations under the License.
 
 import { and, asc, eq, inArray, notInArray } from 'drizzle-orm';
-import { workflow, workCenter, workflowInstance, schedule, RUNTIME_FINAL_STATES, type Workflow } from '../db/schema/index.js';
+import { workflow, workCenter, workflowInstance, RUNTIME_FINAL_STATES, type Workflow } from '../db/schema/index.js';
 import { DaoError, assertDispatchPolicy, pgErrorCode } from './errors.js';
+import { liveRuntimeScheduleForWorkflow } from '../scheduling/runtime-dao.js';
 import type { Schema } from '../db/client.js';
 import type { PgDatabase } from 'drizzle-orm/pg-core';
 
@@ -25,11 +26,10 @@ export function listWorkflows(db: Db): Promise<Workflow[]> {
 }
 
 /**
- * work_center_workflow is gone, so the remaining blockers are unfinished runtime workflows and
- * schedules: workflow_instance.workflow_id and schedule.workflow_id are both part of
- * RESTRICT composite FKs (spec §4.4). Each pre-check gives a friendly, named message; the
- * 23503 catch is the backstop for a concurrent insert in the gap (and would otherwise
- * surface as a bare 'WORKFLOW_IN_USE' with no message on the schedule path).
+ * work_center_workflow is gone, so the remaining blockers are a live Runtime Schedule and
+ * unfinished runtime workflows: workflow_instance.workflow_id is part of a RESTRICT composite FK
+ * (spec §4.4). Each pre-check gives a friendly, named message; the 23503 catch is the backstop
+ * for a concurrent insert in the gap.
  *
  * A FINISHED runtime (completed/aborted/stopped/errored) does not block: its permanent record
  * is the runtime_history row settleTerminal wrote in the same transaction as the terminal
@@ -39,6 +39,11 @@ export function listWorkflows(db: Db): Promise<Workflow[]> {
  */
 export async function deleteWorkflow(db: Db, id: string): Promise<void> {
   await db.transaction(async (tx) => {
+    // FOR UPDATE pairs with Enable's FOR SHARE on this row, so a schedule cannot be enabled
+    // between the live-schedule check below and the delete.
+    await tx.select({ id: workflow.id }).from(workflow).where(eq(workflow.id, id)).for('update');
+    const live = await liveRuntimeScheduleForWorkflow(tx as unknown as Db, id);
+    if (live) throw new DaoError('WORKFLOW_IN_USE', `Workflow is used by Runtime Schedule ${live.label}; cancel it first`);
     const unfinished = await tx.select({ id: workflowInstance.id }).from(workflowInstance)
       .where(and(
         eq(workflowInstance.workflowId, id),
@@ -47,10 +52,6 @@ export async function deleteWorkflow(db: Db, id: string): Promise<void> {
     if (unfinished.length) {
       throw new DaoError('WORKFLOW_IN_USE', 'Workflow has runtime workflows that have not finished');
     }
-
-    const schedules = await tx.select({ id: schedule.id }).from(schedule)
-      .where(eq(schedule.workflowId, id)).limit(1);
-    if (schedules.length) throw new DaoError('WORKFLOW_IN_USE', 'Workflow is referenced by one or more schedules');
 
     try {
       // Finished runtimes: their steps, trace and shared-state rows cascade; runtime_history

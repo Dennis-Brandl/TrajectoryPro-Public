@@ -29,6 +29,8 @@ import type {
   PackageScope, WfcenterWorkCenter, WfcenterWorkflowEntry, WfcenterEnvironmentEntry,
   WfcenterRole, WfcenterGrant, WfcenterManifest, WfcenterRolesFile, WfcenterGrantsFile,
 } from './wfcenter-format.js';
+import { listMasterSchedules, definitionOf } from '../scheduling/master-dao.js';
+import type { ScheduleItemInput } from '../scheduling/definition.js';
 import type { Schema } from '../db/client.js';
 import type { PgDatabase } from 'drizzle-orm/pg-core';
 
@@ -145,6 +147,8 @@ export async function collectWorkCenters(
       sourceLibraryOid: e.sourceLibraryOid,
     }));
 
+    const masterSchedules = (await listMasterSchedules(db, n.id)).map(definitionOf);
+
     out.push({
       manifest: {
         path, parentPath,
@@ -152,6 +156,7 @@ export async function collectWorkCenters(
         dispatchPolicy: cfg.dispatchPolicy,
         autoClaim: cfg.autoClaim,
         typeName: cfg.typeName,
+        masterSchedules,
         workflows, environments,
       },
       workflowRows: wfs.map((w, i) => ({
@@ -236,8 +241,44 @@ export async function collectRolesAndGrants(
 
 export type PackagePreview = {
   workCenters: number; workflows: number; environments: number;
-  roles: number; grants: number; warnings: string[];
+  roles: number; grants: number; masterSchedules: number; warnings: string[];
 };
+
+function workflowNamesIn(items: ScheduleItemInput[], into: Set<string>): Set<string> {
+  for (const it of items) {
+    into.add(it.workflow.name);
+    if (it.chain) workflowNamesIn(it.chain, into);
+  }
+  return into;
+}
+
+/**
+ * Under scope 'effective', a Master can name a workflow whose Effective entry is not in the
+ * package (it is Draft/Retired, or absent), so it would fail at Enable on the other side. Warned,
+ * like an ungrantable grant, and the Master is still exported. A Master runs workflows of its
+ * own work center, so "the export" is that work center's exported workflows. Scope 'all'
+ * leaves nothing out, so there is nothing to warn about.
+ */
+export function collectScheduleWarnings(collected: CollectedWorkCenter[], scope: PackageScope): string[] {
+  if (scope !== 'effective') return [];
+  const warnings: string[] = [];
+  for (const wc of collected) {
+    const exported = new Set(wc.manifest.workflows.map((w) => w.name));
+    for (const m of wc.manifest.masterSchedules ?? []) {
+      const missing = [...workflowNamesIn(m.items, new Set())].filter((n) => !exported.has(n)).sort();
+      if (missing.length === 0) continue;
+      warnings.push(
+        `Master Schedule "${m.name}" in "${wc.manifest.path}" names ${missing.map((n) => `"${n}"`).join(', ')}, `
+        + 'which ' + (missing.length === 1 ? 'is' : 'are') + ' not an Effective workflow in this package. '
+        + 'The schedule was still exported; it cannot be enabled until the workflow is available.',
+      );
+    }
+  }
+  return warnings;
+}
+
+export const countMasterSchedules = (collected: CollectedWorkCenter[]) =>
+  collected.reduce((n, c) => n + (c.manifest.masterSchedules?.length ?? 0), 0);
 
 /**
  * What buildWfcenterx would produce, without producing it.
@@ -252,12 +293,14 @@ export async function previewWfcenterx(
   const collected = await collectWorkCenters(db, rootId, scope);
   if (collected.length === 0) throw new DaoError('WORK_CENTER_NOT_FOUND');
   const { roles, grants, warnings } = await collectRolesAndGrants(db, collected);
+  warnings.push(...collectScheduleWarnings(collected, scope));
   return {
     workCenters: collected.length,
     workflows: collected.reduce((n, c) => n + c.manifest.workflows.length, 0),
     environments: collected.reduce((n, c) => n + c.manifest.environments.length, 0),
     roles: roles.length,
     grants: grants.length,
+    masterSchedules: countMasterSchedules(collected),
     warnings,
   };
 }
@@ -277,6 +320,7 @@ export async function buildWfcenterx(
   if (collected.length === 0) throw new DaoError('WORK_CENTER_NOT_FOUND');
 
   const { roles, grants, warnings } = await collectRolesAndGrants(db, collected);
+  warnings.push(...collectScheduleWarnings(collected, opts.scope));
 
   // collectWorkCenters (via subtree()) orders by (depth, name): every node at a given depth
   // groups together regardless of which parent it belongs to, rather than each branch's

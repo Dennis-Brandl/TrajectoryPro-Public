@@ -31,7 +31,7 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const wf = { id: 'wf1', oid: 'o-wf1', name: 'Mix', workCenterId: 'wc1', workCenterName: 'Line 1', version: '2', state: 'released', effectiveFrom: null, dispatchPolicy: null, autoClaim: null, typeName: null, sourceLibraryName: null, sourceLibraryOid: null };
 const env = { id: 'e1', oid: 'o-e1', name: 'Kitchen', workCenterId: 'wc1', workCenterName: 'Line 1', version: '1', state: 'released', effectiveFrom: null, sourceLibraryName: null, sourceLibraryOid: null };
-const wc = { id: 'wc1', name: 'Line 1', description: null, parentWorkCenterId: null, sortOrder: 0, dispatchPolicy: 'manual', autoClaim: false, runtimeIdTemplate: null, typeName: null, createdAt: '2026-01-01', updatedAt: '2026-01-01' };
+const wc = { id: 'wc1', name: 'Line 1', description: null, parentWorkCenterId: null, sortOrder: 0, dispatchPolicy: 'manual', autoClaim: false, runtimeIdTemplate: null, typeName: null, timeZone: null, createdAt: '2026-01-01', updatedAt: '2026-01-01' };
 // M6: singular owner, not a list.
 const VIEW = { workflow: wf, workCenter: wc, environments: [env] };
 

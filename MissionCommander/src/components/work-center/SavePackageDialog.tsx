@@ -65,7 +65,8 @@ export function SavePackageDialog({ open, onOpenChange, workCenterId, workCenter
           <div className="space-y-2 text-sm">
             <p className="text-muted-foreground">
               {preview.workCenters} work centers · {preview.workflows} workflows ·{' '}
-              {preview.environments} environments · {preview.roles} roles · {preview.grants} role grants
+              {preview.environments} environments · {preview.roles} roles · {preview.grants} role grants ·{' '}
+              {preview.masterSchedules} Master Schedules
             </p>
             {preview.warnings.length > 0 && (
               <ul className="space-y-1 text-destructive">

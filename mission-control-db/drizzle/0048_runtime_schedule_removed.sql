@@ -1,0 +1,1 @@
+ALTER TABLE "runtime_schedule" ADD COLUMN "removed_at" timestamp with time zone;

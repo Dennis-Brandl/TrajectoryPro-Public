@@ -44,7 +44,7 @@ import { useWorkCenterView } from './useWorkCenterView';
 
 // M6: workflows/environments are plain owned rows — no linkId, no per-link dispatchPolicy.
 const VIEW = {
-  workCenter: { id: 'w1', name: 'Assembly', description: null, parentWorkCenterId: null, sortOrder: 0, dispatchPolicy: 'least_queued_steps', autoClaim: false, runtimeIdTemplate: null, typeName: null, createdAt: '', updatedAt: '' },
+  workCenter: { id: 'w1', name: 'Assembly', description: null, parentWorkCenterId: null, sortOrder: 0, dispatchPolicy: 'least_queued_steps', autoClaim: false, runtimeIdTemplate: null, typeName: null, timeZone: null, createdAt: '', updatedAt: '' },
   subtree: [], roles: [{ id: 'ro1', name: 'Operator', description: null }],
   workflows: [{ id: 'wf1', oid: 'o', name: 'Mix', workCenterId: 'w1', workCenterName: 'Assembly', version: '1.0.0', state: 'effective', effectiveFrom: null, dispatchPolicy: null, autoClaim: null, typeName: null, sourceLibraryName: null, sourceLibraryOid: null, allowedRoleCount: 1 }],
   users: [{ id: 'u1', email: 'u@x', loginName: 'uma', displayName: 'Uma', status: 'active', accessLevel: 'viewer', missionSystemCommander: false, roles: [] }],

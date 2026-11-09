@@ -25,6 +25,7 @@ test('config parses env with spec defaults', () => {
     actionServerAllowlist: [], scriptTimeoutMs: 5000, actionPollSecs: 20, invokeGraceSecs: 60,
     actionFetchTimeoutMs: 10_000,
     propertyWatchEnabled: true, propertyWatchReconcileMs: 5000,
+    schedulerEnabled: true, scheduleTickMs: 5000,
     authSecret: 'insecure-dev-secret-change-me', baseUrl: 'http://127.0.0.1:3006', internalToken: null,
     broker: null, actions: null,
   });

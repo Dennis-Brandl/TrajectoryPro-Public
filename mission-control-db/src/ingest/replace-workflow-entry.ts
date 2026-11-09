@@ -17,6 +17,7 @@ import { workflow, workflowNode, workflowUiStep, workflowAllowedRole, workflowIn
 import { RUNTIME_FINAL_STATES } from '../db/schema/execution.js';
 import { UI_STEP_TYPES } from '../constants.js';
 import { DaoError } from '../dao/errors.js';
+import { liveRuntimeScheduleForWorkflow } from '../scheduling/runtime-dao.js';
 import { assertNameLength } from '../dao/names.js';
 import { lenientTypeName } from '../dao/type-name.js';
 import type { InsertEntryMeta } from './insert-workflow-entry.js';
@@ -110,7 +111,10 @@ export async function replaceWorkflowEntry(
       eq(workflowInstance.workflowId, workflowId),
       notInArray(workflowInstance.status, [...RUNTIME_FINAL_STATES]),
     ));
-    if (unfinished > 0) {
+    // A live Runtime Schedule will start runs from this row, so it holds removed nodes like an
+    // unfinished run does (spec 2026-11-08 §5.4: grants are read live by workflow id and node).
+    const scheduled = await liveRuntimeScheduleForWorkflow(tx, workflowId);
+    if (unfinished > 0 || scheduled) {
       nodesRetained = removed.length;
     } else {
       const [{ grants }] = await tx.select({ grants: count() }).from(workflowAllowedRole)

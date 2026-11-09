@@ -25,6 +25,13 @@
 @custom-variant dark (&:is(.dark *));
 
 @layer base {
+  /* Tells the browser which theme is on, or its native date and time icons stay dark on a dark page. */
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
+  }
   * {
     @apply border-border outline-ring/50;
   }

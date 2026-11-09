@@ -24,7 +24,7 @@ type Db = PgDatabase<any, Schema>;
 
 export async function startInstance(
   db: Db,
-  args: { workflowId: string; triggeredBy: 'manual' | 'schedule' | 'event'; scheduleId?: string; createdBy?: string },
+  args: { workflowId: string; triggeredBy: 'manual' | 'schedule' | 'event'; createdBy?: string },
 ): Promise<{ instanceId: string }> {
   // The workflow's own work center, not a caller-supplied one — workflow_instance's composite
   // FK is (work_center_id, workflow_id) REFERENCES workflow (work_center_id, id), so a mismatched
@@ -40,7 +40,7 @@ export async function startInstance(
       tx as unknown as Db, wf.workCenterId, new Date(), timeZone,
     );
     const [inst] = await tx.insert(workflowInstance).values({
-      workflowId: wf.id, workCenterId, scheduleId: args.scheduleId,
+      workflowId: wf.id, workCenterId,
       triggeredBy: args.triggeredBy, status: 'running', startedAt: new Date(), createdBy: args.createdBy,
       specJsonb: wf.specJsonb,   // prototype passthrough: real instantiation arrives with the engine phase
       runtimeNumber, runtimeLabel,

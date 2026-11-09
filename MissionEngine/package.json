@@ -1,13 +1,13 @@
 {
   "name": "mission-engine",
-  "version": "0.1.2",
+  "version": "1.0.1",
   "license": "Apache-2.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "tsx src/index.ts",
     "test": "vitest run",
-    "test:real-pg": "vitest run test/real-pg.engine.test.ts",
+    "test:real-pg": "vitest run --no-file-parallelism --hookTimeout=120000 test/real-pg.engine.test.ts test/real-pg.schedules.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

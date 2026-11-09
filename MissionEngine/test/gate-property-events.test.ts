@@ -55,7 +55,7 @@ function makeHttpDeps(stub: StubActionServer, clock: { now: () => Date }, config
       actionServerAllowlist: allowlist, scriptTimeoutMs: 5000,
       actionPollSecs: 20, invokeGraceSecs: 60,
       actionFetchTimeoutMs: 10_000,
-      propertyWatchEnabled: true, propertyWatchReconcileMs: 5000,
+      propertyWatchEnabled: true, propertyWatchReconcileMs: 5000, schedulerEnabled: true, scheduleTickMs: 5000,
       authSecret: 'test-secret', baseUrl: 'http://127.0.0.1:3006', internalToken: null,
       ...configOverrides,
     },

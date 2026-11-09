@@ -20,6 +20,7 @@ import { db } from '../lib/db';
 import {
   getActionMatchingMode, setActionMatchingMode,
   getActionServerPolicy, setActionServerTrust, setActionServerAllowlist, normalizeActionServerOrigin,
+  getScheduleLateToleranceMinutes, setScheduleLateToleranceMinutes,
 } from 'mission-control-db/src/dao/system-settings';
 import {
   parseTheme, resolveTheme, checkContrast, describeFailure, type PilotTheme,
@@ -34,20 +35,36 @@ export const systemSettingsRoutes = new Hono<{ Variables: Vars }>();
 systemSettingsRoutes.use('/system-settings', requireSession);
 
 async function readAll() {
-  const [actionMatching, policy, pilotTheme] = await Promise.all([
-    getActionMatchingMode(db), getActionServerPolicy(db), readSiteTheme(db),
+  const [actionMatching, policy, pilotTheme, scheduleLateToleranceMinutes] = await Promise.all([
+    getActionMatchingMode(db), getActionServerPolicy(db), readSiteTheme(db), getScheduleLateToleranceMinutes(db),
   ]);
-  return { actionMatching, actionServerTrust: policy.trust, actionServerAllowlist: policy.allowlist, pilotTheme };
+  return {
+    actionMatching, actionServerTrust: policy.trust, actionServerAllowlist: policy.allowlist, pilotTheme,
+    scheduleLateToleranceMinutes,
+  };
 }
 
 systemSettingsRoutes.get('/system-settings', requirePermission('settings:read'), async (c) => c.json(await readAll()));
 
 systemSettingsRoutes.put('/system-settings', requirePermission('settings:edit'), async (c) => {
   const body = (await c.req.json().catch(() => null)) as
-    { actionMatching?: unknown; actionServerTrust?: unknown; actionServerAllowlist?: unknown; pilotTheme?: unknown } | null;
+    { actionMatching?: unknown; actionServerTrust?: unknown; actionServerAllowlist?: unknown; pilotTheme?: unknown;
+      scheduleLateToleranceMinutes?: unknown } | null;
   if (!body || (body.actionMatching === undefined && body.actionServerTrust === undefined
-    && body.actionServerAllowlist === undefined && body.pilotTheme === undefined)) {
+    && body.actionServerAllowlist === undefined && body.pilotTheme === undefined
+    && body.scheduleLateToleranceMinutes === undefined)) {
     return httpError(c, 422, 'validation', 'nothing to update');
+  }
+  // Spec 2026-11-08 §6.4: how late a schedule may fire before the slot waits for a person.
+  // Administrator-only, like the other site-wide operating limits. 1 to 1440 whole minutes: at 0
+  // the tick's ordinary lag would count as an outage.
+  if (body.scheduleLateToleranceMinutes !== undefined && c.get('principal').accessLevel !== 'administrator') {
+    return httpError(c, 403, 'forbidden', 'The late tolerance requires an administrator');
+  }
+  const tolerance = body.scheduleLateToleranceMinutes;
+  if (tolerance !== undefined
+    && !(typeof tolerance === 'number' && Number.isInteger(tolerance) && tolerance >= 1 && tolerance <= 1440)) {
+    return httpError(c, 422, 'validation', 'scheduleLateToleranceMinutes must be a whole number of minutes from 1 to 1440');
   }
   // Spec 2026-10-09 §8.3 (R7): branding is administrator-only even for holders of
   // settings:edit. Checked before validation so a non-administrator learns nothing more.
@@ -104,6 +121,7 @@ systemSettingsRoutes.put('/system-settings', requirePermission('settings:edit'),
     if (matching !== undefined) await setActionMatchingMode(tx, matching);
     if (trustToSet !== undefined) await setActionServerTrust(tx, trustToSet);
     if (origins !== undefined) await setActionServerAllowlist(tx, origins);
+    if (tolerance !== undefined) await setScheduleLateToleranceMinutes(tx, tolerance as number);
     // Stores the theme, bumps pilot_theme_rev and NOTIFYs the engine (P2a) — on commit.
     if (pilotTheme !== undefined) await writeSiteTheme(tx, pilotTheme);
   });

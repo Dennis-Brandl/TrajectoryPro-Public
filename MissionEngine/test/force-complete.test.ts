@@ -209,7 +209,7 @@ test('force an ARMED gate while its action runs: gate stays open-waiting, STOP s
     config: {
       databaseUrl: 'unused', port: 3006, workerConcurrency: 1, actionServerAllowlist: allowlist, scriptTimeoutMs: 5000,
       actionPollSecs: 5, invokeGraceSecs: 5, actionFetchTimeoutMs: 10_000, propertyWatchEnabled: true,
-      propertyWatchReconcileMs: 5000, authSecret: 'test-secret', baseUrl: 'http://127.0.0.1:3006', internalToken: null,
+      propertyWatchReconcileMs: 5000, schedulerEnabled: true, scheduleTickMs: 5000, authSecret: 'test-secret', baseUrl: 'http://127.0.0.1:3006', internalToken: null,
     },
   });
   const spec = {

@@ -14,7 +14,7 @@
 import { get, post, patch, put, del } from './client';
 import type { WcNode, WorkCenterView, SharedResourceView, SharedValuePropertyView, ResourceVerb, ResourceVerbBody, VerbResponse, WorkCenterThemeView } from './types';
 import type { PilotTheme } from 'mission-control-db';
-export type CreateWcInput = { name: string; parentWorkCenterId?: string | null; description?: string | null; sortOrder?: number; dispatchPolicy?: string; autoClaim?: boolean; runtimeIdTemplate?: string | null; typeName?: string | null };
+export type CreateWcInput = { name: string; parentWorkCenterId?: string | null; description?: string | null; sortOrder?: number; dispatchPolicy?: string; autoClaim?: boolean; runtimeIdTemplate?: string | null; typeName?: string | null; timeZone?: string | null };
 export const workCenters = {
   list: () => get('/api/work-centers') as Promise<{ nodes: WcNode[] }>,
   get: (id: string) => get(`/api/work-centers/${id}`) as Promise<WorkCenterView>,

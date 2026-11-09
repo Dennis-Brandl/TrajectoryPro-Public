@@ -23,6 +23,9 @@ export interface EngineConfig {
    *  default true — `false` starts nothing and the engine behaves exactly as before that spec)
    *  and its reconcile period (PROPERTY_WATCH_RECONCILE_MS, default 5000). */
   propertyWatchEnabled: boolean; propertyWatchReconcileMs: number;
+  /** Spec 2026-11-08 §6.1: SCHEDULER_ENABLED (default true; `false` starts no schedule timer) and
+   *  the timer's period, SCHEDULE_TICK_MS (default 5000). */
+  schedulerEnabled: boolean; scheduleTickMs: number;
   authSecret: string; baseUrl: string; internalToken: string | null;
   /** Mission Broker address + shared token: the token is sent to this origin only. */
   broker?: { url: string; token: string } | null;
@@ -161,6 +164,8 @@ export function loadConfig(env: NodeJS.ProcessEnv): EngineConfig {
     actionFetchTimeoutMs: int(env.ACTION_FETCH_TIMEOUT_MS, 10_000),
     propertyWatchEnabled: bool(env.PROPERTY_WATCH_ENABLED, true),
     propertyWatchReconcileMs: int(env.PROPERTY_WATCH_RECONCILE_MS, 5000),
+    schedulerEnabled: bool(env.SCHEDULER_ENABLED, true),
+    scheduleTickMs: int(env.SCHEDULE_TICK_MS, 5000),
     authSecret,
     baseUrl,
     internalToken,

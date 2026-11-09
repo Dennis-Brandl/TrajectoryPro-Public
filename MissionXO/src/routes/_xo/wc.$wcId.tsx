@@ -19,7 +19,8 @@ import { useWorkCenterStore } from '~/stores/workCenterStore';
 import { workCenterMode } from '~/lib/access';
 import { writeLastWorkCenter } from '~/lib/last-work-center';
 import { ConnectionProvider } from '~/components/running/connection';
-import { WorkCenterShell, type XoView } from '~/components/shell/WorkCenterShell';
+import { WorkCenterShell, xoViewFromPath } from '~/components/shell/WorkCenterShell';
+import { useScheduleAttention } from '~/lib/useScheduleAttention';
 
 type WcNodes = Awaited<ReturnType<typeof workCenters.list>>['nodes'];
 
@@ -67,14 +68,16 @@ function WorkCenterLayout() {
     return () => setName(null);
   }, [wcId, name, setName]);
 
+  const active = xoViewFromPath(path);
+  const scheduleAttention = useScheduleAttention(wcId, active);
+
   if (!me) return null;
-  const segment = /\/wc\/[^/]+\/(running|new|history)/.exec(path)?.[1];
-  const active: XoView = (segment as XoView | undefined) ?? 'running';
   return (
     <ConnectionProvider>
     <WorkCenterShell
       wc={{ id: wcId, name, mode: workCenterMode(me, wcId) }}
       active={active}
+      scheduleAttention={scheduleAttention}
       onSelect={(view) => { void navigate({ to: `/wc/$wcId/${view}`, params: { wcId } }); }}
     >
       <Outlet />

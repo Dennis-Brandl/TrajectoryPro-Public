@@ -37,7 +37,7 @@ const env = {
 };
 const workCenter = {
   id: 'wc1', name: 'Line 1', description: null, parentWorkCenterId: null,
-  sortOrder: 0, dispatchPolicy: 'manual', autoClaim: false, runtimeIdTemplate: null, typeName: null, createdAt: '', updatedAt: '',
+  sortOrder: 0, dispatchPolicy: 'manual', autoClaim: false, runtimeIdTemplate: null, typeName: null, timeZone: null, createdAt: '', updatedAt: '',
 };
 
 beforeEach(() => {

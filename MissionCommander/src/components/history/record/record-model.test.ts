@@ -30,7 +30,7 @@ function base(over: Partial<RuntimeHistoryDetail> = {}): RuntimeHistoryDetail {
   return {
     id: 'h1', workflowInstanceId: null, workCenterId: 'wc', workCenterName: 'Kitchen', runtimeNumber: 7, runtimeLabel: 'RW-7',
     masterName: 'Pizza Order', masterOid: 'm', masterVersion: '1.2.0', masterState: 'Effective', finalState: 'completed',
-    startedAt: '2026-10-27T15:00:00Z', finishedAt: '2026-10-27T15:10:00Z', createdAt: '2026-10-27T15:00:00Z',
+    startedAt: '2026-10-27T15:00:00Z', finishedAt: '2026-10-27T15:10:00Z', scheduleLabel: null, createdAt: '2026-10-27T15:00:00Z',
     startingParams: { size: 'large', crust: 'thin' }, trace: [], properties: { total: '12.50' }, stepParams: null,
     stepNames: { eo: 'Enter Order', at: 'Add Topping', pr: 'Price', qa: 'QA Approve' },
     signatures: [], stepRuns: [], startedByLoginName: 'jdoe', startedByUserId: 'u1', userNames: { u9: 'asmith' },
@@ -94,6 +94,11 @@ describe('buildRecordModel', () => {
     expect(a.finalValues).toBe('None');
     expect(buildRecordModel(base({ startedByLoginName: null }), opts).header[2][1]).toBe('2026-10-27 10:00:00 by not recorded');
     expect(buildRecordModel(base({ startedAt: null }), opts).header[2][1]).toBe('—');
+  });
+
+  it('a scheduled run shows its schedule label as the starter', () => {
+    const m = buildRecordModel(base({ startedByLoginName: null, scheduleLabel: 'RS-12 / occurrence 7' }), opts);
+    expect(m.header[2][1]).toBe('2026-10-27 10:00:00 by RS-12 / occurrence 7');
   });
 
   it('run labels restart per proxy activation', () => {

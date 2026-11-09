@@ -1422,6 +1422,7 @@ export async function settleTerminal(
       createdByLabel: workflowInstance.createdByLabel,
       startRequestedBy: workflowInstance.startRequestedBy,
       createdBy: workflowInstance.createdBy,
+      scheduleLabel: workflowInstance.scheduleLabel,
     });
   if (!updated) return; // already settled by an earlier call — first-terminal-wins, no history write
 
@@ -1478,5 +1479,6 @@ export async function settleTerminal(
     createdByInstanceId: updated.createdByInstanceId, createdByLabel: updated.createdByLabel,
     outputs: workflowOutputs(context.spec, properties),
     startedByUserId: starterLogin ? starterId : null, startedByLoginName: starterLogin,
+    scheduleLabel: updated.scheduleLabel,
   });
 }

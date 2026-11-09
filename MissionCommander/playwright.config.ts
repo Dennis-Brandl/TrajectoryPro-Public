@@ -125,6 +125,9 @@ export default defineConfig({
         // Task 9: the engine sends this token to the Mission Broker origin only.
         MISSION_BROKER_URL: 'http://localhost:3007',
         MISSION_BROKER_TOKEN: E2E_BROKER_TOKEN,
+        // Workflow scheduling: the engine checks for due schedule slots this often (default
+        // is slower); schedules.spec.ts waits on real 1-minute slots, so keep the tick short.
+        SCHEDULE_TICK_MS: '1000',
       },
     },
     {

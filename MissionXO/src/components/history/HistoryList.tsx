@@ -11,7 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import type { RuntimeHistorySummary } from '@/lib/api/types';
+import type { HistoryEntry } from '@/lib/api/types';
+import { passOutcome, passTitle } from '@/components/history/ScheduleHistoryRecord';
 import { formatDuration } from '@/components/history/format-duration';
 import { cn } from '@/lib/utils';
 import { dayLabel } from './history-filters';
@@ -21,10 +22,10 @@ const RESULT_TEXT: Record<string, string> = { errored: 'Failed' };
 
 const hhmm = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-export function HistoryList({ rows, selectedId, onSelect, now }: {
-  rows: RuntimeHistorySummary[]; selectedId?: string; onSelect: (id: string) => void; now: Date;
+export function HistoryList({ rows, selectedId, onSelect, onSelectPass, now }: {
+  rows: HistoryEntry[]; selectedId?: string; onSelect: (id: string) => void; onSelectPass?: (id: string) => void; now: Date;
 }) {
-  const groups: Array<{ label: string; items: RuntimeHistorySummary[] }> = [];
+  const groups: Array<{ label: string; items: HistoryEntry[] }> = [];
   for (const r of rows) {
     const label = dayLabel(r.finishedAt, now);
     const last = groups[groups.length - 1];
@@ -36,7 +37,30 @@ export function HistoryList({ rows, selectedId, onSelect, now }: {
         <div key={g.label} role="group" aria-label={g.label}>
           <div className="px-1 pb-1.5 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{g.label}</div>
           <div className="flex flex-col gap-2">
-            {g.items.map((r) => (
+            {g.items.map((r) => r.kind === 'schedule' ? (
+              <div
+                key={`pass-${r.id}`} role="option" tabIndex={0} aria-selected={r.id === selectedId} data-history-id={r.id}
+                aria-label={`Schedule pass ${passTitle(r)}`}
+                onClick={() => onSelectPass?.(r.id)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectPass?.(r.id); } }}
+                className={cn(
+                  'min-h-11 cursor-pointer rounded-[10px] border border-dashed border-border bg-card px-3 py-2.5 text-sm',
+                  r.id === selectedId && 'border-selection bg-selection/10',
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <span className="min-w-0 truncate font-semibold">
+                    <span className="font-normal text-muted-foreground">Schedule </span>{r.scheduleName}
+                  </span>
+                  <span className={cn('shrink-0 text-[11px] font-bold uppercase tracking-wide', r.counts.problems > 0 ? 'text-destructive' : 'text-status-ok-fg')}>
+                    {r.counts.problems > 0 ? 'Problems' : 'Done'}
+                  </span>
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {passTitle(r)} · {passOutcome(r.counts)} · finished {hhmm(r.finishedAt)} · {formatDuration(r.startedAt, r.finishedAt)}
+                </div>
+              </div>
+            ) : (
               <div
                 key={r.id} role="option" tabIndex={0} aria-selected={r.id === selectedId} data-history-id={r.id}
                 onClick={() => onSelect(r.id)}
@@ -55,7 +79,7 @@ export function HistoryList({ rows, selectedId, onSelect, now }: {
                   </span>
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  {r.runtimeLabel} · finished {hhmm(r.finishedAt)} · {formatDuration(r.startedAt, r.finishedAt)}
+                  {r.runtimeLabel}{r.scheduleLabel ? ` · ${r.scheduleLabel}` : ''} · finished {hhmm(r.finishedAt)} · {formatDuration(r.startedAt, r.finishedAt)}
                 </div>
               </div>
             ))}

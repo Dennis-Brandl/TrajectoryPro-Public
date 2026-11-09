@@ -14,12 +14,14 @@
 
 import { expect, test } from 'vitest';
 import AdmZip from 'adm-zip';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { makeTestDb } from '../../test/helpers/db.js';
 import {
   workCenter, workflow, environmentSpec, workflowEnvironment, workflowNode, role, workflowAllowedRole, wcResource,
 } from '../db/schema/index.js';
 import { buildWfcenterx } from './export.js';
+import { appUser, masterSchedule, runtimeSchedule } from '../db/schema/index.js';
+import { createMasterSchedule, upsertMasterScheduleByKey, listMasterSchedules, definitionOf } from '../scheduling/master-dao.js';
 import { readWfcenterx, importWfcenterx } from './import.js';
 
 const AT = new Date('2026-07-28T12:00:00.000Z');
@@ -1454,4 +1456,138 @@ test('merge import: absent typeName keeps, null clears, string overwrites', asyn
   const set = await run((wc) => { wc.typeName = 'Site'; });
   expect(set.type).toBe('Site');
   expect(set.changes).toEqual([expect.objectContaining({ field: 'typeName', from: 'Area', to: 'Site' })]);
+});
+
+// ── Master Schedules (spec 2026-11-08 §11) ───────────────────────────────────
+
+const masterDef = (name = 'Nightly') => ({
+  name,
+  description: 'Every night',
+  recurrence: { type: 'once', at: '2026-11-10T06:00' },
+  items: [
+    { workflow: { name: 'Mix' }, params: { P: { value: '1' } }, chain: [
+      { workflow: { name: 'Cap', version: '2.0' }, triggerOn: ['completed', 'errored'] },
+    ] },
+    { workflow: { name: 'Fill' } },
+  ],
+});
+
+const scheduledPackage = () => exportFrom(async (db) => {
+  const [root] = await db.insert(workCenter).values({ name: 'Line' }).returning();
+  await createMasterSchedule(db, root.id, masterDef(), { kind: 'system' });
+  await upsertMasterScheduleByKey(db, root.id, 'erp-1', masterDef('From ERP'), { kind: 'system' });
+  return root.id;
+});
+
+test('create import: Masters round trip with recurrence, tree, triggers and values; source is commander, key dropped, nothing enabled', async () => {
+  const buf = await scheduledPackage();
+  const { db, close } = await makeTestDb();
+  try {
+    const [u] = await db.insert(appUser).values({ email: 'una@example.com', displayName: 'Una', loginName: 'una' }).returning();
+    const report = await importWfcenterx(db, buf, { mode: 'create', parentWorkCenterId: null, downloadedBy: u.id });
+    expect(report.masterSchedules).toEqual({ created: 2, alreadyPresent: 0, skipped: [] });
+
+    const list = await listMasterSchedules(db, report.rootWorkCenterId);
+    expect(list.map((m) => definitionOf(m))).toEqual([masterDef('From ERP'), masterDef()]);
+    for (const m of list) {
+      expect(m.source).toBe('commander');
+      expect(m.externalKey).toBeNull();
+      expect(m.revision).toBe(1);
+    }
+    expect(await db.select().from(runtimeSchedule)).toEqual([]);
+    const [m] = await db.select().from(masterSchedule).where(eq(masterSchedule.name, 'Nightly'));
+    expect(m.createdBy).toBe(u.id);
+    expect(m.updatedBy).toBe(u.id);
+  } finally { await close(); }
+});
+
+test('an old package without masterSchedules imports and reports zero', async () => {
+  const buf = rewriteManifest(await plainLinePackage(), (wc) => { delete wc.masterSchedules; });
+  expect(readWfcenterx(buf).manifest.workCenters[0].masterSchedules).toBeUndefined();
+  const { db, close } = await makeTestDb();
+  try {
+    const report = await importWfcenterx(db, buf, { mode: 'create', parentWorkCenterId: null });
+    expect(report.masterSchedules).toEqual({ created: 0, alreadyPresent: 0, skipped: [] });
+  } finally { await close(); }
+});
+
+test('readWfcenterx rejects a masterSchedules that is not a list', async () => {
+  const buf = await plainLinePackage();
+  expect(() => readWfcenterx(rewriteManifest(buf, (wc) => { wc.masterSchedules = {}; })))
+    .toThrowError(expect.objectContaining({ code: 'INVALID_PACKAGE' }));
+});
+
+test('an invalid Master is skipped with a clear entry, and the rest of the import succeeds', async () => {
+  const buf = rewriteManifest(await scheduledPackage(), (wc) => {
+    wc.masterSchedules[0].items = [];                    // no workflow to start
+    wc.masterSchedules.push({ ...masterDef('Typo'), bogus: 1 });   // strict parser refuses unknown fields
+  });
+  const { db, close } = await makeTestDb();
+  try {
+    const report = await importWfcenterx(db, buf, { mode: 'create', parentWorkCenterId: null });
+    expect(report.masterSchedules.created).toBe(1);
+    expect(report.masterSchedules.skipped).toHaveLength(2);
+    expect(report.masterSchedules.skipped.join('\n')).toMatch(/From ERP.*Line|Line.*From ERP/s);
+    expect(report.masterSchedules.skipped.join('\n')).toMatch(/Typo/);
+    expect(report.workCenters.created).toBe(1);
+    expect((await listMasterSchedules(db, report.rootWorkCenterId)).map((m) => m.name)).toEqual(['Nightly']);
+  } finally { await close(); }
+});
+
+test('the same Master name twice in a package: the first wins, the repeat counts as already present, the import goes on', async () => {
+  const buf = rewriteManifest(await scheduledPackage(), (wc) => {
+    wc.masterSchedules.unshift({ ...masterDef('Twin'), description: 'First' });
+    wc.masterSchedules.splice(1, 0, { ...masterDef('  Twin  '), description: 'Second' });   // the parser trims the name
+  });
+  const { db, close } = await makeTestDb();
+  try {
+    const report = await importWfcenterx(db, buf, { mode: 'create', parentWorkCenterId: null });
+    expect(report.masterSchedules).toEqual({ created: 3, alreadyPresent: 1, skipped: [] });
+    const list = await listMasterSchedules(db, report.rootWorkCenterId);
+    expect(list.map((m) => m.name)).toEqual(['From ERP', 'Nightly', 'Twin']);
+    expect(list.find((m) => m.name === 'Twin')!.description).toBe('First');
+  } finally { await close(); }
+});
+
+test('a name conflict the first look missed (two imports racing) still counts as already present', async () => {
+  const buf = await scheduledPackage();
+  const { db, close } = await makeTestDb();
+  try {
+    // The first look finds nothing, then the insert fails as the unique index would: an import racing this
+    // one committed "From ERP" in between. The failure must not abort the import's own transaction.
+    await db.execute(sql.raw(`create function test_race() returns trigger language plpgsql as $$
+      begin
+        if new.name = 'From ERP' then
+          raise exception 'duplicate' using errcode = '23505', constraint = 'master_schedule_wc_name_uq';
+        end if;
+        return new;
+      end $$`));
+    await db.execute(sql.raw(`create trigger test_race before insert on master_schedule for each row execute function test_race()`));
+
+    const report = await importWfcenterx(db, buf, { mode: 'create', parentWorkCenterId: null });
+    expect(report.masterSchedules).toEqual({ created: 1, alreadyPresent: 1, skipped: [] });
+    expect(report.workCenters.created).toBe(1);
+    expect((await listMasterSchedules(db, report.rootWorkCenterId)).map((m) => m.name)).toEqual(['Nightly']);
+  } finally { await close(); }
+});
+
+test('merge import: a Master whose name exists on the target keeps the target\'s; others are created', async () => {
+  const buf = await scheduledPackage();
+  const { db, close } = await makeTestDb();
+  try {
+    const [target] = await db.insert(workCenter).values({ name: 'Live Line' }).returning();
+    const mine = { ...masterDef('Nightly'), description: 'Hand made' };
+    await createMasterSchedule(db, target.id, mine, { kind: 'system' });
+
+    const preview = await importWfcenterx(db, buf, { mode: 'merge', targetWorkCenterId: target.id, confirmed: false });
+    expect(preview.masterSchedules).toEqual({ created: 1, alreadyPresent: 1, skipped: [] });
+    expect(await listMasterSchedules(db, target.id)).toHaveLength(1);   // preview rolled back
+
+    const report = await importWfcenterx(db, buf, { mode: 'merge', targetWorkCenterId: target.id, confirmed: true });
+    expect(report.masterSchedules).toEqual({ created: 1, alreadyPresent: 1, skipped: [] });
+    const list = await listMasterSchedules(db, target.id);
+    expect(list.map((m) => m.name)).toEqual(['From ERP', 'Nightly']);
+    expect(list.find((m) => m.name === 'Nightly')!.description).toBe('Hand made');
+    expect(list.find((m) => m.name === 'Nightly')!.revision).toBe(1);
+  } finally { await close(); }
 });

@@ -38,6 +38,8 @@ export type RuntimeWorkflowSummary = {
   // The DB CHECK (generated from RUNTIME_WORKFLOW_STATUSES) guarantees the narrowing.
   status: RuntimeWorkflowStatus; createdByName: string | null; createdByLabel: string | null; createdAt: Date;
   queuedAt: Date | null; startedAt: Date | null; completedAt: Date | null;
+  // Frozen Runtime Schedule label (e.g. RS-12) when a schedule started the run, else null.
+  scheduleLabel: string | null;
 };
 
 // Summary projection NEVER ships spec_jsonb/starting_params/property_store (M6 over-fetch lesson).
@@ -49,6 +51,7 @@ const SUMMARY_COLS = {
   status: workflowInstance.status, createdAt: workflowInstance.createdAt,
   queuedAt: workflowInstance.queuedAt, startedAt: workflowInstance.startedAt,
   completedAt: workflowInstance.completedAt, createdByName: appUser.displayName, createdByLabel: workflowInstance.createdByLabel,
+  scheduleLabel: workflowInstance.scheduleLabel,
 };
 
 async function summaryById(db: Db, id: string): Promise<RuntimeWorkflowSummary | undefined> {
@@ -65,7 +68,12 @@ export async function createRuntimeWorkflow(
     // Drop starting parameters the master does not declare instead of rejecting them.
     ignoreUnknownParams?: boolean;
     // Spec 2026-10-15 §2: a runtime created by another runtime's action.
-    triggeredBy?: 'manual' | 'workflow';
+    triggeredBy?: 'manual' | 'workflow' | 'schedule';
+    // Spec 2026-11-08 §5.4: build the run from a Runtime Schedule's frozen copy, so a Draft reload
+    // of the master row cannot change it. The master row is still locked and must exist (the
+    // workflow_id FK is RESTRICT); name, oid, version and state come from the snapshot.
+    specSnapshot?: { spec: unknown; name: string; oid: string; version: string; state: string };
+    schedule?: { itemRunId: string; label: string };
     // stepStartedAt: the creating step's activation (Caller.stepStartedAt) — with the step id, the
     // exactly-once key (workflow_instance_created_by_step_uq).
     createdBy?: { instanceId: string; stepInstanceId: string; stepStartedAt: Date; label: string };
@@ -76,10 +84,13 @@ export async function createRuntimeWorkflow(
     // serialise — the snapshot below can never name a node a reload is deleting with its grants.
     const [master] = await tx.select().from(workflow).where(eq(workflow.id, input.workflowId)).for('share');
     if (!master) throw new DaoError('RUNTIME_MASTER_NOT_FOUND');
-    const starting = validateStartingParams(startingParameterSpecs(master.specJsonb), input.params, {
+    const source = input.specSnapshot ?? {
+      spec: master.specJsonb, name: master.name, oid: master.oid, version: master.version, state: master.state,
+    };
+    const starting = validateStartingParams(startingParameterSpecs(source.spec), input.params, {
       ignoreUnknown: input.ignoreUnknownParams,
     });
-    const recipe = instantiateSpec(master.specJsonb);
+    const recipe = instantiateSpec(source.spec);
     const timeZone = await getRuntimeIdTimezone(tx as unknown as Db);
     const { runtimeNumber, runtimeLabel } = await allocateRuntimeIdentity(
       tx as unknown as Db, master.workCenterId, new Date(), timeZone,
@@ -92,14 +103,22 @@ export async function createRuntimeWorkflow(
       createdByStepStartedAt: input.createdBy?.stepStartedAt ?? null,
       createdByLabel: input.createdBy?.label ?? null,
       specJsonb: recipe, startingParams: starting, runtimeNumber, runtimeLabel,
-      masterName: master.name, masterOid: master.oid,
-      masterVersion: master.version, masterState: master.state,
+      masterName: source.name, masterOid: source.oid,
+      masterVersion: source.version, masterState: source.state,
+      scheduleItemRunId: input.schedule?.itemRunId ?? null, scheduleLabel: input.schedule?.label ?? null,
       createdBy: input.userId,
       // Create-and-Start (spec 2026-08-27 U6): lands directly in 'queued' inside the SAME
       // transaction — no created-but-failed-to-start half state. The worker loop discovers
       // queued rows on its normal cycle, exactly as after requestStart.
       ...(input.start
-        ? { status: 'queued' as const, queuedAt: sql`now()`, startRequestedBy: input.userId }
+        // §6.2 Start order: now() is fixed for the whole transaction, so a schedule's several
+        // runs would tie and the engine (ORDER BY queued_at) could start them in any order.
+        // clock_timestamp() advances per statement, so queued_at follows creation order.
+        ? {
+          status: 'queued' as const,
+          queuedAt: input.triggeredBy === 'schedule' ? sql`clock_timestamp()` : sql`now()`,
+          startRequestedBy: input.userId,
+        }
         : { status: 'pending' as const }),
     }).returning({ id: workflowInstance.id });
     return (await summaryById(tx as unknown as Db, row!.id))!;

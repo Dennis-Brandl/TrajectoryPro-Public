@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { and, desc, eq, gte, ilike, inArray, isNotNull, isNull, lt, lte, sql } from 'drizzle-orm';
-import { runtimeHistory, type RuntimeFinalState } from '../db/schema/index.js';
+import { and, desc, eq, gte, ilike, inArray, isNotNull, isNull, lt, lte, or, sql } from 'drizzle-orm';
+import { unionAll } from 'drizzle-orm/pg-core';
+import { runtimeHistory, scheduleHistory, scheduleItemRun, type RuntimeFinalState } from '../db/schema/index.js';
+import { summaryOf, type ScheduleHistorySummary } from '../scheduling/history.js';
 import { stepSignature, stepRun, runtimeControlEvent } from '../db/schema/execution.js';
 import { appUser } from '../db/schema/identity.js';
 import { listStepRuns, deleteStepRunsForInstances, type StepRunView } from './step-runs.js';
@@ -29,6 +31,7 @@ export type RuntimeHistorySummary = {
   runtimeNumber: number; runtimeLabel: string; masterName: string; masterOid: string; masterVersion: string; masterState: string;
   // The DB CHECK (generated from RUNTIME_FINAL_STATES) guarantees the narrowing.
   finalState: RuntimeFinalState; startedAt: Date | null; finishedAt: Date; createdAt: Date;
+  scheduleLabel: string | null;
 };
 
 export type RuntimeHistoryFilter = {
@@ -61,6 +64,7 @@ const SUMMARY_COLS = {
   masterVersion: runtimeHistory.masterVersion, masterState: runtimeHistory.masterState,
   finalState: runtimeHistory.finalState,
   startedAt: runtimeHistory.startedAt, finishedAt: runtimeHistory.finishedAt, createdAt: runtimeHistory.createdAt,
+  scheduleLabel: runtimeHistory.scheduleLabel,
 };
 
 /** Escapes `\`, `%`, `_` for a Postgres ILIKE pattern (backslash is the default escape char).
@@ -106,6 +110,74 @@ export async function listRuntimeHistoryPage(
   return { items: rows as RuntimeHistorySummary[], total: n, page, pageSize };
 }
 
+/** One row of the History list: a workflow run, or a completed schedule pass. */
+export type HistoryEntry =
+  | ({ kind: 'workflow' } & RuntimeHistorySummary)
+  | ({ kind: 'schedule' } & ScheduleHistorySummary);
+
+function scheduleFilterConds(f: RuntimeHistoryFilter) {
+  const conds = [];
+  if (f.workCenterId !== undefined) conds.push(eq(scheduleHistory.workCenterId, f.workCenterId));
+  if (f.orphansOnly) conds.push(isNull(scheduleHistory.workCenterId));
+  if (f.nameSearch !== undefined) {
+    const pattern = `%${escapeLikePattern(f.nameSearch)}%`;
+    conds.push(or(
+      ilike(scheduleHistory.scheduleName, pattern),
+      sql`exists (select 1 from jsonb_array_elements(${scheduleHistory.workflows}) w where w->>'name' ilike ${pattern})`,
+    )!);
+  }
+  if (f.finishedFrom !== undefined) conds.push(gte(scheduleHistory.finishedAt, f.finishedFrom));
+  if (f.finishedTo !== undefined) conds.push(lte(scheduleHistory.finishedAt, f.finishedTo));
+  return conds;
+}
+
+/**
+ * The History list: workflow runs and completed schedule passes in one list, newest finished
+ * first, paged together. A pass has no single ending, so a state filter shows workflow runs only;
+ * a name search matches a pass by its schedule's name or any of its workflows.
+ */
+export async function listHistoryEntriesPage(
+  db: Db, opts: RuntimeHistoryFilter & { page?: number; pageSize?: number } = {},
+): Promise<{ items: HistoryEntry[]; total: number; page: number; pageSize: number }> {
+  if (opts.workCenterId !== undefined && opts.orphansOnly) {
+    throw new DaoError('HISTORY_FILTER_INVALID', 'workCenterId and orphansOnly are mutually exclusive');
+  }
+  const wfConds = filterConds(opts);
+  const wfWhere = wfConds.length ? and(...wfConds) : undefined;
+  const withPasses = opts.finalState === undefined;
+  const passConds = scheduleFilterConds(opts);
+  const passWhere = passConds.length ? and(...passConds) : undefined;
+  const rawPageSize = Number.isFinite(opts.pageSize) ? opts.pageSize! : RUNTIME_HISTORY_DEFAULT_PAGE_SIZE;
+  const pageSize = Math.min(Math.max(1, rawPageSize), RUNTIME_HISTORY_MAX_PAGE_SIZE);
+  const page = Math.max(1, Number.isFinite(opts.page) ? opts.page! : 1);
+
+  const wfCount = (await db.select({ n: sql<number>`count(*)::int` }).from(runtimeHistory).where(wfWhere))[0]!.n;
+  const passCount = withPasses
+    ? (await db.select({ n: sql<number>`count(*)::int` }).from(scheduleHistory).where(passWhere))[0]!.n : 0;
+
+  const wfKeys = db.select({ kind: sql<string>`'workflow'`.as('kind'), id: runtimeHistory.id, finishedAt: runtimeHistory.finishedAt })
+    .from(runtimeHistory).where(wfWhere);
+  const passKeys = db.select({ kind: sql<string>`'schedule'`.as('kind'), id: scheduleHistory.id, finishedAt: scheduleHistory.finishedAt })
+    .from(scheduleHistory).where(passWhere);
+  const keys = (withPasses
+    ? await unionAll(wfKeys, passKeys).orderBy(sql`3 desc`, sql`1`, sql`2`).limit(pageSize).offset((page - 1) * pageSize)
+    : await wfKeys.orderBy(desc(runtimeHistory.finishedAt), runtimeHistory.id).limit(pageSize).offset((page - 1) * pageSize)
+  ) as Array<{ kind: string; id: string }>;
+
+  const wfIds = keys.filter((k) => k.kind === 'workflow').map((k) => k.id);
+  const passIds = keys.filter((k) => k.kind === 'schedule').map((k) => k.id);
+  const wfRows = new Map((wfIds.length === 0 ? [] : await db.select(SUMMARY_COLS).from(runtimeHistory)
+    .where(inArray(runtimeHistory.id, wfIds))).map((r) => [r.id, r as RuntimeHistorySummary]));
+  const passRows = new Map((passIds.length === 0 ? [] : await db.select().from(scheduleHistory)
+    .where(inArray(scheduleHistory.id, passIds))).map((r) => [r.id, summaryOf(r)]));
+  const items = keys.flatMap((k): HistoryEntry[] => {
+    if (k.kind === 'workflow') { const r = wfRows.get(k.id); return r ? [{ kind: 'workflow', ...r }] : []; }
+    const r = passRows.get(k.id);
+    return r ? [{ kind: 'schedule', ...r }] : [];
+  });
+  return { items, total: wfCount + passCount, page, pageSize };
+}
+
 /** Full-row read for the detail dialog — every column including trace/properties/step_params/
  *  step_names, which the list projection above deliberately withholds. */
 export async function getRuntimeHistoryDetail(db: Db, id: string): Promise<RuntimeHistoryDetail | undefined> {
@@ -130,6 +202,14 @@ export async function deleteRuntimeHistory(db: Db, id: string): Promise<void> {
     const [row] = await tx.select({ workflowInstanceId: runtimeHistory.workflowInstanceId }).from(runtimeHistory).where(eq(runtimeHistory.id, id));
     if (!row) throw new DaoError('HISTORY_NOT_FOUND');
     if (row.workflowInstanceId) {
+      // Spec 2026-11-08 §6.3: until the schedule tick has processed the ending, this row is the
+      // only record of it, and deleting it would lose the run's chain.
+      const [pending] = await tx.select({ id: scheduleItemRun.id }).from(scheduleItemRun).where(and(
+        eq(scheduleItemRun.workflowInstanceId, row.workflowInstanceId), eq(scheduleItemRun.status, 'started'),
+      )).limit(1);
+      if (pending) {
+        throw new DaoError('HISTORY_RUN_PENDING', 'Its Runtime Schedule has not processed this run\'s ending yet. Try again in a moment.');
+      }
       await deleteStepSignaturesForInstances(tx, [row.workflowInstanceId]);
       await deleteStepRunsForInstances(tx, [row.workflowInstanceId]);
       await deleteControlEventsForInstances(tx, [row.workflowInstanceId]);
@@ -141,15 +221,28 @@ export async function deleteRuntimeHistory(db: Db, id: string): Promise<void> {
 function purgeConds(opts: { olderThan: Date; workCenterId?: string }) {
   const conds = [lt(runtimeHistory.finishedAt, opts.olderThan)];
   if (opts.workCenterId !== undefined) conds.push(eq(runtimeHistory.workCenterId, opts.workCenterId));
+  // A record its Runtime Schedule has not processed yet is skipped, as deleteRuntimeHistory refuses it.
+  conds.push(sql`not exists (select 1 from ${scheduleItemRun}
+    where ${scheduleItemRun.workflowInstanceId} = ${runtimeHistory.workflowInstanceId}
+      and ${scheduleItemRun.status} = 'started')`);
   return conds;
 }
 
+function schedulePurgeConds(opts: { olderThan: Date; workCenterId?: string }) {
+  const conds = [lt(scheduleHistory.finishedAt, opts.olderThan)];
+  if (opts.workCenterId !== undefined) conds.push(eq(scheduleHistory.workCenterId, opts.workCenterId));
+  return conds;
+}
+
+/** Workflow History records and schedule passes older than the cutoff, together. */
 export async function countRuntimeHistoryBefore(
   db: Db, opts: { olderThan: Date; workCenterId?: string },
 ): Promise<number> {
   const rows = await db.select({ n: sql<number>`count(*)::int` }).from(runtimeHistory)
     .where(and(...purgeConds(opts)));
-  return rows[0]!.n;
+  const passes = await db.select({ n: sql<number>`count(*)::int` }).from(scheduleHistory)
+    .where(and(...schedulePurgeConds(opts)));
+  return rows[0]!.n + passes[0]!.n;
 }
 
 /** Retention sweep (spec §5): deletes rows older than the cutoff, optionally scoped to one
@@ -160,7 +253,11 @@ export async function countRuntimeHistoryBefore(
  *  a purge must never bind one parameter per victim row. The signature delete uses an
  *  `IN (SELECT ...)` subquery (constant parameter count regardless of victim count) instead
  *  of collecting victim ids client-side and re-binding them with `inArray`; the history
- *  delete is the ORIGINAL single `DELETE ... WHERE <purgeConds>` from before this branch. */
+ *  delete is the ORIGINAL single `DELETE ... WHERE <purgeConds>` from before this branch.
+ *
+ *  Repeatable read: purgeConds reads schedule_item_run, which the schedule tick changes while this
+ *  runs. Every statement must pick the same victims, or a record could be deleted here and keep
+ *  the signatures an earlier statement passed over. */
 export async function purgeRuntimeHistory(
   db: Db, opts: { olderThan: Date; workCenterId?: string },
 ): Promise<number> {
@@ -188,8 +285,10 @@ export async function purgeRuntimeHistory(
     );
     const res = await tx.delete(runtimeHistory).where(and(...purgeConds(opts)))
       .returning({ id: runtimeHistory.id });
-    return res.length;
-  });
+    const passes = await tx.delete(scheduleHistory).where(and(...schedulePurgeConds(opts)))
+      .returning({ id: scheduleHistory.id });
+    return res.length + passes.length;
+  }, { isolationLevel: 'repeatable read' });
 }
 
 /** Access-gate lookup for routes (spec §6): resolves a history row's work center without

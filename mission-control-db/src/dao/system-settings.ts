@@ -136,3 +136,21 @@ export async function setRuntimeIdTimezone(db: Db, tz: string): Promise<void> {
   if (!isValidTimeZone(tz)) throw new Error(`Invalid time zone: "${tz}"`);
   await upsert(db, RUNTIME_ID_TZ_KEY, tz);
 }
+
+// Spec 2026-11-08 §6.4: how late a scheduled slot may still fire. Beyond this the slot joins a
+// missed window for a person to decide. Absent or unusable reads as the default. Zero is refused
+// as well: the tick runs every few seconds, so a zero tolerance would miss every slot.
+const SCHEDULE_LATE_TOLERANCE_KEY = 'schedule_late_tolerance_minutes';
+const DEFAULT_SCHEDULE_LATE_TOLERANCE_MINUTES = 15;
+const isToleranceMinutes = (n: number) => Number.isSafeInteger(n) && n >= 1;
+
+export async function getScheduleLateToleranceMinutes(db: Db): Promise<number> {
+  const [row] = await db.select().from(systemSettings).where(eq(systemSettings.key, SCHEDULE_LATE_TOLERANCE_KEY));
+  const stored = Number(row?.value);
+  return isToleranceMinutes(stored) ? stored : DEFAULT_SCHEDULE_LATE_TOLERANCE_MINUTES;
+}
+
+export async function setScheduleLateToleranceMinutes(db: Db, minutes: number): Promise<void> {
+  if (!isToleranceMinutes(minutes)) throw new Error('The late tolerance must be a whole number of at least 1 minute');
+  await upsert(db, SCHEDULE_LATE_TOLERANCE_KEY, String(minutes));
+}

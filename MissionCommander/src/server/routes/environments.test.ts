@@ -62,7 +62,7 @@ describe('environment detail + delete routes', () => {
 
     mockSessionAs(await seedUser(db, { email: 's@x.io', displayName: 'S', accessLevel: 'steward' }));
     // M6: linking is gone. Nothing RESTRICTs an environment_spec at the FK level
-    // (workflow_environment CASCADEs; workflow_instance and schedule both SET NULL), so
+    // (workflow_environment CASCADEs; workflow_instance SETs NULL), so
     // deleteEnvironmentSpec pre-checks for instances explicitly — that is what 409s here.
     const [w] = await db.insert(workflow).values({
       oid: 'env-holder', name: 'Holder', workCenterId, specJsonb: {},

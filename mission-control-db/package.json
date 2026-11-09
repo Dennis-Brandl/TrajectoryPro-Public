@@ -19,11 +19,13 @@
   "dependencies": {
     "adm-zip": "^0.6.1",
     "drizzle-orm": "^0.45.2",
+    "luxon": "^3.7.2",
     "pg": "^8.13.1"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.2.14",
     "@types/adm-zip": "^0.5.7",
+    "@types/luxon": "^3.7.6",
     "@types/node": "^22.10.0",
     "@types/pg": "^8.11.10",
     "drizzle-kit": "^0.31.4",

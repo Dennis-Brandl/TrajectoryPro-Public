@@ -18,7 +18,7 @@ import userEvent from '@testing-library/user-event';
 import { runtimeHistory } from '@/lib/api/runtime-history';
 import { workCenters } from '@/lib/api/work-centers';
 import { usePrincipalStore } from '@/stores/principalStore';
-import type { RuntimeHistorySummary, RuntimeHistoryDetail, MePrincipal, WcNode } from '@/lib/api/types';
+import type { HistoryEntry, RuntimeHistoryDetail, MePrincipal, WcNode } from '@/lib/api/types';
 import { HistoryPage } from './HistoryPage';
 
 vi.mock('@/lib/api/runtime-history', () => ({
@@ -45,14 +45,15 @@ const WC_NODES: WcNode[] = [
   { id: 'w2', name: 'Packaging', parentWorkCenterId: null, depth: 0, typeName: null },
 ];
 
-const ROW: RuntimeHistorySummary = {
+const ROW: HistoryEntry = {
+  kind: 'workflow',
   id: 'h1', workflowInstanceId: 'wi1', workCenterId: 'w1', workCenterName: 'Assembly',
   runtimeNumber: 7, runtimeLabel: 'RW-7', masterName: 'Bottle Fill', masterOid: 'o1', masterVersion: '1.0.0', masterState: 'released',
   finalState: 'completed', startedAt: '2026-08-01T00:00:00.000Z', finishedAt: '2026-08-01T00:04:32.000Z',
-  createdAt: '2026-08-01T00:00:00.000Z',
+  scheduleLabel: null, createdAt: '2026-08-01T00:00:00.000Z',
 };
 
-const ROW_PAGE2: RuntimeHistorySummary = { ...ROW, id: 'h2', runtimeNumber: 8, runtimeLabel: 'RW-8' };
+const ROW_PAGE2: HistoryEntry = { ...ROW, id: 'h2', runtimeNumber: 8, runtimeLabel: 'RW-8' };
 
 const deferred = <T,>() => {
   let resolve!: (v: T) => void;
@@ -104,7 +105,7 @@ describe('HistoryPage — fetch + table', () => {
   // not flash the table to null/Loading while the next page's fetch is in flight.
   it('keeps the previous rows visible while a page commit is in flight (no Loading flash)', async () => {
     setup();
-    const pending = deferred<{ history: RuntimeHistorySummary[]; total: number; page: number; pageSize: number }>();
+    const pending = deferred<{ history: HistoryEntry[]; total: number; page: number; pageSize: number }>();
     vi.mocked(runtimeHistory.listAll)
       .mockResolvedValueOnce({ history: [ROW], total: 120, page: 1, pageSize: 50 })
       .mockReturnValueOnce(pending.promise);

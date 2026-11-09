@@ -32,6 +32,12 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* Chromium browsers paint a transparent select's open list white, whatever the
+     color-scheme, while options inherit the select's text color. */
+  option,
+  optgroup {
+    @apply bg-popover text-popover-foreground;
+  }
 }
 
 /* Dark mode: wider connection lines for better visibility */

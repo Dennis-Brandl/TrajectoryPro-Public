@@ -37,7 +37,7 @@ function live(id: string, label: string): RuntimeWorkflowLiveDetail {
     summary: {
       id, workCenterId: 'w1', runtimeNumber: 1, runtimeLabel: label,
       masterName: 'Mix', masterOid: 'o1', masterVersion: '1.0.0', masterState: 'released',
-      status: 'running', createdByName: null, createdByLabel: null, createdAt: '2026-08-01T00:00:00Z',
+      status: 'running', createdByName: null, createdByLabel: null, scheduleLabel: null, createdAt: '2026-08-01T00:00:00Z',
       queuedAt: null, startedAt: null, completedAt: null,
     },
     steps: [], trace: [], signatures: [], operatorCleanup: { stop: false, abort: false },
@@ -47,7 +47,7 @@ function hist(id: string, label: string, workflowInstanceId: string | null): Run
   return {
     id, workflowInstanceId, workCenterId: 'w1', workCenterName: 'Line A', runtimeNumber: 1, runtimeLabel: label,
     masterName: 'Mix', masterOid: 'o1', masterVersion: '1.0.0', masterState: 'released', finalState: 'completed',
-    startedAt: null, finishedAt: '2026-08-01T00:00:00Z', createdAt: '2026-08-01T00:00:00Z',
+    startedAt: null, finishedAt: '2026-08-01T00:00:00Z', scheduleLabel: null, createdAt: '2026-08-01T00:00:00Z',
     startingParams: null, trace: [], properties: null, stepParams: null, stepNames: null, signatures: [], stepRuns: [], startedByLoginName: null, startedByUserId: null, userNames: {},
     createdByLabel: null, createdByInstanceId: null, outputs: null, controlEvents: [],
   };

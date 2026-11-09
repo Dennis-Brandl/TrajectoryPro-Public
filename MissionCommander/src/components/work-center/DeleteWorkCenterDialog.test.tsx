@@ -24,7 +24,7 @@ import { DeleteWorkCenterDialog } from './DeleteWorkCenterDialog';
 
 const WORK_CENTER: WorkCenter = {
   id: 'w1', name: 'Assembly', description: null, parentWorkCenterId: null,
-  sortOrder: 0, dispatchPolicy: 'least_queued_steps', autoClaim: false, runtimeIdTemplate: null, typeName: null, createdAt: '', updatedAt: '',
+  sortOrder: 0, dispatchPolicy: 'least_queued_steps', autoClaim: false, runtimeIdTemplate: null, typeName: null, timeZone: null, createdAt: '', updatedAt: '',
 };
 
 beforeEach(() => vi.clearAllMocks());

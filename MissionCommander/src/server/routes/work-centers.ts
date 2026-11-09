@@ -31,6 +31,7 @@ import { eq } from 'drizzle-orm';
 import { workCenter } from 'mission-control-db/src/db/schema/index';
 import { MAX_TYPE_NAME_LENGTH, TYPE_NAME_TOO_LONG_MESSAGE } from 'mission-control-db/src/dao/type-name';
 import { validateRuntimeIdTemplate } from 'mission-control-db/src/lib/runtime-id';
+import { isValidTimeZone } from 'mission-control-db/src/dao/system-settings';
 import { requireSession, requirePermission, requireMissionSystemCommander, type Vars } from '../middleware/auth';
 import { requireUuidParams, isUuid } from '../middleware/validate';
 import { errorBody, httpError, sendError } from '../lib/errors';
@@ -167,7 +168,17 @@ workCenterRoutes.patch(
       autoClaim?: boolean;
       runtimeIdTemplate?: string | null;
       typeName?: string | null;
+      timeZone?: string | null;
     };
+    // Spec 2026-11-08 §5: the zone this work center's schedules run in. Also CAST into the DAO
+    // patch, so check it here: a valid IANA zone, or null (a blank string too) to use the
+    // deployment's zone.
+    if (patch.timeZone !== undefined && patch.timeZone !== null) {
+      if (typeof patch.timeZone !== 'string') return httpError(c, 400, 'validation', 'timeZone must be a string or null');
+      const zone = patch.timeZone.trim();
+      if (zone !== '' && !isValidTimeZone(zone)) return httpError(c, 400, 'validation', `"${zone}" is not a known time zone`);
+      patch.timeZone = zone === '' ? null : zone;
+    }
     // Explicit guard because this body is CAST into the DAO patch (the documented
     // dispatchParams-leak seam at dao/work-centers.ts) — never let a non-boolean through.
     if (patch.autoClaim !== undefined && typeof patch.autoClaim !== 'boolean') {

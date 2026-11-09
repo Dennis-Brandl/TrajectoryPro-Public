@@ -151,6 +151,8 @@ export function machineWorkflowPackage(opts: {
   startingParameterSpecifications?: Array<{
     id: string; default_value: string; value_type?: 'literal' | 'property'; description?: string;
   }>;
+  // Opt-in, like the starting parameters: output ids a chained schedule item can read.
+  outputParameterSpecifications?: Array<{ id: string; target?: string; default_value?: string }>;
 }): FilePayload {
   const version = opts.version ?? '1.0.0';
   const lastModified = '2026-01-01T00:00:00Z';
@@ -164,6 +166,9 @@ export function machineWorkflowPackage(opts: {
     state: opts.state ?? 'Effective', schemaVersion: '5.0',
     ...(opts.startingParameterSpecifications
       ? { starting_parameter_specifications: opts.startingParameterSpecifications }
+      : {}),
+    ...(opts.outputParameterSpecifications
+      ? { output_parameter_specifications: opts.outputParameterSpecifications }
       : {}),
     steps: [
       { local_id: 'Begin', oid: startOid, version: '1.0.0', last_modified_date: lastModified, step_type: 'START' },

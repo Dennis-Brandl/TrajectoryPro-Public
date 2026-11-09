@@ -106,6 +106,7 @@ export interface PilotRuntimeWorkflow {
   completedAt: string | null;
   activeSteps: RuntimeActiveStep[];
   errorText: string | null;
+  scheduleLabel: string | null;
   mine: boolean;
 }
 

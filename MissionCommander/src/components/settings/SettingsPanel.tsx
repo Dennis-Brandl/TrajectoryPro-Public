@@ -43,6 +43,8 @@ export function SettingsPanel() {
   const [trust, setTrust] = useState<ActionServerTrust>('strict');
   const [allowlistText, setAllowlistText] = useState('');
   const [lineError, setLineError] = useState<string | null>(null);
+  // Kept as text so a half-typed number does not fight the field; null until the server sends one.
+  const [tolerance, setTolerance] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -55,6 +57,7 @@ export function SettingsPanel() {
           setMode(d.actionMatching);
           setTrust(d.actionServerTrust);
           setAllowlistText(d.actionServerAllowlist.join('\n'));
+          setTolerance(d.scheduleLateToleranceMinutes === undefined ? null : String(d.scheduleLateToleranceMinutes));
           setLoaded(true);
         }
       })
@@ -69,10 +72,21 @@ export function SettingsPanel() {
       return;
     }
     setLineError(null);
+    let minutes: number | undefined;
+    if (isAdmin && tolerance !== null) {
+      minutes = Number(tolerance);
+      if (tolerance.trim() === '' || !Number.isInteger(minutes) || minutes < 1 || minutes > 1440) {
+        toast.error('Late tolerance must be a whole number of minutes from 1 to 1440');
+        return;
+      }
+    }
     setSaving(true);
     try {
       const patch = isAdmin
-        ? { actionMatching: mode, actionServerTrust: trust, actionServerAllowlist: parsed.origins }
+        ? {
+          actionMatching: mode, actionServerTrust: trust, actionServerAllowlist: parsed.origins,
+          ...(minutes !== undefined ? { scheduleLateToleranceMinutes: minutes } : {}),
+        }
         : { actionMatching: mode };
       await systemSettings.update(patch);
       toast.success('Settings saved');
@@ -126,6 +140,16 @@ export function SettingsPanel() {
         {lineError && <p className="text-sm text-destructive">{lineError}</p>}
         <p className="text-sm text-muted-foreground">One origin per line, scheme + host + port, no path. In the Docker fleet the Mission Autopilot server is reachable by the engine at <code>http://mission-autopilot-server:3002</code> (copy it from the Mission Autopilot console top bar, "Mission Commander address").</p>
       </div>
+      {tolerance !== null && (
+        <div className="mt-6 space-y-1">
+          <label className="font-medium" htmlFor="schedule-late-tolerance">Schedule late tolerance (minutes)</label>
+          {!isAdmin && <p className="text-sm text-muted-foreground">Requires an administrator</p>}
+          <input id="schedule-late-tolerance" type="number" min={1} max={1440} step={1} inputMode="numeric"
+            className="block w-28 rounded border bg-background p-2 text-sm" value={tolerance}
+            onChange={(e) => setTolerance(e.target.value)} disabled={!loaded || !isAdmin} />
+          <p className="text-sm text-muted-foreground">A scheduled start that is later than this is not started on its own. It waits for a person to decide when the schedule is resumed. From 1 to 1440 minutes.</p>
+        </div>
+      )}
       <RequiresTooltip reason={!canEdit ? 'Requires settings:edit' : !loaded ? 'Settings have not loaded' : undefined}>
         <Button type="button" size="sm" className="mt-4" disabled={!canEdit || saving || !loaded}
           title={!canEdit ? 'Requires settings:edit' : !loaded ? 'Settings have not loaded' : undefined} onClick={save}>

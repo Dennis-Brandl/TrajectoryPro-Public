@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { get, post, del } from './client';
-import type { RuntimeHistoryDetail, RuntimeHistoryListParams, RuntimeHistoryPage } from './types';
+import type { RuntimeHistoryDetail, RuntimeHistoryListParams, RuntimeHistoryPage, ScheduleHistoryDetail } from './types';
 
 // Shared query-string builder: omits undefined/empty/false entries so callers can pass a
 // params object straight through without hand-pruning it first. `true` serializes to the
@@ -59,6 +59,9 @@ export const runtimeHistory = {
     })}`) as Promise<RuntimeHistoryPage>,
   detail: (id: string) => get(`/api/runtime-history/${id}`) as Promise<RuntimeHistoryDetail>,
   remove: (id: string) => del(`/api/runtime-history/${id}`) as Promise<undefined>,
+  /** A completed schedule pass from the History list. */
+  passDetail: (id: string) => get(`/api/schedule-history/${id}`) as Promise<ScheduleHistoryDetail>,
+  removePass: (id: string) => del(`/api/schedule-history/${id}`) as Promise<undefined>,
   purgeCount: (opts: { olderThan: string; workCenterId?: string }) =>
     get(`/api/runtime-history/purge-count${qs({ ...opts, olderThan: toIso(opts.olderThan) })}`) as Promise<{ count: number }>,
   purge: (opts: { olderThan: string; workCenterId?: string }) =>

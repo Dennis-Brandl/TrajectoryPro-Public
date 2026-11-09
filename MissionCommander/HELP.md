@@ -23,8 +23,9 @@ Mission Commander is where Trajectory Pro Mission Control workflows are put to w
 15. [E-signatures](#15-e-signatures)
 16. [History](#16-history)
 17. [Mission XO](#17-mission-xo)
-18. [Settings](#18-settings)
-19. [File Format Reference](#19-file-format-reference)
+18. [Workflow Schedules](#18-workflow-schedules)
+19. [Settings](#19-settings)
+20. [File Format Reference](#20-file-format-reference)
 
 ---
 
@@ -208,7 +209,7 @@ The header shows the work center's name, its dispatch policy and its auto-claim 
 | **Edit**            | Open the work-center dialog                                                                   |
 | **Delete**          | Delete the work center                                                                        |
 
-Below the header are nine tabs:
+Below the header are ten tabs:
 
 | Tab              | Contents                                                                                                                                                                                                                  |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -216,6 +217,7 @@ Below the header are nine tabs:
 | **Env Specs**    | Environment specs loaded here: name, version, state, and the **Action Server** address used for each environment                                                                                                           |
 | **Runtime**      | Cards for this work center's runtime workflows. See [The Work Center's Runtime Tab](#the-work-centers-runtime-tab)                                                                                                         |
 | **History**      | This work center's finished runs. See [History](#16-history)                                                                                                                                                              |
+| **Schedules**    | Workflow Schedules that start runs by themselves. See [Workflow Schedules](#18-workflow-schedules) |
 | **Env Resources** | This work center's shared resources and value properties. See [Resources and Value Properties](#14-resources-and-value-properties)                                                                                        |
 | **Users**        | Members: name and email, login name, roles held here (**Roles…**), access level, the **Mission System Commander** checkbox, and **✕** to remove the member. **＋ Add User** adds a member |
 | **Roles**        | The roles used by this work center's workflows, as allowed roles or e-signature roles                                                                                                                                      |
@@ -232,7 +234,7 @@ On the work center's **Users** tab, click **＋ Add User**, search for the user 
 
 An environment's actions and Action Properties are provided by an action server such as Mission Autopilot. To connect one, an administrator opens the work center's **Env Specs** tab, types the server address in each environment's **Action Server** field, and clicks **Save**. Other users see the address read-only.
 
-The address applies to this work center only, so the same environment can use different servers in different work centers. When **Action server trust** is Strict and the address is not in the allowed list, it is flagged _Not in the allowed action servers list_. The engine will not contact that server until an administrator adds it (see [Settings](#17-settings)).
+The address applies to this work center only, so the same environment can use different servers in different work centers. When **Action server trust** is Strict and the address is not in the allowed list, it is flagged _Not in the allowed action servers list_. The engine will not contact that server until an administrator adds it (see [Settings](#19-settings)).
 
 **Distributed Workflow Management.** The Distributed Workflow actions run on the service at
 `http://mission-broker:3007`. To use them in a work center: add that address to the
@@ -759,7 +761,7 @@ Signature records stay after the run leaves the Runtime views. They are deleted 
 
 ## 16. History
 
-Every run that finishes is recorded in History, whether it completed, stopped, aborted or errored.
+Every run that finishes is recorded in History, whether it completed, stopped, aborted or errored. So is every completed pass of a schedule: see [Schedule Passes](#schedule-passes).
 
 - **History** on the icon rail shows runs from every work center. A selector narrows it to one work center, or to _(deleted work centers)_.
 - A work center's **History** tab shows only that work center's runs.
@@ -790,9 +792,17 @@ If another runtime workflow created this one through a Distributed Workflow acti
 
 **Delete** removes the entry together with its signature records. It is available to administrators and to Mission System Commanders of the work center.
 
+### Schedule Passes
+
+Each time a Runtime Schedule starts its workflows, and every one of them has ended, chained workflows included, History gets one more row for that pass. It is shaded, and reads, for example, **RS-3 pass 2** with **Schedule: Nightly** and a result such as **3 completed** or **2 completed, 1 with problems**. A Run Once pass reads **RS-7 Run Once**.
+
+Click the row to see the pass: when it was scheduled and when it ran, then each workflow it started in start order, with chained workflows set in under the one that started them. Each shows its version, its runtime ID, when it started and finished, how it ended (or why it did not start, such as **Not triggered**), and the starting values it was given. Click a runtime ID to open that workflow's own History entry. Times in the pass are in the schedule's time zone.
+
+A pass stays in History after its Runtime Schedule is removed from the Schedules list or its Master Schedule is deleted. A state chip shows workflow runs only, as a pass has no single result. **Search workflow name…** finds a pass by the schedule's name or the name of any workflow in it. **Delete** in the pass removes only the pass; each workflow keeps its own entry.
+
 ### Purging History
 
-Administrators can click **Purge…** on the History page to delete every entry older than a chosen date, either for all work centers or for one. The dialog shows how many entries match before anything is deleted.
+Administrators can click **Purge…** on the History page to delete every entry older than a chosen date, either for all work centers or for one. Schedule passes are purged with the workflow entries, and the count includes them. The dialog shows how many entries match before anything is deleted.
 
 ---
 
@@ -812,15 +822,16 @@ Only **Stewards** and **Administrators** can use Mission XO. A Viewer who signs 
 
 Every work center is listed. In a work center where you are not a [Mission System Commander](#mission-system-commander), Mission XO shows **View only**: you can see everything, but the buttons that change things are turned off.
 
-### The Three Views
+### The Four Views
 
-After you choose a work center, Mission XO opens on **Running**. Three buttons switch between the views:
+After you choose a work center, Mission XO opens on **Running**. Four buttons switch between the views:
 
 | View          | What it is for |
 | ------------- | -------------- |
 | **Available** | The workflows you can start in this work center. Pick one, fill in the starting parameters and click **Start**. A draft workflow carries a **Draft** badge. |
 | **Running**   | The work center's runs, with paused and failed runs listed first. Select a run to see its steps and diagram, and to pause, resume, stop, abort, assign a step or force a gate to complete. |
 | **History**   | Finished runs. Select one to read its record, laid out like the PDF, and click **Download PDF** to save it. |
+| **Schedules** | The work center's [Workflow Schedules](#18-workflow-schedules): see what is scheduled, and enable, pause, resume or cancel a schedule. Schedules are written in Mission Commander. |
 
 Mission XO always starts a run right away. To create a run that waits to be started, use **Create Runtime Workflow…** in Mission Commander.
 
@@ -828,7 +839,188 @@ Mission XO has its own help guide: click **Help** in Mission XO's top bar.
 
 ---
 
-## 18. Settings
+## 18. Workflow Schedules
+
+A **Workflow Schedule** starts runtime workflows by itself, at times you choose, so nobody has to press **Start** every morning, every shift or every hour. A schedule can also chain workflows: "when Blend Batch ends, start Move Material and Lab Test."
+
+Schedules belong to a work center and use that work center's time zone. You work with them on the work center's **Schedules** tab, which sits after **History**. Mission XO has a Schedules view too, for controlling schedules but not for writing them. Outside systems such as an ERP can also send and control schedules (see [Outside Systems](#outside-systems)).
+
+![The Schedules tab of a work center](/help-images/18-schedules-tab.png)
+
+### Master and Runtime Schedules
+
+There are two kinds of schedule, and the difference matters.
+
+- A **Master Schedule** is the definition. It says when to start and which workflows to start. You write it and edit it as often as you like, and nothing starts from a Master Schedule on its own.
+- A **Runtime Schedule** is a working copy of a Master Schedule, made when you click **Enable Recurrence** or **Run Once**. It is the one that starts workflows. It keeps its own frozen copy, so editing the Master afterwards does not change a Runtime Schedule that is already going. Each Runtime Schedule has a label such as `RS-12`.
+
+A Master Schedule can have only one recurring Runtime Schedule that is **Active** or **Paused** at a time. To enable it again, cancel or finish the current one first. **Run Once** is not limited this way.
+
+A Runtime Schedule's detail shows its workflows as a tree, the occurrences that have fired with the outcome of each run (linked to Runtime and History), and a log of who did what. Runs started by a schedule show the schedule in Running and History, for example `RS-12 / occurrence 7`.
+
+### Versions, Change Reasons and the Exported PDF
+
+Every Master Schedule has a **version** number, shown in the list and in the editor. A new Master Schedule is version 1. Each save that changes it makes the next version; a save that changes nothing does not.
+
+When you click **Save**, Commander asks for the **reason for the change** before saving, and shows the version the save will make. The reason, the date and time, and who saved it go into the Master Schedule's change history. A new Master Schedule's reason starts as **Initial version**, which you can change. A schedule sent by another system through the REST interface records **Sent through the REST interface**, with that system's name. One brought in from a work-center package records **Imported from a work-center package**. Saves made before version reasons existed show **(no reason recorded)**.
+
+**Export PDF**, next to **Edit**, saves the Master Schedule as a PDF to keep for validation: its name, description, work center, version, when it was last saved, where it came from, its time zone and recurrence, then each workflow with its version, how it starts and where each starting value comes from. Last comes the change history, every version with its date and time, who saved it and why. Times are in the work center's time zone. The file is named after the schedule and its version, for example `Day Production v3.pdf`. Anyone who can see the Schedules tab can export.
+
+### The Start List and Chains
+
+A Master Schedule holds a **start list**, and each workflow in it can have a **chain**.
+
+- **Start list.** At each scheduled time, the workflows in the list start in list order, each right after the one before it has started. None waits for another to finish. Change the order with the up and down buttons or by dragging.
+- **Chain.** A chained workflow starts only when the workflow above it ends. Sequence, "this, then that", is written only as a chain. Chains are a tree: when a run ends, every chained workflow whose ending matches starts together, and each of those can have a chain of its own.
+
+Click **Add chained workflow** on any item to chain a workflow under it.
+
+![The editor, with a chain](/help-images/18-schedule-editor.png)
+
+### Endings and Triggers
+
+Every chained workflow has its own checkboxes for the endings that start it: **Completed**, **Stopped**, **Aborted** and **Errored**. A new chained workflow starts with **Completed** only, so nothing follows a failure unless you ask for it. At least one ending must stay ticked.
+
+Take a Blend Batch with Move Material, Lab Test (followed by Release Batch) and Clean Equipment chained to it, where Clean Equipment starts on every ending and the others on Completed only:
+
+| Blend Batch ends | Move Material | Lab Test | Release Batch | Clean Equipment |
+| ---------------- | ------------- | -------- | ------------- | --------------- |
+| Completed | Starts | Starts | Starts when Lab Test completes | Starts |
+| Stopped | Not triggered | Not triggered | Never considered | Starts |
+| Aborted | Not triggered | Not triggered | Never considered | Starts |
+| Errored | Not triggered | Not triggered | Never considered | Starts |
+
+### Starting Values
+
+Each of a workflow's starting parameters has a source:
+
+- **Fixed value**: the same value every time.
+- **From triggering run**: for a chained workflow, a starting value or an output of the run that triggered it. A Lab Test can start with the batch number that Blend Batch finished with. Each chained workflow reads from its own parent, so values from different occurrences never cross over.
+- **Scheduled date**, **Scheduled date and time** and **Slot number**: taken from the scheduled time.
+- **Template**: text built from those, such as `B-{occurrence.date}-{occurrence.number}`, to make a batch id. A **Fallback** can be given for a value that might come out empty. If a value is empty and has no fallback, that workflow does not start and the schedule shows **Needs attention**.
+
+### Repeat Patterns
+
+The editor's **Pattern** options follow Outlook's recurrence dialog: **Once**, **Fixed delay**, **Daily**, **Weekly**, **Monthly** and **Yearly**. Daily, weekly, monthly and yearly patterns take a list of times, so one schedule can cover a whole set of shifts, and a range: a start date, then no end, an end after a number of times, or an end by a date. A live preview shows the next five start times as you edit.
+
+All times are in the work center's zone. Examples (2026-11-09 is a Monday):
+
+| What you want | How to set it | First start times |
+| ------------- | ------------- | ----------------- |
+| Every 4 hours | Fixed delay, every 4 hours, starting 06:00 | Nov 9 06:00, 10:00, 14:00 |
+| Every weekday at the three shift starts | Daily, every weekday, times 06:00, 14:00 and 22:00 | Nov 9 06:00, 14:00, 22:00, Nov 10 06:00 |
+| Every other week, Monday and Thursday at 06:00 | Weekly, every 2 weeks, Monday and Thursday | Nov 9, Nov 12, Nov 23, Nov 26, Dec 7 |
+| Last Friday of every month at 18:00, six times | Monthly, the last Friday of every 1 month, end after 6 | Nov 27, Dec 25, Jan 29 |
+| The 31st of every month at 08:00 | Monthly, day 31 | Jan 31, Feb 28, Mar 31 |
+| The first Monday in November at 07:00 | Yearly, the first Monday of November | 2027 Nov 1, 2028 Nov 6 |
+| Once, Tuesday at 09:30 | Once | Nov 10 09:30 |
+
+Good to know:
+
+- A day that a month does not have (the 31st in February) falls on the month's last day.
+- **Fixed delay** counts elapsed time from its start, so the spacing stays exact across a clock change.
+- Past start times are never run: a schedule enabled today starts with its next time from now. A **Once** schedule whose time has passed cannot be enabled.
+- "End after 6" counts the pattern's start times from the start date, whether or not they ran. Enabled in December, the last-Friday example has five left.
+- The shortest delay is one minute.
+
+### Manual Schedules and Run Once
+
+Some schedules have no timetable, such as the incident response for a fire alarm. Choose the **Manual** pattern for those. A Manual schedule has no start times, and it starts only when someone clicks **Run Once**.
+
+**Run Once** is on every Master Schedule, whatever its pattern. A dialog names the workflows that will start, and you choose **Start now** or **At a date and time**, in the work center's time zone. **Start now** begins within about five seconds.
+
+Each Run Once makes its own Runtime Schedule, marked **Run Once**, with its own frozen copy and its own label. It starts the start list one time, runs its chains, and then finishes by itself. You can use **Pause** and **Cancel** on it, and its start is in the event log with who asked for it. It can overlap anything: a second alarm during the first starts a second response, and a recurring Runtime Schedule from the same Master carries on untouched.
+
+The starting values are the ones in the Master Schedule, because Run Once does not ask for any. A workflow that needs a value it was not given is reported in the dialog, and nothing starts.
+
+### Enabling a Master Schedule
+
+Click **Enable Recurrence** on a Master Schedule. A Manual schedule has no recurrence, so its button is turned off. A dialog lists the first three start times and any warning, such as a workflow that is still a draft, before you confirm. If something would stop it working (a workflow that no longer exists, a value that cannot be filled), **Enable Recurrence** is not offered and the dialog lists each problem. Saving a Master Schedule only warns about these. Enable is where they are enforced.
+
+If a Master Schedule is edited after it was enabled, its Runtime Schedule says **Master changed since Enable**. It carries on with the old copy. To use the change, **Cancel** the Runtime Schedule and click **Enable Recurrence** on the Master again, which makes a new Runtime Schedule.
+
+### Pause, Resume and Cancel
+
+These act on the schedule. They never touch runs that are already going.
+
+- **Pause** stops anything new from starting: the next scheduled times, and also chained workflows from runs that are still going. Start times that pass while paused count as missed. Chained workflows from runs that end while paused wait.
+- **Resume** opens the Resume dialog (below) if anything was missed or is waiting.
+- **Cancel** asks for confirmation and a reason. It prevents the next start and every chain that has not started. Runs already going continue. Cancel cannot be undone: enable the Master again to start a new Runtime Schedule.
+
+- **Remove** appears once a Runtime Schedule is **Finished** or **Cancelled**, and takes it off the list after you confirm. It is refused while a run it started is still going. The History records of its runs stay, and so does the audit log. The list does not show it again, and its label is not used again.
+
+A run that is still going does not hold the schedule back. If an hourly run takes 90 minutes, the next hour still starts on time, and each run starts its own chain when it ends.
+
+#### Reading the Resume Dialog
+
+![The Resume dialog](/help-images/18-resume-dialog.png)
+
+The dialog title names the schedule and says who paused it and how long ago. It then asks up to two questions.
+
+**Missed scheduled starts** gives how many start times passed while the schedule was paused, with the first and last time. Nothing is chosen by default when more than one was missed.
+
+- **Start all** starts every missed one, oldest first. Each keeps its own scheduled date and time for values that use them. This is limited to 500: above that, the choice is unavailable and the dialog says why.
+- **Start only the latest** starts just the most recent one.
+- **Skip them all** starts none. The log records how many were skipped, and for which period.
+
+With exactly one missed start, the choices are **Start it** and **Skip it**. With none, Resume happens at once.
+
+**Chains waiting from runs that ended while paused** lists each chained workflow that was held back, with the run that triggered it and how it ended. They are ticked by default because each belongs to a run that really ended. Untick one to skip it.
+
+When you click **Resume**, held chains start first, oldest first, then the missed starts, oldest first, and then new start times as they come due. The schedule is Active straight away, but the runs start over the next few seconds, a batch at a time.
+
+Example. An hourly Blend Batch, chained to Move Material and Clean Equipment, starts RW-50 at 01:00. Someone pauses at 02:00, and RW-50 keeps running. The 02:00 and 03:00 starts are missed. RW-50 completes at 03:00, so Move Material and Clean Equipment wait. At 04:00 the schedule is resumed with **Start all 2** and the chains ticked: the two chains start, then the 02:00 run, then the 03:00 run.
+
+If you pause again while a Resume is still starting runs, the ones not yet started go back to the missed list, and the next Resume asks again.
+
+While an earlier catch-up is still starting runs, the dialog offers only **Start all**.
+
+If you cancel instead of pausing, nothing more happens: RW-50 runs on and finishes at 03:00, its two chained workflows are recorded as cancelled, and the record shows why.
+
+### Disabling a Workflow
+
+On a Runtime Schedule, any workflow in the tree has a **Disable** button, for example when a lab is closed for the week. A disabled workflow does not start, so its own chain cannot start either. Runs already going are untouched. **Re-enable** puts it back, but it is not caught up: a Lab Test skipped on Tuesday does not start late on Friday. A disabled workflow stays disabled across occurrences until you re-enable it, whether or not the schedule is paused.
+
+### Needs Attention
+
+A Runtime Schedule shows **Needs attention** when:
+
+- a workflow **failed to start**, for example because a value came out empty or the workflow was no longer available;
+- a started run was **lost**, because its record cannot be found, so its chain cannot start; or
+- start times were **missed because of an outage** and nobody has decided what to do yet.
+
+Open the schedule to see which. The reason is written beside each failed or lost workflow. **Dismiss** clears one, and **Dismiss all** clears them all. The dismissal is logged. There is no retry: start the workflow by hand from **Available**, with the reason in front of you. For missed starts, the same dialog as Resume opens, with the same three choices.
+
+### Time Zones
+
+A schedule uses its work center's time zone, and shows times in it. The editor says which zone that is and what time it is there now, as a time you enter is read on that clock.
+
+A work center with no time zone of its own uses the deployment's zone. If that differs from yours, the editor warns you and offers to set the work center to your zone, because 09:50 there may be hours away from 09:50 where you are. A time that has passed on that clock gives **This schedule has no future start**, even if it is still ahead on your own clock.
+
+A Runtime Schedule keeps the zone it had at Enable: changing the work center's zone later does not move it. When clocks go forward, a time that does not exist that day starts at the first moment after the gap. When clocks go back, a time that happens twice starts only the first time.
+
+### If Mission Engine Was Down
+
+The scheduler runs inside Mission Engine. After a short restart, a start time up to 15 minutes late still starts normally. If more was missed, nothing starts for that period. The schedule shows **Needs attention**, carries on with future start times, and asks you to choose among **Start all**, **Start only the latest** and **Skip them all**, exactly as Resume does. Chained workflows whose parent ended while the engine was down start as soon as it is back.
+
+### Outside Systems
+
+A planning system such as an ERP can send schedules to Trajectory Pro and control them through a REST interface. Administrators set this up in **Settings**, under **API clients**: create a client, choose what it may do and which work centers it may use, and copy its token. The token is shown once.
+
+A schedule sent this way appears as a Master Schedule with the source **API**, and can be enabled, edited and controlled in Commander like any other. When the outside system sends the schedule again, it replaces the Master, and its **Edit** screen says **Managed by** the sender's name, with a warning that your edits will be replaced the next time it sends. Re-sending is safe to repeat:
+
+- Sending the same plan again changes nothing. It never restarts a Runtime Schedule that someone cancelled.
+- Sending a changed plan while a Runtime Schedule is live is refused, unless the sender asks to replace it. Replacing cancels the old Runtime Schedule and enables the new one. Runs already going continue, but their chains do not start.
+
+The interface is described in `docs/external-api.md` in the MissionCommander folder, which gives the paths, the token header, the scopes and examples.
+
+### Mission XO and Schedules
+
+Mission XO's **Schedules** view lists the work center's Runtime Schedules first, then a compact list of its Master Schedules. It has the same **Run Once**, **Enable Recurrence**, **Pause**, **Resume**, **Cancel**, **Disable**, **Dismiss** and Resume dialog, under the same rules about who may use them. It has no editor: writing and changing Master Schedules is done in Mission Commander. See [Mission XO](#17-mission-xo).
+
+---
+
+## 19. Settings
 
 Settings apply to the whole system. Open them with the gear icon in the top bar. Saving them requires `settings:edit`.
 
@@ -854,7 +1046,7 @@ A change here reaches the engine within a few seconds.
 
 ---
 
-## 19. File Format Reference
+## 20. File Format Reference
 
 | Extension      | Produced by                                                  | Loaded with                                  | Contents                                                                                    |
 | -------------- | ------------------------------------------------------------ | -------------------------------------------- | ------------------------------------------------------------------------------------------- |

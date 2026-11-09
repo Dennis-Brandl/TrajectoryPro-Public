@@ -20,7 +20,7 @@ import { assignUserToWorkCenter } from '../dao/work-centers.js';
 import { addAllowedRole } from '../dao/allowed-roles.js';
 import { ingestWorkflowPackage } from '../ingest/wfmasterx.js';
 import { buildWfmasterx } from './sample-bundle.js';
-import { workCenter, workflowNode, schedule } from '../db/schema/index.js';
+import { workCenter, workflowNode } from '../db/schema/index.js';
 import type { Schema } from '../db/client.js';
 import type { PgDatabase } from 'drizzle-orm/pg-core';
 
@@ -77,9 +77,4 @@ export async function seedDemo(db: Db): Promise<void> {
   // Grant the root node's allowed role directly on the workflow entry.
   await addAllowedRole(db, { workflowId, nodeId: rootNode.id, roleId: operatorRole.id });
 
-  // One recurring schedule for that work center + workflow
-  await db.insert(schedule).values({
-    workCenterId: childWc.id, workflowId, name: 'Demo daily run',
-    kind: 'recurring', cronExpr: '0 6 * * *', timezone: 'UTC',
-  });
 }

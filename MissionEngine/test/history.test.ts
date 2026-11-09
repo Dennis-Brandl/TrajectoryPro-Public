@@ -385,3 +385,25 @@ test('no starter leaves nulls', async () => {
   expect(h.startedByLoginName).toBeNull();
   await close();
 });
+
+// ── schedule_label freezing (spec 2026-11-08 §5.5) ──
+
+test('a scheduled run that completes writes schedule_label into runtime_history', async () => {
+  const { db, close } = await makeTestDb();
+  const wi = await seedQueued(db, HIST_SPEC, 'wf-hist-sched', 'RW-1');
+  await db.update(workflowInstance).set({ triggeredBy: 'schedule', scheduleLabel: 'RS-12' })
+    .where(eq(workflowInstance.id, wi.id));
+  await pumpUntilQuiet(db, testDeps({ now: () => FIXED }));
+
+  expect((await instanceRow(db, wi.id)).status).toBe('completed');
+  expect((await historyRowFor(db, wi.id)).scheduleLabel).toBe('RS-12');
+  await close();
+});
+
+test('a manual run leaves runtime_history.schedule_label null', async () => {
+  const { db, close } = await makeTestDb();
+  const wi = await seedQueued(db, HIST_SPEC, 'wf-hist-nosched', 'RW-1');
+  await pumpUntilQuiet(db, testDeps({ now: () => FIXED }));
+  expect((await historyRowFor(db, wi.id)).scheduleLabel).toBeNull();
+  await close();
+});

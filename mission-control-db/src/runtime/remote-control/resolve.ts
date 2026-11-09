@@ -78,13 +78,25 @@ type MasterRow = { id: string; version: string; state: string; effectiveFrom: Da
 const newestFirst = (a: MasterRow, b: MasterRow) =>
   compareVersions(b.version, a.version) || b.updatedAt.getTime() - a.updatedAt.getTime();
 
-/** Ruling R4: the in-force Effective version, else Approved, InReview, InTest, Draft. */
-export async function resolveMasterWorkflow(db: Db, workCenterId: string, name: string, now: Date): Promise<{ id: string; version: string; state: string }> {
+/** Ruling R4: the in-force Effective version, else Approved, InReview, InTest, Draft.
+ *  With `version` (workflow scheduling, spec 2026-11-08 §5.4) only that version's rows are
+ *  considered, by the same state order; Superseded and Obsolete are refused by name. */
+export async function resolveMasterWorkflow(
+  db: Db, workCenterId: string, name: string, now: Date, version?: string,
+): Promise<{ id: string; version: string; state: string }> {
   const text = name.trim();
-  const rows: MasterRow[] = await db.select({
+  let rows: MasterRow[] = await db.select({
     id: workflow.id, version: workflow.version, state: workflow.state, effectiveFrom: workflow.effectiveFrom, updatedAt: workflow.updatedAt,
   }).from(workflow).where(and(eq(workflow.workCenterId, workCenterId), eq(workflow.name, text)));
   if (rows.length === 0) throw new RemoteError(REMOTE_CODES.NOT_FOUND, `Master Workflow "${text}" not found in that work center`);
+  if (version !== undefined) {
+    const pinned = version.trim();
+    rows = rows.filter((r) => r.version === pinned);
+    if (rows.length === 0) throw new RemoteError(REMOTE_CODES.NOT_FOUND, `Master Workflow "${text}" has no version ${pinned} in that work center`);
+    if (rows.every((r) => r.state === 'Superseded' || r.state === 'Obsolete')) {
+      throw new RemoteError(REMOTE_CODES.WRONG_STATE, `Master Workflow "${text}" version ${pinned} is ${rows[0]!.state} and cannot be scheduled`);
+    }
+  }
   const inForce = rows.filter((r) => r.state === 'Effective' && (r.effectiveFrom === null || r.effectiveFrom.getTime() <= now.getTime()));
   if (inForce.length) {
     // Spec §2: the in-force version is the one with the greatest effective_from ≤ now (NULL = oldest).
@@ -97,6 +109,10 @@ export async function resolveMasterWorkflow(db: Db, workCenterId: string, name: 
   for (const tier of FALLBACK_TIERS) {
     const [top] = rows.filter((r) => r.state === tier).sort(newestFirst);
     if (top) return { id: top.id, version: top.version, state: top.state };
+  }
+  if (version !== undefined) {
+    throw new RemoteError(REMOTE_CODES.NOT_FOUND,
+      `Master Workflow "${text}" version ${version.trim()} cannot be used yet (it is not in force)`);
   }
   throw new RemoteError(REMOTE_CODES.NOT_FOUND,
     `Master Workflow "${text}" has no usable version (only Superseded, Obsolete or future-dated Effective versions)`);

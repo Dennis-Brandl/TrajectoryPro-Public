@@ -18,11 +18,15 @@ import { DaoError } from '../dao/errors.js';
 import { lenientTypeName } from '../dao/type-name.js';
 import {
   workCenter, workflow, environmentSpec, workflowEnvironment, role, workflowNode, workflowAllowedRole,
+  appUser, masterSchedule,
 } from '../db/schema/index.js';
 import { createWorkCenter } from '../dao/work-centers.js';
 import { materializeEnvironmentRegistry } from '../dao/work-center-runtime.js';
 import { insertWorkflowEntry } from '../ingest/insert-workflow-entry.js';
 import { buildNodePaths } from '../ingest/carry-over.js';
+import { IMPORTED_FROM_PACKAGE, createMasterSchedule } from '../scheduling/master-dao.js';
+import { parseScheduleDefinition } from '../scheduling/definition.js';
+import type { ScheduleActor } from '../scheduling/events.js';
 import {
   WFCENTER_FORMAT, WFCENTER_FORMAT_VERSION, WFCENTER_MANIFEST_EXTENSION,
 } from './wfcenter-format.js';
@@ -96,6 +100,11 @@ export function readWfcenterx(buf: Buffer): ReadPackage {
   for (const wc of manifest.workCenters) {
     if (wc.typeName !== undefined && wc.typeName !== null && typeof wc.typeName !== 'string') {
       throw bad(`WFcenterX: work center "${wc.path}" has a non-string typeName`);
+    }
+    // Optional (pre-scheduling packages lack it). Each entry is validated at import, one by one,
+    // so one bad Master is skipped rather than failing the package; only the shape of the list is checked here.
+    if (wc.masterSchedules !== undefined && !Array.isArray(wc.masterSchedules)) {
+      throw bad(`WFcenterX: work center "${wc.path}" has a masterSchedules that is not a list`);
     }
   }
 
@@ -206,6 +215,8 @@ export type ImportReport = {
   environments: { created: number; alreadyPresent: number };
   links: { created: number; alreadyPresent: number };
   roles: { created: number };
+  /** `skipped` holds one plain sentence per Master that was not valid and so not imported. */
+  masterSchedules: { created: number; alreadyPresent: number; skipped: string[] };
   grants: { created: number; alreadyPresent: number; unresolved: string[] };
   configChanges: ConfigChange[];
   targetOnlyGrants: TargetOnlyGrant[];
@@ -297,6 +308,7 @@ export async function importWfcenterx(
       environments: { created: 0, alreadyPresent: 0 },
       links: { created: 0, alreadyPresent: 0 },
       roles: { created: 0 },
+      masterSchedules: { created: 0, alreadyPresent: 0, skipped: [] },
       grants: { created: 0, alreadyPresent: 0, unresolved: [] },
       configChanges: [],
       targetOnlyGrants: [],
@@ -610,6 +622,50 @@ export async function importWfcenterx(
         .returning({ id: workflowAllowedRole.id });
       if (grant) report.grants.created++;
       else report.grants.alreadyPresent++;
+    }
+
+    // 7. Master Schedules. Never enabled: no Runtime Schedule is created, so nothing fires until
+    //    a steward enables one. Created as `commander`-sourced and owned by the importing user
+    //    (the system when nobody is named). Like the package's other like-for-like items
+    //    (workflows, environments, links, grants: a hit is `alreadyPresent` and the target's row
+    //    is left alone), a name already on the work center keeps the target's Master. Only the
+    //    scalar config fields (D10) are overwritten on merge, and a Master is not one.
+    if (pkg.manifest.workCenters.some((wc) => (wc.masterSchedules ?? []).length > 0)) {
+      let actor: ScheduleActor = { kind: 'system' };
+      if (opts.downloadedBy) {
+        const [u] = await tx.select({ name: appUser.displayName }).from(appUser)
+          .where(eq(appUser.id, opts.downloadedBy)).limit(1);
+        if (u) actor = { kind: 'user', userId: opts.downloadedBy, name: u.name };
+      }
+      for (const wc of pkg.manifest.workCenters) {
+        const workCenterId = idByPath.get(wc.path)!;
+        for (const [i, raw] of (wc.masterSchedules ?? []).entries()) {
+          const parsed = parseScheduleDefinition(raw);
+          if (!parsed.ok) {
+            const label = typeof (raw as { name?: unknown } | null)?.name === 'string'
+              ? `"${(raw as { name: string }).name}"` : `#${i + 1}`;
+            report.masterSchedules.skipped.push(
+              `Master Schedule ${label} in "${wc.name}" was not imported: `
+              + parsed.problems.map((p) => (p.path ? `${p.path}: ${p.message}` : p.message)).join('; '),
+            );
+            continue;
+          }
+          const [hit] = await tx.select({ id: masterSchedule.id }).from(masterSchedule).where(and(
+            eq(masterSchedule.workCenterId, workCenterId), eq(masterSchedule.name, parsed.value.name),
+          )).limit(1);
+          if (hit) { report.masterSchedules.alreadyPresent++; continue; }
+          try {
+            await createMasterSchedule(tx, workCenterId, parsed.value, actor, IMPORTED_FROM_PACKAGE);
+            report.masterSchedules.created++;
+          } catch (err) {
+            // Another import took the name after the look above. createMasterSchedule ran in its own
+            // savepoint, so this transaction is still usable and the import goes on. (The same name twice
+            // in one package does not get here: the look above sees the first one.)
+            if (err instanceof DaoError && err.code === 'MASTER_SCHEDULE_NAME_CONFLICT') report.masterSchedules.alreadyPresent++;
+            else throw err;
+          }
+        }
+      }
     }
 
     // Preview: everything above already ran for real inside this transaction, so the report

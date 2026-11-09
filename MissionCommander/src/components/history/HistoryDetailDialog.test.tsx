@@ -39,7 +39,7 @@ function detail(over: Partial<RuntimeHistoryDetail> = {}): RuntimeHistoryDetail 
     id: 'h1', workflowInstanceId: 'wi1', workCenterId: 'w1', workCenterName: 'Assembly',
     runtimeNumber: 7, runtimeLabel: 'RW-7', masterName: 'Bottle Fill', masterOid: 'o1', masterVersion: '1.0.0', masterState: 'released',
     finalState: 'completed', startedAt: '2026-08-01T00:00:00.000Z', finishedAt: '2026-08-01T00:00:12.000Z',
-    createdAt: '2026-08-01T00:00:00.000Z',
+    scheduleLabel: null, createdAt: '2026-08-01T00:00:00.000Z',
     startingParams: null, trace: [], properties: null, stepParams: null, stepNames: null, signatures: [], stepRuns: [], startedByLoginName: null, startedByUserId: null, userNames: {},
     createdByLabel: null, createdByInstanceId: null, outputs: null, controlEvents: [],
     ...over,

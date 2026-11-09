@@ -15,16 +15,17 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { RuntimeHistorySummary } from '@/lib/api/types';
+import type { HistoryEntry } from '@/lib/api/types';
 import { HistoryTable } from './HistoryTable';
 
 afterEach(cleanup);
 
-const ROW: RuntimeHistorySummary = {
+const ROW: HistoryEntry = {
+  kind: 'workflow',
   id: 'h1', workflowInstanceId: 'wi1', workCenterId: 'w1', workCenterName: 'Assembly',
   runtimeNumber: 7, runtimeLabel: 'RW-7', masterName: 'Bottle Fill', masterOid: 'o1', masterVersion: '1.0.0', masterState: 'released',
   finalState: 'completed', startedAt: '2026-08-01T00:00:00.000Z', finishedAt: '2026-08-01T00:04:32.000Z',
-  createdAt: '2026-08-01T00:00:00.000Z',
+  scheduleLabel: null, createdAt: '2026-08-01T00:00:00.000Z',
 };
 
 describe('HistoryTable', () => {

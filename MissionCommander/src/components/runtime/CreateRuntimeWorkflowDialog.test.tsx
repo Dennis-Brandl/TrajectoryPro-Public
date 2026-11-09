@@ -34,7 +34,7 @@ const SPECS: RuntimeParameterSpec[] = [
 const SUMMARY: RuntimeWorkflowSummary = {
   id: 'rw1', workCenterId: 'wc1', runtimeNumber: 42, runtimeLabel: 'MIX-20261007-001',
   masterName: 'Bottle Fill', masterOid: 'o1', masterVersion: '1.0.0', masterState: 'released',
-  status: 'pending', createdByName: 'S',  createdByLabel: null, createdAt: '2026-08-01T00:00:00Z',
+  status: 'pending', createdByName: 'S',  createdByLabel: null, scheduleLabel: null, createdAt: '2026-08-01T00:00:00Z',
   queuedAt: null, startedAt: null, completedAt: null,
 };
 

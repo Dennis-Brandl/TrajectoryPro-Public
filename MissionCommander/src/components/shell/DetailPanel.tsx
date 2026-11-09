@@ -20,6 +20,7 @@ import { EnvironmentDetail } from '@/components/environment/EnvironmentDetail';
 import { HistoryPage } from '@/components/history/HistoryPage';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { PilotBrandingEditor } from '@/components/settings/pilot-branding/PilotBrandingEditor';
+import { ApiClientsPanel } from '@/components/settings/ApiClientsPanel';
 import { RuntimeWorkflowDetail } from '@/components/runtime/RuntimeWorkflowDetail';
 import { EmptyDetail } from './EmptyDetail';
 
@@ -48,6 +49,6 @@ export function DetailPanel() {
   // Settings (action-matching-mode spec 2026-08-20) is system-wide, not scoped to any
   // selection — like History, it renders unconditionally and owns its own load/save state.
   // Pilot branding (spec 2026-10-09 §9) sits under the system settings, saved on its own.
-  if (activeHierarchy === 'settings') return (<><SettingsPanel /><PilotBrandingEditor /></>);
+  if (activeHierarchy === 'settings') return (<><SettingsPanel /><PilotBrandingEditor /><ApiClientsPanel /></>);
   return null;
 }

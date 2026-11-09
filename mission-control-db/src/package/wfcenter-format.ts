@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { escapeSegment } from '../ingest/carry-over.js';
+import type { ScheduleDefinition } from '../scheduling/definition.js';
 
 export const WFCENTER_FORMAT = 'WFcenter' as const;
 export const WFCENTER_FORMAT_VERSION = '1.0';
@@ -61,6 +62,12 @@ export type WfcenterWorkCenter = {
   autoClaim?: boolean;
   /** ISA 88 type name. Absent (pre-feature package) = no opinion; null = no type. */
   typeName?: string | null;
+  /**
+   * Master Schedules owned by this work center (spec 2026-11-08 §11): exactly a ScheduleDefinition each,
+   * workflows named by name. No ids, revision, source or external key; Runtime Schedules never travel.
+   * Absent in a pre-scheduling package = none. Optional, so formatVersion stays '1.0'.
+   */
+  masterSchedules?: ScheduleDefinition[];
   workflows: WfcenterWorkflowEntry[];
   environments: WfcenterEnvironmentEntry[];
 };

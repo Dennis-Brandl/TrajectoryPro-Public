@@ -20,7 +20,7 @@ import { downloadRecordPdf } from './download-record-pdf';
 const fixture: RuntimeHistoryDetail = {
   id: 'h1', workflowInstanceId: null, workCenterId: 'wc', workCenterName: 'Line 1', runtimeNumber: 4, runtimeLabel: 'MIX-20261027-0004',
   masterName: 'Pizza Order', masterOid: 'm', masterVersion: '1.2.0', masterState: 'Effective', finalState: 'completed',
-  startedAt: '2026-10-27T14:14:03Z', finishedAt: '2026-10-27T14:21:47Z', createdAt: '2026-10-27T14:14:03Z',
+  startedAt: '2026-10-27T14:14:03Z', finishedAt: '2026-10-27T14:21:47Z', scheduleLabel: null, createdAt: '2026-10-27T14:14:03Z',
   startingParams: { Size: 'large' }, trace: [], properties: {}, stepParams: null,
   stepNames: {}, startedByLoginName: 'jdoe', startedByUserId: 'u1', userNames: {},
   createdByLabel: null, createdByInstanceId: null, outputs: [], controlEvents: [], stepRuns: [], signatures: [],

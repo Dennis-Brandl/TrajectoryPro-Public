@@ -46,12 +46,13 @@ export function HistoryView({ selectedId, detail }: { selectedId?: string; detai
   const rows = view?.history ?? [];
   const pageCount = view ? Math.max(1, Math.ceil(view.total / view.pageSize)) : 1;
   const open = (id: string) => { void navigate({ to: '/wc/$wcId/history/$historyId', params: { wcId: wc.id, historyId: id } }); };
+  const openPass = (passId: string) => { void navigate({ to: '/wc/$wcId/history/pass/$passId', params: { wcId: wc.id, passId } }); };
 
   const list = (
     <div className="flex h-full min-h-0 flex-col">
       <div className="shrink-0 px-4 pt-3"><HistoryFiltersBar value={filters} onChange={setFilters} /></div>
       <div className="min-h-0 flex-1 overflow-auto px-4 pb-4">
-        <HistoryList rows={rows} selectedId={selectedId} onSelect={open} now={new Date()} />
+        <HistoryList rows={rows} selectedId={selectedId} onSelect={open} onSelectPass={openPass} now={new Date()} />
         {loading && !view && <p className="py-6 text-sm text-muted-foreground">Loading…</p>}
         {error && !view && <p className="py-6 text-sm text-destructive">{error}</p>}
         {view && rows.length === 0 && <p className="py-6 text-sm text-muted-foreground">No history here.</p>}

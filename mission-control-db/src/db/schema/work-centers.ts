@@ -38,6 +38,8 @@ export const workCenter = pgTable('work_center', {
   // orders the runtime list and the cross-work-center poll.
   runtimeIdTemplate: text('runtime_id_template'),
   runtimeSeqBucket: text('runtime_seq_bucket'),
+  // Workflow scheduling (spec 2026-11-08 §5.2): IANA zone; NULL = runtime_id_timezone, then the server's zone.
+  timeZone: text('time_zone'),
   runtimeSeqNext: integer('runtime_seq_next').notNull().default(1),
   // Spec 2026-10-09 §8.1: this work center's Pilot theme override (one PilotTheme layer).
   // NULL = inherit everything from the parent chain and the site.

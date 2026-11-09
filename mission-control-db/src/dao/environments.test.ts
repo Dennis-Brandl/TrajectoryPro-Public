@@ -16,7 +16,7 @@ import { expect, test } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { makeTestDb } from '../../test/helpers/db.js';
 import { runtimeCols } from '../../test/helpers/instances.js';
-import { workCenter, environmentSpec, workflow, workflowInstance, schedule, workflowEnvironment } from '../db/schema/index.js';
+import { workCenter, environmentSpec, workflow, workflowInstance, workflowEnvironment } from '../db/schema/index.js';
 import { deleteEnvironmentSpec, listEnvironmentSpecSummaries } from './environments.js';
 
 test('listEnvironmentSpecSummaries orders by work center, name, version, state', async () => {
@@ -154,25 +154,5 @@ test('deleteEnvironmentSpec is blocked by a running runtime even beside a finish
     ]);
     await expect(deleteEnvironmentSpec(db, env.id)).rejects.toMatchObject({ code: 'ENVIRONMENT_IN_USE' });
     expect(await db.select().from(environmentSpec)).toHaveLength(1);
-  } finally { await close(); }
-});
-
-test('deleteEnvironmentSpec is blocked when a schedule references it, even with no instances', async () => {
-  const { db, close } = await makeTestDb();
-  try {
-    const [wc] = await db.insert(workCenter).values({ name: 'Line 1' }).returning();
-    const [env] = await db.insert(environmentSpec).values({
-      oid: 'e', name: 'Env', workCenterId: wc.id, specJsonb: {},
-    }).returning();
-    const [wf] = await db.insert(workflow).values({
-      oid: 'w', name: 'WF', workCenterId: wc.id, specJsonb: {},
-    }).returning();
-    await db.insert(schedule).values({
-      workCenterId: wc.id, workflowId: wf.id, environmentSpecId: env.id, name: 'Nightly', kind: 'recurring',
-    });
-    await expect(deleteEnvironmentSpec(db, env.id)).rejects.toMatchObject({
-      code: 'ENVIRONMENT_IN_USE', message: expect.stringContaining('schedule'),
-    });
-    expect(await db.select().from(environmentSpec)).toHaveLength(1); // not deleted
   } finally { await close(); }
 });

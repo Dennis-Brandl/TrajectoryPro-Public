@@ -213,6 +213,10 @@ services:
       # switch — set MISSION_ENGINE_PROPERTY_WATCH_ENABLED=false in .env and run
       # `docker compose up -d mission-engine` (no rebuild) to fall back to cycle-only evaluation.
       - PROPERTY_WATCH_ENABLED=${MISSION_ENGINE_PROPERTY_WATCH_ENABLED:-true}
+      # Spec 2026-11-08 §6.1: the schedule timer. Set MISSION_ENGINE_SCHEDULER_ENABLED=false in
+      # .env and run `docker compose up -d mission-engine` (no rebuild) to stop firing schedules.
+      - SCHEDULER_ENABLED=${MISSION_ENGINE_SCHEDULER_ENABLED:-true}
+      - SCHEDULE_TICK_MS=${MISSION_ENGINE_SCHEDULE_TICK_MS:-5000}
       # Extra origins better-auth should trust besides loopback (comma-separated); needed for
       # LAN testing so operator sign-in from http://<PC-LAN-IP>:3006 isn't rejected.
       - ALLOWED_ORIGINS=${MISSION_ENGINE_ALLOWED_ORIGINS:-}

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { afterEach, beforeEach, describe, expect, it, test, vi } from 'vitest';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import { makeTestDb } from '../../test/helpers/db.js';
 import { workCenter, workflow, workflowInstance, stepInstance, instanceAssignment, operatorPresence, traceEntry, role, workCenterUserRole, workCenterUser, appUser, workflowNode, workflowAllowedRole, runtimeHistory } from '../db/schema/index.js';
 import {
@@ -23,6 +23,7 @@ import {
   listActiveRuntimeWorkflowsForOperator, getRuntimeWorkflowLiveStates, listActiveRuntimeLeaves,
   listAssignmentCandidates,
 } from './runtime-workflows.js';
+import { acquireQueuedRuntimeWorkflows } from '../runtime/engine-access.js';
 import { insertStepSignature } from './step-signatures.js';
 import { createUser } from './users.js';
 import { updateWorkCenter } from './work-centers.js';
@@ -1060,6 +1061,114 @@ describe('runtime label allocation (spec 2026-10-07 §6)', () => {
     expect(wcRow!.runtimeSeqNext).toBe(1);
     const instances = await db.select().from(workflowInstance).where(eq(workflowInstance.workCenterId, wc.id));
     expect(instances).toHaveLength(0);
+    await close();
+  });
+});
+
+describe('starting from a frozen schedule snapshot (spec 2026-11-08 §5.4, §6.2)', () => {
+  const SNAP_SPEC = {
+    local_id: 'Frozen', oid: 'wf-frozen', version: '9.0.0', state: 'Approved',
+    starting_parameter_specifications: [{ id: 'Frozen', default_value: 'a', value_type: 'literal' }],
+    steps: [{ local_id: 'Only', oid: 's-frozen', step_type: 'START' }],
+    connections: [],
+  };
+  const snapshot = {
+    spec: SNAP_SPEC, name: 'Frozen Name', oid: 'wf-frozen', version: '9.0.0', state: 'Approved',
+  };
+
+  it('builds the run from the snapshot, even after the master row changes', async () => {
+    const { db, close } = await makeTestDb();
+    const { wf } = await seed(db);
+    await db.update(workflow).set({ specJsonb: { ...SPEC, steps: [{ local_id: 'Changed', oid: 's-changed', step_type: 'START' }] }, name: 'Changed' })
+      .where(eq(workflow.id, wf.id));
+    const s = await createRuntimeWorkflow(db, {
+      workflowId: wf.id, params: {}, userId: null, triggeredBy: 'schedule',
+      specSnapshot: snapshot, schedule: { itemRunId: crypto.randomUUID(), label: 'RS-1' },
+    });
+    expect(s.masterName).toBe('Frozen Name');
+    expect(s.masterOid).toBe('wf-frozen');
+    expect(s.masterVersion).toBe('9.0.0');
+    expect(s.masterState).toBe('Approved');
+    const [row] = await db.select().from(workflowInstance).where(eq(workflowInstance.id, s.id));
+    const steps = (row!.specJsonb as any).steps.map((x: any) => x.local_id);
+    expect(steps).toEqual(['Only']);
+    await close();
+  });
+
+  it('validates parameters against the snapshot declarations', async () => {
+    const { db, close } = await makeTestDb();
+    const { wf } = await seed(db);
+    // BatchSize is declared by the master row but not by the snapshot.
+    await expect(createRuntimeWorkflow(db, {
+      workflowId: wf.id, params: { BatchSize: '5' }, userId: null, triggeredBy: 'schedule', specSnapshot: snapshot,
+    })).rejects.toThrow();
+    const ok = await createRuntimeWorkflow(db, {
+      workflowId: wf.id, params: { Frozen: 'z' }, userId: null, triggeredBy: 'schedule', specSnapshot: snapshot,
+    });
+    const [row] = await db.select().from(workflowInstance).where(eq(workflowInstance.id, ok.id));
+    expect(row!.startingParams).toEqual({ Frozen: 'z' });
+    await close();
+  });
+
+  it('still requires the master row to exist', async () => {
+    const { db, close } = await makeTestDb();
+    await expectDaoError(createRuntimeWorkflow(db, {
+      workflowId: NIL, params: {}, userId: null, triggeredBy: 'schedule', specSnapshot: snapshot,
+    }), 'RUNTIME_MASTER_NOT_FOUND');
+    await close();
+  });
+
+  it('stores trigger, null creator, schedule label and item run id', async () => {
+    const { db, close } = await makeTestDb();
+    const { wf } = await seed(db);
+    const itemRunId = crypto.randomUUID();
+    const s = await createRuntimeWorkflow(db, {
+      workflowId: wf.id, params: {}, userId: null, start: true, triggeredBy: 'schedule',
+      specSnapshot: snapshot, schedule: { itemRunId, label: 'RS-7' },
+    });
+    const [row] = await db.select().from(workflowInstance).where(eq(workflowInstance.id, s.id));
+    expect(row!.triggeredBy).toBe('schedule');
+    expect(row!.createdBy).toBeNull();
+    expect(row!.scheduleLabel).toBe('RS-7');
+    expect(row!.scheduleItemRunId).toBe(itemRunId);
+    expect(row!.status).toBe('queued');
+    expect(s.scheduleLabel).toBe('RS-7');
+    await close();
+  });
+
+  it('three scheduled creates in one transaction queue in strictly increasing order; manual uses now()', async () => {
+    const { db, close } = await makeTestDb();
+    const { wf } = await seed(db);
+    const ids: string[] = [];
+    await db.transaction(async (tx) => {
+      for (let i = 0; i < 3; i++) {
+        const s = await createRuntimeWorkflow(tx as any, {
+          workflowId: wf.id, params: {}, userId: null, start: true, triggeredBy: 'schedule',
+          specSnapshot: snapshot, schedule: { itemRunId: crypto.randomUUID(), label: `RS-${i}` },
+        });
+        ids.push(s.id);
+      }
+    });
+    // Read queued_at as text: a JS Date keeps only milliseconds, and two inserts can share one.
+    const rows = await db.select({ id: workflowInstance.id, q: sql<string>`${workflowInstance.queuedAt}::text` })
+      .from(workflowInstance).where(inArray(workflowInstance.id, ids));
+    const q = ids.map((id) => rows.find((r) => r.id === id)!.q);
+    expect(q[0]! < q[1]!).toBe(true);
+    expect(q[1]! < q[2]!).toBe(true);
+    for (const id of ids) {
+      const [claimed] = await acquireQueuedRuntimeWorkflows(db, 1);
+      expect(claimed!.id).toBe(id);
+    }
+    // A manual start in one transaction shares now(): the timestamps are equal.
+    const manual: string[] = [];
+    await db.transaction(async (tx) => {
+      for (let i = 0; i < 2; i++) {
+        manual.push((await createRuntimeWorkflow(tx as any, { workflowId: wf.id, params: {}, userId: null, start: true })).id);
+      }
+    });
+    const mrows = await db.select({ q: sql<string>`${workflowInstance.queuedAt}::text` })
+      .from(workflowInstance).where(inArray(workflowInstance.id, manual));
+    expect(mrows[0]!.q).toBe(mrows[1]!.q);
     await close();
   });
 });

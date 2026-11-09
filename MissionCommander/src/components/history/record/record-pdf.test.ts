@@ -30,7 +30,7 @@ function mockupDetail(): RuntimeHistoryDetail {
   return {
     id: 'h1', workflowInstanceId: null, workCenterId: 'wc', workCenterName: 'Line 1', runtimeNumber: 4, runtimeLabel: 'MIX-20261027-0004',
     masterName: 'Pizza Order', masterOid: 'm', masterVersion: '1.2.0', masterState: 'Effective', finalState: 'completed',
-    startedAt: '2026-10-27T14:14:03Z', finishedAt: '2026-10-27T14:21:47Z', createdAt: '2026-10-27T14:14:03Z',
+    startedAt: '2026-10-27T14:14:03Z', finishedAt: '2026-10-27T14:21:47Z', scheduleLabel: null, createdAt: '2026-10-27T14:14:03Z',
     startingParams: { Size: 'large', Crust: 'chicago' }, trace: [], properties: { Cost: '9.66' }, stepParams: null,
     stepNames: {}, startedByLoginName: 'jdoe', startedByUserId: 'u1', userNames: {},
     createdByLabel: null, createdByInstanceId: null, outputs: [{ name: 'Toppings', value: '["cheese","ham","olives"]' }], controlEvents: [],

@@ -49,6 +49,7 @@ import { CreateRuntimeWorkflowDialog } from '@/components/runtime/CreateRuntimeW
 import { RuntimeTab } from '@/components/runtime/RuntimeTab';
 import { HistoryTab } from '@/components/history/HistoryTab';
 import { SharedStateTab } from './SharedStateTab';
+import { SchedulesPane } from './SchedulesPane';
 
 // P3 review fix: mirrors WorkCenterTree.tsx's own refreshTree() module-level handler so a
 // caller OUTSIDE this component's subtree (WorkCenterTree owns the import dialog, and a
@@ -306,6 +307,7 @@ export function WorkCenterDetail() {
           <TabsTrigger value="environments">Env Specs</TabsTrigger>
           <TabsTrigger value="runtime">Runtime</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
+          <TabsTrigger value="schedules">Schedules</TabsTrigger>
           <TabsTrigger value="shared">Env Resources</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="roles">Roles</TabsTrigger>
@@ -341,6 +343,9 @@ export function WorkCenterDetail() {
         </TabsContent>
         <TabsContent value="history">
           <HistoryTab workCenterId={view.workCenter.id} />
+        </TabsContent>
+        <TabsContent value="schedules">
+          <SchedulesPane workCenterId={view.workCenter.id} />
         </TabsContent>
         <TabsContent value="shared">
           <SharedStateTab workCenterId={view.workCenter.id} />

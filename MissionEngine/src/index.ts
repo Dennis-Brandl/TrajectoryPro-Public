@@ -20,6 +20,7 @@ import { loadConfig, type EngineDeps } from './config.js';
 import { createDb } from './db.js';
 import { healthApp } from './health.js';
 import { startLoop } from './loop.js';
+import { startScheduleTimer } from './schedule-tick.js';
 import { createWakeListener } from './wake.js';
 import { httpActionInvoker } from './actions/invoker.js';
 import { ActionClient } from './actions/client.js';
@@ -101,6 +102,7 @@ serve({ fetch: app.fetch, port: cfg.port }, () => {
 });
 
 const loop = startLoop(db, deps);
+const stopScheduleTimer = startScheduleTimer(db, deps);
 // Spec 2026-09-14 §4.7: REST-12 property events pull a waiting bound gate's wake_at to now and
 // wake the loop; the loop hands "something happened" back through onWorkDone so the registry
 // re-reads WAITING_GATE rows promptly (debounced) instead of only on its reconcile timer.
@@ -125,6 +127,7 @@ createWakeListener(cfg.databaseUrl, loop.wake, NOTIFY_GRANT_CHANNEL);
 // SIGTERM/SIGINT disposition is an immediate exit; this handler keeps that (process.exit) and
 // only puts the orderly stream close in front of it, so Autopilot sees a clean disconnect.
 const shutdown = (): void => {
+  stopScheduleTimer();
   watch.stop();
   loop.stop();
   process.exit(0);

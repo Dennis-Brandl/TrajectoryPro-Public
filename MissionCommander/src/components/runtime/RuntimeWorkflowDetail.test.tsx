@@ -31,7 +31,7 @@ const DETAIL: RuntimeWorkflowLiveDetail = {
   summary: {
     id: 'rw1', workCenterId: 'wc1', runtimeNumber: 1, runtimeLabel: 'MIX-20261007-001', masterName: 'Mix', masterOid: 'o',
     masterVersion: '1.0.0', masterState: 'Effective', status: 'running', createdByName: 'S',  createdByLabel: null,
-    createdAt: '2026-08-27T00:00:00Z', queuedAt: '2026-08-27T00:00:01Z',
+    scheduleLabel: null, createdAt: '2026-08-27T00:00:00Z', queuedAt: '2026-08-27T00:00:01Z',
     startedAt: '2026-08-27T00:00:02Z', completedAt: null,
   },
   steps: [
@@ -164,7 +164,7 @@ describe('RuntimeWorkflowDetail', () => {
     vi.spyOn(historyApi.runtimeHistory, 'detail').mockResolvedValue({
       id: 'h1', workflowInstanceId: null, workCenterId: 'wc1', workCenterName: 'Line A', runtimeNumber: 3, runtimeLabel: 'RW-3',
       masterName: 'Mix', masterOid: 'o', masterVersion: '1.0.0', masterState: 'Effective', finalState: 'completed',
-      startedAt: null, finishedAt: '2026-08-27T00:00:00Z', createdAt: '2026-08-27T00:00:00Z',
+      startedAt: null, finishedAt: '2026-08-27T00:00:00Z', scheduleLabel: null, createdAt: '2026-08-27T00:00:00Z',
       startingParams: null, trace: [], properties: null, stepParams: null, stepNames: null, signatures: [], stepRuns: [], startedByLoginName: null, startedByUserId: null, userNames: {},
       createdByLabel: null, createdByInstanceId: null, outputs: null, controlEvents: [],
     });

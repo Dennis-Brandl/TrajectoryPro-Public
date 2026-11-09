@@ -14,7 +14,8 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RuntimeStatusBadge } from '@/components/runtime/RuntimeStatusBadge';
 import { formatDuration } from './format-duration';
-import type { RuntimeHistorySummary } from '@/lib/api/types';
+import { passOutcome, passTitle } from './ScheduleHistoryRecord';
+import type { HistoryEntry } from '@/lib/api/types';
 
 /** Finished-run log table (phase 7). Each row is itself the open control — a keyboard- and
  *  click-activatable `<tr role="button">` named "History {runtimeLabel}" — rather than a
@@ -24,9 +25,11 @@ import type { RuntimeHistorySummary } from '@/lib/api/types';
  *  `finalState` (RuntimeHistoryFinalState) is a subset of RuntimeStatusBadge's
  *  RuntimeWorkflowStatus vocabulary, so it renders through the SAME badge/tone the Runtime
  *  tab uses — no separate history-only badge needed. */
-export function HistoryTable({ rows, onOpen, showWorkCenter }: {
-  rows: RuntimeHistorySummary[];
+export function HistoryTable({ rows, onOpen, onOpenPass, showWorkCenter }: {
+  rows: HistoryEntry[];
   onOpen: (id: string) => void;
+  /** A completed schedule pass row; without it, pass rows do not open. */
+  onOpenPass?: (id: string) => void;
   showWorkCenter?: boolean;
 }) {
   if (rows.length === 0) return <p className="text-sm text-muted-foreground">No history</p>;
@@ -44,7 +47,35 @@ export function HistoryTable({ rows, onOpen, showWorkCenter }: {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rows.map((row) => (
+        {rows.map((row) => row.kind === 'schedule' ? (
+          <TableRow
+            key={`pass-${row.id}`}
+            role="button"
+            tabIndex={0}
+            aria-label={`Schedule pass ${passTitle(row)}`}
+            className="cursor-pointer bg-muted/40"
+            onClick={() => onOpenPass?.(row.id)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onOpenPass?.(row.id);
+              }
+            }}
+          >
+            <TableCell className="tabular-nums">
+              {row.scheduleLabel}
+              <div className="text-xs text-muted-foreground">{row.runOnce ? 'Run Once' : `pass ${row.occurrenceNumber}`}</div>
+            </TableCell>
+            <TableCell>
+              <span className="text-muted-foreground">Schedule:</span> {row.scheduleName}
+            </TableCell>
+            {showWorkCenter && <TableCell>{row.workCenterName}</TableCell>}
+            <TableCell className={row.counts.problems > 0 ? 'text-destructive' : undefined}>{passOutcome(row.counts)}</TableCell>
+            <TableCell>{row.startedAt ? new Date(row.startedAt).toLocaleString() : '—'}</TableCell>
+            <TableCell>{new Date(row.finishedAt).toLocaleString()}</TableCell>
+            <TableCell>{formatDuration(row.startedAt, row.finishedAt)}</TableCell>
+          </TableRow>
+        ) : (
           <TableRow
             key={row.id}
             role="button"
@@ -59,7 +90,10 @@ export function HistoryTable({ rows, onOpen, showWorkCenter }: {
               }
             }}
           >
-            <TableCell className="tabular-nums">{row.runtimeLabel}</TableCell>
+            <TableCell className="tabular-nums">
+              {row.runtimeLabel}
+              {row.scheduleLabel && <div className="text-xs text-muted-foreground">{row.scheduleLabel}</div>}
+            </TableCell>
             <TableCell>
               {row.masterName} <span className="text-muted-foreground">v{row.masterVersion}</span>
             </TableCell>

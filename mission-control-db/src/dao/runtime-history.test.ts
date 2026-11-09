@@ -267,7 +267,7 @@ test('listRuntimeHistoryPage: summary carries no trace/properties/step_params/st
   const keys = Object.keys(items[0]).sort();
   expect(keys).toEqual([
     'createdAt', 'finalState', 'finishedAt', 'id', 'masterName', 'masterOid', 'masterState', 'masterVersion',
-    'runtimeLabel', 'runtimeNumber', 'startedAt', 'workCenterId', 'workCenterName', 'workflowInstanceId',
+    'runtimeLabel', 'runtimeNumber', 'scheduleLabel', 'startedAt', 'workCenterId', 'workCenterName', 'workflowInstanceId',
   ]);
 
   await close();

@@ -263,7 +263,8 @@ function ImportReportSummary({ report, heading }: { report: ImportReport; headin
         {report.environments.created} environments ({report.environments.alreadyPresent} already present) ·{' '}
         {report.links.created} links ({report.links.alreadyPresent} already present) ·{' '}
         {report.roles.created} roles ·{' '}
-        {report.grants.created} role grants ({report.grants.alreadyPresent} already present)
+        {report.grants.created} role grants ({report.grants.alreadyPresent} already present) ·{' '}
+        {report.masterSchedules.created} Master Schedules ({report.masterSchedules.alreadyPresent} already present)
       </p>
 
       {report.grants.unresolved.length > 0 && (
@@ -271,6 +272,13 @@ function ImportReportSummary({ report, heading }: { report: ImportReport; headin
           <p>These role grants could not be applied:</p>
           {/* Keyed by index, not by string: two identical messages would collide. */}
           <ul>{report.grants.unresolved.map((u, i) => <li key={i}>{u}</li>)}</ul>
+        </div>
+      )}
+
+      {report.masterSchedules.skipped.length > 0 && (
+        <div className="space-y-1 text-destructive">
+          <p>These Master Schedules could not be imported:</p>
+          <ul>{report.masterSchedules.skipped.map((u, i) => <li key={i}>{u}</li>)}</ul>
         </div>
       )}
 

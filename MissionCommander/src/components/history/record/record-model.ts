@@ -180,7 +180,7 @@ export function buildRecordModel(detail: RuntimeHistoryDetail, opts: { timeZone:
 
   // The workflow's output parameters only. `properties` is the whole store, starting parameters included.
   const final = (detail.outputs ?? []).map((o): [string, string] => [o.name, o.value]);
-  const startedBy = detail.startedByLoginName ?? (detail.createdByLabel ? '(workflow)' : NOT_RECORDED);
+  const startedBy = detail.startedByLoginName ?? detail.scheduleLabel ?? (detail.createdByLabel ? '(workflow)' : NOT_RECORDED);
 
   return {
     title: `${detail.runtimeLabel} · ${detail.masterName} v${detail.masterVersion}`,

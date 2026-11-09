@@ -38,7 +38,11 @@ import { allowedRolesRoutes } from './routes/allowed-roles';
 import { packageRoutes } from './routes/package';
 import { systemSettingsRoutes } from './routes/system-settings';
 import { brandAssetRoutes } from './routes/brand-assets';
+import { scheduleRoutes } from './routes/schedules';
+import { apiClientRoutes } from './routes/api-clients';
+import { externalRoutes } from './routes/external';
 import { sendDaoError } from './lib/errors';
+import { maskedLogPrint } from './lib/log-mask';
 
 export const app = new Hono();
 
@@ -53,7 +57,7 @@ app.onError((err, c) => {
   return c.json({ error: { code: 'internal', message: 'Internal error' } }, 500);
 });
 
-app.use('*', logger());
+app.use('*', logger(maskedLogPrint));
 app.use(
   '/api/*',
   cors({
@@ -108,6 +112,9 @@ app.route('/api', allowedRolesRoutes);
 app.route('/api', packageRoutes);
 app.route('/api', systemSettingsRoutes);
 app.route('/api', brandAssetRoutes);
+app.route('/api', scheduleRoutes);
+app.route('/api', apiClientRoutes);
+app.route('/api/external/v1', externalRoutes);
 
 app.get('/api/setup-status', async (c) => {
   const [admin] = await db

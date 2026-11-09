@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { and, asc, eq, notInArray } from 'drizzle-orm';
-import { environmentSpec, workCenter, workflowInstance, schedule, RUNTIME_FINAL_STATES, type EnvironmentSpec } from '../db/schema/index.js';
+import { environmentSpec, workCenter, workflowInstance, RUNTIME_FINAL_STATES, type EnvironmentSpec } from '../db/schema/index.js';
 import { DaoError, pgErrorCode } from './errors.js';
 import type { Schema } from '../db/client.js';
 import type { PgDatabase } from 'drizzle-orm/pg-core';
@@ -26,16 +26,15 @@ export function listEnvironmentSpecs(db: Db): Promise<EnvironmentSpec[]> {
 
 /**
  * work_center_environment is gone — an environment spec belongs to its work center directly
- * (spec §5) — but two references still block deletion per spec §7.4 ("An entry referenced by
- * an instance or a schedule is refused with a 409 naming the blocker"):
- * workflow_instance.environment_spec_id and schedule.environment_spec_id are both
- * ON DELETE SET NULL, which would otherwise silently sever an unfinished run's or an enabled
- * schedule's environment out from under it. A FINISHED runtime (completed/aborted/stopped/
+ * (spec §5) — but an unfinished run still blocks deletion per spec §7.4 ("An entry referenced
+ * by an instance is refused with a 409 naming the blocker"): workflow_instance.environment_spec_id
+ * is ON DELETE SET NULL, which would otherwise silently sever an unfinished run's environment
+ * out from under it. A FINISHED runtime (completed/aborted/stopped/
  * errored) does not block, same as deleteWorkflow: it is information only, its permanent record
  * is its runtime_history row, and the SET NULL merely clears its link. Not blocking: workflow_environment (CASCADE — an
  * embedded env arrives with a package routinely, and the join row is owned by the workflow
  * side, never the spec) and environment_spec.parent_environment_spec_id (SET NULL, self-FK).
- * Same idiom as deleteWorkflow's instance/schedule pre-checks.
+ * Same idiom as deleteWorkflow's instance pre-check.
  */
 export async function deleteEnvironmentSpec(db: Db, id: string): Promise<void> {
   await db.transaction(async (tx) => {
@@ -47,10 +46,6 @@ export async function deleteEnvironmentSpec(db: Db, id: string): Promise<void> {
     if (unfinished.length) {
       throw new DaoError('ENVIRONMENT_IN_USE', 'Environment spec has runtime workflows that have not finished');
     }
-
-    const schedules = await tx.select({ id: schedule.id }).from(schedule)
-      .where(eq(schedule.environmentSpecId, id)).limit(1);
-    if (schedules.length) throw new DaoError('ENVIRONMENT_IN_USE', 'Environment spec is referenced by one or more schedules');
 
     try {
       await tx.delete(environmentSpec).where(eq(environmentSpec.id, id));

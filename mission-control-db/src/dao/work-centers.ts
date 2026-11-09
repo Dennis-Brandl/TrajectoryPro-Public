@@ -14,7 +14,8 @@
 
 import { and, eq, isNull, ne, sql, inArray } from 'drizzle-orm';
 import {
-  workCenter, workCenterUser, workflowInstance, environmentSpec, schedule, stepInstance, workflow,
+  workCenter, workCenterUser, workflowInstance, environmentSpec, stepInstance, workflow,
+  masterSchedule, runtimeSchedule,
   type WorkCenter, RUNTIME_ACTIVE_STATUSES,
 } from '../db/schema/index.js';
 import { DaoError, assertDispatchPolicy, pgErrorCode } from './errors.js';
@@ -258,7 +259,9 @@ export type CreateWorkCenterInput = {
 // into `.WFcenterX` packages by `buildWfcenterx`); the column has since been removed outright.
 // `runtimeIdTemplate` rides that same cast, so the route MUST whitelist and type-check it
 // explicitly (it does — routes/work-centers.ts), and the DAO validates it again below.
-export type UpdateWorkCenterPatch = Partial<CreateWorkCenterInput>;
+// `timeZone` (spec 2026-11-08 §5): the IANA zone schedules run in; null clears it, so the
+// deployment's zone applies. Update-only, like the schedules it serves.
+export type UpdateWorkCenterPatch = Partial<CreateWorkCenterInput> & { timeZone?: string | null };
 
 // True when another work center already uses `name` among the given parent's children
 // (or among roots when parentId is null). `excludeId` skips the row being updated.
@@ -362,6 +365,7 @@ export async function updateWorkCenter(db: Db, id: string, patch: UpdateWorkCent
       ...(patch.dispatchPolicy !== undefined ? { dispatchPolicy: patch.dispatchPolicy } : {}),
       ...(patch.autoClaim !== undefined ? { autoClaim: patch.autoClaim } : {}),
       ...(template !== undefined ? { runtimeIdTemplate: template } : {}),
+      ...(patch.timeZone !== undefined ? { timeZone: patch.timeZone } : {}),
       updatedAt: new Date(),
     }).where(eq(workCenter.id, id)).returning();
     return updated!;
@@ -383,11 +387,11 @@ const count = async (tx: Db, table: any, where: any): Promise<number> => {
 // destroyed. stepInstances has no direct work_center_id column, so it's reached by joining
 // through workflow_instance.
 export async function workCenterDeleteImpact(db: Db, id: string): Promise<DeleteImpact> {
-  const [workflows, environments, instances, schedules, kids] = await Promise.all([
+  const [workflows, environments, instances, masterSchedules, kids] = await Promise.all([
     count(db, workflow, eq(workflow.workCenterId, id)),
     count(db, environmentSpec, eq(environmentSpec.workCenterId, id)),
     count(db, workflowInstance, eq(workflowInstance.workCenterId, id)),
-    count(db, schedule, eq(schedule.workCenterId, id)),
+    count(db, masterSchedule, eq(masterSchedule.workCenterId, id)),
     count(db, workCenter, eq(workCenter.parentWorkCenterId, id)),
   ]);
   const [steps] = await db.select({ n: sql<number>`count(*)::int` })
@@ -396,7 +400,7 @@ export async function workCenterDeleteImpact(db: Db, id: string): Promise<Delete
     .where(eq(workflowInstance.workCenterId, id));
   return {
     workflows, environments, instances, stepInstances: steps?.n ?? 0,
-    schedules, hasChildren: kids > 0,
+    schedules: masterSchedules, hasChildren: kids > 0,
   };
 }
 
@@ -437,13 +441,22 @@ export async function deleteWorkCenter(
     const active = locked.filter((r) => activeStatuses.includes(r.status));
     if (active.length > 0) throw new DaoError('WORK_CENTER_HAS_ACTIVE_RUNTIME', `${active.length} runtime workflows are active`);
 
+    const [liveSchedule] = await tx.select({ label: runtimeSchedule.label }).from(runtimeSchedule)
+      .where(and(eq(runtimeSchedule.workCenterId, id), inArray(runtimeSchedule.status, ['active', 'paused'])))
+      .orderBy(runtimeSchedule.runtimeNumber).limit(1);
+    if (liveSchedule) {
+      throw new DaoError('WORK_CENTER_HAS_ACTIVE_RUNTIME', `Runtime Schedule ${liveSchedule.label} is still live; cancel it first`);
+    }
+
     if (!opts.confirmed) {
       const inUse = locked[0];
       const [wf] = await tx.select({ id: workflow.id }).from(workflow)
         .where(eq(workflow.workCenterId, id)).limit(1);
       const [env] = await tx.select({ id: environmentSpec.id }).from(environmentSpec)
         .where(eq(environmentSpec.workCenterId, id)).limit(1);
-      if (inUse || wf || env) {
+      const [ms] = await tx.select({ id: masterSchedule.id }).from(masterSchedule)
+        .where(eq(masterSchedule.workCenterId, id)).limit(1);
+      if (inUse || wf || env || ms) {
         throw new DaoError('CONFIRMATION_REQUIRED', 'Work center has loaded artifacts or run history');
       }
     }
@@ -453,13 +466,6 @@ export async function deleteWorkCenter(
     // that is never cascade-scheduled, so it fires whenever any instance row exists, no matter
     // what order Postgres processes the rest of the cascade in — hence deleting
     // workflowInstance before workCenter below.
-    // Deleting schedule first is defensive, not load-bearing on its own: schedule_wc_workflow_fk
-    // is a RESTRICT on workflow, and RESTRICT is NOT NO ACTION — it fires immediately rather
-    // than waiting for the statement's other cascade paths to finish, so whether it trips
-    // depends on the relative firing order of two independent cascade paths off the same
-    // work_center row (schedule's own cascade vs. workflow's), which Postgres does not
-    // guarantee. Deleting schedule by hand means we never depend on that ordering.
-    await tx.delete(schedule).where(eq(schedule.workCenterId, id));        // → trigger_condition, schedule_run
     await tx.delete(workflowInstance).where(eq(workflowInstance.workCenterId, id)); // → step_instance → instance_assignment, trace_entry
     try {
       await tx.delete(workCenter).where(eq(workCenter.id, id));            // → users, presence, workflow, environment_spec

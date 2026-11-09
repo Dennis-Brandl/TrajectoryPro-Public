@@ -23,7 +23,7 @@ import { WorkCenterTree } from './WorkCenterTree';
 import type { WorkCenterView } from '@/lib/api/types';
 
 const VIEW = {
-  workCenter: { id: 'w1', name: 'A', description: null, parentWorkCenterId: null, sortOrder: 0, dispatchPolicy: 'least_queued_steps', autoClaim: false, runtimeIdTemplate: null, typeName: null, createdAt: '', updatedAt: '' },
+  workCenter: { id: 'w1', name: 'A', description: null, parentWorkCenterId: null, sortOrder: 0, dispatchPolicy: 'least_queued_steps', autoClaim: false, runtimeIdTemplate: null, typeName: null, timeZone: null, createdAt: '', updatedAt: '' },
   subtree: [],
   workflows: [{ id: 'wf1', oid: 'o', name: 'Mix', workCenterId: 'w1', workCenterName: 'A', version: '1.0.0', state: 'effective', effectiveFrom: null, dispatchPolicy: null, autoClaim: null, typeName: null, sourceLibraryName: null, sourceLibraryOid: null, allowedRoleCount: 0 }],
   users: [], environments: [], roles: [],

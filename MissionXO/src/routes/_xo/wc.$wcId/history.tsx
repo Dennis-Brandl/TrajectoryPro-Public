@@ -19,8 +19,9 @@ export const Route = createFileRoute('/_xo/wc/$wcId/history')({
 });
 
 function HistoryRoute() {
-  const { historyId } = useParams({ strict: false }) as { historyId?: string };
-  return <HistoryView selectedId={historyId} detail={historyId ? <Outlet /> : <EmptyDetail />} />;
+  const { historyId, passId } = useParams({ strict: false }) as { historyId?: string; passId?: string };
+  const selected = historyId ?? passId;
+  return <HistoryView selectedId={selected} detail={selected ? <Outlet /> : <EmptyDetail />} />;
 }
 
 function EmptyDetail() {

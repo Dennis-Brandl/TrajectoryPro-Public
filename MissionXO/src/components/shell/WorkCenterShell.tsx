@@ -12,14 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { createContext, useContext, type ReactNode } from 'react';
-import { Activity, History, Plus, type LucideIcon } from 'lucide-react';
+import { Activity, CalendarDays, History, Plus, type LucideIcon } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@mission/ui';
 import { cn } from '@/lib/utils';
 import { useLayout } from '~/lib/layout';
 import type { WcMode } from '~/lib/access';
 import { ViewOnlyBanner } from './ViewOnlyBanner';
 
-export type XoView = 'running' | 'new' | 'history';
+export type XoView = 'running' | 'new' | 'history' | 'schedules';
+
+/** Which view a path belongs to, including a detail under it ("schedules/:id" is Schedules). */
+export function xoViewFromPath(path: string): XoView {
+  return (/\/wc\/[^/]+\/(running|new|history|schedules)/.exec(path)?.[1] as XoView | undefined) ?? 'running';
+}
 export type CurrentWorkCenter = { id: string; name: string; mode: WcMode };
 
 const WorkCenterContext = createContext<CurrentWorkCenter | null>(null);
@@ -34,13 +39,24 @@ const ITEMS: { id: XoView; label: string; icon: LucideIcon }[] = [
   { id: 'new', label: 'Available', icon: Plus },
   { id: 'running', label: 'Running', icon: Activity },
   { id: 'history', label: 'History', icon: History },
+  { id: 'schedules', label: 'Schedules', icon: CalendarDays },
 ];
 
-type NavProps = { active: XoView; onSelect: (v: XoView) => void };
+type NavProps = { active: XoView; onSelect: (v: XoView) => void; attention: number };
+
+/** How many Runtime Schedules need a person; nothing at zero. */
+function AttentionCount({ n, className = 'ml-1' }: { n: number; className?: string }) {
+  if (n <= 0) return null;
+  return (
+    <span aria-label={`${n} need attention`} className={cn('inline-flex min-w-4 items-center justify-center rounded-full bg-status-warn-bg px-1 text-[10px] font-semibold leading-4 text-status-warn-fg', className)}>
+      {n > 9 ? '9+' : n}
+    </span>
+  );
+}
 
 // The suite ActivityRail is a 48 px icon-only strip; the approved XO screens call for a
 // 72 px rail with a label under each icon, so XO draws its own with the same tokens.
-function Rail({ active, onSelect }: NavProps) {
+function Rail({ active, onSelect, attention }: NavProps) {
   return (
     <nav data-testid="xo-rail" aria-label="Work center views" className="flex w-[72px] shrink-0 flex-col items-center gap-1 border-r border-border bg-activity-bar pt-2">
       {ITEMS.map(({ id, label, icon: Icon }) => (
@@ -54,7 +70,10 @@ function Rail({ active, onSelect }: NavProps) {
             id === active && 'bg-muted font-semibold text-foreground',
           )}
         >
-          <Icon className="size-5" />
+          <span className="relative">
+            <Icon className="size-5" />
+            {id === 'schedules' && <AttentionCount n={attention} className="absolute -right-3 -top-1" />}
+          </span>
           {label}
         </button>
       ))}
@@ -62,9 +81,9 @@ function Rail({ active, onSelect }: NavProps) {
   );
 }
 
-function BottomBar({ active, onSelect }: NavProps) {
+function BottomBar({ active, onSelect, attention }: NavProps) {
   return (
-    <nav data-testid="xo-bottom-bar" aria-label="Work center views" className="grid h-16 shrink-0 grid-cols-3 border-t border-border bg-background">
+    <nav data-testid="xo-bottom-bar" aria-label="Work center views" className="grid h-16 shrink-0 grid-cols-4 border-t border-border bg-background">
       {ITEMS.map(({ id, label, icon: Icon }) => (
         <button
           key={id}
@@ -76,7 +95,10 @@ function BottomBar({ active, onSelect }: NavProps) {
             id === active && 'font-semibold text-foreground',
           )}
         >
-          <Icon className="size-5" />
+          <span className="relative">
+            <Icon className="size-5" />
+            {id === 'schedules' && <AttentionCount n={attention} className="absolute -right-3 -top-1" />}
+          </span>
           {label}
         </button>
       ))}
@@ -84,10 +106,12 @@ function BottomBar({ active, onSelect }: NavProps) {
   );
 }
 
-export function WorkCenterShell({ wc, active, onSelect, children }: {
+export function WorkCenterShell({ wc, active, onSelect, scheduleAttention = 0, children }: {
   wc: CurrentWorkCenter;
   active: XoView;
   onSelect: (view: XoView) => void;
+  /** Runtime Schedules that need a person; shown beside Schedules. */
+  scheduleAttention?: number;
   children: ReactNode;
 }) {
   const layout = useLayout();
@@ -101,7 +125,7 @@ export function WorkCenterShell({ wc, active, onSelect, children }: {
   if (layout === 'desktop') {
     body = (
       <div className="flex h-full min-h-0">
-        <Rail active={active} onSelect={onSelect} />
+        <Rail active={active} onSelect={onSelect} attention={scheduleAttention} />
         {content}
       </div>
     );
@@ -117,6 +141,7 @@ export function WorkCenterShell({ wc, active, onSelect, children }: {
                 className="min-h-11 rounded-none border-b-2 border-transparent px-4 text-sm data-[state=active]:border-selection data-[state=active]:bg-transparent data-[state=active]:shadow-none"
               >
                 {label}
+                {id === 'schedules' && <AttentionCount n={scheduleAttention} />}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -128,7 +153,7 @@ export function WorkCenterShell({ wc, active, onSelect, children }: {
     body = (
       <div className="flex h-full min-h-0 flex-col">
         {content}
-        <BottomBar active={active} onSelect={onSelect} />
+        <BottomBar active={active} onSelect={onSelect} attention={scheduleAttention} />
       </div>
     );
   }

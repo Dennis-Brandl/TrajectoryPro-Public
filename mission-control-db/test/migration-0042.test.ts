@@ -17,7 +17,8 @@ import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 
-test('migration 0042 creates the three delete-path indexes', async () => {
+// schedule_run_instance_idx went with its table in 0049, so two of the three remain.
+test('migration 0042 creates the delete-path indexes that remain', async () => {
   const client = new PGlite();
   await migrate(drizzle(client), { migrationsFolder: './drizzle' });
   const res = await client.query<{ indexname: string; indexdef: string }>(
@@ -26,7 +27,7 @@ test('migration 0042 creates the three delete-path indexes', async () => {
      ORDER BY indexname`,
   );
   expect(res.rows.map((r) => r.indexname)).toEqual([
-    'schedule_run_instance_idx', 'wc_resource_waiter_instance_idx', 'workflow_instance_finished_idx',
+    'wc_resource_waiter_instance_idx', 'workflow_instance_finished_idx',
   ]);
   const finished = res.rows.find((r) => r.indexname === 'workflow_instance_finished_idx')!;
   expect(finished.indexdef).toContain('(work_center_id, completed_at)');

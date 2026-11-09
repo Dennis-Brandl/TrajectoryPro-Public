@@ -323,6 +323,41 @@
       "when": 1793989806540,
       "tag": "0045_runtime_control_event",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1794201146416,
+      "tag": "0046_schedules",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1794238889674,
+      "tag": "0047_run_once",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1794241695831,
+      "tag": "0048_runtime_schedule_removed",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1794246757503,
+      "tag": "0049_drop_schedule_prototype",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1794248815521,
+      "tag": "0050_schedule_history",
+      "breakpoints": true
     }
   ]
 }

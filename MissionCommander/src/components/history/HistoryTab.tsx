@@ -19,6 +19,7 @@ import { HistoryFilters } from './HistoryFilters';
 import { HistoryTable } from './HistoryTable';
 import { HistoryPager } from './HistoryPager';
 import { RuntimeDialogStack } from '@/components/runtime/RuntimeDialogStack';
+import { ScheduleHistoryDialog } from './ScheduleHistoryDialog';
 import type { RuntimeHistoryListParams } from '@/lib/api/types';
 
 /**
@@ -38,6 +39,7 @@ import type { RuntimeHistoryListParams } from '@/lib/api/types';
 export function HistoryTab({ workCenterId }: { workCenterId: string }) {
   const [params, setParams] = useState<RuntimeHistoryListParams>({ page: 1 });
   const [openId, setOpenId] = useState<string | null>(null);
+  const [openPassId, setOpenPassId] = useState<string | null>(null);
   const key = JSON.stringify({ wcId: workCenterId, ...params });
   const { view, loading, error, refresh } = useKeyedView(
     key,
@@ -82,8 +84,11 @@ export function HistoryTab({ workCenterId }: { workCenterId: string }) {
   return (
     <div className="space-y-2" aria-busy={loading}>
       <HistoryFilters value={params} onChange={handleFiltersChange} />
-      <HistoryTable rows={view.history} onOpen={setOpenId} />
+      <HistoryTable rows={view.history} onOpen={setOpenId} onOpenPass={setOpenPassId} />
       <HistoryPager page={page} pageCount={pageCount} onPage={setPage} />
+      {openPassId !== null && (
+        <ScheduleHistoryDialog id={openPassId} onClose={() => setOpenPassId(null)} onDeleted={refresh} onOpenRun={setOpenId} />
+      )}
       {openId !== null && (
         <RuntimeDialogStack initial={{ kind: 'history', id: openId }} onClose={() => setOpenId(null)} onHistoryDeleted={refresh} />
       )}

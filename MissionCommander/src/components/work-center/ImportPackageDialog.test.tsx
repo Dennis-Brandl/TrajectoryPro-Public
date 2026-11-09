@@ -33,6 +33,7 @@ const createReport: ImportReport = {
   links: { created: 2, alreadyPresent: 0 },
   roles: { created: 1 },
   grants: { created: 4, alreadyPresent: 0, unresolved: [] },
+  masterSchedules: { created: 0, alreadyPresent: 0, skipped: [] },
   configChanges: [],
   targetOnlyGrants: [],
   warnings: [],
@@ -49,6 +50,7 @@ const mergeReport: ImportReport = {
   links: { created: 0, alreadyPresent: 1 },
   roles: { created: 0 },
   grants: { created: 0, alreadyPresent: 0, unresolved: [] },
+  masterSchedules: { created: 0, alreadyPresent: 0, skipped: [] },
   configChanges: [
     {
       workCenterPath: 'Root',
@@ -185,6 +187,19 @@ describe('ImportPackageDialog', () => {
     await userEvent.click(screen.getByRole('button', { name: /create new work center/i }));
     await userEvent.click(screen.getByRole('button', { name: /^import$/i }));
     expect(await screen.findByText(/Root\/Gone/)).toBeInTheDocument();
+  });
+
+  it('lists Master Schedules that could not be imported', async () => {
+    doImport.mockResolvedValue({
+      ...createReport,
+      masterSchedules: { created: 1, alreadyPresent: 0, skipped: ['Master Schedule "Nightly" in "Line" was not imported: items: needs a workflow'] },
+    });
+    open();
+    await userEvent.upload(pickFile(), file('a.WFcenterX'));
+    await userEvent.click(screen.getByRole('button', { name: /create new work center/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^import$/i }));
+    expect(await screen.findByText(/1 Master Schedules/)).toBeInTheDocument();
+    expect(await screen.findByText(/"Nightly" in "Line" was not imported/)).toBeInTheDocument();
   });
 
   it('shows the server error when the create import fails', async () => {

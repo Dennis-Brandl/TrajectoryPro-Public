@@ -15,9 +15,10 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { db } from '../lib/db';
 import {
-  listRuntimeHistoryPage, getRuntimeHistoryDetail, deleteRuntimeHistory,
+  listHistoryEntriesPage, getRuntimeHistoryDetail, deleteRuntimeHistory,
   countRuntimeHistoryBefore, purgeRuntimeHistory, historyRowGate,
 } from 'mission-control-db/src/dao/runtime-history';
+import { deleteScheduleHistory, getScheduleHistoryDetail, scheduleHistoryRowGate } from 'mission-control-db/src/scheduling/history';
 import { isMissionSystemCommander } from 'mission-control-db/src/dao/work-centers';
 import { requireSession, requirePermission, requireAdministrator, type Vars } from '../middleware/auth';
 import { requireUuidParams } from '../middleware/validate';
@@ -27,6 +28,7 @@ export const runtimeHistoryRoutes = new Hono<{ Variables: Vars }>();
 runtimeHistoryRoutes.use('/work-centers/:id/runtime-history', requireSession);
 runtimeHistoryRoutes.use('/runtime-history', requireSession);
 runtimeHistoryRoutes.use('/runtime-history/*', requireSession);
+runtimeHistoryRoutes.use('/schedule-history/*', requireSession);
 
 const isoDate = z.coerce.date().refine((d) => Number.isFinite(d.getTime()), 'invalid date');
 const listQuery = z.object({
@@ -51,14 +53,14 @@ const toFilter = (q: z.infer<typeof crossQuery> | z.infer<typeof listQuery>, wcI
 runtimeHistoryRoutes.get('/work-centers/:id/runtime-history', requireUuidParams('id'), requirePermission('work_center:read'), async (c) => {
   const parsed = listQuery.safeParse(c.req.query());
   if (!parsed.success) return httpError(c, 400, 'validation', 'Invalid history query');
-  const { items, total, page, pageSize } = await listRuntimeHistoryPage(db, toFilter(parsed.data, c.req.param('id')));
+  const { items, total, page, pageSize } = await listHistoryEntriesPage(db, toFilter(parsed.data, c.req.param('id')));
   return c.json({ history: items, total, page, pageSize });
 });
 
 runtimeHistoryRoutes.get('/runtime-history', requirePermission('work_center:read'), async (c) => {
   const parsed = crossQuery.safeParse(c.req.query());
   if (!parsed.success) return httpError(c, 400, 'validation', 'Invalid history query');
-  const { items, total, page, pageSize } = await listRuntimeHistoryPage(db, toFilter(parsed.data));
+  const { items, total, page, pageSize } = await listHistoryEntriesPage(db, toFilter(parsed.data));
   return c.json({ history: items, total, page, pageSize });
 });
 
@@ -93,5 +95,24 @@ runtimeHistoryRoutes.delete('/runtime-history/:id', requireUuidParams('id'), asy
     || (row.workCenterId !== null && await isMissionSystemCommander(db, row.workCenterId, principal.userId));
   if (!allowed) return httpError(c, 403, 'forbidden', 'Requires Mission System Commander for this work center');
   try { await deleteRuntimeHistory(db, c.req.param('id')); return c.body(null, 204); }
+  catch (err) { return sendError(c, err, 'Delete failed'); }
+});
+
+// A completed schedule pass, listed in History beside the workflow runs. Read like History; deleted
+// under History's gate: administrator, or Mission System Commander of the pass's work center.
+runtimeHistoryRoutes.get('/schedule-history/:id', requireUuidParams('id'), requirePermission('work_center:read'), async (c) => {
+  const detail = await getScheduleHistoryDetail(db, c.req.param('id'));
+  if (!detail) return httpError(c, 404, 'not_found', 'History entry not found');
+  return c.json(detail);
+});
+
+runtimeHistoryRoutes.delete('/schedule-history/:id', requireUuidParams('id'), async (c) => {
+  const principal = c.get('principal');
+  const row = await scheduleHistoryRowGate(db, c.req.param('id'));
+  if (!row) return httpError(c, 404, 'not_found', 'History entry not found');
+  const allowed = principal.accessLevel === 'administrator'
+    || (row.workCenterId !== null && await isMissionSystemCommander(db, row.workCenterId, principal.userId));
+  if (!allowed) return httpError(c, 403, 'forbidden', 'Requires Mission System Commander for this work center');
+  try { await deleteScheduleHistory(db, c.req.param('id')); return c.body(null, 204); }
   catch (err) { return sendError(c, err, 'Delete failed'); }
 });

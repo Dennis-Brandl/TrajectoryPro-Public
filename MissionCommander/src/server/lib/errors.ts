@@ -26,11 +26,12 @@ export const ERROR_CODES = [
   'too_large',
   'internal',
   'partial',
+  'rate_limited',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
 
-export function errorBody(code: string, message: string) {
-  return { error: { code, message } };
+export function errorBody(code: string, message: string, details?: unknown) {
+  return { error: details === undefined ? { code, message } : { code, message, details } };
 }
 
 // DaoError.code → HTTP status. Record over the DaoErrorCode UNION (not string), so this
@@ -86,6 +87,17 @@ const DAO_STATUS: Record<DaoErrorCode, number> = {
   RUNTIME_MASTER_INVALID: 400,
   HISTORY_NOT_FOUND: 404,
   HISTORY_FILTER_INVALID: 400,
+  // Workflow scheduling (spec 2026-11-08).
+  MASTER_SCHEDULE_INVALID: 400,
+  MASTER_SCHEDULE_NOT_FOUND: 404,
+  MASTER_SCHEDULE_NAME_CONFLICT: 409,
+  ENABLE_INVALID: 422,
+  RUNTIME_ACTIVE: 409,
+  RUNTIME_SCHEDULE_NOT_FOUND: 404,
+  RUNTIME_SCHEDULE_STATE: 409,
+  RESUME_CHOICE_REQUIRED: 400,
+  API_CLIENT_NOT_FOUND: 404,
+  HISTORY_RUN_PENDING: 409,
 };
 
 /** The mapped code list, exported so tests can assert a retired code is truly absent. */
@@ -101,6 +113,7 @@ function daoWireCode(status: number): ErrorCode {
   if (status === 404) return 'not_found';
   if (status === 409) return 'conflict';
   if (status === 403) return 'forbidden';
+  if (status === 422) return 'validation';
   // Anything 5xx is a server fault (today: INGEST_FAILED). Falling through to
   // 'bad_request' would label a 500 response as the caller's mistake.
   if (status >= 500) return 'internal';
@@ -115,7 +128,10 @@ export function httpError(c: Context, status: number, code: ErrorCode, message: 
 export function sendDaoError(c: Context, err: unknown): Response | null {
   if (!(err instanceof DaoError)) return null;
   const status = daoErrorStatus(err.code);
-  return c.json(errorBody(daoWireCode(status), err.message || err.code), status as ContentfulStatusCode);
+  return c.json(
+    errorBody(daoWireCode(status), err.message || err.code, err.details),
+    status as ContentfulStatusCode,
+  );
 }
 
 /**

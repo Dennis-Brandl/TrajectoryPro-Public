@@ -27,9 +27,12 @@ import { DISPATCH_POLICIES } from '../db/schema/index.js';
 export const DAO_ERROR_CODES = [
   'CONFIRMATION_REQUIRED',
   'CONTROL_GRANT_INVALID',
+  'API_CLIENT_NOT_FOUND',
+  'ENABLE_INVALID',
   'ENVIRONMENT_IN_USE',
   'HISTORY_FILTER_INVALID',
   'HISTORY_NOT_FOUND',
+  'HISTORY_RUN_PENDING',
   'INGEST_FAILED',
   'INVALID_DISPATCH_POLICY',
   'INVALID_PACKAGE',
@@ -42,15 +45,22 @@ export const DAO_ERROR_CODES = [
   'LOGIN_NAME_CONFLICT',
   'LOGIN_NAME_INVALID',
   'NAME_TOO_LONG',
+  'MASTER_SCHEDULE_INVALID',
+  'MASTER_SCHEDULE_NAME_CONFLICT',
+  'MASTER_SCHEDULE_NOT_FOUND',
   'PARENT_NOT_FOUND',
+  'RESUME_CHOICE_REQUIRED',
   'ROLE_IN_USE',
   'ROLE_NAME_CONFLICT',
   'ROLE_NOT_FOUND',
+  'RUNTIME_ACTIVE',
   'RUNTIME_INVALID_STATE',
   'RUNTIME_MASTER_INVALID',
   'RUNTIME_MASTER_NOT_FOUND',
   'RUNTIME_NOT_FOUND',
   'RUNTIME_PARAM_INVALID',
+  'RUNTIME_SCHEDULE_NOT_FOUND',
+  'RUNTIME_SCHEDULE_STATE',
   'SELF_CHANGE_FORBIDDEN',
   'SYSTEM_ROLE',
   'TYPE_NAME_TOO_LONG',
@@ -66,9 +76,13 @@ export const DAO_ERROR_CODES = [
 ] as const;
 export type DaoErrorCode = (typeof DAO_ERROR_CODES)[number];
 
-/** Typed domain error. `code` is what the HTTP layer maps to a status; message is for logs. */
+/**
+ * Typed domain error. `code` is what the HTTP layer maps to a status; message is for logs.
+ * `details` is optional structured data (for example a list of problems) that the HTTP
+ * layer returns in the error body.
+ */
 export class DaoError extends Error {
-  constructor(public readonly code: DaoErrorCode, message?: string) {
+  constructor(public readonly code: DaoErrorCode, message?: string, public readonly details?: unknown) {
     super(message ?? code);
     this.name = 'DaoError';
   }

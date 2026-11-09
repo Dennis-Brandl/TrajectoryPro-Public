@@ -35,7 +35,7 @@ function detail(status: RuntimeWorkflowStatus, over: Partial<RuntimeWorkflowLive
     summary: {
       id: 'rw1', workCenterId: 'w1', runtimeNumber: 1, runtimeLabel: 'MIX-20261007-001',
       masterName: 'Bottle Fill', masterOid: 'o1', masterVersion: '1.0.0', masterState: 'released',
-      status, createdByName: 'Sam',  createdByLabel: null, createdAt: '2026-08-01T00:00:00Z',
+      status, createdByName: 'Sam',  createdByLabel: null, scheduleLabel: null, createdAt: '2026-08-01T00:00:00Z',
       queuedAt: null, startedAt: null, completedAt: null,
     },
     steps: [],

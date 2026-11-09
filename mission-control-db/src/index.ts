@@ -109,3 +109,15 @@ export type { WaitingStep } from './runtime/inbox.js';
 
 // Disabled-account check shared by Commander's and the engine's better-auth mounts.
 export { ACCOUNT_DISABLED_MESSAGE, isUserDisabled } from './dao/account-status.js';
+
+// Workflow scheduling wire types (spec 2026-11-08): Commander's schedule routes and screens.
+export type { MasterScheduleView, MasterScheduleChange } from './scheduling/master-dao.js';
+export type {
+  RuntimeScheduleView, RuntimeScheduleDetail, RuntimeItemView, NeedsAttention,
+  OccurrenceView, OccurrenceRunView, OccurrencePage, RuntimeScheduleEventView, RuntimeScheduleEventPage,
+} from './scheduling/runtime-dao.js';
+export type { ResumePreview, ResumeChoice, HeldChainView } from './scheduling/controls.js';
+export type { ScheduleDefinition, ScheduleItemInput, DefinitionProblem } from './scheduling/definition.js';
+export type { Recurrence } from './scheduling/recurrence.js';
+export type { ScheduleHistorySummary, ScheduleHistoryDetail, ScheduleHistoryWorkflowView } from './scheduling/history.js';
+export type { HistoryEntry } from './dao/runtime-history.js';

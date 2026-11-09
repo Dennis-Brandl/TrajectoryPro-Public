@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { describe, it, expect } from 'vitest';
-import { daoErrorStatus, errorBody, sendDaoError, DAO_STATUS_KEYS } from './errors';
+import { daoErrorStatus, errorBody, sendDaoError, sendError, DAO_STATUS_KEYS } from './errors';
 import { DaoError } from 'mission-control-db/src/dao/errors';
 
 describe('error mapping', () => {
@@ -109,6 +109,47 @@ describe('M6 dao code mapping', () => {
     sendDaoError(c as never, new DaoError('INGEST_FAILED', 'row vanished'));
     expect(responses[0].status).toBe(500);
     expect((responses[0].body as { error: { code: string } }).error.code).toBe('internal');
+  });
+});
+
+describe('workflow scheduling dao codes', () => {
+  it.each([
+    ['MASTER_SCHEDULE_INVALID', 400],
+    ['MASTER_SCHEDULE_NOT_FOUND', 404],
+    ['MASTER_SCHEDULE_NAME_CONFLICT', 409],
+    ['ENABLE_INVALID', 422],
+    ['RUNTIME_ACTIVE', 409],
+    ['RUNTIME_SCHEDULE_NOT_FOUND', 404],
+    ['RUNTIME_SCHEDULE_STATE', 409],
+    ['RESUME_CHOICE_REQUIRED', 400],
+    ['API_CLIENT_NOT_FOUND', 404],
+    ['HISTORY_RUN_PENDING', 409],
+  ])('%s → %i', (code, status) => {
+    expect(daoErrorStatus(code)).toBe(status);
+  });
+
+  const capture = () => {
+    const responses: Array<{ body: { error: Record<string, unknown> }; status: number }> = [];
+    const c = {
+      json: (body: never, status: number) => { responses.push({ body, status }); return new Response(); },
+      req: { method: 'PUT', path: '/x' },
+    };
+    return { c, responses };
+  };
+
+  it('sendError includes details when the DaoError has them', () => {
+    const { c, responses } = capture();
+    const details = { problems: [{ path: 'items[0]', code: 'X', message: 'm' }] };
+    sendError(c as never, new DaoError('ENABLE_INVALID', 'Cannot enable', details), 'fallback');
+    expect(responses[0].status).toBe(422);
+    expect(responses[0].body.error).toEqual({ code: 'validation', message: 'Cannot enable', details });
+  });
+
+  it('omits details when there are none', () => {
+    const { c, responses } = capture();
+    sendError(c as never, new DaoError('MASTER_SCHEDULE_NOT_FOUND', 'gone'), 'fallback');
+    expect(responses[0].body.error).toEqual({ code: 'not_found', message: 'gone' });
+    expect('details' in responses[0].body.error).toBe(false);
   });
 });
 

@@ -17,8 +17,8 @@ import { eq, sql } from 'drizzle-orm';
 import { makeTestDb } from '../../test/helpers/db.js';
 import { runtimeCols } from '../../test/helpers/instances.js';
 import {
-  workCenter, workflow, workflowInstance, environmentSpec, schedule, stepInstance, instanceAssignment,
-  RUNTIME_ACTIVE_STATUSES,
+  workCenter, workflow, workflowInstance, environmentSpec, stepInstance, instanceAssignment,
+  RUNTIME_ACTIVE_STATUSES, masterSchedule,
 } from '../db/schema/index.js';
 import {
   subtree, assignUserToWorkCenter, usersInWorkCenter, createWorkCenter, updateWorkCenter,
@@ -156,11 +156,6 @@ test('a CONFIRMED delete removes the work center, its artifacts, and its history
   // The deterministic blocker a naive `DELETE FROM work_center` hits here is
   // workflow_instance.work_center_id: a direct, first-degree RESTRICT on work_center itself
   // that is never cascade-scheduled, so it fires regardless of cascade ordering elsewhere.
-  // The schedule row is a defensive addition, not the load-bearing one on its own: its
-  // schedule_wc_workflow_fk RESTRICT on workflow only trips a naive delete depending on the
-  // (Postgres-unspecified) relative firing order of schedule's and workflow's independent
-  // cascade paths off work_center — RESTRICT fires immediately rather than waiting for that
-  // ordering to settle the way NO ACTION would. Only the hand-ordered delete survives both.
   const { db, close } = await makeTestDb();
   try {
     const [wc] = await db.insert(workCenter).values({ name: 'Line 1' }).returning();
@@ -168,9 +163,6 @@ test('a CONFIRMED delete removes the work center, its artifacts, and its history
       oid: 'w', name: 'WF', workCenterId: wc.id, specJsonb: {},
     }).returning();
     await db.insert(environmentSpec).values({ oid: 'e', name: 'E', workCenterId: wc.id, specJsonb: {} });
-    await db.insert(schedule).values({
-      workCenterId: wc.id, workflowId: wf.id, name: 'Nightly', kind: 'recurring',
-    });
     await db.insert(workflowInstance).values({
       workflowId: wf.id, workCenterId: wc.id, triggeredBy: 'schedule',
       ...runtimeCols(),
@@ -180,7 +172,6 @@ test('a CONFIRMED delete removes the work center, its artifacts, and its history
     expect(await db.select().from(workflow)).toHaveLength(0);
     expect(await db.select().from(environmentSpec)).toHaveLength(0);
     expect(await db.select().from(workflowInstance)).toHaveLength(0);
-    expect(await db.select().from(schedule)).toHaveLength(0);
   } finally { await close(); }
 });
 
@@ -521,5 +512,16 @@ test('a delete is refused for an active instance even when confirmed, and a fini
     await db.update(workflowInstance).set({ status: 'completed' }).where(eq(workflowInstance.id, live.id));
     await deleteWorkCenter(db, wc.id, { confirmed: true });
     expect(await db.select().from(workCenter)).toHaveLength(0);
+  } finally { await close(); }
+});
+
+test('an unconfirmed delete of a work center holding only a Master Schedule is refused, a confirmed one succeeds', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    const [wc] = await db.insert(workCenter).values({ name: 'Sched only' }).returning();
+    await db.insert(masterSchedule).values({ workCenterId: wc.id, name: 'M', recurrence: { type: 'once', at: '2026-11-10T06:00' } });
+    await expect(deleteWorkCenter(db, wc.id)).rejects.toMatchObject({ code: 'CONFIRMATION_REQUIRED' });
+    await deleteWorkCenter(db, wc.id, { confirmed: true });
+    expect(await db.select().from(masterSchedule)).toHaveLength(0);
   } finally { await close(); }
 });

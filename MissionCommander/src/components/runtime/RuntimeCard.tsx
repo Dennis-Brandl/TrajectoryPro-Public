@@ -40,6 +40,7 @@ export function RuntimeCard({ rw, onOpen }: { rw: RuntimeWorkflowMonitorSummary;
         Created {new Date(rw.createdAt).toLocaleString()}
         {rw.startedAt ? ` · Started ${new Date(rw.startedAt).toLocaleString()}` : ''}
         {rw.createdByName ? ` · ${rw.createdByName}` : ''}
+        {rw.scheduleLabel ? ` · ${rw.scheduleLabel}` : ''}
       </div>
       {shown.map((s) => (
         <div key={s.stepOid} className="mt-1 truncate text-xs">

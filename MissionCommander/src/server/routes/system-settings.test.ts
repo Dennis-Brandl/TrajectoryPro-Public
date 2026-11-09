@@ -32,7 +32,7 @@ describe('system-settings routes', () => {
     mockSessionAs(viewer);
     const res = await req(app, 'GET', '/api/system-settings');
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ actionMatching: 'loose', actionServerTrust: 'strict', actionServerAllowlist: [], pilotTheme: NO_THEME });
+    expect(await res.json()).toEqual({ actionMatching: 'loose', actionServerTrust: 'strict', actionServerAllowlist: [], pilotTheme: NO_THEME, scheduleLateToleranceMinutes: 15 });
   });
 
   it('steward PUT strict → 200, then GET reflects strict', async () => {
@@ -40,9 +40,9 @@ describe('system-settings routes', () => {
     mockSessionAs(steward);
     const put = await req(app, 'PUT', '/api/system-settings', { json: { actionMatching: 'strict' } });
     expect(put.status).toBe(200);
-    expect(await put.json()).toEqual({ actionMatching: 'strict', actionServerTrust: 'strict', actionServerAllowlist: [], pilotTheme: NO_THEME });
+    expect(await put.json()).toEqual({ actionMatching: 'strict', actionServerTrust: 'strict', actionServerAllowlist: [], pilotTheme: NO_THEME, scheduleLateToleranceMinutes: 15 });
     const get = await req(app, 'GET', '/api/system-settings');
-    expect(await get.json()).toEqual({ actionMatching: 'strict', actionServerTrust: 'strict', actionServerAllowlist: [], pilotTheme: NO_THEME });
+    expect(await get.json()).toEqual({ actionMatching: 'strict', actionServerTrust: 'strict', actionServerAllowlist: [], pilotTheme: NO_THEME, scheduleLateToleranceMinutes: 15 });
   });
 
   it('PUT with an invalid actionMatching value → 422', async () => {
@@ -66,7 +66,7 @@ describe('system-settings routes', () => {
     const viewer = await seedUser(db, { email: 'v2@x.io', displayName: 'V2' });
     mockSessionAs(viewer);
     const res = await req(app, 'GET', '/api/system-settings');
-    expect(await res.json()).toEqual({ actionMatching: 'loose', actionServerTrust: 'strict', actionServerAllowlist: [], pilotTheme: NO_THEME });
+    expect(await res.json()).toEqual({ actionMatching: 'loose', actionServerTrust: 'strict', actionServerAllowlist: [], pilotTheme: NO_THEME, scheduleLateToleranceMinutes: 15 });
   });
   it('PUT stores a normalised, deduped allowlist and the trust mode; a partial PUT leaves the rest alone', async () => {
     // Administrator, not steward: finding #6 makes actionServerTrust/actionServerAllowlist
@@ -75,9 +75,9 @@ describe('system-settings routes', () => {
     mockSessionAs(admin);
     const put = await req(app, 'PUT', '/api/system-settings', { json: { actionServerAllowlist: ['http://mission-autopilot-server:3002/', 'http://mission-autopilot-server:3002'], actionServerTrust: 'loose' } });
     expect(put.status).toBe(200);
-    expect(await put.json()).toEqual({ actionMatching: 'loose', actionServerTrust: 'loose', actionServerAllowlist: ['http://mission-autopilot-server:3002'], pilotTheme: NO_THEME });
+    expect(await put.json()).toEqual({ actionMatching: 'loose', actionServerTrust: 'loose', actionServerAllowlist: ['http://mission-autopilot-server:3002'], pilotTheme: NO_THEME, scheduleLateToleranceMinutes: 15 });
     const again = await req(app, 'PUT', '/api/system-settings', { json: { actionMatching: 'strict' } });
-    expect(await again.json()).toEqual({ actionMatching: 'strict', actionServerTrust: 'loose', actionServerAllowlist: ['http://mission-autopilot-server:3002'], pilotTheme: NO_THEME });
+    expect(await again.json()).toEqual({ actionMatching: 'strict', actionServerTrust: 'loose', actionServerAllowlist: ['http://mission-autopilot-server:3002'], pilotTheme: NO_THEME, scheduleLateToleranceMinutes: 15 });
   });
   it('PUT rejects a bad trust value, a pathful origin, an empty body, and > 50 entries with 422', async () => {
     const steward = await seedUser(db, { email: 's4@x.io', displayName: 'S4', accessLevel: 'steward' });
@@ -110,7 +110,7 @@ describe('system-settings routes', () => {
     mockSessionAs(steward);
     const res = await req(app, 'PUT', '/api/system-settings', { json: { actionMatching: 'strict' } });
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ actionMatching: 'strict', actionServerTrust: 'strict', actionServerAllowlist: [], pilotTheme: NO_THEME });
+    expect(await res.json()).toEqual({ actionMatching: 'strict', actionServerTrust: 'strict', actionServerAllowlist: [], pilotTheme: NO_THEME, scheduleLateToleranceMinutes: 15 });
   });
 
   it('administrator PUT with actionServerTrust and actionServerAllowlist → 200', async () => {
@@ -118,7 +118,7 @@ describe('system-settings routes', () => {
     mockSessionAs(admin);
     const res = await req(app, 'PUT', '/api/system-settings', { json: { actionServerTrust: 'loose', actionServerAllowlist: ['http://x:1'] } });
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ actionMatching: 'loose', actionServerTrust: 'loose', actionServerAllowlist: ['http://x:1'], pilotTheme: NO_THEME });
+    expect(await res.json()).toEqual({ actionMatching: 'loose', actionServerTrust: 'loose', actionServerAllowlist: ['http://x:1'], pilotTheme: NO_THEME, scheduleLateToleranceMinutes: 15 });
   });
 });
 

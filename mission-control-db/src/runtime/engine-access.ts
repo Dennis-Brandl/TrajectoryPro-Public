@@ -44,6 +44,8 @@ export type RuntimeHistorySnapshot = {
   outputs: Array<{ name: string; value: string }> | null;
   // Spec 2026-10-27: who started the run. Optional so older callers keep typechecking.
   startedByUserId?: string | null; startedByLoginName?: string | null;
+  // Spec 2026-11-08 §5.5: the Runtime Schedule label, frozen like the master fields.
+  scheduleLabel?: string | null;
 };
 
 /**
@@ -90,6 +92,7 @@ export async function writeRuntimeHistory(db: Db, snapshot: RuntimeHistorySnapsh
     createdByInstanceId: snapshot.createdByInstanceId, createdByLabel: snapshot.createdByLabel,
     outputs: snapshot.outputs,
     startedByUserId: snapshot.startedByUserId ?? null, startedByLoginName: snapshot.startedByLoginName ?? null,
+    scheduleLabel: snapshot.scheduleLabel ?? null,
   }).onConflictDoNothing({ target: runtimeHistory.workflowInstanceId });
 }
 

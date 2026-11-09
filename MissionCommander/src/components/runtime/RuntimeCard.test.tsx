@@ -23,7 +23,7 @@ afterEach(cleanup);
 const BASE: RuntimeWorkflowMonitorSummary = {
   id: 'rw1', workCenterId: 'w1', runtimeNumber: 1, runtimeLabel: 'MIX-20261007-001',
   masterName: 'Bottle Fill', masterOid: 'o1', masterVersion: '1.0.0', masterState: 'released',
-  status: 'running', createdByName: 'Sam',  createdByLabel: null, createdAt: '2026-08-01T00:00:00Z',
+  status: 'running', createdByName: 'Sam',  createdByLabel: null, scheduleLabel: null, createdAt: '2026-08-01T00:00:00Z',
   queuedAt: '2026-08-01T00:01:00Z', startedAt: '2026-08-01T00:02:00Z', completedAt: null,
   activeSteps: [], errorText: null,
 };

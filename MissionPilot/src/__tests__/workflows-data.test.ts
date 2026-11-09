@@ -30,7 +30,7 @@ function wf(over: Partial<PilotRuntimeWorkflow> = {}): PilotRuntimeWorkflow {
   return {
     id: 'i1', workCenterId: 'wc1', runtimeNumber: 1, runtimeLabel: 'MIX-20261007-001', masterName: 'M', masterOid: 'm', masterVersion: '1.0.0',
     masterState: 'Effective', status: 'running', createdByName: null,  createdByLabel: null, createdAt: '2026-08-19T00:00:00Z',
-    queuedAt: null, startedAt: null, completedAt: null, activeSteps: [], errorText: null, mine: false, ...over,
+    queuedAt: null, startedAt: null, completedAt: null, activeSteps: [], errorText: null, scheduleLabel: null, mine: false, ...over,
   }
 }
 const DIAGRAM: RuntimeWorkflowDiagram = {

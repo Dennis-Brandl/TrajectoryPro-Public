@@ -23,6 +23,7 @@ import { HistoryFilters } from './HistoryFilters';
 import { HistoryTable } from './HistoryTable';
 import { HistoryPager } from './HistoryPager';
 import { RuntimeDialogStack } from '@/components/runtime/RuntimeDialogStack';
+import { ScheduleHistoryDialog } from './ScheduleHistoryDialog';
 import { PurgeDialog } from './PurgeDialog';
 import type { RuntimeHistoryListParams, WcNode } from '@/lib/api/types';
 
@@ -46,6 +47,7 @@ const ORPHANS_VALUE = '__orphans__';
 export function HistoryPage() {
   const [params, setParams] = useState<RuntimeHistoryListParams>({ page: 1 });
   const [openId, setOpenId] = useState<string | null>(null);
+  const [openPassId, setOpenPassId] = useState<string | null>(null);
   const [purgeOpen, setPurgeOpen] = useState(false);
   const [wcOptions, setWcOptions] = useState<WcNode[]>([]);
   const isAdmin = usePrincipalStore((s) => s.principal?.isAdministrator ?? false);
@@ -129,10 +131,13 @@ export function HistoryPage() {
         )}
       </div>
 
-      <HistoryTable rows={view.history} onOpen={setOpenId} showWorkCenter />
+      <HistoryTable rows={view.history} onOpen={setOpenId} onOpenPass={setOpenPassId} showWorkCenter />
 
       <HistoryPager page={page} pageCount={pageCount} onPage={setPage} />
 
+      {openPassId !== null && (
+        <ScheduleHistoryDialog id={openPassId} onClose={() => setOpenPassId(null)} onDeleted={refresh} onOpenRun={setOpenId} />
+      )}
       {openId !== null && (
         <RuntimeDialogStack initial={{ kind: 'history', id: openId }} onClose={() => setOpenId(null)} onHistoryDeleted={refresh} />
       )}

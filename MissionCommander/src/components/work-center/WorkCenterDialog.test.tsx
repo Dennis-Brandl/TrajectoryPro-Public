@@ -144,7 +144,7 @@ describe('WorkCenterDialog (edit)', () => {
   // green without a test that actually mounts this branch.
   const initial: WorkCenter = {
     id: 'self', name: 'Self WC', description: null, parentWorkCenterId: null,
-    sortOrder: 0, dispatchPolicy: 'manual', autoClaim: true, runtimeIdTemplate: null, typeName: null, createdAt: '', updatedAt: '',
+    sortOrder: 0, dispatchPolicy: 'manual', autoClaim: true, runtimeIdTemplate: null, typeName: null, timeZone: null, createdAt: '', updatedAt: '',
   };
 
   it('seeds the auto-claim checkbox from the initial work center', async () => {
@@ -245,5 +245,32 @@ describe('WorkCenterDialog Type field', () => {
     const initial = { id: 'w1', name: 'Line 1', description: null, parentWorkCenterId: null, sortOrder: 0, dispatchPolicy: 'manual', autoClaim: false, runtimeIdTemplate: null, typeName: 'Site', createdAt: '', updatedAt: '' } as WorkCenter;
     render(<WorkCenterDialog open initial={initial} parentWorkCenterId={null} onOpenChange={() => {}} onSaved={() => {}} />);
     expect((screen.getByLabelText('Type') as HTMLInputElement).value).toBe('Site');
+  });
+  describe('time zone', () => {
+    const initial = { id: 'w1', name: 'Line 1', description: null, parentWorkCenterId: null, sortOrder: 0, dispatchPolicy: 'manual', autoClaim: false, runtimeIdTemplate: null, typeName: null, timeZone: 'America/Chicago', createdAt: '', updatedAt: '' } as WorkCenter;
+    it('seeds from the work center, and sends only a changed zone', async () => {
+      const updateSpy = vi.spyOn(wc.workCenters, 'update').mockResolvedValue({ workCenter: initial } as never);
+      render(<WorkCenterDialog open initial={initial} parentWorkCenterId={null} onOpenChange={() => {}} onSaved={() => {}} />);
+      const field = screen.getByLabelText('Time zone') as HTMLInputElement;
+      expect(field.value).toBe('America/Chicago');
+      await userEvent.clear(field);
+      await userEvent.type(field, 'Europe/Berlin');
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+      await waitFor(() => expect(updateSpy).toHaveBeenCalledWith('w1', expect.objectContaining({ timeZone: 'Europe/Berlin' })));
+    });
+    it('refuses an unknown zone', async () => {
+      const updateSpy = vi.spyOn(wc.workCenters, 'update').mockResolvedValue({ workCenter: initial } as never);
+      render(<WorkCenterDialog open initial={initial} parentWorkCenterId={null} onOpenChange={() => {}} onSaved={() => {}} />);
+      const field = screen.getByLabelText('Time zone');
+      await userEvent.clear(field);
+      await userEvent.type(field, 'Mars/Olympus');
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+      expect(await screen.findByText('Not a known time zone')).toBeInTheDocument();
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+    it('is not offered when creating', () => {
+      render(<WorkCenterDialog open initial={null} parentWorkCenterId={null} onOpenChange={() => {}} onSaved={() => {}} />);
+      expect(screen.queryByLabelText('Time zone')).toBeNull();
+    });
   });
 });

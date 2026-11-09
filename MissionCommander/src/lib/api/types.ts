@@ -20,7 +20,7 @@
 //    equal to Serialized<DaoType> by the drift guards at the bottom of this file — a DAO
 //    shape change now breaks the build here instead of silently drifting at runtime.
 export type WcNode = { id: string; name: string; parentWorkCenterId: string | null; depth: number; typeName: string | null };
-export type WorkCenter = { id: string; name: string; description: string | null; parentWorkCenterId: string | null; sortOrder: number; dispatchPolicy: string; autoClaim: boolean; runtimeIdTemplate: string | null; typeName: string | null; createdAt: string; updatedAt: string };
+export type WorkCenter = { id: string; name: string; description: string | null; parentWorkCenterId: string | null; sortOrder: number; dispatchPolicy: string; autoClaim: boolean; runtimeIdTemplate: string | null; typeName: string | null; timeZone: string | null; createdAt: string; updatedAt: string };
 // Mirrors mission-control-db's WorkflowSummary / EnvironmentSpecSummary. M6: the grouping
 // container is the WORK CENTER, not a library — an artifact is OWNED by exactly one work
 // center. sourceLibrary* is Designer's originating library: provenance for display only
@@ -113,7 +113,7 @@ export type EnvSpecView = {
 export type PackageScope = 'all' | 'effective';
 export type PackagePreview = {
   workCenters: number; workflows: number; environments: number;
-  roles: number; grants: number; warnings: string[];
+  roles: number; grants: number; masterSchedules: number; warnings: string[];
 };
 
 // POST /api/work-centers/import — a .WFcenterX package created as a new work-center subtree
@@ -129,6 +129,7 @@ export type RuntimeWorkflowSummary = {
   masterName: string; masterOid: string; masterVersion: string; masterState: string;
   status: RuntimeWorkflowStatus; createdByName: string | null; createdByLabel: string | null; createdAt: string;
   queuedAt: string | null; startedAt: string | null; completedAt: string | null;
+  scheduleLabel: string | null;
 };
 export type RuntimeParameterSpec = { id: string; description: string | null; defaultValue: string; valueType: 'literal' | 'property' };
 
@@ -177,8 +178,14 @@ export type RuntimeHistorySummary = {
   id: string; workflowInstanceId: string | null; workCenterId: string | null; workCenterName: string;
   runtimeNumber: number; runtimeLabel: string; masterName: string; masterOid: string; masterVersion: string; masterState: string;
   finalState: RuntimeHistoryFinalState; startedAt: string | null; finishedAt: string; createdAt: string;
+  scheduleLabel: string | null;
 };
-export type RuntimeHistoryPage = { history: RuntimeHistorySummary[]; total: number; page: number; pageSize: number };
+/** One row of the History list: a workflow run (`kind: 'workflow'`), or a completed schedule pass. */
+export type HistoryEntry = ({ kind: 'workflow' } & RuntimeHistorySummary) | ({ kind: 'schedule' } & ScheduleHistorySummary);
+export type RuntimeHistoryPage = { history: HistoryEntry[]; total: number; page: number; pageSize: number };
+export type ScheduleHistorySummary = Serialized<DbScheduleHistorySummary>;
+export type ScheduleHistoryDetail = Serialized<DbScheduleHistoryDetail>;
+export type ScheduleHistoryWorkflow = ScheduleHistoryDetail['workflows'][number];
 // Detail deliberately NARROWS the DAO's `trace: unknown` / `stepParams: unknown` — the
 // client parses the jsonb payloads it renders, so this stays a local declaration on top of
 // the guarded Summary.
@@ -217,6 +224,8 @@ export type SystemSettings = {
   actionMatching: ActionMatchingMode;
   actionServerTrust: ActionServerTrust;
   actionServerAllowlist: string[];
+  /** Spec 2026-11-08 §6.4: whole minutes, 1 to 1440. Optional for older servers and test mocks. */
+  scheduleLateToleranceMinutes?: number;
   pilotTheme?: { rev: number; site: PilotTheme };
   /** PUT responses only (spec §11): work centers whose own override the site change broke. */
   pilotThemeBrokenWorkCenters?: BrokenWorkCenter[];
@@ -270,6 +279,9 @@ import type {
   RuntimeLiveStep as DbRuntimeLiveStep,
   RuntimeTraceEntryView as DbRuntimeTraceEntryView,
   RuntimeHistorySummary as DbRuntimeHistorySummary,
+  ScheduleHistorySummary as DbScheduleHistorySummary,
+  MasterScheduleChange as DbMasterScheduleChange,
+  ScheduleHistoryDetail as DbScheduleHistoryDetail,
   StepSignatureView as DbStepSignatureView,
   StepRunView as DbStepRunView,
   RuntimeWorkflowLiveDetail as DbRuntimeWorkflowLiveDetail,
@@ -298,6 +310,40 @@ export type CreatedRuntimeRow = {
   open: CreatedRuntimeTarget | null;
 };
 export type CreatedRuntimesPage = { items: CreatedRuntimeRow[]; total: number };
+
+// Workflow scheduling (spec 2026-11-08). Straight from the package; Dates arrive as ISO strings.
+import type {
+  MasterScheduleView as DbMasterScheduleView, RuntimeScheduleView as DbRuntimeScheduleView,
+  RuntimeScheduleDetail as DbRuntimeScheduleDetail, RuntimeItemView as DbRuntimeItemView,
+  OccurrencePage as DbOccurrencePage, ResumePreview as DbResumePreview,
+  RuntimeScheduleEventPage as DbRuntimeScheduleEventPage, OccurrenceRunView as DbOccurrenceRunView,
+} from 'mission-control-db';
+import type { DefinitionProblem } from 'mission-control-db';
+export type { ScheduleDefinition, ScheduleItemInput, DefinitionProblem, Recurrence, NeedsAttention, ResumeChoice } from 'mission-control-db';
+export type MasterScheduleView = Serialized<DbMasterScheduleView>;
+export type RuntimeScheduleView = Serialized<DbRuntimeScheduleView>;
+export type RuntimeScheduleDetail = Serialized<DbRuntimeScheduleDetail>;
+export type RuntimeScheduleItemView = Serialized<DbRuntimeItemView>;
+export type OccurrencePage = Serialized<DbOccurrencePage>;
+export type OccurrenceRun = Serialized<DbOccurrenceRunView>;
+export type RuntimeScheduleEventPage = Serialized<DbRuntimeScheduleEventPage>;
+export type RuntimeScheduleEvent = RuntimeScheduleEventPage['rows'][number];
+export type ResumePreview = Serialized<DbResumePreview>;
+export type RuntimeScheduleStatus = RuntimeScheduleView['status'];
+export type EnablePreview = { problems: DefinitionProblem[]; warnings: string[]; nextFireTimes: string[]; timeZone?: string };
+export type RunOncePreview = { problems: DefinitionProblem[]; warnings: string[]; timeZone: string };
+export type ScheduleClock = { timeZone: string; workCenterZoneSet: boolean };
+export type MasterScheduleChange = Serialized<DbMasterScheduleChange>;
+export type MasterScheduleRecord = { master: MasterScheduleView; workCenterName: string; timeZone: string; changes: MasterScheduleChange[] };
+/** A work-center workflow as the Master Schedule editor's pickers offer it (one row per version). */
+export type ScheduleWorkflowOption = {
+  id: string; name: string; version: string; state: string;
+  startingParameters: RuntimeParameterSpec[]; outputs: string[];
+};
+export type RecurrencePreview = { nextFireTimes: string[]; recurrenceText: string; timeZone: string };
+export type ResumeResult = {
+  startedSlots: number; startedChains: number; skippedSlots: number; skippedChains: number; missedMore: boolean;
+};
 
 type Serialized<T> = T extends Date ? string
   : T extends (infer U)[] ? Serialized<U>[]

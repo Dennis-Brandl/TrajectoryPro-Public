@@ -14,7 +14,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
-import { WorkCenterShell } from './WorkCenterShell';
+import { WorkCenterShell, xoViewFromPath } from './WorkCenterShell';
 
 function setWidth(px: number) {
   window.matchMedia = ((query: string) => {
@@ -47,7 +47,7 @@ describe('WorkCenterShell', () => {
     setWidth(1024);
     show();
     expect(screen.getByRole('tablist')).toBeInTheDocument();
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Available', 'Running', 'History']);
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Available', 'Running', 'History', 'Schedules']);
     expect(screen.queryByTestId('xo-rail')).toBeNull();
   });
 
@@ -77,4 +77,37 @@ describe('WorkCenterShell', () => {
     show('view-only');
     expect(screen.getByText('View only — you are not a Mission System Commander in this work center.')).toBeInTheDocument();
   });
+
+  it('puts four items in a four-column bottom bar at 390 px', () => {
+    setWidth(390);
+    show();
+    const bar = screen.getByTestId('xo-bottom-bar');
+    expect(bar.className).toContain('grid-cols-4');
+    expect(bar.textContent).toBe('AvailableRunningHistorySchedules');
+  });
+
+  it.each([1440, 390])('selects Schedules at %i px', (w) => {
+    setWidth(w);
+    const onSelect = vi.fn();
+    show('full', onSelect);
+    fireEvent.click(screen.getByText('Schedules'));
+    expect(onSelect).toHaveBeenCalledWith('schedules');
+  });
+
+  it.each([1440, 1024, 390])('shows the Needs attention count on Schedules at %i px, and nothing at zero', (w) => {
+    setWidth(w);
+    render(<WorkCenterShell wc={wc('full')} active="running" onSelect={vi.fn()} scheduleAttention={2}><p>body</p></WorkCenterShell>);
+    expect(screen.getByLabelText('2 need attention')).toHaveTextContent('2');
+    cleanup();
+    render(<WorkCenterShell wc={wc('full')} active="running" onSelect={vi.fn()} scheduleAttention={0}><p>body</p></WorkCenterShell>);
+    expect(screen.queryByLabelText(/need attention/)).toBeNull();
+  });
+});
+
+describe('xoViewFromPath', () => {
+  it.each([
+    ['/xo/wc/a/running', 'running'], ['/xo/wc/a/running/r1', 'running'], ['/xo/wc/a/new/w1', 'new'],
+    ['/xo/wc/a/history/h1', 'history'], ['/xo/wc/a/schedules', 'schedules'], ['/xo/wc/a/schedules/s1', 'schedules'],
+  ])('%s is %s', (path, view) => expect(xoViewFromPath(path)).toBe(view));
+  it('defaults to running', () => expect(xoViewFromPath('/xo/wc/a')).toBe('running'));
 });

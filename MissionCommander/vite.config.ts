@@ -34,6 +34,10 @@ export default defineConfig({
   // @mission/ui is a file: link into MissionDesigner (which has its own react). Keep the
   // link path so its peer imports resolve from this app's node_modules: one React copy.
   resolve: { preserveSymlinks: true, alias: { '@': path.resolve(__dirname, './src') } },
+  // @mission/ui sources sit under node_modules (the kept link path), so Vite does not crawl them and
+  // would find their imports (react/jsx-runtime, react-dom, ...) late, serving them unbundled; a fresh
+  // checkout then renders "does not provide an export named 'jsx'". Crawl them up front.
+  optimizeDeps: { entries: ['index.html', 'node_modules/@mission/ui/src/**/*.{ts,tsx}', '!**/*.test.*'] },
   server: {
     port: 5273,
     proxy: { '/api': { target: `http://localhost:${process.env.API_PORT || '3002'}`, changeOrigin: true } },

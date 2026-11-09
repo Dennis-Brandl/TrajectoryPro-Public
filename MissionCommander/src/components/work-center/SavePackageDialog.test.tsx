@@ -28,7 +28,7 @@ import { packages } from '@/lib/api/package';
 
 const preview = packages.preview as unknown as ReturnType<typeof vi.fn>;
 
-const empty = { workCenters: 1, workflows: 2, environments: 1, roles: 0, grants: 0, warnings: [] };
+const empty = { workCenters: 1, workflows: 2, environments: 1, roles: 0, grants: 0, masterSchedules: 3, warnings: [] };
 
 beforeEach(() => { preview.mockReset(); preview.mockResolvedValue(empty); });
 afterEach(cleanup);
@@ -42,6 +42,7 @@ describe('SavePackageDialog', () => {
     open();
     await waitFor(() => expect(preview).toHaveBeenCalledWith('wc-1', 'all'));
     expect(await screen.findByText(/2 workflows/i)).toBeInTheDocument();
+    expect(await screen.findByText(/3 Master Schedules/)).toBeInTheDocument();
   });
 
   it('re-previews when the steward switches to effective only', async () => {

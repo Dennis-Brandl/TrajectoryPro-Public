@@ -60,7 +60,7 @@ export function RuntimeRow({ runtime: r, selected, onSelect }: {
       {claimant && <div className="mt-0.5 truncate">{claimant}</div>}
       {waiting && <div className="mt-0.5 text-selection">Waiting for operator</div>}
       <div className="mt-1 text-xs text-muted-foreground">
-        {[r.runtimeLabel, elapsedSince(r.startedAt, Date.now()), r.createdByName].filter(Boolean).join(' · ')}
+        {[r.runtimeLabel, r.scheduleLabel, elapsedSince(r.startedAt, Date.now()), r.createdByName].filter(Boolean).join(' · ')}
       </div>
     </div>
   );

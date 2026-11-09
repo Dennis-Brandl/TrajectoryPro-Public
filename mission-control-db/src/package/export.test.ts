@@ -21,6 +21,8 @@ import { collectRolesAndGrants } from './export.js';
 import AdmZip from 'adm-zip';
 import { buildWfcenterx } from './export.js';
 import { readZipEntries } from '../ingest/zip.js';
+import { runtimeSchedule } from '../db/schema/index.js';
+import { createMasterSchedule, upsertMasterScheduleByKey } from '../scheduling/master-dao.js';
 
 test('collectWorkCenters returns the subtree parent-before-child with escaped paths', async () => {
   const { db, close } = await makeTestDb();
@@ -546,5 +548,80 @@ test('collectWorkCenters carries typeName onto the work-center manifest (null wh
     const [plain] = await db.insert(workCenter).values({ name: 'Plain' }).returning();
     const [p] = await collectWorkCenters(db, plain.id, 'all');
     expect(p.manifest.typeName).toBeNull();
+  } finally { await close(); }
+});
+
+// ── Master Schedules (spec 2026-11-08 §11) ───────────────────────────────────
+
+const masterBody = (name = 'Nightly', workflowName = 'Mix') => ({
+  name,
+  description: 'Every night',
+  recurrence: { type: 'once', at: '2026-11-10T06:00' },
+  items: [
+    { workflow: { name: workflowName }, params: { P: { value: '1' } }, chain: [
+      { workflow: { name: workflowName, version: '2.0' }, triggerOn: ['completed', 'errored'] },
+    ] },
+  ],
+});
+
+test('collectWorkCenters carries a Master as its bare definition, and no ids, revision, source or key', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    const [root] = await db.insert(workCenter).values({ name: 'Line' }).returning();
+    await db.insert(workflow).values({ oid: 'w1', name: 'Mix', workCenterId: root.id, version: '1.0.0', state: 'Effective', specJsonb: {} });
+    await createMasterSchedule(db, root.id, masterBody(), { kind: 'system' });
+    await upsertMasterScheduleByKey(db, root.id, 'erp-1', masterBody('From ERP'), { kind: 'system' });
+
+    const [wc] = await collectWorkCenters(db, root.id, 'all');
+    expect(wc.manifest.masterSchedules).toEqual([masterBody('From ERP'), masterBody()]);
+    expect(JSON.stringify(wc.manifest.masterSchedules)).not.toMatch(/erp-1|externalKey|revision|"source"|"id"/);
+  } finally { await close(); }
+});
+
+test('buildWfcenterx exports no Runtime Schedules', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    const [root] = await db.insert(workCenter).values({ name: 'Line' }).returning();
+    const master = await createMasterSchedule(db, root.id, masterBody(), { kind: 'system' });
+    await db.insert(runtimeSchedule).values({
+      workCenterId: root.id, workCenterName: 'Line', masterScheduleId: master.id, runtimeNumber: 1,
+      label: 'RS-1', name: 'Nightly', recurrence: master.recurrence, timeZone: 'UTC', masterRevision: 1,
+      definitionHash: 'h',
+    });
+    const { buffer } = await buildWfcenterx(db, root.id, { scope: 'all', exportedAt: new Date('2026-07-28T12:00:00.000Z') });
+    const text = readZipEntries(buffer).map((e) => JSON.stringify(e.json ?? '')).join('\n');
+    expect(text).not.toMatch(/RS-1|runtimeNumber|definitionHash/);
+  } finally { await close(); }
+});
+
+test('a work center with no Master previews a zero count and no warnings', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    const [root] = await db.insert(workCenter).values({ name: 'Line' }).returning();
+    expect(await previewWfcenterx(db, root.id, 'all')).toMatchObject({ masterSchedules: 0, warnings: [] });
+  } finally { await close(); }
+});
+
+test('scope effective warns when a Master names a workflow outside the export, and still exports it', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    const [root] = await db.insert(workCenter).values({ name: 'Line' }).returning();
+    await db.insert(workflow).values([
+      { oid: 'w1', name: 'Mix', workCenterId: root.id, version: '1.0.0', state: 'Effective', specJsonb: {} },
+      { oid: 'w2', name: 'Cap', workCenterId: root.id, version: '1.0.0', state: 'Draft', specJsonb: {} },
+    ]);
+    await createMasterSchedule(db, root.id, masterBody('Uses Mix', 'Mix'), { kind: 'system' });
+    await createMasterSchedule(db, root.id, masterBody('Uses Cap', 'Cap'), { kind: 'system' });
+
+    const effective = await previewWfcenterx(db, root.id, 'effective');
+    expect(effective.masterSchedules).toBe(2);
+    expect(effective.warnings).toHaveLength(1);
+    expect(effective.warnings[0]).toMatch(/Uses Cap/);
+    expect(effective.warnings[0]).toMatch(/Cap/);
+
+    const built = await buildWfcenterx(db, root.id, { scope: 'effective', exportedAt: new Date('2026-07-28T12:00:00.000Z') });
+    expect(built.warnings).toEqual(effective.warnings);
+
+    expect((await previewWfcenterx(db, root.id, 'all')).warnings).toEqual([]);
   } finally { await close(); }
 });

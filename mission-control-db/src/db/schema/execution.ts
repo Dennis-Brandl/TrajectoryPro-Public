@@ -50,9 +50,6 @@ export const workflowInstance = pgTable('workflow_instance', {
   id: uuid('id').primaryKey().defaultRandom(),
   workflowId: uuid('workflow_id').notNull(),
   workCenterId: uuid('work_center_id').notNull().references(() => workCenter.id, { onDelete: 'restrict' }),
-  // NOTE: no .references() here — the `schedule` table doesn't exist until Task 7.1.
-  // The FK to schedule(id) ON DELETE SET NULL will be added then via a custom ALTER-TABLE migration.
-  scheduleId: uuid('schedule_id'),
   environmentSpecId: uuid('environment_spec_id').references(() => environmentSpec.id, { onDelete: 'set null' }),
   triggeredBy: text('triggered_by').notNull(),
   status: text('status').notNull().default('pending'),
@@ -87,6 +84,10 @@ export const workflowInstance = pgTable('workflow_instance', {
   createdByLabel: text('created_by_label'),
   // Operator Stop/Abort: set by requestSkipCleanup so the engine abandons a running cleanup.
   cleanupSkip: text('cleanup_skip'),
+  // Workflow scheduling (spec 2026-11-08 §5.5): soft link to schedule_item_run, plus the frozen
+  // Runtime Schedule label (e.g. RS-12) that settleTerminal copies into runtime_history.
+  scheduleItemRunId: uuid('schedule_item_run_id'),
+  scheduleLabel: text('schedule_label'),
 }, (t) => [
   // A workflow belongs to exactly one work center, so an instance's work center must agree
   // with its workflow's. Pinned here rather than trusted (spec §4.4).
@@ -222,6 +223,8 @@ export const runtimeHistory = pgTable('runtime_history', {
   // Spec 2026-10-27: who started the run (frozen copies, no FK like the rest of the row).
   startedByUserId: uuid('started_by_user_id'),
   startedByLoginName: text('started_by_login_name'),
+  // Workflow scheduling (spec 2026-11-08 §5.5): frozen copy of the Runtime Schedule label.
+  scheduleLabel: text('schedule_label'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   uniqueIndex('runtime_history_instance_uq').on(t.workflowInstanceId),

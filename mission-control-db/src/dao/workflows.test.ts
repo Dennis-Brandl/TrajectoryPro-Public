@@ -16,7 +16,7 @@ import { expect, test } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { makeTestDb } from '../../test/helpers/db.js';
 import { runtimeCols } from '../../test/helpers/instances.js';
-import { workCenter, workflow, workflowInstance, stepInstance, runtimeHistory, schedule, environmentSpec, workflowEnvironment } from '../db/schema/index.js';
+import { workCenter, workflow, workflowInstance, stepInstance, runtimeHistory, environmentSpec, workflowEnvironment } from '../db/schema/index.js';
 import { deleteWorkflow, listWorkflowSummaries, setWorkflowDispatchPolicy, setWorkflowAutoClaim } from './workflows.js';
 
 test('listWorkflowSummaries orders by work center, name, version, state', async () => {
@@ -136,25 +136,6 @@ test('finished runtimes do not block deleteWorkflow: they are deleted with it an
     expect((await db.select().from(workflowInstance)).map((r) => r.id)).toEqual([kept.id]);
     expect(await db.select().from(stepInstance)).toHaveLength(0);
     expect(await db.select().from(runtimeHistory)).toHaveLength(1);
-  } finally { await close(); }
-});
-
-// schedule_wc_workflow_fk is RESTRICT (spec §4.4): a schedule with no instances yet would
-// otherwise hit the bare 23503 catch and surface a message-less WORKFLOW_IN_USE as the 409 body.
-test('deleteWorkflow is blocked when a schedule references it, even with no instances', async () => {
-  const { db, close } = await makeTestDb();
-  try {
-    const [wc] = await db.insert(workCenter).values({ name: 'Line 1' }).returning();
-    const [wf] = await db.insert(workflow).values({
-      oid: 'w', name: 'WF', workCenterId: wc.id, specJsonb: {},
-    }).returning();
-    await db.insert(schedule).values({
-      workCenterId: wc.id, workflowId: wf.id, name: 'Nightly', kind: 'recurring',
-    });
-    await expect(deleteWorkflow(db, wf.id)).rejects.toMatchObject({
-      code: 'WORKFLOW_IN_USE', message: expect.stringContaining('schedule'),
-    });
-    expect(await db.select().from(workflow)).toHaveLength(1); // not deleted
   } finally { await close(); }
 });
 

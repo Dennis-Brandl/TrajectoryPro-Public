@@ -20,7 +20,7 @@ import {
   workCenter, workflow, workflowInstance, wcResource, wcResourceWaiter, wcResourceHolder,
 } from '../db/schema/index.js';
 import {
-  lockRegistry, readHolders, applyRegistryWrites, releaseInstanceHoldings,
+  lockRegistry, readHolders, applyRegistryWrites, releaseInstanceWaiters, consumeForeignHolders,
   readResourceHolders, applyOperatorRegistryWrites,
 } from './wc-resources.js';
 
@@ -208,7 +208,7 @@ test('readHolders returns only the given instance rows', async () => {
   } finally { await close(); }
 });
 
-test('releaseInstanceHoldings clears the instance holders and waiters and names what it touched', async () => {
+test('releaseInstanceWaiters clears only the instance waiters (holders stay) and names what it touched', async () => {
   const { db, close } = await makeTestDb();
   try {
     const { wc, a, b } = await seed(db);
@@ -216,14 +216,83 @@ test('releaseInstanceHoldings clears the instance holders and waiters and names 
       { workCenterId: wc.id, name: 'Printer', instanceId: a.id, stepOid: 's1', amount: 1 },
       { workCenterId: wc.id, name: 'Bay', instanceId: b.id, stepOid: 'keep', amount: 1 },
     ]);
-    await db.insert(wcResourceWaiter).values({
-      workCenterId: wc.id, name: 'Bay', instanceId: a.id, stepOid: 's3', kind: 'acquire',
-    });
-    const touched = await releaseInstanceHoldings(db, a.id);
-    expect([...touched].sort()).toEqual(['Bay', 'Printer']);
-    expect(await db.select().from(wcResourceHolder)).toHaveLength(1);
-    expect((await db.select().from(wcResourceHolder))[0].stepOid).toBe('keep');
-    expect(await db.select().from(wcResourceWaiter)).toHaveLength(0);
+    await db.insert(wcResourceWaiter).values([
+      { workCenterId: wc.id, name: 'Bay', instanceId: a.id, stepOid: 's3', kind: 'acquire' },
+      { workCenterId: wc.id, name: 'Unused', instanceId: a.id, stepOid: 's4', kind: 'acquire', granted: true },
+      { workCenterId: wc.id, name: 'Bay', instanceId: b.id, stepOid: 's5', kind: 'acquire' },
+    ]);
+    const touched = await releaseInstanceWaiters(db, a.id);
+    expect([...touched].sort()).toEqual(['Bay', 'Unused']);
+    // Environment holds survive the end of the workflow (2026-11-10): A's Printer row stays.
+    expect((await db.select().from(wcResourceHolder)).map((h: any) => h.stepOid).sort()).toEqual(['keep', 's1']);
+    expect((await db.select().from(wcResourceWaiter)).map((w: any) => w.stepOid)).toEqual(['s5']);
+  } finally { await close(); }
+});
+
+async function holderRows(db: any) {
+  return (await db.select().from(wcResourceHolder).orderBy(wcResourceHolder.id))
+    .map((h: any) => [h.instanceId, h.name, h.amount, h.heldName]);
+}
+
+test('consumeForeignHolders: binary exclusive takes over every foreign row and never the releaser\'s own', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    const { wc, a, b } = await seed(db);
+    await db.insert(wcResourceHolder).values([
+      { workCenterId: wc.id, name: 'Printer', instanceId: a.id, stepOid: 's1', amount: 1 },
+      { workCenterId: wc.id, name: 'Printer', instanceId: b.id, stepOid: 'own', amount: 1 },
+    ]);
+    const affected = await consumeForeignHolders(db, wc.id, b.id, { name: 'Printer', resourceType: 'binary exclusive use', amount: 1, heldName: null });
+    expect(affected).toEqual([a.id]);
+    expect(await holderRows(db)).toEqual([[b.id, 'Printer', 1, null]]);
+  } finally { await close(); }
+});
+
+test('consumeForeignHolders: a countable pool consumes oldest rows first, decrementing, and floors at nothing left', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    const { wc, a, b } = await seed(db);
+    const [d] = await db.insert(workflowInstance).values({ workflowId: a.workflowId, workCenterId: wc.id, triggeredBy: 'manual', ...runtimeCols() }).returning();
+    await db.insert(wcResource).values({ workCenterId: wc.id, name: 'Slots', resourceType: 'countable use with pool limits', useLimit: 9, inUse: 5 });
+    await db.insert(wcResourceHolder).values([
+      { workCenterId: wc.id, name: 'Slots', instanceId: a.id, stepOid: 'sa', amount: 3 },
+      { workCenterId: wc.id, name: 'Slots', instanceId: d.id, stepOid: 'sd', amount: 2 },
+    ]);
+    const slots = { name: 'Slots', resourceType: 'countable use with pool limits', heldName: null };
+    expect((await consumeForeignHolders(db, wc.id, b.id, { ...slots, amount: 4 })).sort()).toEqual([a.id, d.id].sort());
+    expect(await holderRows(db)).toEqual([[d.id, 'Slots', 1, null]]);
+    expect(await consumeForeignHolders(db, wc.id, b.id, { ...slots, amount: 9 })).toEqual([d.id]);
+    expect(await holderRows(db)).toEqual([]);
+    expect(await consumeForeignHolders(db, wc.id, b.id, { ...slots, amount: 1 })).toEqual([]);
+  } finally { await close(); }
+});
+
+test('consumeForeignHolders: a named pool takes over only the row holding that name; no name takes nothing', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    const { wc, a, b } = await seed(db);
+    await db.insert(wcResourceHolder).values([
+      { workCenterId: wc.id, name: 'Bay', instanceId: a.id, stepOid: 's1', amount: 1, heldName: 'B1' },
+      { workCenterId: wc.id, name: 'Bay', instanceId: a.id, stepOid: 's2', amount: 1, heldName: 'B2' },
+    ]);
+    const bay = { name: 'Bay', resourceType: 'named pool', amount: 1 };
+    expect(await consumeForeignHolders(db, wc.id, b.id, { ...bay, heldName: null })).toEqual([]);
+    expect(await consumeForeignHolders(db, wc.id, b.id, { ...bay, heldName: 'B2' })).toEqual([a.id]);
+    expect(await holderRows(db)).toEqual([[a.id, 'Bay', 1, 'B1']]);
+  } finally { await close(); }
+});
+
+test('consumeForeignHolders: binary shared use takes over one unit from the oldest row', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    const { wc, a, b } = await seed(db);
+    await db.insert(wcResource).values({ workCenterId: wc.id, name: 'Desk', resourceType: 'binary shared use with pool limits', useLimit: 3, inUse: 2 });
+    await db.insert(wcResourceHolder).values([
+      { workCenterId: wc.id, name: 'Desk', instanceId: a.id, stepOid: 's1', amount: 1 },
+      { workCenterId: wc.id, name: 'Desk', instanceId: a.id, stepOid: 's2', amount: 1 },
+    ]);
+    await consumeForeignHolders(db, wc.id, b.id, { name: 'Desk', resourceType: 'binary shared use with pool limits', amount: 5, heldName: null });
+    expect((await db.select().from(wcResourceHolder)).map((h: any) => h.stepOid)).toEqual(['s2']);
   } finally { await close(); }
 });
 

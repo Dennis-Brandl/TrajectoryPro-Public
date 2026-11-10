@@ -884,7 +884,9 @@ describe.skipIf(!url)('mission engine — real Postgres concurrency (Task 18)', 
     expect(await t7StepState(h, 'ui')).toBe('WAITING_USER'); // H holds Printer, parked
 
     const labels = ['x', 'y', 'z'];
-    const specs = labels.map((l) => t7ParkAcquireSpec(`t7-fifo-${l}`));
+    // Each acquires AND releases on its parked step: since 2026-11-10 a hold is not released when
+    // the workflow ends, so the hand-off to the next waiter is the step's own Release.
+    const specs = labels.map((l) => t7ParkAcquireReleaseSpec(`t7-fifo-${l}`));
     const wfs = await Promise.all(specs.map((s, i) => t7MakeWorkflow(wcId, s, `t7-fifo-${labels[i]}`)));
     const ids = await Promise.all(specs.map((s, i) => t7SeedRunningReady(
       wcId, wfs[i], s, `t7-fifo-${labels[i]}`, `t7-fifo-${labels[i]}`, 'ui', 'USER_INTERACTION', i + 2,
@@ -906,7 +908,7 @@ describe.skipIf(!url)('mission engine — real Postgres concurrency (Task 18)', 
         await runOnce(db!, testDeps());
         status = await t7Status(instanceId);
       }
-      expect(status).toBe('running'); // parked holding Printer — never auto-releases (no Release cmd)
+      expect(status).toBe('running'); // parked holding Printer until its own step is submitted
       expect(await t7StepState(instanceId, 'ui')).toBe('WAITING_USER');
       for (const later of order.slice(i + 1)) {
         expect(await t7StepState(later, 'ui')).toBe('READY'); // no one later in the queue jumped ahead
@@ -1102,7 +1104,10 @@ describe.skipIf(!url)('mission engine — real Postgres concurrency (Task 18)', 
       (w2Row.propertyStore as Record<string, string> | null)?.['Result.Held'],
     ].sort();
     expect(heldNames).toEqual(['Bay-A', 'Bay-B']); // each received its OWN reserved name, not the other's
-    expect((await t7Resource(wcId, 'Bay')).availableNames.slice().sort()).toEqual(['Bay-A', 'Bay-B']); // both freed back at terminal
+    // 2026-11-10: neither waiter declares a Release, so both names stay held after they complete.
+    expect((await t7Resource(wcId, 'Bay')).availableNames).toEqual([]);
+    expect(await t7Holders(w1)).toHaveLength(1);
+    expect(await t7Holders(w2)).toHaveLength(1);
   }, 30_000);
 
   // ── Test 5: sync across instances ───────────────────────────────────────────────────────────
@@ -1193,19 +1198,17 @@ describe.skipIf(!url)('mission engine — real Postgres concurrency (Task 18)', 
     }
   }, 180_000);
 
-  // ── Test 7: auto-release under contention ───────────────────────────────────────────────────
+  // ── Test 7: a cross-workflow Release under contention ──────────────────────────────────────
   //
-  // A holds, B waits, A is aborted, B is granted — proven through the ACTUAL cross-connection
-  // mechanism Task 5 built for this (context.ts's `pg_notify(NOTIFY_GRANT_CHANNEL, ...)`,
-  // production-wired to the worker loop's own wake in src/index.ts). This channel is real-PG
-  // -only in a stronger sense than the other six tests: LISTEN/NOTIFY is a genuine multi-session
-  // Postgres server feature with no meaningful single-connection analogue, so PGlite's existing
-  // coverage of this SAME scenario (env-resources-writeback.test.ts's "auto-release re-grants")
-  // can prove the DB rows end up correct, but can never prove the notification that is supposed
-  // to wake a DIFFERENT engine replica actually fires and names the right instance. This test
-  // LISTENs on a dedicated, separate connection (mirroring scenario (d)'s own proven idiom above)
-  // and asserts the notification's payload is exactly B's instance id.
-  it('(T7-7) auto-release under contention: A holds, B waits, A is aborted — B is granted via a REAL cross-connection pg_notify wake', async () => {
+  // 2026-11-10: A holds, B waits, A is ABORTED — and keeps its hold (Environment holds outlive
+  // the workflow). A third workflow R then releases Printer without ever holding it: A's holder
+  // row is taken over and B is granted, proven through the ACTUAL cross-connection mechanism
+  // (context.ts's `pg_notify(NOTIFY_GRANT_CHANNEL, ...)`, production-wired to the worker loop's
+  // own wake in src/index.ts). LISTEN/NOTIFY is a genuine multi-session Postgres feature with no
+  // single-connection analogue, so PGlite's coverage of this scenario
+  // (env-resources-writeback.test.ts) can prove the rows but never that the notification fires and
+  // names the right instances: B (granted) and A (its hold taken over).
+  it('(T7-7) cross-workflow release under contention: A holds, B waits, A is aborted and keeps it; R releases — B is granted via a REAL cross-connection pg_notify wake', async () => {
     const wcId = await t7MakeWc('abort-regrant');
     await db!.insert(wcResource).values({ workCenterId: wcId, name: 'Printer', resourceType: 'binary exclusive use' });
 
@@ -1220,12 +1223,17 @@ describe.skipIf(!url)('mission engine — real Postgres concurrency (Task 18)', 
     expect(await t7StepState(b, 'grab')).toBe('READY'); // B blocked behind A
     expect(await t7Waiters(wcId, 'Printer')).toHaveLength(1);
 
+    await requestAbort(db!, a, { kind: 'system', label: 'test' });
+    expect(await runControlPass(db!, testDeps())).toBe(true);
+    expect(await t7Status(a)).toBe('aborted');
+    expect(await t7Holders(a)).toHaveLength(1); // the hold outlives the workflow
+    expect(await t7Waiters(wcId, 'Printer')).toMatchObject([{ instanceId: b, granted: false }]);
+
     const rand = Math.random().toString(36).slice(2, 8);
     const appName = `t7-grant-wake-${rand}`;
     const listenerUrl = `${url}${url!.includes('?') ? '&' : '?'}application_name=${appName}`;
-    let notifications = 0;
-    let lastPayload: string | undefined;
-    const handle = createWakeListener(listenerUrl, (payload) => { notifications++; lastPayload = payload; }, NOTIFY_GRANT_CHANNEL);
+    const payloads = new Set<string>();
+    const handle = createWakeListener(listenerUrl, (payload) => { if (payload) payloads.add(payload); }, NOTIFY_GRANT_CHANNEL);
 
     try {
       await waitFor(async () => {
@@ -1235,28 +1243,36 @@ describe.skipIf(!url)('mission engine — real Postgres concurrency (Task 18)', 
         return (res.rowCount ?? 0) > 0;
       });
 
-      await requestAbort(db!, a, { kind: 'system', label: 'test' });
-      const did = await runControlPass(db!, testDeps());
-      expect(did).toBe(true);
+      const specR = {
+        local_id: 'wf', oid: 't7-abort-r', version: '1.0.0', last_modified_date: '2026-01-01',
+        environment_specifications: [ENV_PRINTER_T7],
+        steps: [
+          step('s1', 'START'),
+          step('rel', 'MATH', {
+            resource_command_specifications: [{ command_type: 'Release', resource_name: 'Printer', resource_source_oid: 'env-printer-t7' }],
+          }),
+          step('e1', 'END'),
+        ],
+        connections: [{ from_step_id: 's1', to_step_id: 'rel' }, { from_step_id: 'rel', to_step_id: 'e1' }],
+      };
+      const r = await t7SeedQueued(wcId, await t7MakeWorkflow(wcId, specR, 't7-abort-r'), specR, 't7-abort-r', 3);
+      for (let n = 0; n < 50 && (await t7Status(r)) !== 'completed'; n++) await runOnce(db!, testDeps());
+      expect(await t7Status(r)).toBe('completed');
 
-      await waitFor(async () => notifications > 0);
-      expect(lastPayload).toBe(b); // the notification names EXACTLY the instance that was granted
+      await waitFor(async () => payloads.has(b) && payloads.has(a));
     } finally {
       handle.stop();
     }
 
-    expect(await t7Status(a)).toBe('aborted');
-    const grantedRows = await t7Waiters(wcId, 'Printer');
-    expect(grantedRows).toHaveLength(1);
-    expect(grantedRows[0]).toMatchObject({ instanceId: b, granted: true });
+    expect(await t7Holders(a)).toEqual([]); // taken over by R's Release
 
-    // B consumes the grant on its own next claim (Task 5's Critical-1 resumeGrantedSteps flush)
-    // and completes.
+    // B consumes the grant on its own next claim and completes — still holding Printer.
     for (let n = 0; n < 50 && (await t7Status(b)) !== 'completed'; n++) await runOnce(db!, testDeps());
     expect(await t7Status(b)).toBe('completed');
     expect(await t7Waiters(wcId, 'Printer')).toEqual([]);
-    expect((await t7Resource(wcId, 'Printer')).inUse).toBe(0);
-  }, 20_000);
+    expect(await t7Holders(b)).toHaveLength(1);
+    expect((await t7Resource(wcId, 'Printer')).inUse).toBe(1);
+  }, 30_000);
 
   // ── Test 8: an operator verb racing a live transition ───────────────────────────────────────
   //

@@ -88,6 +88,7 @@ export function PreviewCanvas() {
             key={host.instanceKey}
             document={previewDocument}
             mode="run"
+            breakpoint={breakpoint}
             values={host.values}
             images={images}
             onEvent={host.onEvent}

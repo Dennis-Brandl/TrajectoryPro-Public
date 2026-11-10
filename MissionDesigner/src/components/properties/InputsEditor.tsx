@@ -18,6 +18,7 @@ import { Input } from '@mission/ui'
 import { Label } from '@mission/ui'
 import { Plus, Trash2 } from 'lucide-react'
 import { ValuePropertyInput } from './ValuePropertyInput'
+import { ValueTypeRadios } from './ValueTypeRadios'
 import type { ParameterSpec } from '@/types/nodes'
 import { generateOID, WORKER_INTERNAL } from '@/lib/snowflake'
 import { useSourcePickerExtraGroups } from '@/hooks/useSourcePickerExtraGroups'
@@ -111,26 +112,11 @@ function InputsEditorComponent({
                       className="h-7 text-sm flex-1 min-w-0"
                       disabled={readOnly}
                     />
-                    <label className="flex items-center gap-1 cursor-pointer shrink-0">
-                      <input
-                        type="radio"
-                        name={`valueType-${input.id}`}
-                        checked={!isProperty}
-                        onChange={() => updateInput(input.id, { valueType: 'literal' })}
-                        className="h-3 w-3 accent-muted-foreground"
-                      />
-                      <span className="text-xs text-muted-foreground">Text</span>
-                    </label>
-                    <label className="flex items-center gap-1 cursor-pointer shrink-0">
-                      <input
-                        type="radio"
-                        name={`valueType-${input.id}`}
-                        checked={isProperty}
-                        onChange={() => updateInput(input.id, { valueType: 'property' })}
-                        className="h-3 w-3 accent-muted-foreground"
-                      />
-                      <span className="text-xs text-muted-foreground">Source</span>
-                    </label>
+                    <ValueTypeRadios
+                      name={`valueType-${input.id}`}
+                      isProperty={isProperty}
+                      onChange={(valueType) => updateInput(input.id, { valueType })}
+                    />
                   </div>
                   {isProperty ? (
                     <ValuePropertyInput

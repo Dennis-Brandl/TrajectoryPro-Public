@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import type { Block, GridSpan } from '@mission/form-schema'
+import type { Block, BreakpointKey, GridSpan } from '@mission/form-schema'
 
 /** Even split of 12 grid columns across `n` blocks: floor(12/n), remainder +1 to the leading
  *  blocks (n=3 → [4,4,4]; n=5 → [3,3,2,2,2]). Precondition: 0 <= n <= 12. */
@@ -28,12 +28,17 @@ export function computeEvenSpans(n: number): number[] {
 
 /** Recompute `layout.span.base` for every block in a row to the even split, preserving each
  *  block's tablet/phone span overrides and all other layout fields. Used whenever a row's block
- *  count changes (spec §4.4). base-only by design — per-breakpoint spans are P3.3b. */
-export function apportionRowSpans(blocks: Block[]): Block[] {
+ *  count changes (spec §4.4). On the Tablet or Phone tab (`bp`), where the row is that screen's
+ *  own arrangement, the even split is written as that screen's span instead and desktop's
+ *  `span.base` is left alone. */
+export function apportionRowSpans(blocks: Block[], bp: BreakpointKey = 'base'): Block[] {
   const spans = computeEvenSpans(blocks.length)
   return blocks.map((b, i) => {
-    const base = spans[i] as GridSpan
-    const span = { ...(b.layout?.span ?? { base }), base }
+    const value = spans[i] as GridSpan
+    const span =
+      bp === 'base'
+        ? { ...(b.layout?.span ?? { base: value }), base: value }
+        : { ...(b.layout?.span ?? { base: 12 as GridSpan }), [bp]: value }
     return { ...b, layout: { ...b.layout, span } }
   })
 }

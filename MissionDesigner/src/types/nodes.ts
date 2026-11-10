@@ -312,8 +312,16 @@ export interface StepResourceCommand {
   resourceSourceOid?: string
   /** Command type: Acquire or Release */
   commandType: ResourceCommandType
-  /** Count for Count Limited resources (default 1) */
+  /** Count for Count Limited resources (default 1). The fixed number used in Text mode;
+   *  kept while in Source mode so switching back to Text restores it. */
   count: number
+  /** Count Limited Acquire/Release only: where the count comes from. Absent = 'literal'
+   *  (the fixed `count`); 'property' = read at runtime from the key in `countProperty`.
+   *  Exports as `amount_property` (and no `amount`). */
+  countValueType?: 'literal' | 'property'
+  /** Property key the count is read from when `countValueType` is 'property'
+   *  (same key format an input parameter's Source value uses). */
+  countProperty?: string
   /** Value property ref for storing the acquired named resource (Named type only) */
   target?: string
   /** Value property ref or literal for the data to send (Sync Send only) */

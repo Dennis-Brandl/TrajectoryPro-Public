@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import type { Block, FormDocument, Row } from '@mission/form-schema'
+import type { Block, BreakpointKey, FormDocument, Row } from '@mission/form-schema'
 import { generateOID, WORKER_INTERNAL } from '@/lib/snowflake'
 import { apportionRowSpans } from './span-apportion'
 import { structuresEqual, type MoveTarget } from './structural-ops'
@@ -53,9 +53,15 @@ export function ownRowTarget(doc: FormDocument, blockId: string): MoveTarget | n
  * "Arrange in N columns": make the element's row hold `n` elements. Short rows pull elements up,
  * one at a time and in order, from the rows below it in the same section (a row left empty is
  * removed); long rows push the extra elements down onto new rows of `n` just below. Column
- * widths are re-divided evenly. Returns `doc` itself when nothing changes.
+ * widths are re-divided evenly, for the screen tab being edited (`bp`: desktop's `span.base` on
+ * Desktop, that screen's own span on Tablet/Phone). Returns `doc` itself when nothing changes.
  */
-export function arrangeColumns(doc: FormDocument, blockId: string, n: number): FormDocument {
+export function arrangeColumns(
+  doc: FormDocument,
+  blockId: string,
+  n: number,
+  bp: BreakpointKey = 'base',
+): FormDocument {
   const loc = locate(doc, blockId)
   const cols = Math.max(1, Math.min(MAX_ROW_BLOCKS, Math.floor(n)))
   if (!loc) return doc
@@ -83,10 +89,10 @@ export function arrangeColumns(doc: FormDocument, blockId: string, n: number): F
   }
   rows.splice(rows.indexOf(row) + 1, 0, ...newRows)
 
-  for (const r of touched) r.blocks = apportionRowSpans(r.blocks)
+  for (const r of touched) r.blocks = apportionRowSpans(r.blocks, bp)
   const next: FormDocument = {
     ...doc,
     sections: doc.sections.map((s, si) => (si === loc.si ? { ...s, rows } : s)),
   }
-  return structuresEqual(doc, next) ? doc : next
+  return structuresEqual(doc, next, bp) ? doc : next
 }

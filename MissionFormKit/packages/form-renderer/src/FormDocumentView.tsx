@@ -11,11 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import { useMemo, useState } from 'react'
-import type { FormDocument, FormEvent, FormValues, Row, Section, SignatureDraft } from '@mission/form-schema'
-import { computeValidation } from '@mission/form-schema'
+import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import type {
+  BreakpointKey,
+  FormDocument,
+  FormEvent,
+  FormValues,
+  Row,
+  Section,
+  SignatureDraft,
+} from '@mission/form-schema'
+import { computeValidation, documentHasRowsAt, resolveSectionRows } from '@mission/form-schema'
 import { blockLayoutClasses } from './blockClasses'
-import { FormRendererContext, type ButtonJobs, useFormRenderer } from './context'
+import { FormRendererContext, type ButtonJobs, type TimerRun, useFormRenderer } from './context'
 import { renderBlock } from './blocks/index'
 
 export interface FormDocumentViewProps {
@@ -66,7 +74,46 @@ export interface FormDocumentViewProps {
    * See `docs/HOST-CONTRACT.md` §8.
    */
   buttonJobs?: ButtonJobs
+  /**
+   * Draw this screen type's rows. Omit it and the renderer measures its own width, using the
+   * same thresholds as layout.css (desktop >= 1024px, tablet >= 600px, phone below).
+   * Only a section with `rowsAt` changes rows; spans, order and visibility always follow
+   * the container queries in layout.css.
+   */
+  breakpoint?: BreakpointKey
   className?: string
+}
+
+/** The screen type for a container width, matching layout.css's container queries. */
+export function breakpointForWidth(width: number): BreakpointKey {
+  if (width >= 1024) return 'base'
+  if (width >= 600) return 'tablet'
+  return 'phone'
+}
+
+/**
+ * The screen type of the viewport element, kept current as it resizes. Only measured when
+ * `enabled` (a document with per-screen rows), so other forms do no layout work at all.
+ * Measured before paint, so a phone never flashes the desktop rows first. Without a width
+ * (no layout engine, e.g. jsdom) it stays on desktop.
+ */
+function useContainerBreakpoint(ref: RefObject<HTMLDivElement | null>, enabled: boolean): BreakpointKey {
+  const [bp, setBp] = useState<BreakpointKey>('base')
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!enabled || !el) return
+    const apply = (width: number) => {
+      if (width > 0) setBp(breakpointForWidth(width))
+    }
+    apply(el.getBoundingClientRect().width)
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) apply(entry.contentRect.width)
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ref, enabled])
+  return bp
 }
 
 /** Stable identity, so omitting `values` does not invalidate the context every render. */
@@ -83,9 +130,15 @@ export function FormDocumentView({
   signatureHint = null,
   surfaceColor = null,
   buttonJobs,
+  breakpoint,
   className,
 }: FormDocumentViewProps) {
   const [settledTimers] = useState(() => new Set<string>())
+  const [timerRuns] = useState(() => new Map<string, TimerRun>())
+  const viewportRef = useRef<HTMLDivElement>(null)
+  const perScreenRows = useMemo(() => documentHasRowsAt(doc), [doc])
+  const measured = useContainerBreakpoint(viewportRef, perScreenRows && breakpoint === undefined)
+  const tier: BreakpointKey = breakpoint ?? (perScreenRows ? measured : 'base')
 
   const contextValue = useMemo(
     () => ({
@@ -97,6 +150,7 @@ export function FormDocumentView({
       signatureHint,
       surfaceColor,
       buttonJobs: buttonJobs ?? null,
+      timerRuns,
       emit: (event: FormEvent) => {
         if (mode !== 'run') return
         onEvent?.(event)
@@ -109,7 +163,20 @@ export function FormDocumentView({
         }
       },
     }),
-    [mode, values, onEvent, images, doc, settledTimers, signature, signatureError, signatureHint, surfaceColor, buttonJobs],
+    [
+      mode,
+      values,
+      onEvent,
+      images,
+      doc,
+      settledTimers,
+      timerRuns,
+      signature,
+      signatureError,
+      signatureHint,
+      surfaceColor,
+      buttonJobs,
+    ],
   )
 
   const handleTimerSettle = (fieldName: string) => {
@@ -123,16 +190,21 @@ export function FormDocumentView({
 
   return (
     <FormRendererContext.Provider value={contextValue}>
-      <div className={['tfk-viewport', className].filter(Boolean).join(' ')} data-mode={mode}>
+      <div
+        ref={viewportRef}
+        className={['tfk-viewport', className].filter(Boolean).join(' ')}
+        data-mode={mode}
+        data-rows-breakpoint={perScreenRows ? tier : undefined}
+      >
         <div className="tfk-scroll">
           {content.map((section) => (
-            <SectionView key={section.id} section={section} onTimerSettle={handleTimerSettle} />
+            <SectionView key={section.id} section={section} bp={tier} onTimerSettle={handleTimerSettle} />
           ))}
         </div>
         {footer.length > 0 && (
           <div className="tfk-footer">
             {footer.map((section) => (
-              <SectionView key={section.id} section={section} onTimerSettle={handleTimerSettle} />
+              <SectionView key={section.id} section={section} bp={tier} onTimerSettle={handleTimerSettle} />
             ))}
           </div>
         )}
@@ -143,14 +215,17 @@ export function FormDocumentView({
 
 function SectionView({
   section,
+  bp,
   onTimerSettle,
 }: {
   section: Section
+  bp: BreakpointKey
   onTimerSettle: (fieldName: string) => void
 }) {
+  const rows = resolveSectionRows(section, bp)
   return (
     <section className="tfk-section" data-section-id={section.id} data-section-role={section.role}>
-      {section.rows.map((row) => (
+      {rows.map((row) => (
         <RowView key={row.id} row={row} onTimerSettle={onTimerSettle} />
       ))}
     </section>

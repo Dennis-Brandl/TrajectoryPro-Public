@@ -11,7 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import type { Block, FormDocument, Row } from '@mission/form-schema'
+import type { Block, BreakpointKey, FormDocument, Row } from '@mission/form-schema'
+import { resolveAt } from '@mission/form-schema'
 import { generateOID, WORKER_INTERNAL } from '@/lib/snowflake'
 import { apportionRowSpans } from './span-apportion'
 
@@ -37,13 +38,14 @@ function locateBlock(doc: FormDocument, blockId: string): BlockLoc | null {
   return null
 }
 
-function spanBase(b: Block): number {
-  return b.layout?.span?.base ?? 12
+function spanAt(b: Block, bp: BreakpointKey): number {
+  return resolveAt(b.layout?.span, bp, 12)
 }
 
-/** Structural + span-base identity: the fields that make a document render differently. Used to
- *  collapse no-op moves back to the original reference so no phantom undo entry is recorded. */
-export function structuresEqual(a: FormDocument, b: FormDocument): boolean {
+/** Structural + span identity (the span of the screen being edited, desktop by default): the
+ *  fields that make a document render differently. Used to collapse no-op moves back to the
+ *  original reference so no phantom undo entry is recorded. */
+export function structuresEqual(a: FormDocument, b: FormDocument, bp: BreakpointKey = 'base'): boolean {
   if (a.sections.length !== b.sections.length) return false
   for (let i = 0; i < a.sections.length; i++) {
     const sa = a.sections[i]
@@ -55,14 +57,21 @@ export function structuresEqual(a: FormDocument, b: FormDocument): boolean {
       if (ra.id !== rb.id || ra.blocks.length !== rb.blocks.length) return false
       for (let k = 0; k < ra.blocks.length; k++) {
         if (ra.blocks[k].id !== rb.blocks[k].id) return false
-        if (spanBase(ra.blocks[k]) !== spanBase(rb.blocks[k])) return false
+        if (spanAt(ra.blocks[k], bp) !== spanAt(rb.blocks[k], bp)) return false
       }
     }
   }
   return true
 }
 
-export function moveBlock(doc: FormDocument, blockId: string, target: MoveTarget): FormDocument {
+/** `bp`: the screen tab being edited. Re-divided column widths are written for that screen only
+ *  (desktop's `span.base` on Desktop, the screen's own span on Tablet/Phone). */
+export function moveBlock(
+  doc: FormDocument,
+  blockId: string,
+  target: MoveTarget,
+  bp: BreakpointKey = 'base',
+): FormDocument {
   const loc = locateBlock(doc, blockId)
   if (!loc) return doc
   const sourceRow = doc.sections[loc.sectionIdx].rows[loc.rowIdx]
@@ -85,7 +94,7 @@ export function moveBlock(doc: FormDocument, blockId: string, target: MoveTarget
         .map((r, ri) => {
           if (ri !== loc.rowIdx) return r
           const blocks = r.blocks.filter((b) => b.id !== blockId)
-          return blocks.length > 0 ? { ...r, blocks: apportionRowSpans(blocks) } : { ...r, blocks }
+          return blocks.length > 0 ? { ...r, blocks: apportionRowSpans(blocks, bp) } : { ...r, blocks }
         })
         .filter((r) => r.blocks.length > 0)
       return { ...s, rows }
@@ -113,7 +122,7 @@ export function moveBlock(doc: FormDocument, blockId: string, target: MoveTarget
           const at = idx === -1 ? r.blocks.length : idx // unknown/absent beforeBlockId → append to end
           const blocks = [...r.blocks]
           blocks.splice(at, 0, block)
-          return { ...r, blocks: apportionRowSpans(blocks) }
+          return { ...r, blocks: apportionRowSpans(blocks, bp) }
         }),
       })),
     }
@@ -121,7 +130,7 @@ export function moveBlock(doc: FormDocument, blockId: string, target: MoveTarget
     // sole-block move reuses the row id so it reads as moving the row (enables no-op detection).
     const newRow: Row = {
       id: soleInRow ? sourceRow.id : generateOID(WORKER_INTERNAL),
-      blocks: apportionRowSpans([block]), // single block → span.base 12, overrides preserved
+      blocks: apportionRowSpans([block], bp), // single block → span 12 on this screen, overrides preserved
     }
     next = {
       ...removed,
@@ -136,7 +145,7 @@ export function moveBlock(doc: FormDocument, blockId: string, target: MoveTarget
     }
   }
 
-  return structuresEqual(doc, next) ? doc : next
+  return structuresEqual(doc, next, bp) ? doc : next
 }
 
 export function moveRow(doc: FormDocument, rowId: string, target: RowTarget): FormDocument {
@@ -171,7 +180,12 @@ export function moveRow(doc: FormDocument, rowId: string, target: RowTarget): Fo
   return structuresEqual(doc, next) ? doc : next
 }
 
-export function insertBlockAt(doc: FormDocument, block: Block, target: MoveTarget): FormDocument {
+export function insertBlockAt(
+  doc: FormDocument,
+  block: Block,
+  target: MoveTarget,
+  bp: BreakpointKey = 'base',
+): FormDocument {
   if (target.kind === 'in-row') {
     return {
       ...doc,
@@ -183,12 +197,12 @@ export function insertBlockAt(doc: FormDocument, block: Block, target: MoveTarge
           const at = idx === -1 ? r.blocks.length : idx // unknown/absent beforeBlockId → append to end
           const blocks = [...r.blocks]
           blocks.splice(at, 0, block)
-          return { ...r, blocks: apportionRowSpans(blocks) }
+          return { ...r, blocks: apportionRowSpans(blocks, bp) }
         }),
       })),
     }
   }
-  const newRow: Row = { id: generateOID(WORKER_INTERNAL), blocks: apportionRowSpans([block]) }
+  const newRow: Row = { id: generateOID(WORKER_INTERNAL), blocks: apportionRowSpans([block], bp) }
   return {
     ...doc,
     sections: doc.sections.map((s) => {

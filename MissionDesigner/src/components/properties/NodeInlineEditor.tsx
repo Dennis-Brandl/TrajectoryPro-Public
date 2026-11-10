@@ -644,6 +644,7 @@ export function NodeInlineEditor({
               onChange={(resourceCommands) => updateDraft({ resourceCommands })}
               readOnly={false}
               hideHeading
+              nodeId={nodeId}
             />
           </CollapsibleSection>
         )}

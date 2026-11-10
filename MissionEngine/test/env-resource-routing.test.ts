@@ -123,13 +123,14 @@ test('an environment-scoped Acquire routes to the shared tier and records envHol
   const localKeys = (engineState.resources as SerializedResources).resources.map(([k]) => k);
   expect(localKeys).toEqual(['wf-mixed:Ink']);
 
-  // Task 5 landed after this test was first written: an instance that reaches 'completed'
-  // still holding an environment resource now auto-releases it as part of that same settle
-  // (spec §5.5 / user decision U4) — envHolds is drained to empty rather than surviving into
-  // the persisted engine_state, and the registry itself shows the capacity freed again.
-  expect(engineState.envHolds).toEqual([]);
+  // 2026-11-10: an instance that reaches 'completed' still holding an environment resource
+  // KEEPS it (Environment holds outlive the workflow; another workflow or an operator releases
+  // them) — envHolds survives into the persisted engine_state, and the registry still shows the
+  // unit held, with this instance as its holder.
+  expect(engineState.envHolds).toEqual([{ name: 'Printer', stepOid: 's2', amount: 1, heldName: null }]);
   const [printerRow] = await db.select().from(wcResource).where(eq(wcResource.name, 'Printer'));
-  expect(printerRow.inUse).toBe(0);
+  expect(printerRow.inUse).toBe(1);
+  expect(await db.select().from(wcResourceHolder).where(eq(wcResourceHolder.instanceId, wi.id))).toHaveLength(1);
 
   await close();
 });
@@ -227,17 +228,17 @@ test('a blocked environment Acquire is granted via resumeGrantedSteps, which rec
   expect(midHolders).toHaveLength(1);
   expect(midHolders[0]).toMatchObject({ name: 'Lock', stepOid: 'blocked', amount: 1, heldName: null });
 
-  // Now finish the instance — auto-release must drain what write-back just proved was really
-  // held.
+  // Now finish the instance — the hold write-back just proved is real survives the end of the
+  // workflow (2026-11-10: Environment holds are not released when a workflow ends).
   await submitUserAction(db, wi.id, { step_oid: 'ui', action: 'submit' }, 0, testDeps());
 
   const after = await instanceRow(db, wi.id);
   expect(after.status).toBe('completed');
   const engineState = after.engineState as EngineState;
-  expect(engineState.envHolds).toEqual([]);
+  expect(engineState.envHolds).toEqual([{ name: 'Lock', stepOid: 'blocked', amount: 1, heldName: null }]);
   const [lockRow] = await db.select().from(wcResource).where(eq(wcResource.name, 'Lock'));
-  expect(lockRow.inUse).toBe(0);
-  expect((await db.select().from(wcResourceHolder).where(eq(wcResourceHolder.instanceId, wi.id)))).toEqual([]);
+  expect(lockRow.inUse).toBe(1);
+  expect((await db.select().from(wcResourceHolder).where(eq(wcResourceHolder.instanceId, wi.id)))).toHaveLength(1);
 
   await close();
 });
@@ -327,14 +328,13 @@ test('a PARTIAL environment Release Pool Amount decrements the matched envHolds 
   const after = await instanceRow(db, wi.id);
   expect(after.status).toBe('completed');
   const engineState = after.engineState as EngineState;
-  // Task 5: the instance reaches 'completed' still holding the remaining 2 units (acquired 3,
-  // explicitly released only 1) — settleTerminal's auto-release drains the rest. A
-  // splice-the-whole-entry bug in removeEnvHoldAt would empty envHolds the moment the PARTIAL
-  // release ran, so auto-release would see nothing to do and never release the other 2 —
-  // leaving the registry wedged at inUse 2 (not 0) even though the instance is 'completed'.
-  expect(engineState.envHolds).toEqual([]);
+  // The instance reaches 'completed' still holding the remaining 2 units (acquired 3, explicitly
+  // released only 1), and keeps them (2026-11-10: no release on terminal). A
+  // splice-the-whole-entry bug in removeEnvHoldAt would empty envHolds — and with it the holder
+  // row — the moment the PARTIAL release ran, leaving 2 units in use that nobody is shown holding.
+  expect(engineState.envHolds).toEqual([{ name: 'Slots', stepOid: 's2', amount: 2, heldName: null }]);
   const [slotsRow] = await db.select().from(wcResource).where(eq(wcResource.name, 'Slots'));
-  expect(slotsRow.inUse).toBe(0);
+  expect(slotsRow.inUse).toBe(2);
 
   await close();
 });
@@ -379,17 +379,16 @@ test('a FAILED environment Release (no name resolved) leaves the envHolds entry 
   const after = await instanceRow(db, wi.id);
   expect(after.status).toBe('completed');
   const engineState = after.engineState as EngineState;
-  // Task 5: the explicit Release never actually happened (mgr.release returned false — no
-  // `target`, so no name resolved), so the instance reaches 'completed' still holding 'A'.
-  // settleTerminal's auto-release is what finally returns it to the pool. An un-gated removal
-  // in removeEnvHoldAt would have dropped this entry the moment the FAILED release ran, so
-  // auto-release would see nothing to do and 'A' would stay reserved forever even though the
-  // instance is 'completed' — the registry's availableNames is what actually proves it came
-  // back.
-  expect(engineState.envHolds).toEqual([]);
+  // The explicit Release never actually happened (mgr.release returned false — no `target`, so
+  // no name resolved), so the instance reaches 'completed' still holding 'A', and keeps it
+  // (2026-11-10: no release on terminal). An un-gated removal in removeEnvHoldAt would have
+  // dropped this entry — and its holder row — the moment the FAILED release ran, leaving 'A'
+  // reserved with nobody shown holding it.
+  expect(engineState.envHolds).toEqual([{ name: 'Bay', stepOid: 's2', amount: 1, heldName: 'A' }]);
   const [bayRow] = await db.select().from(wcResource).where(eq(wcResource.name, 'Bay'));
-  expect(bayRow.availableNames).toEqual(expect.arrayContaining(['A']));
-  expect(bayRow.inUse).toBe(0);
+  expect(bayRow.availableNames).toEqual(['B']);
+  expect(bayRow.inUse).toBe(1);
+  expect(await db.select().from(wcResourceHolder).where(eq(wcResourceHolder.instanceId, wi.id))).toHaveLength(1);
 
   await close();
 });

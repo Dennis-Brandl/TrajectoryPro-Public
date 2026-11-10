@@ -533,6 +533,11 @@
           "description": "OID of the workflow or environment that defines the resource."
         },
         "amount": { "type": "number" },
+        "amount_property": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Property key the count is read from when the command runs (Acquire Pool Amount / Release Pool Amount). Wins over amount."
+        },
         "target": { "type": "string" },
         "source": { "type": "string" }
       },

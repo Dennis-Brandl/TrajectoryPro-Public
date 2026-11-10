@@ -648,6 +648,15 @@ function validateReferences(
       // 4. Named resource Acquire/Release — must have target set and valid
       if (cmd.resourceName) {
         const resSpec = validResources.get(cmd.resourceName)
+        // 4a. Count Limited Acquire/Release whose count comes from a property — needs a key
+        if (
+          resSpec?.resourceType === 'Count Limited' &&
+          (cmd.commandType === 'Acquire' || cmd.commandType === 'Release') &&
+          cmd.countValueType === 'property' &&
+          !cmd.countProperty?.trim()
+        ) {
+          errors.push(makeError(`Pick where the ${cmd.commandType} count for "${cmd.resourceName}" comes from`))
+        }
         if (resSpec?.resourceType === 'Named') {
           if (cmd.commandType === 'Acquire') {
             if (!cmd.target) {

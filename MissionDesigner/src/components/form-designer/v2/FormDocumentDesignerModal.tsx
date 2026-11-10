@@ -33,6 +33,7 @@ import { validateFormDocument } from '@mission/form-schema'
 import { useFlowStore } from '@/stores/flowStore'
 import { useFormDocumentStore } from '@/stores/formDocumentStore'
 import { seedDocument, pruneEmptyFooters } from '@/lib/form-document/document-ops'
+import { normalizeForSave, projectForScreen } from '@/lib/form-document/screen-rows'
 import type { StepNodeData } from '@/types/nodes'
 import { FormDocumentCanvas } from './FormDocumentCanvas'
 import { FormPalette, PALETTE_ITEMS } from './FormPalette'
@@ -77,10 +78,12 @@ export default function FormDocumentDesignerModal() {
   const onDragCancel = () => setActiveId(null)
   const onDragEnd = (e: DragEndEvent) => {
     setActiveId(null)
+    const { document: doc, activeBreakpoint } = useFormDocumentStore.getState()
+    // Drop targets are rows of the tab being edited (Tablet and Phone can have their own).
     const action = dropResolver(
       String(e.active.id),
       e.over ? String(e.over.id) : null,
-      useFormDocumentStore.getState().document,
+      projectForScreen(doc, activeBreakpoint),
     )
     if (!action) return
     const store = useFormDocumentStore.getState()
@@ -105,7 +108,8 @@ export default function FormDocumentDesignerModal() {
   const handleSave = () => {
     const { openNodeId: nodeId, document: rawDocument, actionDirty, actionDraft } = useFormDocumentStore.getState()
     if (!nodeId) return
-    const document = pruneEmptyFooters(rawDocument) // an emptied bottom bar is not saved
+    // An emptied bottom bar is not saved; Tablet/Phone rows are tidied of ids they no longer use.
+    const document = normalizeForSave(pruneEmptyFooters(rawDocument))
     const result = validateFormDocument(document)
     if (!result.ok) {
       toast.error(`Form document is invalid: ${result.errors[0] ?? 'unknown error'}`)

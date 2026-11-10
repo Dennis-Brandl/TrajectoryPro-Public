@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { describe, expect, it } from 'vitest'
-import { formDocumentJsonSchema } from '@mission/form-schema'
+import { formDocumentJsonSchema, validateFormDocument } from '@mission/form-schema'
+import { normalizeForSave } from '@/lib/form-document/screen-rows'
 import designerCopy from '@/lib/schemas/form-document.json'
 import { validateWorkflowLibrary } from '@/lib/import/schema-validator'
 
@@ -73,6 +74,30 @@ describe('envelope-level form_document validation', () => {
   it('rejects a structurally invalid form_document (live $ref, not decorative)', () => {
     const bad = { version: 2, sections: [{ id: 'content', role: 'not-a-role', rows: [] }] }
     expect(validateWorkflowLibrary(libraryWithStepField({ form_document: bad })).success).toBe(false)
+  })
+  it('accepts a saved form with Tablet/Phone rows (rowsAt)', () => {
+    const withRows = normalizeForSave({
+      version: 2,
+      sections: [
+        {
+          id: 'content',
+          role: 'content',
+          rows: [
+            { id: 'r1', blocks: [{ id: 'a', type: 'text', content: 'a' }] },
+            { id: 'r2', blocks: [{ id: 'b', type: 'text', content: 'b' }] },
+          ],
+          rowsAt: {
+            tablet: [{ id: 't1', blockIds: ['a', 'b'] }],
+            phone: [
+              { id: 'p1', gap: 'sm', blockIds: ['b', 'gone'] },
+              { id: 'p2', blockIds: ['a'] },
+            ],
+          },
+        },
+      ],
+    })
+    expect(validateFormDocument(withRows).ok).toBe(true)
+    expect(validateWorkflowLibrary(libraryWithStepField({ form_document: withRows })).success).toBe(true)
   })
   it('still accepts legacy form_layout_config (deprecated-but-valid)', () => {
     const legacy = [{ deviceType: 'desktop', canvasWidth: 768, canvasHeight: 1024, elements: [] }]

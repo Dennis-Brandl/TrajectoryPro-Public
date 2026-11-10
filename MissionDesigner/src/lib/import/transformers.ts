@@ -137,6 +137,10 @@ export function transformResourceCommands(
           ? 'Release'
           : 'Acquire',
     count: cmd.amount ?? 1,
+    // A Source-mode count travels as amount_property (with no amount).
+    ...(typeof cmd.amount_property === 'string' && cmd.amount_property.trim()
+      ? { countValueType: 'property' as const, countProperty: cmd.amount_property }
+      : {}),
     ...(cmd.target ? { target: cmd.target } : {}),
     ...(cmd.source ? { source: cmd.source } : {}),
   }))

@@ -24,6 +24,12 @@
 // `maxBatches` row-deleting batches so a huge backlog cannot monopolise a connection; the next timer tick continues.
 // Child rows (step_instance, trace_entry, wc_resource_waiter) cascade; runtime_history survives.
 //
+// 2026-11-10: an instance that still OWNS an environment hold (a wc_resource_holder row) is not
+// swept. Environment holds outlive the workflow that took them, and the holder row's FK cascade
+// would otherwise drop the row while wc_resource.in_use stays elevated — the hold would turn into
+// an untracked unit and Commander would stop showing who holds it. Once another workflow's Release
+// or an operator verb takes the last hold over, the instance is swept on a later tick as usual.
+//
 // The cutoff binds `now()` from the caller, never SQL's own clock: config.ts's EngineDeps doc
 // states the engine-wide invariant that every time read goes through `deps.now`, so tests can
 // pump the clock deterministically (a literal SQL `now()` made other tests' historical fake-clock
@@ -77,6 +83,7 @@ export async function runSweep(db: Db, now: () => Date, opts: SweepOptions = {})
           where work_center_id = ${wc.id}
             and status in (${terminal})
             and completed_at < ${cutoff.toISOString()}
+            and not exists (select 1 from wc_resource_holder h where h.instance_id = workflow_instance.id)
           order by completed_at
           limit ${batchSize}
           for update skip locked

@@ -36,10 +36,15 @@ function elapsedSince(startedAt: number, durationSeconds: number): number {
 }
 
 export function TimerBlockView({ block, onSettle }: { block: TimerBlock; onSettle?: (fieldName: string) => void }) {
-  const { mode, emit } = useFormRenderer()
-  const [elapsed, setElapsed] = useState(0)
-  const [settled, setSettled] = useState(false)
-  const settledRef = useRef(false)
+  const { mode, emit, timerRuns } = useFormRenderer()
+  // A run already recorded for this block means this is a remount (the screen type changed and
+  // the block moved row): carry on with that run rather than starting the clock again.
+  const priorRun = mode === 'run' ? timerRuns?.get(block.id) : undefined
+  const [elapsed, setElapsed] = useState(() =>
+    priorRun ? (priorRun.settledAt ?? elapsedSince(priorRun.startedAt, block.durationSeconds)) : 0,
+  )
+  const [settled, setSettled] = useState(priorRun?.settledAt !== undefined)
+  const settledRef = useRef(priorRun?.settledAt !== undefined)
   const startedAtRef = useRef(0)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -63,8 +68,12 @@ export function TimerBlockView({ block, onSettle }: { block: TimerBlock; onSettl
 
   useEffect(() => {
     if (mode !== 'run' || settledRef.current) return
-    emitRef.current({ kind: 'timerState', fieldName: block.fieldName, state: 'running', elapsedSeconds: 0 })
-    const startedAt = Date.now()
+    const run = timerRuns?.get(block.id)
+    const startedAt = run?.startedAt ?? Date.now()
+    if (!run) {
+      timerRuns?.set(block.id, { startedAt })
+      emitRef.current({ kind: 'timerState', fieldName: block.fieldName, state: 'running', elapsedSeconds: 0 })
+    }
     startedAtRef.current = startedAt
     intervalRef.current = setInterval(() => {
       if (settledRef.current) return
@@ -74,6 +83,7 @@ export function TimerBlockView({ block, onSettle }: { block: TimerBlock; onSettl
       clearTimer()
       settledRef.current = true
       setSettled(true)
+      timerRuns?.set(block.id, { startedAt, settledAt: block.durationSeconds })
       emitRef.current({
         kind: 'timerState',
         fieldName: block.fieldName,
@@ -95,6 +105,7 @@ export function TimerBlockView({ block, onSettle }: { block: TimerBlock; onSettl
     // most recent tick up to a minute behind, and this number is reported process data.
     const at = elapsedSince(startedAtRef.current, block.durationSeconds)
     setElapsed(at)
+    timerRuns?.set(block.id, { startedAt: startedAtRef.current, settledAt: at })
     emit({ kind: 'timerState', fieldName: block.fieldName, state: 'stopped', elapsedSeconds: at })
     onSettle?.(block.fieldName)
   }

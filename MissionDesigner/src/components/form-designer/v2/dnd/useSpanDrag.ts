@@ -16,6 +16,8 @@ import { useFormDocumentStore } from '@/stores/formDocumentStore'
 import { resolveBp } from '@/lib/form-document/layout-ops'
 import { findBlock } from '@/lib/form-document/document-ops'
 import { resizeSpan as resizeSpanOp, snapSpanDelta } from '@/lib/form-document/span-resize'
+import { applyScreenEdit } from '@/lib/form-document/screen-rows'
+import { generateOID, WORKER_INTERNAL } from '@/lib/snowflake'
 
 export interface SeamParams {
   rowId: string
@@ -59,7 +61,16 @@ export function createSpanDragController(store: Store = useFormDocumentStore) {
       if (!active) return
       const bp = store.getState().activeBreakpoint
       const delta = snapSpanDelta(clientX - active.startX, active.colWidthPx, active.leftSpan, active.rightSpan)
-      store.getState().setDocument(resizeSpanOp(baseline, active.leftId, active.rightId, delta, bp))
+      // The pair is adjacent in the rows of the tab being edited, which may be Tablet's or Phone's own.
+      const { leftId, rightId } = active
+      store.getState().setDocument(
+        applyScreenEdit(
+          baseline,
+          bp,
+          (view) => resizeSpanOp(view, leftId, rightId, delta, bp),
+          () => generateOID(WORKER_INTERNAL),
+        ),
+      )
     },
     end() {
       if (!active) return

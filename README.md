@@ -26,9 +26,12 @@ that runs the fleet.
 | Mission Control DB | `mission-control-db/` | Shared Postgres schema, migrations, and data access used by Mission Commander and Mission Engine |
 
 See the YouTube video https://youtu.be/x7oWRsJPXIw that provides an overview of TrajectoryPro. 
+
 See the YouTube video https://youtu.be/FO_P0GOdXV8 that provides installation information. 
+
 See the YouTube video https://youtu.be/Yu8GHqvUZCY that provides information on workflow structure and step types.
-See the YouTube video https://youtu.be/IW4e7IzWFlI that provides information on the User Interaction screen element types
+
+See the YouTube video https://youtu.be/IW4e7IzWFlI that provides information on the User Interaction screen element types.
 
 ## Cloning
 

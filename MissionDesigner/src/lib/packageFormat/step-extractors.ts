@@ -33,6 +33,8 @@ export function extractResourceCommands(data: Record<string, unknown>): Resource
         resourceSourceOid?: string
         commandType: string
         count?: number
+        countValueType?: 'literal' | 'property'
+        countProperty?: string
         target?: string
         source?: string
       }>
@@ -46,6 +48,12 @@ export function extractResourceCommands(data: Record<string, unknown>): Resource
     resource_source_type: (cmd.resourceSourceType ?? 'workflow') as 'workflow' | 'environment',
     resource_source_oid: cmd.resourceSourceOid ?? '',
     amount: cmd.count,
+    // Source-mode count: carry the key. resolveResourceSources keeps it (and drops
+    // `amount`) only on the Count Limited pool commands; elsewhere it is dropped and
+    // the literal amount stays. An empty key exports as Text (validation flags it).
+    ...(cmd.countValueType === 'property' && cmd.countProperty?.trim()
+      ? { amount_property: cmd.countProperty.trim() }
+      : {}),
     ...(cmd.target ? { target: cmd.target } : {}),
     ...(cmd.source ? { source: cmd.source } : {}),
   }))

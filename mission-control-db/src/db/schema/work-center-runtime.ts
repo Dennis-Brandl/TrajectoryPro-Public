@@ -138,8 +138,9 @@ export type NewWcResourceWaiter = typeof wcResourceWaiter.$inferInsert;
 /**
  * Who holds what. `amount` is the units held (1 for binary exclusive; N for countable and
  * shared); a named-pool holder is always amount = 1 with `held_name` set (spec §4.1).
- * Indexed on instance_id because auto-release on terminal is one DELETE on that column.
- * Empty until Phase 2.
+ * Indexed on instance_id (per-instance hydration and write-back). Rows outlive the instance's
+ * terminal settle (2026-11-10: Environment holds are not released when a workflow ends); the
+ * FK cascade still drops them when the instance ROW is deleted.
  */
 export const wcResourceHolder = pgTable('wc_resource_holder', {
   id: bigint('id', { mode: 'number' }).generatedAlwaysAsIdentity().primaryKey(),

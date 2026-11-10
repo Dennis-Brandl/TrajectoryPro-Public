@@ -496,6 +496,11 @@
                         "description": "OID of the workflow or environment that defines the resource."
                       },
                       "amount": { "type": "integer" },
+                      "amount_property": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Pool commands only: property key the amount is read from at runtime. When present, amount is omitted."
+                      },
                       "target": {
                         "type": "string",
                         "description": "Value property name to store acquired resource handle."
@@ -727,6 +732,11 @@
                   "description": "OID of the workflow or environment that defines the resource."
                 },
                 "amount": { "type": "integer" },
+                "amount_property": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Pool commands only: property key the amount is read from at runtime. When present, amount is omitted."
+                },
                 "target": { "type": "string", "description": "Value property name to store acquired resource handle." },
                 "source": { "type": "string", "description": "Value property ref for sync send data." }
               }

@@ -496,10 +496,8 @@ const TWO_BRANCH_HOLD_SPEC = {
 };
 
 // The same two branches, but NEITHER releases — so a marker revoked on branch A is still
-// OUTSTANDING when the instance reaches END while branch B's hold is still live. That is the
-// only shape that puts an unconsumed marker through settleTerminal's clear (an instance holding
-// NOTHING at terminal takes autoReleaseEnvHoldings' early-out and never reaches it; see the
-// §12.5 item-10 test's own comment).
+// OUTSTANDING when the instance reaches END while branch B's hold is still live — a marker and a
+// live hold going through settleTerminal together (the marker-ONLY terminal is R3, below).
 const TWO_BRANCH_PARK_SPEC = {
   local_id: 'wf', oid: 'wf-two-branch-park', version: '1.0.0', last_modified_date: '2026-01-01',
   environment_specifications: [ENV_POOL],
@@ -666,17 +664,14 @@ test('I2: two identical holds on one step are diffed as a MULTISET — one revok
   } finally { await close(); }
 });
 
-test('spec §12.5 item 10: a terminal instance clears BOTH envHolds and its revoked markers from engine_state', async () => {
+test('spec §12.5 item 10 (amended 2026-11-10): a terminal instance clears its revoked markers but KEEPS its live hold', async () => {
   const { db, close } = await makeTestDb();
   const deps = testDeps();
   try {
     // Neither branch releases, so the marker recorded for branch A is still OUTSTANDING when
     // the instance reaches END — settleTerminal's clear is the only thing that can remove it.
-    // Branch B's still-live hold is what carries this instance PAST autoReleaseEnvHoldings'
-    // "nothing held, nothing reserved, nothing queued, nothing deleted" early-out. (The
-    // marker-ONLY terminal — every clause of that early-out zero, one marker outstanding — is
-    // the R3 test at the end of this file; it takes the same clear because R3 made an
-    // outstanding marker one of the early-out's own conditions.)
+    // Branch B's hold is still live at END, and since 2026-11-10 it survives the settle. (The
+    // marker-ONLY terminal is the R3 test at the end of this file.)
     const { wc, holder, c1, c2 } = await poolHolderAndTwoContenders(db, deps, TWO_BRANCH_PARK_SPEC, 'wf-two-branch-park');
     const held = await db.select().from(wcResourceHolder).where(eq(wcResourceHolder.instanceId, holder.id));
     const rowA = held.find((h: { stepOid: string }) => h.stepOid === 'ui-a')!;
@@ -693,12 +688,13 @@ test('spec §12.5 item 10: a terminal instance clears BOTH envHolds and its revo
 
     const row = await instanceRow(db, holder.id);
     expect(row.status).toBe('completed');
-    expect(row.engineState.envHolds).toEqual([]);
+    expect(row.engineState.envHolds).toEqual([{ name: 'Pool', stepOid: 'ui-b', amount: 1, heldName: null }]);
     expect(row.engineState.envHoldsRevoked).toEqual([]);
-    // Terminal auto-release gave branch B's unit — and ONLY that one — to contender 2.
+    // Branch B's unit stays with the finished holder; contender 2 keeps waiting for a Release.
     expect((await resourceRow(db, wc.id, 'Pool')).inUse).toBe(2);
-    expect(await holderRows(db, wc.id)).toEqual([[c1.id, 'ui'], [c2.id, 'ui']]);
-    expect(await waiterRows(db, wc.id)).toEqual([]);
+    expect(await holderRows(db, wc.id)).toEqual([[c1.id, 'ui'], [holder.id, 'ui-b']]);
+    expect((await waiterRows(db, wc.id)).map((w: { instanceId: string; granted: boolean }) => [w.instanceId, w.granted]))
+      .toEqual([[c2.id, false]]);
   } finally { await close(); }
 });
 
@@ -821,7 +817,7 @@ test('R2: an ANY-step revoked marker outranks another step\'s live ledger entry'
 
 // R3: the marker-ONLY terminal. This holder's single hold was revoked and its recipe declares no
 // Release at all, so at terminal it holds nothing, reserves nothing, waits on nothing and gives
-// up no row — autoReleaseEnvHoldings' early-out — with one marker still outstanding. Binary
+// up no row, with one marker still outstanding. Binary
 // exclusive 'Printer' (not the two-unit pool the tests above use) is what makes "one hold, one
 // contender queued behind it, and NOTHING left on this instance after the revocation"
 // expressible at all: on a use_limit 2 pool a single-unit holder leaves a free unit, so no
@@ -843,7 +839,7 @@ test('R3: a terminal instance whose ONLY env state is a revoked marker still cle
     expect((await stepRow(db, contender.id, 'ui')).state).toBe('WAITING_USER');
 
     // The holder walks 'ui' -> END. Its next hydration records the marker; nothing consumes it
-    // (the recipe declares no Release), and terminal auto-release has nothing else to do.
+    // (the recipe declares no Release), and the terminal sweep has nothing else to do.
     await submitUserAction(db, holder.id, { step_oid: 'ui', action: 'submit' }, 0, deps);
     await pumpUntilQuiet(db, deps);
 

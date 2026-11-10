@@ -147,6 +147,17 @@ export interface EngineState {
    *  a step that is never dequeued again (RETURN ABANDON / GOTO elsewhere) is harmless orphaned
    *  garbage, same tolerance as pausedAt/childProperties. */
   releasedOnCatch: Record<string, true>;
+  /** Counts read from a property (`amount_property`) for a step's 'Acquire Pool Amount'
+   *  commands, keyed by step oid, then by command (its oid, or a composite key for a command
+   *  with none — transition.ts `amountCommandKey`). Resolved ONCE, at the step's fresh resource
+   *  attempt (tryActivateResources), so a step that queues keeps the count it asked for even if
+   *  the property changes while it waits: every later read of the amount (the envHolds ledger at
+   *  a queued grant, resumeGrantedSteps) reads it here, never the property again. The manager's
+   *  own queue entry (and so the `wc_resource_waiter` row) already carries the same number.
+   *  Persisted because a waiting step resumes in a later transaction, possibly after a restart.
+   *  Cleared when the step's activation commands are all granted, and by every reset/failure
+   *  site that drops blockedOnResources. Literal amounts never write here. */
+  resolvedAmounts: Record<string, Record<string, number>>;
   /** GATE spec 2026-08-29 §5.3/§6.4: gates armed concurrently with their preceding
    *  ACTION PROXY step, keyed by gate step oid. `open` = the script already returned TRUE
    *  (cycling stopped, wake_at cleared); `stopSent` = the STOP attempt already happened
@@ -168,11 +179,15 @@ export interface EngineState {
    *  It cannot be derived from the ResourceManager: that model deliberately tracks no holders
    *  (see resources.ts's MODEL note), which is exactly why environment resources previously
    *  had no auto-release. Appended when an environment Acquire is granted, removed when the
-   *  matching Release runs, and cleared wholesale by auto-release on terminal. */
+   *  matching Release runs. NOT cleared on terminal (2026-11-10): an Environment hold outlives
+   *  the workflow that took it, so on a terminal instance this is the last ledger it wrote —
+   *  nothing reads it afterwards (the holder rows are what Commander shows). */
   envHolds: EnvHold[];
-  /** Phase 4a (plan Ruling P3b): holds this instance wrote that an operator released out of band
-   *  (`release-holder` / `reset`); consumed by the step's own later Release so it does not free a
-   *  unit that now backs somebody else's hold.
+  /** Phase 4a (plan Ruling P3b): holds this instance wrote that were released out of band — by
+   *  an operator (`release-holder` / `reset`) or, since 2026-11-10, taken over by ANOTHER
+   *  workflow's Release (a count-pool row taken over in part leaves a marker for the taken part
+   *  only); consumed by the step's own later Release so it does not free a unit that now backs
+   *  somebody else's hold.
    *
    *  This is the ONLY discriminator that works. An empty `envHolds` for a name is ambiguous —
    *  it is equally "this instance acquired and an operator took the hold away" and "this
@@ -181,7 +196,7 @@ export interface EngineState {
    *  the recipe's nor the releasing step's command list can tell those apart; only the
    *  difference between what this instance PERSISTED and what the live `wc_resource_holder`
    *  table now carries can, which is what `openContext` computes into this list. Entries are
-   *  spliced out when consumed, and cleared wholesale alongside `envHolds` on terminal. */
+   *  spliced out when consumed, and cleared wholesale on terminal (no Release runs after it). */
   envHoldsRevoked: EnvHold[];
   /** Data safety round 2 (spec 2026-10-22 §2): epoch ms when the current pause request first
    *  found an action server whose capabilities are unknown. Round 3 (spec
@@ -272,6 +287,7 @@ export function defaultEngineState(): EngineState {
     controlPassAttempts: 0,
     userActionCounter: 0,
     releasedOnCatch: {},
+    resolvedAmounts: {},
     armedGates: {},
     scriptRuns: {},
     envHolds: [],
@@ -310,6 +326,7 @@ export function loadEngineState(row: unknown): EngineState {
     controlPassAttempts: r.controlPassAttempts ?? defaults.controlPassAttempts,
     userActionCounter: r.userActionCounter ?? defaults.userActionCounter,
     releasedOnCatch: r.releasedOnCatch ?? defaults.releasedOnCatch,
+    resolvedAmounts: r.resolvedAmounts ?? defaults.resolvedAmounts,
     armedGates: r.armedGates ?? defaults.armedGates,
     scriptRuns: r.scriptRuns ?? defaults.scriptRuns,
     envHolds: r.envHolds ?? defaults.envHolds,

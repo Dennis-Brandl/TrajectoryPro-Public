@@ -48,6 +48,17 @@ export interface FormRendererContextValue {
   surfaceColor: string | null
   /** Host state for job buttons; null when the host passes none. */
   buttonJobs: ButtonJobs | null
+  /**
+   * Timer runs by block id, owned by FormDocumentView. A timer that remounts (its row changed
+   * when the screen type changed) picks its run up from here instead of restarting.
+   */
+  timerRuns?: Map<string, TimerRun>
+}
+
+/** A timer's run: when it started, and the elapsed seconds once it stopped or ran out. */
+export interface TimerRun {
+  startedAt: number
+  settledAt?: number
 }
 
 export const FormRendererContext = createContext<FormRendererContextValue>({

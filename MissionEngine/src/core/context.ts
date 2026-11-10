@@ -17,7 +17,8 @@ import { writeRuntimeHistory } from 'mission-control-db/src/runtime/engine-acces
 import { workflowOutputs } from 'mission-control-db/src/runtime/workflow-outputs';
 import { loadSharedValueProperties, writeSharedValueProperties } from 'mission-control-db/src/runtime/wc-value-properties';
 import {
-  lockRegistry, readHolders, applyRegistryWrites, releaseInstanceHoldings, NOTIFY_GRANT_CHANNEL,
+  lockRegistry, readHolders, applyRegistryWrites, releaseInstanceWaiters, consumeForeignHolders,
+  NOTIFY_GRANT_CHANNEL,
   type WcRegistrySnapshot,
 } from 'mission-control-db/src/runtime/wc-resources';
 import type { Db } from '../db.js';
@@ -153,8 +154,8 @@ export function envSweepTokens(instanceId: string, oids: Set<string>): Set<strin
  * context's own steps plus the steps of CURRENTLY ACTIVE children only — and `tearDownActiveChild`
  * deletes a `childActive` link (and every `step_instance` row under it) while sweeping nothing.
  * From that moment the torn-down child's queued token is invisible to every knownStepOids-scoped
- * sweep, including `autoReleaseEnvHoldings`' own. That is not cosmetic: an own-token still sitting
- * at the queue head when `releaseHoldsAgainst` calls `manager.release()` gets handed the freed
+ * sweep, including `settleEnvTierAtTerminal`'s own. That is not cosmetic: an own-token still sitting
+ * at the queue head when the terminal sweep calls `manager.release()` gets handed the freed
  * capacity straight back — precisely the self-grant hazard that function's doc comment claims to
  * have closed (it was closed only for steps knownStepOids could see) — and a surviving waiter row
  * for a dead step wedges the resource for the WHOLE work center.
@@ -193,7 +194,7 @@ export function ownEnvTokens(context: WorkflowContext): Set<string> {
  * exists to prevent, reached through a different door. Worse than the equivalent terminal-path
  * bug this mirrors: none of these three sites end the instance, so the leak persists while the
  * instance keeps running, and it can never be cleaned up later at terminal either —
- * `autoReleaseEnvHoldings` (below) derives ITS OWN reservations from `flushGranted`'s live
+ * `settleEnvTierAtTerminal` (below) derives ITS OWN reservations from `flushGranted`'s live
  * return too, and by then this one is already gone from `pendingGrants`.
  *
  * MUST be called BEFORE `cancelQueuedWaiters(ownTokens)` runs for the SAME token set —
@@ -205,7 +206,7 @@ export function ownEnvTokens(context: WorkflowContext): Set<string> {
  * consumed by resumeGrantedSteps earlier in this transaction (consumption is exactly what would
  * have removed it from `pendingGrants`), so the snapshot values cannot be stale for it.
  *
- * Whole-branch review (deferred item 8): `autoReleaseEnvHoldings` below now CALLS this function
+ * Whole-branch review (deferred item 8): `settleEnvTierAtTerminal` below now CALLS this function
  * rather than carrying a near-verbatim copy of it. The copy was justified while the terminal path
  * was thought to need its own ordering guarantees, but the two blocks were provably identical —
  * the capture half is pure (flush the live grants, look each up in the frozen snapshot, warn and
@@ -244,13 +245,13 @@ export function captureEnvReservations(root: WorkflowContext, ownTokens: Set<str
  * AFTER `cancelQueuedWaiters(ownTokens)` has already cleared this instance's own QUEUE entries
  * out of the manager, so `release()`'s own FIFO grant pass can only ever hand the freed capacity
  * to a genuinely FOREIGN instance's waiter, never back to one of this same cancelled branch's
- * own remaining queued steps — the identical self-grant hazard `autoReleaseEnvHoldings`'s own
+ * own remaining queued steps — the identical self-grant hazard `settleEnvTierAtTerminal`'s own
  * doc comment describes for the terminal case, reached here through the ordinary (non-terminal)
  * cancel path instead. One `release()` call per reservation — the only way to both decrement the
  * counter AND cascade the grant onward to the next queued waiter, rather than merely letting the
  * capacity evaporate uncounted. No separate DB write here: none of this function's three callers
  * (transition.ts's `releaseAllInstanceResources`, `escalateChildFailure`, and `failStep`'s
- * uncaught path) are the terminal choke point `autoReleaseEnvHoldings` owns, so the eventual
+ * uncaught path) are the terminal choke point `settleEnvTierAtTerminal` owns, so the eventual
  * registry write-back rides on whatever `persist()` call runs later in this SAME transaction
  * (Task 5's diffRegistry already reads `root.envResources`'s live, just-updated state). */
 export function releaseEnvReservations(root: WorkflowContext, reservations: EnvHold[]): void {
@@ -427,6 +428,11 @@ export class WorkflowContext {
    *  read by step-run.ts when that step's run is recorded. In memory only, never persisted into
    *  engine_state; always read/written via `context.root` so every view sees the one value. */
   stepRunActor: { stepOid: string; userId: string } | null = null;
+  /** 2026-11-10: environment Releases this instance ran on a resource it held none of (transition.ts
+   *  outcome 5) whose counter change already happened in `envResources`. The write-back
+   *  (`applyForeignReleases`, from persist() and the terminal sweep) drains them and takes the
+   *  units over from other instances' holder rows. In memory only; always read via `context.root`. */
+  foreignReleases: Array<{ name: string; amount: number; heldName: string | null }> = [];
 
   constructor(row: ContextRow, now: () => Date);
   /** Internal: construct a child-context view sharing `root`'s id/state/resources/now, scoped
@@ -646,11 +652,9 @@ export class WorkflowContext {
       // (openContext) returns every hold for this instance regardless of name, while the lock set
       // taken here is filtered to the names the frozen recipe's own commands reference — so
       // state.envHolds can in principle name a resource this hydration never locked. Filtering
-      // the holds silently here would DROP that entry from the write-back and orphan it until
-      // terminal (worse — see settleTerminal's own auto-release, which is exactly where an
-      // orphaned hold like that gets released). Assert the invariant instead: a mismatch here
-      // would otherwise write a wc_resource_holder row for a resource nobody locked in this
-      // transaction.
+      // the holds silently here would DROP that entry from the write-back and orphan it.
+      // Assert the invariant instead: a mismatch here would otherwise write a
+      // wc_resource_holder row for a resource nobody locked in this transaction.
       for (const h of this.state.envHolds) {
         if (!this.envKnownNames.has(h.name)) {
           throw new Error(
@@ -673,6 +677,7 @@ export class WorkflowContext {
       for (const target of envDiff.foreignGrantInstanceIds) {
         await tx.execute(sql`SELECT pg_notify(${NOTIFY_GRANT_CHANNEL}, ${target})`);
       }
+      await applyForeignReleases(tx, this);
     }
     const serializedState: EngineState = {
       ...this.state,
@@ -733,7 +738,8 @@ export async function openContext(tx: Db, row: ContextRow, deps: EngineDeps): Pr
     const persisted = context.state.envHolds;
     const live = await readHolders(tx, context.id);
     // Ruling P3b: a hold this instance wrote at its last persist() that the ledger no longer
-    // carries was removed OUT OF BAND — only an operator's release-holder / reset does that.
+    // carries was removed OUT OF BAND — an operator's release-holder / reset, or (2026-11-10)
+    // another workflow's Release taking the hold over (consumeForeignHolders).
     // Remember it durably so this instance's own later Release of it touches nothing
     // (releaseResourceCompletionCommands): the freed unit may already back another hold.
     //
@@ -749,13 +755,30 @@ export async function openContext(tx: Db, row: ContextRow, deps: EngineDeps): Pr
     // other's row, or the marker carries the wrong amount); it is safe to compare because rows
     // and entries are written from the one array in the one persist(), and a partial release
     // decrements the entry and the row together.
+    //
+    // 2026-11-10: a row can also SHRINK out of band — another workflow's Release taking over
+    // part of a count-pool hold (consumeForeignHolders decrements the oldest row). A persisted
+    // entry left unmatched by the exact pass is therefore paired, second, with a leftover live
+    // row of the same (name, step, heldName) carrying a SMALLER amount: the marker is the
+    // difference only, and the row stays in the ledger at its new amount.
     const same = (a: EnvHold, b: EnvHold) =>
       a.name === b.name && a.stepOid === b.stepOid && a.heldName === b.heldName && a.amount === b.amount;
     const unmatched = [...live];
-    const newlyRevoked: EnvHold[] = [];
+    const leftover: EnvHold[] = [];
     for (const p of persisted) {
       const i = unmatched.findIndex((l) => same(l, p));
-      if (i >= 0) unmatched.splice(i, 1); else newlyRevoked.push(p);
+      if (i >= 0) unmatched.splice(i, 1); else leftover.push(p);
+    }
+    const newlyRevoked: EnvHold[] = [];
+    for (const p of leftover) {
+      const i = unmatched.findIndex((l) =>
+        l.name === p.name && l.stepOid === p.stepOid && l.heldName === p.heldName && l.amount < p.amount);
+      if (i >= 0) {
+        newlyRevoked.push({ ...p, amount: p.amount - unmatched[i].amount });
+        unmatched.splice(i, 1);
+      } else {
+        newlyRevoked.push(p);
+      }
     }
     // Residual R1: appended WITHOUT deduping against the markers this state already carries.
     // The marker list is a MULTISET for the same reason the diff above is — each revoked ROW is
@@ -1012,294 +1035,150 @@ export function foldOutLegacyEnvResources(context: WorkflowContext, snap: WcRegi
 }
 
 /**
- * Phase 2a (Task 5, spec §5.5 / user decision U4): drop every environment-resource hold this
- * instance still carries the moment it reaches a terminal status. Called from settleTerminal,
- * below, AFTER its guarded status UPDATE has confirmed THIS call is the winning, first-terminal
- * settle — never before that guard, or a losing racer could free another instance's holdings.
+ * 2026-11-10 (cross-workflow release): drain `root.foreignReleases` — environment Releases this
+ * instance ran on a resource it held none of (transition.ts outcome 5), whose counter change the
+ * manager already made — and take each one's units over from OTHER instances' holder rows
+ * (`consumeForeignHolders`), so the ledger keeps matching the counter. Called by persist() and by
+ * the terminal sweep, after their own `applyRegistryWrites`, under this hydration's registry
+ * locks; drained, so a second write-back in the same transaction never applies one twice. Only
+ * names this hydration locked can appear (resolveResourceTier throws for any other), which keeps
+ * the name-ascending lock order intact.
  *
- * Self-contained: it writes the registry itself, in this SAME transaction, rather than trusting
- * a later `context.persist(tx)` call to do it — some terminal call sites deliberately never
- * persist() after settling (e.g. loop.ts's recoverFailedStart), so relying on one would silently
- * leave a released hold's counter un-flushed on those paths.
- *
- * Ordering hazard this guards against: `settleIfComplete`'s own contract is "callers persist
- * the root AFTER it returns" — so a resource acquired and held all the way to completion in ONE
- * transaction reaches this function BEFORE `persist()` ever runs this transition. The release
- * therefore runs DIRECTLY on the live `context.envResources` manager — the SAME object any
- * later persist() call in this transaction will diff against — so the two can never disagree: a
- * later persist() (if one runs) recomputes the identical, already-correct counters from the
- * already-released manager and `state.envHolds` already cleared to `[]`, a harmless redundant
- * write, never a stale pre-release one. Mutating a throwaway, independently-locked manager
- * instead (as an earlier draft of this task did) would leave `context.envResources` untouched,
- * and a persist() running afterward would re-diff against ITS stale (still-acquired) counters,
- * silently re-wedging the resource this function just correctly freed.
- *
- * SELF-GRANT hazard (review Critical 2): `releaseInstanceHoldings` (below) deletes this
- * instance's own DB waiter rows, but `context.envResources`'s in-memory queues were built at
- * HYDRATION time and are NOT told about that delete — so a token this SAME instance queued on
- * (e.g. one parked branch holding a resource while a sibling branch of the SAME instance is
- * queued behind it — processReadyStep's own head-of-line comment describes this exact shape)
- * can still sit at the head of the manager's queue. Releasing straight into that would let
- * `release()`'s own FIFO grant pass hand the freed capacity right back to this instance's own
- * (now-deleted, never-to-be-consumed) waiter — `diffRegistry` would see `owner === instanceId`
- * and just delete the already-gone row, while the counter stays reserved: a resource wedged for
- * the whole work center with zero holders and zero waiters, forever. `ownEnvTokens(context)` +
- * `cancelQueuedWaiters`/`flushGranted` — the same sweep shape `releaseAllInstanceResources`
- * performs for ABANDON/RESTART — clears this instance's own queue/pending-grant entries out of
- * the manager FIRST, so the release pass can only ever hand capacity to a genuinely FOREIGN
- * instance. Whole-branch review C2: that token set is derived from the live MANAGER, not from
- * `envSweepTokens(context.id, knownStepOids(context))` as it was — knownStepOids cannot see a
- * step whose childActive link was already torn down, so this guard was closed only for the steps
- * it happened to still know about. See `ownEnvTokens`' own doc comment above.
- *
- * FOREIGN-GRANTED-BUT-UNCONSUMED hazard (review round 2, Finding 1): the SELF-GRANT hazard above
- * covers a token THIS instance itself queued. This is the mirror case — a token a DIFFERENT
- * instance's release granted TO this instance (`diffRegistry`'s foreign-grant handoff flags the
- * waiter row `granted` and RE-RESERVES the capacity, via `tryGrantXxx`'s own `inUse`/`available`
- * bookkeeping, at the moment the OTHER instance's write-back ran) that this instance never got
- * around to consuming (a resumeGrantedSteps call, which only happens on this instance's OWN next
- * pump) before reaching terminal. `state.envHolds` cannot see this: an envHolds entry is only
- * ever appended once a grant is actually CONSUMED into a real acquire, and this one never was.
- *
- * DOUBLE-RELEASE hazard (review round 3): round 2's first cut read these reservations from
- * `context.envSnapshot.waiters` — frozen at hydration and NEVER refreshed for the rest of the
- * transaction. But `resumeGrantedSteps` CAN consume this exact same grant later in the SAME
- * transaction (it calls `flushGranted(ownTokens)`, appends the result to `state.envHolds`, and
- * if the resumed step's own completion drains all the way to this instance's terminal settle,
- * `autoReleaseEnvHoldings` runs before `envSnapshot` is ever refreshed). The stale snapshot
- * would then STILL show the grant as reserved even though it is now ALSO sitting in `envHolds`
- * (hence `localHolds`) — releasing it twice: the first `release()` call correctly frees it and
- * grants it onward to whoever is next queued, the second sees `inUse` already decremented and
- * decrements it AGAIN, leaving the registry `inUse` one lower than reality while the
- * newly-granted waiter's row still claims `granted: true` — a binary-exclusive resource the
- * registry says is free with a waiter row simultaneously saying it is held.
- *
- * Fixed by reading `context.envResources.flushGranted(ownTokens)`'s OWN return value as the
- * list of still-outstanding reservations, captured BEFORE the cancel sweep below (which itself
- * also clears matching `pendingGrants` entries as a side effect — see cancelQueuedWaiters' own
- * comment) can touch them. `flushGranted`'s contract is exactly "take matching entries OUT of
- * `pendingGrants`" — anything `resumeGrantedSteps` already consumed earlier in THIS transaction
- * is, by construction, already gone from it, which makes the double-count structurally
- * impossible rather than merely tested-against. The snapshot is still consulted, but only to
- * look up the reserved `amount`/`grantedName` for whatever `flushGranted` confirms is genuinely
- * still outstanding — those values cannot have changed for an entry that has not been consumed
- * (only consumption invalidates them), so cross-referencing the frozen snapshot for THAT purpose
- * remains safe. A grant with no matching snapshot row (a defensive, not-yet-observed case — see
- * the `console.warn` below) is logged and skipped rather than guessed at.
- *
- * Each still-outstanding reservation gets ONE `release()` call, same as a real hold — the only
- * way to both decrement the counter AND correctly cascade the FIFO grant onward to the NEXT
- * queued waiter (a genuinely foreign one, since the queue-half of the sweep already ran first)
- * rather than merely letting the capacity evaporate uncounted. Order matters here specifically
- * because of the sweep: this reservation's `release()` call must run AFTER
- * `cancelQueuedWaiters`/`flushGranted` have cleared this instance's OWN queue/pending-grant
- * entries (so its own cascade can't hand it to a DIFFERENT step of this same terminal
- * instance), which is why it is folded into the SAME combined release pass as `localHolds`,
- * below, rather than run first — `flushGranted` itself is called EARLY (to capture the
- * reservations before they are cleared), but the actual `release()` calls still run after
- * `cancelQueuedWaiters`'s queue sweep.
- *
- * PER-HOLD routing (review Important 3, amended by the whole-branch review's I3 ruling): a hold
- * is still split per-HOLD (`context.envKnownNames.has(h.name)`), not per-context — but an
- * ORPHANED hold (one naming a resource this hydration never locked) no longer gets an
- * independently-locked fallback release of its own. `persist()` ASSERTS that state cannot
- * happen; carrying a recovery branch for it here was a second, contradictory answer to the same
- * anomaly, and which of the two ran first depended on the persist()/settleTerminal ordering this
- * phase documents as deliberately unreliable. The controller's ruling: keep the assertion, demote
- * this side to warn-and-skip (the state is unreachable — a holder row cannot exist without its
- * wc_resource row, and a frozen recipe's lock set cannot shrink). That also removes this
- * function's SECOND `lockRegistry` call, which was the only one in the phase taken outside the
- * single name-ascending ordered lock.
- *
- * A hold whose resource the live manager cannot model (an unknown or in-place-retyped
- * resource_type) is logged and skipped by `releaseHoldsAgainst` rather than thrown (whole-branch
- * review I2), mirroring resumeGrantedSteps' own "log, never silently vanish, never crash a
- * terminal settle over it" posture for an equally anomalous, unrecoverable state.
- *
- * The OPPOSITE ordering (persist() BEFORE settleTerminal — every uncaught-failure/ABANDON/
- * escalation path, `context.persist(tx); await settleTerminal(...);` with nothing after) needs
- * its own fix: that earlier persist() already wrote `workflow_instance.engine_state` WITH the
- * hold still present (state.envHolds hadn't been cleared yet), and nothing runs afterward to
- * write it again — so the row's own serialized ledger would keep claiming a hold the registry
- * no longer has, even though the registry itself is correctly released. A targeted `jsonb_set`
- * (review Important 4) patches just the `envHolds` key of whatever engine_state is already
- * there, without needing to recompute (and risk clobbering) the rest of `serializedState` a
- * second time outside persist(). This is a SECOND, narrow writer of `workflow_instance.
- * engine_state` — the plan's Global Constraints already name `settleTerminal` as the one
- * exception to "persist() is the only durability path", and this write lives inside that
- * exception's own call path. Any FUTURE field this program decides should also clear at
- * terminal time must be added to this SAME `jsonb_set` (or a follow-up one) — it is not
- * automatic just because `context.state` was mutated in memory.
+ * Wakes each former holder: a still-running one hydrates, finds its hold gone (openContext's
+ * revoked-hold diff records a marker) and skips its own later Release instead of freeing the unit
+ * a second time. No trace row is written on the former holder — that would take a FOR KEY SHARE
+ * on a second instance row inside this transaction (operator-verbs.ts, Ruling P9).
  */
-async function releaseHoldsAgainst(
-  tx: Db, context: WorkflowContext,
-  holds: EnvHold[], snap: WcRegistrySnapshot, manager: InMemoryResourceManager, index: LoadedWaiterIndex,
-  grantNames: string[] = [],
-): Promise<void> {
-  const released = new Set<string>();
-  for (const h of holds) {
-    // Whole-branch review I2: every OTHER anomaly in this function is logged and skipped so a
-    // terminal settle never crashes; this one used to abort the whole transaction.
-    // `manager.release` -> `getResource` THROWS `Resource "X" is not registered` for a hold whose
-    // resource this hydration could not model — e.g. one retyped in place (work-center-runtime's
-    // upsertRegistryFromSpec changes resource_type without touching in_use or waiter rows) to a
-    // type `snapshotToSerialized` skips. Same posture as the "no wc_resource row" skip below.
-    if (!manager.hasResource(h.name)) {
+async function applyForeignReleases(tx: Db, root: WorkflowContext): Promise<void> {
+  if (root.foreignReleases.length === 0) return;
+  const pending = root.foreignReleases.splice(0);
+  const wake = new Set<string>();
+  for (const r of pending) {
+    const row = root.envSnapshot?.resources.find((x) => x.name === r.name);
+    if (!row || !root.envKnownNames.has(r.name)) {
       console.warn(
-        `[mission-engine] instance ${context.id}: auto-release cannot release hold on "${h.name}" ` +
+        `[mission-engine] instance ${root.id}: a Release of "${r.name}" by a workflow that held none of it ` +
+        `could not be matched to a locked registry row (work center ${root.workCenterId}) — the counter ` +
+        'changed, but no holder row was taken over',
+      );
+      continue;
+    }
+    const affected = await consumeForeignHolders(tx, root.workCenterId, root.id, {
+      name: r.name, resourceType: row.resourceType, amount: r.amount, heldName: r.heldName,
+    });
+    for (const id of affected) wake.add(id);
+  }
+  for (const id of wake) await tx.execute(sql`SELECT pg_notify(${NOTIFY_GRANT_CHANNEL}, ${id})`);
+}
+
+/**
+ * The environment tier at a terminal settle. User ruling 2026-11-10, replacing spec §5.5 /
+ * decision U4's auto-release: an Environment HOLD survives the end of the workflow that took it.
+ * Its `wc_resource_holder` rows stay, `in_use` / available names are not changed by the settle,
+ * and `state.envHolds` stays as the last ledger the instance wrote. Another workflow's Release
+ * (transition.ts outcome 5 → `applyForeignReleases`) or an operator verb releases it later. Same
+ * rule on every terminal path (completed, errored, stopped, aborted, give-up, escalation), and
+ * for a U6 inherited hold an Operator cleanup did not release.
+ *
+ * What a terminal instance still gives up is whatever was only ever a CLAIM, never a hold:
+ *  - its QUEUE entries — every `wc_resource_waiter` row (`releaseInstanceWaiters`) and the live
+ *    manager's own queued tokens. Nothing pumps a terminal instance (claimInstanceForWork filters
+ *    on `status = 'running'`), so a surviving entry would later be granted to a dead step and
+ *    wedge the resource for the whole work center (whole-branch review C1);
+ *  - grants it was handed but never consumed — a step that never ran acquired nothing. Read from
+ *    the LIVE manager (`captureEnvReservations` → `flushGranted`), never from the hydration
+ *    snapshot alone: a grant consumed earlier in this same transaction is already in `envHolds`
+ *    and must not be given back (review round 3). Each gets one `release()`, the only way to both
+ *    decrement the counter and cascade the FIFO grant onward;
+ *  - and the FIFO grant pass is re-run on every other name a waiter row was removed from: a
+ *    countable queue head that was too large can strand a smaller request behind it, with nobody
+ *    left who owes a release on that name (review C1/I1).
+ *
+ * Ordering, all load-bearing:
+ *  - Called from settleTerminal AFTER its guarded status UPDATE (first-terminal-wins), so a losing
+ *    racer never touches the registry.
+ *  - `ownEnvTokens` — derived from the live MANAGER, not the spec tree, which cannot see a
+ *    torn-down child's steps (review C2) — is captured, then cancelled, BEFORE any reservation is
+ *    released, so `release()`'s grant pass can only hand capacity to a genuinely FOREIGN waiter,
+ *    never back to this dead instance (review Critical 2).
+ *  - It mutates the LIVE `context.envResources` and writes the registry itself, in this same
+ *    transaction: some terminal call sites never persist() afterwards (loop.ts's
+ *    recoverFailedStart), and on the settle-before-persist paths (settleIfComplete) a later
+ *    persist() re-diffs the identical manager — a harmless redundant write. The holder rows are
+ *    written from `state.envHolds` here for the same reason: an Acquire granted in this very
+ *    transaction has no row yet, and must not lose it because no persist() follows.
+ *
+ * A reservation on a resource the manager cannot model (unknown or in-place-retyped type) is
+ * logged and skipped rather than thrown, so a terminal settle never crashes over it (I2).
+ *
+ * `envHoldsRevoked` IS cleared — in memory, and through a narrow `jsonb_set` on engine_state for
+ * the persist-before-settle paths (a second writer of that column, inside settleTerminal's own
+ * exception to "persist() is the only durability path"): a marker only guards this instance's own
+ * later Release, and a terminal instance runs none.
+ */
+async function settleEnvTierAtTerminal(tx: Db, context: WorkflowContext): Promise<void> {
+  const manager = context.envResources;
+  const snap = context.envSnapshot;
+  const index = context.envIndex;
+  // Zero cost for a recipe that never touches the registry: it never hydrated the tier, and
+  // `applyRegistryWrites` — the only writer of waiter/holder rows — only ever runs when it did.
+  if (!manager || !snap || !index) return;
+
+  const ownTokens = ownEnvTokens(context);
+  const reservations = captureEnvReservations(context, ownTokens); // must precede the cancel sweep
+  const touched = await releaseInstanceWaiters(tx, context.id);
+  manager.cancelQueuedWaiters(ownTokens);
+
+  const released = new Set<string>();
+  for (const r of reservations) {
+    if (!manager.hasResource(r.name)) {
+      console.warn(
+        `[mission-engine] instance ${context.id}: cannot give back an unconsumed grant on "${r.name}" ` +
         `(work center ${context.workCenterId}) — the name was locked but this hydration never ` +
         'modelled it (an unknown or in-place-retyped resource_type); skipping it rather than ' +
         'crashing the terminal settle',
       );
       continue;
     }
-    manager.release(h.name, h.amount, h.heldName ?? undefined);
-    released.add(h.name);
+    manager.release(r.name, r.amount, r.heldName ?? undefined);
+    released.add(r.name);
   }
-  // Whole-branch review C1/I1: a resource this instance only WAITED on gets no release() call —
-  // and release() is the manager's only door into its own FIFO grant pass. For a COUNTABLE
-  // resource "free capacity + a non-empty queue" is a legitimate steady state (strict no-skip),
-  // so removing a too-large head without re-running the pass strands the smaller, satisfiable
-  // request behind it with nobody left who owes a release on that name. `grantNames` carries
-  // exactly those names (releaseInstanceHoldings' own `touched` return); a name already released
-  // above is skipped, because release() ran its grant pass to exhaustion already — re-running it
-  // there would only be able to act on counter states release() deliberately leaves alone.
-  for (const name of grantNames) {
-    if (released.has(name) || !manager.hasResource(name)) continue;
-    manager.runGrantPass(name);
+  for (const name of touched) {
+    // A name already released above ran its grant pass to exhaustion inside release().
+    if (released.has(name)) continue;
+    if (!context.envKnownNames.has(name)) {
+      // A waiter row can only exist for a locked name (diffRegistry inserts them only for
+      // `snap.resources`, and the recipe is frozen) — believed unreachable. Locking it now would
+      // break the name-ascending lock order.
+      console.warn(
+        `[mission-engine] instance ${context.id}: removed a waiter row for "${name}" ` +
+        `(work center ${context.workCenterId}), which this hydration never locked — no FIFO grant ` +
+        'pass could be run for it here; a queued waiter on that resource may have to wait for the ' +
+        'next release',
+      );
+      continue;
+    }
+    if (manager.hasResource(name)) manager.runGrantPass(name);
   }
-  const d = diffRegistry({ snap, manager, index, instanceId: context.id, holds: [] });
+
+  // Holds are written back unchanged (the holder rows stay); everything else follows the manager.
+  const d = diffRegistry({ snap, manager, index, instanceId: context.id, holds: context.state.envHolds });
   await applyRegistryWrites(tx, {
     workCenterId: context.workCenterId, instanceId: context.id,
     counters: d.counters, deleteWaiterIds: d.deleteWaiterIds,
-    grantWaiters: d.grantWaiters, insertWaiters: d.insertWaiters, holders: [],
+    grantWaiters: d.grantWaiters, insertWaiters: d.insertWaiters, holders: d.holders,
   });
   for (const target of d.foreignGrantInstanceIds) {
     await tx.execute(sql`SELECT pg_notify(${NOTIFY_GRANT_CHANNEL}, ${target})`);
   }
-}
+  await applyForeignReleases(tx, context);
 
-async function autoReleaseEnvHoldings(tx: Db, context: WorkflowContext): Promise<void> {
-  const holds = context.state.envHolds;
-  const hydrated = !!(context.envResources && context.envSnapshot && context.envIndex);
-
-  // The ONE early return that still precedes releaseInstanceHoldings, and the only one that can
-  // be justified without reasoning about which rows exist: a recipe that references no
-  // environment resource never hydrated the tier at all, and `applyRegistryWrites` — the only
-  // writer of `wc_resource_waiter`/`wc_resource_holder` anywhere in this engine — only ever runs
-  // when it did, so there is provably nothing to delete and nothing to re-grant. That keeps the
-  // phase's zero-cost promise intact for every workflow that never touches the registry.
-  if (!hydrated && holds.length === 0) return;
-
-  const localHolds = hydrated ? holds.filter((h) => context.envKnownNames.has(h.name)) : [];
-  const orphanHolds = hydrated ? holds.filter((h) => !context.envKnownNames.has(h.name)) : holds;
-
-  // Review round 3 (Critical): capture this instance's own STILL-OUTSTANDING pending grants
-  // from the LIVE manager via flushGranted's own return value — BEFORE cancelQueuedWaiters
-  // (below) can also clear them — never from context.envSnapshot alone, which cannot tell a
-  // reservation this SAME transaction already consumed (already folded into localHolds above)
-  // from one still genuinely outstanding. See captureEnvReservations' doc comment for the full
-  // reasoning; whole-branch review deferred item 8 replaced this site's hand-copied duplicate of
-  // that function with a call to it.
-  //
-  // Whole-branch review C2 (Critical): the token set comes from the live MANAGER
-  // (`ownEnvTokens`), not from the spec tree (`envSweepTokens(id, knownStepOids(context))`) —
-  // the latter cannot see a step whose childActive link was already torn down, so a torn-down
-  // child's own queued token survived every sweep here. See ownEnvTokens' own doc comment.
-  const ownTokens = ownEnvTokens(context);
-  const reservations = captureEnvReservations(context, ownTokens);
-
-  // Whole-branch review C1 (Critical): UNCONDITIONAL, and BEFORE any early-out. An instance can
-  // reach terminal holding nothing and reserving nothing while still QUEUED on a resource — the
-  // ordinary shape for an aborted or orderly-stopped instance whose step is blocked (a
-  // resource-blocked row is READY by convention). The old early return fired first and left that
-  // `wc_resource_waiter` row behind: the holder's later release then shifted a DEAD instance's
-  // token off the FIFO queue, set in_use and flagged the row `granted`, and nothing ever pumps a
-  // terminal instance (claimInstanceForWork filters on `status = 'running'`) — in_use elevated
-  // forever, zero holders, and deleting the runtime workflow only cascades the row away without
-  // decrementing the counter. `touched` (the plan's own pseudocode used it; the as-built version
-  // discarded it) is the resource names this delete actually freed a row on — held OR merely
-  // waited on — and drives the grant pass below, which is what closes I1.
-  const touched = await releaseInstanceHoldings(tx, context.id);
-
-  // The cheap early-out, now AFTER the delete: nothing held, nothing reserved, nothing queued,
-  // no row actually removed AND no revoked-hold marker outstanding, so there is nothing to
-  // sweep, release, re-grant or write. Residual R3 added the marker clause: an instance whose
-  // ONE hold an operator revoked and whose recipe declares no Release reaches terminal holding
-  // exactly nothing but still CARRYING a marker, and returning here skipped the clear below —
-  // leaving it in engine_state forever, which would make that clear's comment ("the markers die
-  // with the ledger they annotate") false on this one path. Falling through costs nothing: with
-  // every other clause zero, the block below runs only the (empty) orphan warn loop, the
-  // in-memory clear and the nested jsonb_set — no locks, no grant pass, no registry writes.
-  if (
-    holds.length === 0 && reservations.length === 0 && touched.length === 0
-    && ownTokens.size === 0 && context.state.envHoldsRevoked.length === 0
-  ) return;
-
-  if (hydrated) {
-    // Every name this instance just gave up a row on that this hydration actually locked. A
-    // waiter row can only ever exist for a locked name (diffRegistry inserts them only for
-    // `snap.resources`, and the recipe is frozen), so in practice this is `touched` minus any
-    // orphan HOLD name — but it is filtered against the names actually locked rather than
-    // assumed, because granting on a name this transaction never locked would need exactly the
-    // out-of-order second lock the deadlock story forbids.
-    const grantNames = touched.filter((n) => context.envKnownNames.has(n));
-    for (const n of touched) {
-      if (context.envKnownNames.has(n) || orphanHolds.some((h) => h.name === n)) continue;
-      console.warn(
-        `[mission-engine] instance ${context.id}: auto-release removed a registry row for ` +
-        `"${n}" (work center ${context.workCenterId}), which this hydration never locked — no ` +
-        'FIFO grant pass could be run for it here (locking it now would break the ' +
-        'name-ascending lock order); a queued waiter on that resource may have to wait for the ' +
-        'next holder to release',
-      );
-    }
-    if (localHolds.length > 0 || reservations.length > 0 || ownTokens.size > 0 || grantNames.length > 0) {
-      // Critical 2 fix: sweep this instance's own remaining QUEUE entries out of the live
-      // manager BEFORE releasing, so the FIFO grant pass below can never hand freed capacity
-      // back to this same (already-deleted) instance — see the doc comment above. The
-      // pending-grant half of this sweep already ran above (captureEnvReservations' own
-      // flushGranted, to capture `reservations` before it could be cleared out from under us) —
-      // calling it again here would just be a confirmed no-op, so it is not repeated.
-      context.envResources!.cancelQueuedWaiters(ownTokens);
-      await releaseHoldsAgainst(
-        tx, context, [...localHolds, ...reservations],
-        context.envSnapshot!, context.envResources!, context.envIndex!, grantNames,
-      );
-    }
+  if (context.state.envHoldsRevoked.length > 0) {
+    context.state.envHoldsRevoked = [];
+    await tx.update(workflowInstance).set({
+      engineState: sql`jsonb_set(${workflowInstance.engineState}, '{envHoldsRevoked}', '[]'::jsonb)`,
+    }).where(eq(workflowInstance.id, context.id));
   }
-
-  // Controller ruling on review I3: persist() ASSERTS that every envHolds entry names a resource
-  // this hydration locked, while this site used to answer the same anomaly differently — with a
-  // whole independently-locked fallback branch (its own lockRegistry call, outside the
-  // name-ascending order the rest of the phase takes). Which one ran first depended on the
-  // persist()/settleTerminal ordering this phase documents as deliberately unreliable. The
-  // assertion stays; this branch is demoted to warn-and-skip, matching the standing "assert,
-  // don't filter" ruling on this data. The state is believed UNREACHABLE — a holder row cannot
-  // exist without its wc_resource row, and a frozen recipe's lock set cannot shrink — so a
-  // warning here is a bug report, not a recovery path.
-  for (const h of orphanHolds) {
-    console.warn(
-      `[mission-engine] instance ${context.id}: envHolds names resource "${h.name}", which this ` +
-      `hydration never locked (work center ${context.workCenterId}) — skipping its auto-release. ` +
-      "This should be unreachable (see persist()'s matching assertion); the registry's in_use for " +
-      'that resource may now be overstated by whatever this instance held.',
-    );
-  }
-
-  context.state.envHolds = [];
-  // Ruling P3b hygiene: the revoked-hold markers die with the ledger they annotate — a terminal
-  // instance runs no further Release, so nothing would ever consume them. True on EVERY terminal
-  // path since R3: an outstanding marker is itself one of the early-out's conditions above, so a
-  // marker-only terminal reaches this line rather than returning before it.
-  context.state.envHoldsRevoked = [];
-  // Keep the persisted ledger honest regardless of whether a later persist() call in this
-  // transaction will also rewrite it (harmless — it would write the identical `[]`) — see the
-  // doc comment above for why a bare in-memory clear isn't enough on the persist-before-settle
-  // paths.
-  await tx.update(workflowInstance).set({
-    engineState: sql`jsonb_set(jsonb_set(${workflowInstance.engineState}, '{envHolds}', '[]'::jsonb), '{envHoldsRevoked}', '[]'::jsonb)`,
-  }).where(eq(workflowInstance.id, context.id));
 }
 
 /** Spec 2026-11-06 (Operator cleanup): every action still live on one of this instance's step
@@ -1435,10 +1314,10 @@ export async function settleTerminal(
     await queueLiveCleanupActions(tx, context);
   }
 
-  // Phase 2a (Task 5): auto-release every environment resource this instance still holds.
-  // Deliberately AFTER the guard above, not merely after the UPDATE — releasing before it would
-  // let a LOSING racer (an already-settled instance) free another instance's holdings.
-  await autoReleaseEnvHoldings(tx, context);
+  // The environment tier: drop this instance's queue entries and unconsumed grants (its HOLDS
+  // stay — 2026-11-10). Deliberately AFTER the guard above, not merely after the UPDATE — running
+  // before it would let a LOSING racer (an already-settled instance) rewrite the registry.
+  await settleEnvTierAtTerminal(tx, context);
 
   // Spec 2026-10-27 §6: a run that ends while other steps are still active (an uncaught failure
   // on one branch, a branch parked elsewhere) must not silently omit them from the step record.

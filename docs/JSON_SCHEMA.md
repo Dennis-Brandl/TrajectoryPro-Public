@@ -613,10 +613,19 @@ Required: `command_type`, `resource_name`.
 | `command_type` | Compatible `resource_type` | Required extras |
 |----------------|----------------------------|-----------------|
 | `"Acquire"` / `"Release"` | binary exclusive / binary shared / named pool | — |
-| `"Acquire Pool Amount"` / `"Release Pool Amount"` | countable | `amount` > 0 |
+| `"Acquire Pool Amount"` / `"Release Pool Amount"` | countable | `amount` > 0, or `amount_property` |
 | `"Send"` / `"Receive"` / `"Synchronize"` | sync | At most one sync command per step. |
 
 `resource_source_type ∈ {"workflow", "environment"}`; `resource_source_oid` = oid of the workflow (root or child) or embedded environment that declares the resource. Mission Designer resolves both on export from the live tree, and rewrites Acquire/Release on a countable resource to the pool commands (with `amount` 1 when none is authored). A command naming an unknown source or resource, or an incompatible type, fails with `INVALID_RESOURCE_COMMAND`.
+
+`amount_property` (string, optional, only on `"Acquire Pool Amount"` / `"Release Pool Amount"`): a property key the count is read from when the command runs, using the same key syntax as an input parameter's `default_value` with `value_type: "property"` (§1.7.1). When it is present `amount` is left out; if both are present, `amount_property` wins. A present `amount_property` that is not a non-empty string fails with `INVALID_RESOURCE_COMMAND`. The value must be a whole number of at least 1 (for example `"3"`; not `"0"`, `"2.5"`, `"-1"` or blank).
+
+- **Acquire Pool Amount** reads the count once, the first time the step tries its resource commands, and keeps that count while the step waits — a change to the property after that does not change what the step asked for. A count larger than the resource's `use_limit` waits, exactly as a literal one does. A value that is not a whole number of at least 1 fails the step with an `ERROR` (a TRY of mode `ERROR` catches it); the step then holds and waits for nothing, including its other resource commands.
+- **Release Pool Amount** reads the count when the release runs and releases all of it, even if the run holds less (the pool never goes below 0). A value that is not a whole number of at least 1 releases nothing for that command and records an `ERRORED` trace entry naming the resource, the key and the value; the step itself is not failed.
+
+**Holding across the end of a workflow (Mission Engine).** A `scope: "workflow"` resource belongs to one runtime workflow and ends with it. A `scope: "environment"` resource is shared by every runtime workflow in the work center, and a hold on it is **not** released when the workflow that took it ends — completed, errored, stopped or aborted alike. It stays held until a `Release` / `Release Pool Amount` frees it — by that workflow, by **another** workflow, or by an operator in Mission Commander. When the workflow ends, the engine only drops what it was still waiting for (its queue entries) and gives back grants it was handed but never used, so the next waiter is served.
+
+A `Release` / `Release Pool Amount` by a workflow that holds none of the resource takes the hold over from whoever does hold it: for `"binary exclusive use"` the holder; for `"binary shared use with pool limits"` one unit from the oldest hold; for `"countable use with pool limits"` `amount` units from the oldest holds first (more than is held empties them all); for `"named pool"` the hold on the name the command's `target` resolves to. The former holder is no longer listed as holding it, and if it is still running its own later Release of that hold does nothing. With no recorded holder the release only frees capacity, as before.
 
 ## 1.8 EnvironmentSpecification
 

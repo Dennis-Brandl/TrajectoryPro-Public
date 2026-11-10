@@ -132,6 +132,10 @@ export interface ResourceCommandSpecification {
   resource_source_type?: 'workflow' | 'environment'
   resource_source_oid?: string
   amount?: number
+  /** Pool commands only: the property key the amount is read from at runtime. When
+   *  present the command carries NO `amount` (an older engine must refuse it rather
+   *  than silently use a default). */
+  amount_property?: string
   target?: string
   source?: string
 }

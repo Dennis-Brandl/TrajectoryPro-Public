@@ -19,10 +19,13 @@ import { useFormDocumentStore } from '@/stores/formDocumentStore'
  *  `base` must stay >= 1024 so the renderer's container query still resolves the desktop tier. */
 export const BREAKPOINT_FRAME_WIDTH: Record<BreakpointKey, number> = { base: 1152, tablet: 768, phone: 390 }
 
+/** The name of each screen type, as the tabs and the Inspector say it. */
+export const SCREEN_NAME: Record<BreakpointKey, string> = { base: 'Desktop', tablet: 'Tablet', phone: 'Phone' }
+
 const TABS: { key: BreakpointKey; label: string; Icon: typeof Smartphone }[] = [
-  { key: 'base', label: 'Desktop', Icon: Monitor },
-  { key: 'tablet', label: 'Tablet', Icon: Tablet },
-  { key: 'phone', label: 'Phone', Icon: Smartphone },
+  { key: 'base', label: SCREEN_NAME.base, Icon: Monitor },
+  { key: 'tablet', label: SCREEN_NAME.tablet, Icon: Tablet },
+  { key: 'phone', label: SCREEN_NAME.phone, Icon: Smartphone },
 ]
 
 export function BreakpointTabs() {

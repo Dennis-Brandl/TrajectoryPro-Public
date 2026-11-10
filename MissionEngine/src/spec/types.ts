@@ -323,7 +323,12 @@ export interface ResourceCommandSpecification {
   resource_name: string;
   resource_source_type?: 'workflow' | 'environment';
   resource_source_oid?: string;
+  /** The literal count for 'Acquire Pool Amount' / 'Release Pool Amount'. */
   amount?: number;
+  /** A property key the count is read from when the command runs (same key syntax as an
+   *  input parameter's `default_value` with `value_type: 'property'`). Only meaningful on
+   *  'Acquire Pool Amount' / 'Release Pool Amount'; when present it wins over `amount`. */
+  amount_property?: string;
   target?: string;
   source?: string;
 }

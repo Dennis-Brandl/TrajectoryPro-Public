@@ -324,19 +324,24 @@ function resolveResourceSources(steps: MasterWorkflowStep[], sourceMap: Map<stri
             : countable && cmd.command_type === 'Release'
               ? ('Release Pool Amount' as const)
               : cmd.command_type
-        const amount =
-          command_type === 'Acquire Pool Amount' || command_type === 'Release Pool Amount'
-            ? cmd.amount && cmd.amount > 0
-              ? cmd.amount
-              : 1
-            : cmd.amount
-        return {
+        const isPool = command_type === 'Acquire Pool Amount' || command_type === 'Release Pool Amount'
+        const resolved: ResourceCommandSpecification = {
           ...cmd,
           command_type,
-          amount,
           resource_source_type: source?.type ?? cmd.resource_source_type ?? 'workflow',
           resource_source_oid: source?.oid ?? cmd.resource_source_oid ?? '',
         }
+        if (isPool && cmd.amount_property) {
+          // Source-mode count: the engine reads the amount from this key at runtime.
+          // NO amount at all — an older engine must refuse the workflow rather than
+          // silently use a fallback.
+          delete resolved.amount
+        } else {
+          // amount_property only means something on a pool command.
+          delete resolved.amount_property
+          resolved.amount = isPool ? (cmd.amount && cmd.amount > 0 ? cmd.amount : 1) : cmd.amount
+        }
+        return resolved
       },
     )
   }

@@ -27,9 +27,12 @@ import { SelectionOverlay, innermostBlockIdAt } from './SelectionOverlay'
 import { StructuralDragLayer } from './dnd/StructuralDragLayer'
 import { BlockContextMenu } from './BlockContextMenu'
 import { ArrangeTips } from './ArrangeTips'
+import { ScreenRowsStatus } from './ScreenRowsStatus'
+import { useScreenDocument } from './useScreenDocument'
 
 export function FormDocumentCanvas() {
-  const document = useFormDocumentStore((s) => s.document)
+  // The rows of the tab being edited (Tablet and Phone can have their own).
+  const document = useScreenDocument()
   const breakpoint = useFormDocumentStore((s) => s.activeBreakpoint)
   const selectBlock = useFormDocumentStore((s) => s.selectBlock)
   const actionDraft = useFormDocumentStore((s) => s.actionDraft)
@@ -76,6 +79,7 @@ export function FormDocumentCanvas() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <BreakpointTabs />
+      <ScreenRowsStatus />
       <ArrangeTips />
       {/* Auto margins (not justify-content:center) center the frame: when it overflows, a
           justify-centered flex child clips its left edge unreachably; auto margins collapse

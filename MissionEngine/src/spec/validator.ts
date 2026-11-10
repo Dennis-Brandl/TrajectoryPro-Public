@@ -629,6 +629,15 @@ function resourceValidation(workflow: Record<string, unknown>): ValidationResult
             if (!COUNTABLE_TYPES.has(resType)) {
               return { valid: false, error_code: 'INVALID_RESOURCE_COMMAND', error_message: `${commandType} not compatible with resource type "${resType}"` };
             }
+            // A count read from a property when the command runs: a non-empty key replaces the
+            // literal amount (the engine checks the value itself at run time).
+            const amountProperty = cmd['amount_property'];
+            if (amountProperty !== undefined) {
+              if (typeof amountProperty !== 'string' || amountProperty.trim() === '') {
+                return { valid: false, error_code: 'INVALID_RESOURCE_COMMAND', error_message: `${commandType} amount_property must be a non-empty property key` };
+              }
+              continue;
+            }
             const amount = cmd['amount'] as number | undefined;
             if (!amount || amount <= 0) {
               return { valid: false, error_code: 'INVALID_RESOURCE_COMMAND', error_message: `${commandType} requires amount > 0` };

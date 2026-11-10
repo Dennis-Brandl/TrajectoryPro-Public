@@ -56,7 +56,7 @@ export function ArrangeTips() {
         Each row is split into columns. Hover a row to see its grips: drag an element&apos;s grip to move it, and drop
         it <strong>beside</strong> another element to put them side by side. Or right-click an element and choose{' '}
         <strong>Arrange in 2 columns</strong> (also in Layout on the right). Drag the line between two elements to
-        change their widths; the Tablet and Phone tabs can set their own.{' '}
+        change their widths; the Tablet and Phone tabs can set their own widths and rows.{' '}
         <a href={ARRANGE_HELP_HREF} target="_blank" rel="noopener noreferrer" className="underline text-link">
           Help
         </a>

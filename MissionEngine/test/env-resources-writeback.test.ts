@@ -13,8 +13,9 @@
 // limitations under the License.
 //
 // Task 5 (Phase 2a): the durability half — writing the environment-resource tier BACK to the
-// registry (persist()) and auto-releasing every hold an instance still carries once it reaches
-// a terminal status (settleTerminal). Tasks 1-4 built the registry access layer, the
+// registry (persist()) and the terminal sweep (settleTerminal). Since 2026-11-10 an environment
+// HOLD survives the end of its workflow; the terminal sweep only drops queue entries and gives
+// back unconsumed grants. Tasks 1-4 built the registry access layer, the
 // registry<->manager bridge, hydration, and routing; nothing before this task ever writes the
 // registry — every test here proves an actual `wc_resource`/`wc_resource_waiter`/
 // `wc_resource_holder` row changed, not just that in-memory state changed.
@@ -216,8 +217,8 @@ const NO_ENV_SPEC = {
 
 // DOES reference an environment resource (hydration runs, context.envKnownNames non-empty) but
 // acquires-then-releases within the SAME step, so envHolds is already [] by the time the
-// instance reaches 'completed' — the case that actually exercises autoReleaseEnvHoldings' own
-// early return, as opposed to NO_ENV_SPEC's "hydration never ran at all" zero-cost path.
+// instance reaches 'completed' — a hydrated terminal sweep with nothing to do, as opposed to
+// NO_ENV_SPEC's "hydration never ran at all" zero-cost path.
 const ACQUIRE_RELEASE_AUTO_SPEC = {
   local_id: 'wf', oid: 'wf-acquire-release-auto', version: '1.0.0', last_modified_date: '2026-01-01',
   environment_specifications: [ENV_PRINTER],
@@ -374,9 +375,10 @@ test('a release whose FIFO head belongs to another instance flags that waiter gr
   await close();
 });
 
-// ── 4: a terminal instance auto-releases — completed / aborted / stopped / errored ────────────
+// ── 4: a terminal instance KEEPS its environment holds — completed / aborted / stopped / errored
+// (user ruling 2026-11-10, replacing spec §5.5 / U4's auto-release on terminal) ──────────────
 
-test('a terminal instance auto-releases: completed (settle-before-persist ordering)', async () => {
+test('a terminal instance KEEPS its environment hold: completed (settle-before-persist ordering)', async () => {
   const { db, close } = await makeTestDb();
   const wc = await makeWc(db);
   await db.insert(wcResource).values({ workCenterId: wc.id, name: 'Printer', resourceType: 'binary exclusive use' });
@@ -386,14 +388,14 @@ test('a terminal instance auto-releases: completed (settle-before-persist orderi
 
   const after = await instanceRow(db, wi.id);
   expect(after.status).toBe('completed');
-  expect((after.engineState as EngineState).envHolds).toEqual([]);
-  expect((await holdersOf(db, wi.id))).toEqual([]);
-  expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(0);
+  expect((after.engineState as EngineState).envHolds).toHaveLength(1);
+  expect((await holdersOf(db, wi.id))).toHaveLength(1);
+  expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(1);
 
   await close();
 });
 
-test('a terminal instance auto-releases: errored (persist-before-settle ordering)', async () => {
+test('a terminal instance KEEPS its environment hold: errored (persist-before-settle ordering)', async () => {
   const { db, close } = await makeTestDb();
   const wc = await makeWc(db);
   await db.insert(wcResource).values({ workCenterId: wc.id, name: 'Printer', resourceType: 'binary exclusive use' });
@@ -403,14 +405,14 @@ test('a terminal instance auto-releases: errored (persist-before-settle ordering
 
   const after = await instanceRow(db, wi.id);
   expect(after.status).toBe('errored');
-  expect((after.engineState as EngineState).envHolds).toEqual([]);
-  expect((await holdersOf(db, wi.id))).toEqual([]);
-  expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(0);
+  expect((after.engineState as EngineState).envHolds).toHaveLength(1);
+  expect((await holdersOf(db, wi.id))).toHaveLength(1);
+  expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(1);
 
   await close();
 });
 
-test('a terminal instance auto-releases: aborted (control pass, settle-before-persist ordering)', async () => {
+test('a terminal instance KEEPS its environment hold: aborted (control pass, settle-before-persist ordering)', async () => {
   const { db, close } = await makeTestDb();
   const wc = await makeWc(db);
   await db.insert(wcResource).values({ workCenterId: wc.id, name: 'Printer', resourceType: 'binary exclusive use' });
@@ -425,14 +427,14 @@ test('a terminal instance auto-releases: aborted (control pass, settle-before-pe
 
   const after = await instanceRow(db, wi.id);
   expect(after.status).toBe('aborted');
-  expect((after.engineState as EngineState).envHolds).toEqual([]);
-  expect((await holdersOf(db, wi.id))).toEqual([]);
-  expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(0);
+  expect((after.engineState as EngineState).envHolds).toHaveLength(1);
+  expect((await holdersOf(db, wi.id))).toHaveLength(1);
+  expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(1);
 
   await close();
 });
 
-test('a terminal instance auto-releases: stopped (control pass, settle-before-persist ordering)', async () => {
+test('a terminal instance KEEPS its environment hold: stopped (control pass, settle-before-persist ordering)', async () => {
   const { db, close } = await makeTestDb();
   const wc = await makeWc(db);
   await db.insert(wcResource).values({ workCenterId: wc.id, name: 'Printer', resourceType: 'binary exclusive use' });
@@ -447,16 +449,35 @@ test('a terminal instance auto-releases: stopped (control pass, settle-before-pe
 
   const after = await instanceRow(db, wi.id);
   expect(after.status).toBe('stopped');
-  expect((after.engineState as EngineState).envHolds).toEqual([]);
-  expect((await holdersOf(db, wi.id))).toEqual([]);
-  expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(0);
+  expect((after.engineState as EngineState).envHolds).toHaveLength(1);
+  expect((await holdersOf(db, wi.id))).toHaveLength(1);
+  expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(1);
 
   await close();
 });
 
-// ── 5: auto-release re-grants a queued foreign instance ────────────────────────────────────────
+// ── 5: a terminal holder keeps its hold; ANOTHER workflow's Release re-grants the queue ─────────
 
-test('auto-release re-grants: A holds a binary-exclusive resource, B is queued; A aborts; B\'s waiter is flagged granted', async () => {
+// Releases 'Printer' without ever acquiring it — the cross-workflow release (2026-11-10).
+const RELEASE_PRINTER_SPEC = {
+  local_id: 'wf', oid: 'wf-release-printer', version: '1.0.0', last_modified_date: '2026-01-01',
+  environment_specifications: [ENV_PRINTER],
+  steps: [
+    step('s1', 'START'),
+    step('rel', 'MATH', {
+      resource_command_specifications: [
+        { command_type: 'Release', resource_name: 'Printer', resource_source_oid: 'env-printer' },
+      ],
+    }),
+    step('e1', 'END'),
+  ],
+  connections: [
+    { from_step_id: 's1', to_step_id: 'rel' },
+    { from_step_id: 'rel', to_step_id: 'e1' },
+  ],
+};
+
+test('A holds a binary-exclusive resource, B is queued; A aborts and keeps it; a third workflow\'s Release takes A\'s hold over and grants B', async () => {
   const { db, close } = await makeTestDb();
   const wc = await makeWc(db);
   await db.insert(wcResource).values({ workCenterId: wc.id, name: 'Printer', resourceType: 'binary exclusive use' });
@@ -477,13 +498,29 @@ test('auto-release re-grants: A holds a binary-exclusive resource, B is queued; 
 
   const aAfter = await instanceRow(db, a.id);
   expect(aAfter.status).toBe('aborted');
+  expect((await holdersOf(db, a.id))).toHaveLength(1); // the hold outlives the workflow
+  const stillQueued = await waitersOf(db, wc.id, 'Printer');
+  expect(stillQueued).toHaveLength(1);
+  expect(stillQueued[0]).toMatchObject({ instanceId: b.id, granted: false });
+  expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(1);
+
+  // A different workflow releases Printer. It held none of it, so A's holder row is taken over
+  // in the same transaction and the freed unit goes to B, the FIFO head.
+  const r = await seedQueuedIn(db, wc, RELEASE_PRINTER_SPEC, 'wf-r-releases', 3);
+  let rStatus = 'queued';
+  for (let i = 0; i < 20 && rStatus !== 'completed'; i++) {
+    await runOnce(db, testDeps());
+    rStatus = (await instanceRow(db, r.id)).status;
+  }
+  expect(rStatus).toBe('completed');
   expect((await holdersOf(db, a.id))).toEqual([]);
 
   const queuedAfter = await waitersOf(db, wc.id, 'Printer');
-  expect(queuedAfter).toHaveLength(1);
-  expect(queuedAfter[0].instanceId).toBe(b.id);
-  expect(queuedAfter[0].granted).toBe(true); // re-granted via A's auto-release
-  expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(1); // reserved for B's grant
+  if (queuedAfter.length > 0) {
+    // B has not consumed its grant yet — the unit is reserved for it.
+    expect(queuedAfter[0]).toMatchObject({ instanceId: b.id, granted: true });
+  }
+  expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(1); // reserved for (or held by) B
 
   // review Critical 1: a granted-but-not-yet-consumed waiter is not the finish line — B's own
   // 'grab' step is still recorded in blockedOnResources, and processReadyStep's READY-row
@@ -494,13 +531,13 @@ test('auto-release re-grants: A holds a binary-exclusive resource, B is queued; 
   const bAfter = await instanceRow(db, b.id);
   expect(bAfter.status).toBe('completed');
   expect((await waitersOf(db, wc.id, 'Printer'))).toEqual([]);
-  expect((await holdersOf(db, b.id))).toEqual([]); // B ran straight through to its own auto-release
-  expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(0);
+  expect((await holdersOf(db, b.id))).toHaveLength(1); // B completed and still holds it
+  expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(1);
 
   await close();
 });
 
-// ── review Critical 2: auto-release must not grant a self-queued waiter back to itself ────────
+// ── review Critical 2: the terminal sweep must not grant a self-queued waiter back to itself ──
 //
 // Adapted from submit.test.ts's RES_BLOCK_SPEC precedent: a USER_INTERACTION branch holds the
 // lock while parked, forcing a SIBLING branch of the SAME instance to genuinely queue behind it
@@ -538,7 +575,7 @@ const SELF_QUEUE_ABORT_SPEC = {
   ],
 };
 
-test("auto-release does not grant an instance's own queued waiter back to itself (self-queue on abort)", async () => {
+test("the terminal sweep does not leave an instance's own queued waiter to be granted later (self-queue on abort)", async () => {
   const { db, close } = await makeTestDb();
   const wc = await makeWc(db);
   await db.insert(wcResource).values({ workCenterId: wc.id, name: 'Printer', resourceType: 'binary exclusive use' });
@@ -562,10 +599,19 @@ test("auto-release does not grant an instance's own queued waiter back to itself
   const after = await instanceRow(db, wi.id);
   expect(after.status).toBe('aborted');
 
-  // Without the Critical 2 fix, release()'s own FIFO grant pass would find branch-b's token
-  // still at the head of the (un-swept) live manager's queue and re-reserve the capacity for
-  // it — inUse stuck at 1 with zero holders AND zero waiters (the waiter row already deleted
-  // by releaseInstanceHoldings), a resource wedged for the whole work center forever.
+  // 2026-11-10: branch-a's hold survives the abort; branch-b's queue entry does not. The hold
+  // stays attributed to this instance (one holder row backing in_use 1), and no waiter row is left
+  // for a dead step to be granted later.
+  expect((await holdersOf(db, wi.id))).toHaveLength(1);
+  expect((await holdersOf(db, wi.id))[0]).toMatchObject({ stepOid: 'branch-a' });
+  expect((await waitersOf(db, wc.id, 'Printer'))).toEqual([]);
+  expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(1);
+
+  // Releasing it from another workflow then frees it for real: the manager's queue no longer
+  // carries branch-b's token, so nothing re-reserves the unit for this dead instance.
+  const r = await seedQueuedIn(db, wc, RELEASE_PRINTER_SPEC, 'wf-r-self-queue', 2);
+  await pumpUntilQuiet(db, testDeps());
+  expect((await instanceRow(db, r.id)).status).toBe('completed');
   expect((await holdersOf(db, wi.id))).toEqual([]);
   expect((await waitersOf(db, wc.id, 'Printer'))).toEqual([]);
   expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(0);
@@ -601,7 +647,7 @@ test("a waiter granted to this instance but never consumed gives its reserved ca
 
   // X aborts BEFORE its own next pump ever runs resumeGrantedSteps — the grant is never turned
   // into an envHolds entry. Without the Finding-1 fix, this reserved unit is lost: X's waiter
-  // row gets deleted by releaseInstanceHoldings regardless, but nothing gives the capacity back.
+  // row gets deleted by releaseInstanceWaiters regardless, but nothing gives the capacity back.
   await requestAbort(db, x.id, { kind: 'system', label: 'test' });
   const did = await runControlPass(db, testDeps());
   expect(did).toBe(true);
@@ -653,13 +699,13 @@ test("the reserved capacity cascades to the NEXT queued instance rather than eva
   const zAfter = await instanceRow(db, z.id);
   expect(zAfter.status).toBe('completed');
   expect((await waitersOf(db, wc.id, 'Printer'))).toEqual([]);
-  expect((await holdersOf(db, z.id))).toEqual([]);
-  expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(0);
+  expect((await holdersOf(db, z.id))).toHaveLength(1); // Z completed holding it (2026-11-10)
+  expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(1);
 
   await close();
 });
 
-// ── review round 3 (Critical): a grant this instance consumes AND auto-releases in the SAME
+// ── review round 3 (Critical): a grant this instance consumes AND settles terminal on in the SAME
 // transaction must not be double-released via a stale envSnapshot read. ───────────────────────
 
 test("a self-consumed grant that completes the instance in ONE transaction is not double-released", async () => {
@@ -690,14 +736,10 @@ test("a self-consumed grant that completes the instance in ONE transaction is no
   // reserved" would see the SAME grant twice: once via state.envHolds (genuinely consumed) and
   // once via the frozen snapshot (never refreshed) — a double release.
   //
-  // W1's own auto-release (settleTerminal firing inside that SAME transaction) then correctly
-  // hands the now-freed unit to W2, still queued. If left running, the worker loop would go on
-  // to ALSO resume-and-complete W2 in a LATER transaction (correct — GRAB_PRINTER_SPEC never
-  // releases, so W2 completing auto-releases too, eventually reaching inUse: 0 with no waiters
-  // at all — a DIFFERENT, later, equally-correct state). That would mask the exact window this
-  // test targets: stop calling runOnce the INSTANT W1's own transaction commits (checking after
-  // EACH call, never running a further one once W1 has settled) so the assertions below observe
-  // the state exactly as W1's own transaction left it — before W2 ever gets a turn of its own.
+  // W1's own terminal sweep (settleTerminal firing inside that SAME transaction) must then leave
+  // the unit with W1 — Environment holds outlive the workflow (2026-11-10). Stop calling runOnce
+  // the INSTANT W1's own transaction commits (checking after EACH call) so the assertions below
+  // observe the state exactly as W1's own transaction left it.
   // A competing, still-blocked W2 can make the worker loop "win" a claim on W2 first without
   // doing anything useful (the pre-existing head-of-line bump) — unrelated to this fix, so the
   // loop below just keeps calling runOnce (bounded) until W1 SPECIFICALLY has settled.
@@ -707,16 +749,18 @@ test("a self-consumed grant that completes the instance in ONE transaction is no
     w1Status = (await instanceRow(db, w1.id)).status;
   }
   expect(w1Status).toBe('completed');
-  expect((await holdersOf(db, w1.id))).toEqual([]);
+  // 2026-11-10: W1 completed holding the unit it consumed, and keeps it.
+  expect((await holdersOf(db, w1.id))).toHaveLength(1);
 
-  // The double-release signature: inUse driven to 0 (one decrement too many) while W2's waiter
-  // row simultaneously claims granted: true — a binary-exclusive resource the registry says is
-  // free with a waiter row saying it is held. Correct behavior: inUse stays 1 (reserved for
-  // W2), W2's row flips to granted: true, and nothing decrements a second time.
+  // The double-release signature, under the new rule: the terminal sweep treating the grant W1
+  // CONSUMED in this transaction as a still-outstanding reservation (a stale-snapshot read) would
+  // release it — handing the unit W1 now holds on to W2 (W2 granted: true) while W1's holder row
+  // still claims it: two holders of one exclusive resource. Correct behavior: W2 stays queued,
+  // inUse 1 for W1's hold.
   expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(1);
   const afterW1 = await waitersOf(db, wc.id, 'Printer');
   expect(afterW1).toHaveLength(1);
-  expect(afterW1[0]).toMatchObject({ instanceId: w2.id, granted: true });
+  expect(afterW1[0]).toMatchObject({ instanceId: w2.id, granted: false });
 
   await close();
 });
@@ -727,7 +771,7 @@ test('an instance whose recipe names no environment resources at all settles wit
   const { db, close } = await makeTestDb();
   const wi = await seedQueued(db, NO_ENV_SPEC, 'wf-no-env-terminal');
 
-  const releaseSpy = vi.spyOn(wcResources, 'releaseInstanceHoldings');
+  const releaseSpy = vi.spyOn(wcResources, 'releaseInstanceWaiters');
   const lockSpy = vi.spyOn(wcResources, 'lockRegistry');
 
   await pumpUntilQuiet(db, testDeps());
@@ -742,25 +786,22 @@ test('an instance whose recipe names no environment resources at all settles wit
   await close();
 });
 
-// review Minor: the test above never exercises autoReleaseEnvHoldings' own early return at
+// review Minor: the test above never exercises the terminal sweep on a HYDRATED instance at
 // all — lockRegistry was never going to be called regardless, since hydration itself never ran.
 // This one DOES hydrate the environment tier (context.envKnownNames is non-empty) but ends the
 // transition holding nothing.
 //
-// Whole-branch review C1 CHANGED this contract deliberately, and this test now pins the new one:
-// the waiter/holder delete is UNCONDITIONAL (an instance can hold nothing and still own a waiter
-// row — that was the Critical), so releaseInstanceHoldings always runs once for a hydrated
-// instance. What is still worth proving is that the early-out AFTER it fires on a genuinely
-// empty result: the delete found nothing, so nothing was swept, released, re-granted or written.
-// The zero-cost path — a recipe that names no environment resource at all — keeps its stronger
-// "never called" guarantee in the test above; that one is a provable no-op, this one is not.
-test('an instance whose recipe names an environment resource, but holds none at terminal, still runs the unconditional waiter/holder delete and finds nothing', async () => {
+// Whole-branch review C1: the waiter delete is UNCONDITIONAL for a hydrated instance (an instance
+// can hold nothing and still own a waiter row — that was the Critical), so releaseInstanceWaiters
+// always runs once. Here it finds nothing. The zero-cost path — a recipe that names no
+// environment resource at all — keeps its stronger "never called" guarantee in the test above.
+test('an instance whose recipe names an environment resource, but holds none at terminal, still runs the unconditional waiter delete and finds nothing', async () => {
   const { db, close } = await makeTestDb();
   const wc = await makeWc(db);
   await db.insert(wcResource).values({ workCenterId: wc.id, name: 'Printer', resourceType: 'binary exclusive use' });
   const wi = await seedQueuedIn(db, wc, ACQUIRE_RELEASE_AUTO_SPEC, 'wf-acquire-release-auto');
 
-  const releaseSpy = vi.spyOn(wcResources, 'releaseInstanceHoldings');
+  const releaseSpy = vi.spyOn(wcResources, 'releaseInstanceWaiters');
 
   await pumpUntilQuiet(db, testDeps());
 
@@ -768,8 +809,7 @@ test('an instance whose recipe names an environment resource, but holds none at 
   expect(after.status).toBe('completed');
   expect((after.engineState as EngineState).envHolds).toEqual([]);
   expect(releaseSpy).toHaveBeenCalledTimes(1);
-  // `touched` came back empty — no row belonged to this instance — which is exactly the
-  // condition the post-delete early-out tests before doing anything else.
+  // `touched` came back empty — no waiter row belonged to this instance.
   await expect(releaseSpy.mock.results[0]!.value).resolves.toEqual([]);
   expect(await waitersOf(db, wc.id, 'Printer')).toEqual([]);
   expect(await holdersOf(db, wi.id)).toEqual([]);
@@ -781,8 +821,8 @@ test('an instance whose recipe names an environment resource, but holds none at 
 
 // ── whole-branch review, C1: a TERMINAL instance that holds nothing but is still QUEUED ────────
 //
-// `autoReleaseEnvHoldings` used to early-return on "nothing held, nothing reserved" BEFORE
-// `releaseInstanceHoldings` ever ran, so a merely-QUEUED instance's `wc_resource_waiter` row
+// The terminal sweep used to early-return on "nothing held, nothing reserved" BEFORE
+// its waiter/holder delete ever ran, so a merely-QUEUED instance's `wc_resource_waiter` row
 // outlived its own terminal settle. The holder's later release then shifted that DEAD token off
 // the FIFO queue, set `in_use = 1` and flagged the dead instance's row `granted` — and nothing
 // pumps a terminal instance (`claimInstanceForWork` filters on running), so the capacity was
@@ -811,11 +851,16 @@ test('C1: an instance QUEUED on an environment resource (holding nothing) delete
   // The defect itself: B's own terminal settle must take its waiter row with it.
   expect(await waitersOf(db, wc.id, 'Printer')).toEqual([]);
 
-  // ...and the wedge it caused: A's release must find an EMPTY queue and hand the unit back to
-  // the pool, not reserve it for a dead instance's orphaned token.
+  // ...and the wedge it caused: a later release must find an EMPTY queue and hand the unit back
+  // to the pool, not reserve it for a dead instance's orphaned token. A aborts first and KEEPS
+  // its hold (2026-11-10); another workflow's Release is what frees it.
   await requestAbort(db, a.id, { kind: 'system', label: 'test' });
   expect(await runControlPass(db, testDeps())).toBe(true);
   expect((await instanceRow(db, a.id)).status).toBe('aborted');
+  expect(await holdersOf(db, a.id)).toHaveLength(1);
+  expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(1);
+  await seedQueuedIn(db, wc, RELEASE_PRINTER_SPEC, 'wf-c1-abort-releaser', 3);
+  await pumpUntilQuiet(db, testDeps());
   expect(await holdersOf(db, a.id)).toEqual([]);
   expect(await waitersOf(db, wc.id, 'Printer')).toEqual([]);
   expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(0);
@@ -842,6 +887,10 @@ test('C1: the same holds for an ORDERLY STOP of a queued-but-holding-nothing ins
 
   await requestAbort(db, a.id, { kind: 'system', label: 'test' });
   expect(await runControlPass(db, testDeps())).toBe(true);
+  expect(await waitersOf(db, wc.id, 'Printer')).toEqual([]);
+  expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(1); // A keeps its hold (2026-11-10)
+  await seedQueuedIn(db, wc, RELEASE_PRINTER_SPEC, 'wf-c1-stop-releaser', 3);
+  await pumpUntilQuiet(db, testDeps());
   expect(await waitersOf(db, wc.id, 'Printer')).toEqual([]);
   expect((await resourceRow(db, wc.id, 'Printer')).inUse).toBe(0);
 

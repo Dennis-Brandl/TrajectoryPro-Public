@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-export { FormDocumentView, type FormDocumentViewProps } from './FormDocumentView'
+export { FormDocumentView, breakpointForWidth, type FormDocumentViewProps } from './FormDocumentView'
 export { blockLayoutClasses } from './blockClasses'
 export { useFormRenderer, type FormRendererContextValue, type ButtonJobs, type ButtonJobState } from './context'
 export { guardAuthoredColor, contrastRatio, MIN_AUTHORED_CONTRAST } from './color-guard'

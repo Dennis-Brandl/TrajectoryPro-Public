@@ -81,6 +81,50 @@ function buildResourceKey(cmd: ResourceCommandSpecification, ownerOid: string): 
   return `${cmd.resource_source_oid ?? ownerOid}:${cmd.resource_name}`;
 }
 
+// ── Counts read from a property (`amount_property`) ──
+//
+// 'Acquire Pool Amount' / 'Release Pool Amount' may take their count from a property key, the
+// same way an input parameter with `value_type: 'property'` does (PropertyStore.resolveKey). An
+// Acquire resolves it ONCE, at the step's fresh resource attempt, and keeps it in
+// `EngineState.resolvedAmounts` while the step waits; a Release resolves it when it runs.
+
+/** The command's property key, or undefined when it uses a literal `amount`. Only the two pool
+ *  commands read it; a blank key counts as absent (the validator rejects one at load). */
+function amountPropertyOf(cmd: ResourceCommandSpecification): string | undefined {
+  if (cmd.command_type !== 'Acquire Pool Amount' && cmd.command_type !== 'Release Pool Amount') return undefined;
+  const key = cmd.amount_property;
+  return typeof key === 'string' && key.trim() !== '' ? key : undefined;
+}
+
+/** Key of one command inside `EngineState.resolvedAmounts[stepOid]`. The blocked record keeps
+ *  JSON copies of the commands, so the key must come from the command's own fields. */
+function amountCommandKey(cmd: ResourceCommandSpecification): string {
+  return cmd.oid ?? `${cmd.command_type}|${cmd.resource_source_oid ?? ''}|${cmd.resource_name}|${cmd.amount_property ?? ''}`;
+}
+
+/** A property value as a count: a decimal whole number of at least 1, else null. */
+function parseCount(raw: string): number | null {
+  const t = raw.trim();
+  if (!/^\d+$/.test(t)) return null;
+  const n = Number(t);
+  return Number.isSafeInteger(n) && n >= 1 ? n : null;
+}
+
+function badCountMessage(verb: 'Acquire' | 'Release', cmd: ResourceCommandSpecification, key: string, raw: string): string {
+  return `${verb} of "${cmd.resource_name}" could not use "${raw}" from ${key} as a count: it must be a whole number of at least 1`;
+}
+
+/** The amount an activation command acquires: the count frozen at the step's fresh attempt for
+ *  a property-sourced 'Acquire Pool Amount', else the literal `amount` (undefined = 1, as
+ *  today). The fallback re-read only covers a frozen entry that is somehow missing. */
+function acquireAmountOf(context: WorkflowContext, stepOid: string, cmd: ResourceCommandSpecification): number | undefined {
+  const key = amountPropertyOf(cmd);
+  if (!key || cmd.command_type !== 'Acquire Pool Amount') return cmd.amount;
+  const frozen = context.state.resolvedAmounts[stepOid]?.[amountCommandKey(cmd)];
+  if (frozen !== undefined) return frozen;
+  return parseCount(context.props.resolveKey(key)) ?? cmd.amount ?? 1;
+}
+
 /**
  * Task 4 (Phase 2a): resolve which tier `cmd` belongs to and the (manager, key, token) triple
  * that tier's InMemoryResourceManager calls need. `context.root.envScope` is the IDENTICAL
@@ -159,7 +203,7 @@ function findAnyEnvHold(holds: EnvHold[], resourceName: string, heldName: string
 function warnReleaseSkipped(instanceId: string, stepOid: string, resourceName: string): void {
   console.warn(
     `[mission-engine] instance ${instanceId} step ${stepOid}: Release "${resourceName}" skipped — ` +
-    'its hold was released by an operator',
+    'its hold was released by an operator or another workflow',
   );
 }
 
@@ -190,6 +234,23 @@ function removeEnvHoldAt(holds: EnvHold[], idx: number, released: boolean, relea
   } else {
     holds[idx] = { ...holds[idx], amount: remaining };
   }
+}
+
+/** 2026-11-10 (cross-workflow takeover): a count-pool holder row another workflow's Release only
+ *  PARTLY took over leaves this instance a smaller ledger entry plus a marker for the taken part
+ *  (openContext's partial diff). A Release asking for more than the matched ledger entry holds
+ *  takes the `excess` from such a marker first — this step's own, else any — and returns how much
+ *  it absorbed; the caller releases only the rest, so the taken units are not freed twice. */
+function absorbIntoMarker(
+  revoked: EnvHold[], resourceName: string, stepOid: string, heldName: string | undefined, excess: number,
+): number {
+  if (excess <= 0) return 0;
+  let i = findExactEnvHold(revoked, resourceName, stepOid, heldName);
+  if (i < 0) i = findAnyEnvHold(revoked, resourceName, heldName);
+  if (i < 0) return 0;
+  const absorbed = Math.min(excess, revoked[i].amount);
+  removeEnvHoldAt(revoked, i, true, absorbed);
+  return absorbed;
 }
 
 /**
@@ -247,7 +308,7 @@ function attemptResourceCommands(
         break;
       }
       case 'Acquire Pool Amount': {
-        const r = mgr.acquire(key, token, cmd.amount);
+        const r = mgr.acquire(key, token, acquireAmountOf(context, stepOid, cmd));
         if (!r.granted) blocked = true;
         break;
       }
@@ -284,23 +345,30 @@ function attemptResourceCommands(
       context.root.state.envHolds.push({
         name: cmd.resource_name,
         stepOid,
-        amount: cmd.command_type === 'Acquire Pool Amount' ? (cmd.amount ?? 1) : 1,
+        amount: cmd.command_type === 'Acquire Pool Amount' ? (acquireAmountOf(context, stepOid, cmd) ?? 1) : 1,
         heldName: grantedName,
       });
     }
   }
   delete context.state.blockedOnResources[stepOid];
+  delete context.state.resolvedAmounts[stepOid]; // every acquire is granted: the frozen counts are spent
   return true;
 }
 
 /** A step's FIRST resource activation attempt (Acquire / Acquire Pool Amount / Send / Receive /
  *  Synchronize), transcribed from reference engine.ts:981-990's processResourceCommands: split
- *  + sort the full command list, then hand it to attemptResourceCommands. */
+ *  + sort the full command list, then hand it to attemptResourceCommands.
+ *
+ *  Returns `{ error }` — and touches no manager at all — when a property-sourced 'Acquire Pool
+ *  Amount' count is not a whole number of at least 1: the caller fails the step (failStep,
+ *  mode ERROR, `nothingHeld`). Every such count is resolved and checked BEFORE the first command
+ *  is attempted, because attempts are sequential (an earlier command stays granted while a later
+ *  one queues) — so a step failing this way holds and queues nothing. */
 function tryActivateResources(
   context: WorkflowContext,
   stepOid: string,
   cmds: ResourceCommandSpecification[],
-): boolean {
+): boolean | { error: string } {
   // Final-review fix (see EngineState.releasedOnCatch): a FRESH activation attempt supersedes any
   // catch-time release recorded for this step — it is about to acquire again, so the release it
   // owes at ITS completion is a NEW one and must not be suppressed. This is the clearing site
@@ -308,7 +376,18 @@ function tryActivateResources(
   // deleted the trigger's row), and a GOTO/machine-cycle that reaches the trigger again through
   // ordinary routing never resets it at all.
   delete context.state.releasedOnCatch[stepOid];
+  delete context.state.resolvedAmounts[stepOid]; // a fresh attempt reads its counts afresh
   const { activation, completion } = splitResourceCommands(cmds);
+  const frozen: Record<string, number> = {};
+  for (const cmd of activation) {
+    const key = amountPropertyOf(cmd);
+    if (!key || cmd.command_type !== 'Acquire Pool Amount') continue;
+    const raw = context.props.resolveKey(key);
+    const n = parseCount(raw);
+    if (n === null) return { error: badCountMessage('Acquire', cmd, key, raw) };
+    frozen[amountCommandKey(cmd)] = n;
+  }
+  if (Object.keys(frozen).length > 0) context.state.resolvedAmounts[stepOid] = frozen;
   const sorted = sortActivationCommands(activation);
   return attemptResourceCommands(context, stepOid, sorted, completion);
 }
@@ -317,12 +396,19 @@ function tryActivateResources(
  *  engine.ts:803-822's processReleaseCommands). Runs inline in the same transition as the
  *  step's own completion — v1 has no reason to defer it, since the step never re-enters
  *  WAITING between activation and completion (that only happens via the block path above,
- *  which returns before this is ever reached). */
+ *  which returns before this is ever reached).
+ *
+ *  A 'Release Pool Amount' with `amount_property` reads its count now. It releases the full
+ *  count even if this run holds less (the pool floors at 0, as for a literal amount). A count
+ *  that is not a whole number of at least 1 releases NOTHING for that command and comes back
+ *  in the returned list of messages — the caller records each as an ERRORED trace row; the
+ *  step is not failed (it has already finished). */
 export function releaseResourceCompletionCommands(
   context: WorkflowContext,
   stepOid: string,
   cmds: ResourceCommandSpecification[],
-): void {
+): string[] {
+  const errors: string[] = [];
   const { completion } = splitResourceCommands(cmds);
   const sorted = [...completion].sort((a, b) => a.resource_name.localeCompare(b.resource_name));
   for (const cmd of sorted) {
@@ -334,15 +420,29 @@ export function releaseResourceCompletionCommands(
       // posture must not soften just because this is the release side of the same command.
       const tier = resolveResourceTier(context, stepOid, cmd);
       if (!tier.mgr) continue;
+      let amount = cmd.amount;
+      const amountKey = amountPropertyOf(cmd);
+      if (amountKey) {
+        const raw = context.props.resolveKey(amountKey);
+        const n = parseCount(raw);
+        if (n === null) {
+          // Before any hold bookkeeping below: a release that does not happen consumes nothing.
+          errors.push(badCountMessage('Release', cmd, amountKey, raw));
+          continue;
+        }
+        amount = n;
+      }
       // Spec 2026-11-06 U6: the matching Acquire was satisfied by an inherited hold, so this
-      // Release has nothing of its own to give back — the hold is released at settle, as today.
+      // Release has nothing of its own to give back. The inherited hold itself stays held: an
+      // Environment hold is not released at settle (2026-11-10), a workflow-tier one dies with
+      // the instance's own manager.
       const holdKey = tier.env ? envHoldKey(tier.key) : tier.key;
       if (releasesInheritedHold(context.root, stepOid, holdKey)) continue;
       // A real Release during the cleanup gives the inherited hold back for good.
       forgetInheritedHold(context.root, holdKey);
       const name = cmd.target ? context.props.get(cmd.target) : undefined;
       if (!tier.env) {
-        tier.mgr.release(tier.key, cmd.amount, name);
+        tier.mgr.release(tier.key, amount, name);
         continue;
       }
       // Phase 4a (plan Ruling P3b): the ENVIRONMENT tier is guarded by a REVOKED-HOLD MARKER.
@@ -375,18 +475,25 @@ export function releaseResourceCompletionCommands(
       // Revoked-first among the ANY-step lookups is also the safe way to be WRONG. When both
       // any-lookups would match and neither is exact, this Release cannot be attributed with
       // certainty to either hold; consuming the marker leaves a unit held until the sibling
-      // step's own Release (or terminal auto-release) gives it back — under-subscription, which
-      // self-heals — while consuming the ledger entry frees a unit another step is still using,
-      // which is the wedge and does not.
+      // step's own Release (or another workflow's, or an operator) gives it back —
+      // under-subscription, which is recoverable — while consuming the ledger entry frees a unit
+      // another step is still using, which is the wedge and is not.
+      //
+      // Since 2026-11-10 a marker also comes from ANOTHER WORKFLOW's Release taking this
+      // instance's hold over (outcome 5 below), not only from an operator.
       const holds = context.root.state.envHolds;
       const revoked = context.root.state.envHoldsRevoked;
-      const releasedAmount = cmd.amount ?? 1;
+      const releasedAmount = amount ?? 1;
       const exactHold = findExactEnvHold(holds, cmd.resource_name, stepOid, name);
       if (exactHold >= 0) {
         // 1. The ledger backs it on THIS step — an ordinary release, one Release accounting for
-        //    one Acquire on the same step (the Task 4 convention).
-        const released = tier.mgr.release(tier.key, cmd.amount, name);
-        removeEnvHoldAt(holds, exactHold, released, releasedAmount);
+        //    one Acquire on the same step (the Task 4 convention). Asking for more than the entry
+        //    still holds, the excess is first taken from a revoked marker (a count-pool hold
+        //    another workflow partly took over), so those units are not freed a second time.
+        const absorbed = absorbIntoMarker(revoked, cmd.resource_name, stepOid, name, releasedAmount - holds[exactHold].amount);
+        if (absorbed > 0) warnReleaseSkipped(context.root.id, stepOid, cmd.resource_name);
+        const released = tier.mgr.release(tier.key, absorbed > 0 ? releasedAmount - absorbed : amount, name);
+        removeEnvHoldAt(holds, exactHold, released, releasedAmount - absorbed);
         continue;
       }
       const exactRevoked = findExactEnvHold(revoked, cmd.resource_name, stepOid, name);
@@ -421,17 +528,38 @@ export function releaseResourceCompletionCommands(
         //    revoked — a Release placed on a later step than its Acquire, which is legal.
         //    Reconciling the ledger here also closes a PRE-EXISTING double-free: before this
         //    fallback, such a Release left the entry in place and the terminal auto-release
-        //    freed the unit a second time.
-        const released = tier.mgr.release(tier.key, cmd.amount, name);
-        removeEnvHoldAt(holds, anyHold, released, releasedAmount);
+        //    freed the unit a second time. Same marker absorption as (1).
+        const absorbed = absorbIntoMarker(revoked, cmd.resource_name, stepOid, name, releasedAmount - holds[anyHold].amount);
+        if (absorbed > 0) warnReleaseSkipped(context.root.id, stepOid, cmd.resource_name);
+        const released = tier.mgr.release(tier.key, absorbed > 0 ? releasedAmount - absorbed : amount, name);
+        removeEnvHoldAt(holds, anyHold, released, releasedAmount - absorbed);
         continue;
       }
-      // 5. Neither list, on any step: this instance never held it. The reference model's
-      //    unconditional asymmetric release stands, and there is by definition no ledger entry
-      //    to reconcile. §5.7 legacy holds land here too — untracked by design, so never
-      //    persisted, so never revoked — keeping exactly the behaviour they have today.
-      tier.mgr.release(tier.key, cmd.amount, name);
+      // 5. Neither list, on any step: this instance never held it — a cross-workflow release
+      //    (user ruling 2026-11-10: one workflow may acquire an Environment resource and another
+      //    release it). The reference model's unconditional asymmetric release stands; when it
+      //    actually freed something, the units are TAKEN OVER from another instance's holder
+      //    rows at write-back (persist() → applyForeignReleases → consumeForeignHolders), so the
+      //    ledger keeps matching the counter and the former holder's own later Release is
+      //    skipped through its revoked-hold marker instead of freeing the unit a second time.
+      //    §5.7 legacy holds have no holder row, so for them only the counter changes, as before.
+      if (tier.mgr.release(tier.key, amount, name)) {
+        context.root.foreignReleases.push({ name: cmd.resource_name, amount: releasedAmount, heldName: name ?? null });
+      }
     }
+  }
+  return errors;
+}
+
+/** Record each bad property-sourced release count (releaseResourceCompletionCommands) as an
+ *  instance-level ERRORED trace row naming the step. Instance-level (no step oid) on purpose: a
+ *  step-level ERRORED row would end a second run of a step that already completed. */
+async function recordReleaseErrors(tx: Db, context: WorkflowContext, stepOid: string, errors: string[]): Promise<void> {
+  if (errors.length === 0) return;
+  const stepName = context.spec.steps.find(s => s.oid === stepOid)?.local_id ?? stepOid;
+  for (const message of errors) {
+    console.warn(`[mission-engine] instance ${context.root.id} step ${stepOid}: ${message} — nothing was released`);
+    await context.recordTrace(tx, null, 'ERRORED', undefined, `Step "${stepName}": ${message} — nothing was released`);
   }
 }
 
@@ -517,6 +645,7 @@ export async function resumeGrantedSteps(tx: Db, context: WorkflowContext, deps:
         console.warn(`[mission-engine] instance ${context.root.id}: dropped an environment grant for resource "${grant.resourceKey}" (token "${grant.queueKey}") — step "${grant.stepOid}" not found anywhere in the spec tree`);
       }
       delete context.state.blockedOnResources[grant.stepOid];
+      delete context.state.resolvedAmounts[grant.stepOid];
       continue;
     }
     const { context: stepCtx, stepDef } = found;
@@ -547,7 +676,7 @@ export async function resumeGrantedSteps(tx: Db, context: WorkflowContext, deps:
       context.root.state.envHolds.push({
         name: acquireCmd.resource_name,
         stepOid: grant.stepOid,
-        amount: acquireCmd.command_type === 'Acquire Pool Amount' ? (acquireCmd.amount ?? 1) : 1,
+        amount: acquireCmd.command_type === 'Acquire Pool Amount' ? (acquireAmountOf(stepCtx, grant.stepOid, acquireCmd) ?? 1) : 1,
         heldName: assignedName ?? null,
       });
     }
@@ -838,6 +967,12 @@ async function materializeAndActivate(
 
   if (stepDef.resource_command_specifications?.length) {
     const granted = tryActivateResources(context, stepOid, stepDef.resource_command_specifications);
+    if (typeof granted === 'object') {
+      // A property-sourced Acquire count is unusable: the step fails like any other step error
+      // (a TRY of mode ERROR catches it), holding and queueing nothing.
+      const settled = await failStep(tx, context, target, 'ERROR', granted.error, deps, undefined, { nothingHeld: true });
+      return { settled, completed: false };
+    }
     if (!granted) {
       await context.recordTrace(tx, stepOid, 'WAITING');
       // I3-style defensive flush (mirrors processReadyStep's own fix, below): an activation
@@ -948,7 +1083,8 @@ export async function drainCascade(tx: Db, context: WorkflowContext, seed: strin
           if (context.state.releasedOnCatch[stepOid]) {
             delete context.state.releasedOnCatch[stepOid];
           } else {
-            releaseResourceCompletionCommands(context, stepOid, dequeuedDef.resource_command_specifications);
+            const releaseErrors = releaseResourceCompletionCommands(context, stepOid, dequeuedDef.resource_command_specifications);
+            await recordReleaseErrors(tx, context, stepOid, releaseErrors);
           }
           const { settled } = await resumeGrantedSteps(tx, context, deps);
           if (settled) return true;
@@ -1102,7 +1238,7 @@ export async function settleStoppedIfDrained(tx: Db, context: WorkflowContext, d
 // sweep, control.ts's ABORT sweep and the step-run records share one definition.)
 
 // knownStepOids + envSweepTokens moved to context.ts (review round 2, Finding 2) — imported
-// above. context.ts's autoReleaseEnvHoldings needed the identical mapping and transition.ts
+// above. context.ts's terminal sweep (settleEnvTierAtTerminal) needed the identical mapping and transition.ts
 // already imports findSpecByOid from context.ts, so that is the one import direction that
 // doesn't create a cycle; a second hand-copied definition here would be exactly the drift pair
 // their own doc comments (see context.ts) warn against.
@@ -1116,7 +1252,8 @@ export async function settleStoppedIfDrained(tx: Db, context: WorkflowContext, d
  *
  *  Task 4 (Ruling A): also sweeps the environment tier, over the SAME known-oid set mapped
  *  through envToken — see envSweepTokens' own doc comment for why. Held units are untouched
- *  here either way (workflow or environment) — only a terminal settle auto-releases (Task 5).
+ *  here either way (workflow or environment); an Environment hold is not released at terminal
+ *  either (2026-11-10) — only a Release (this or another workflow's) or an operator frees it.
  *
  *  Whole-branch review C2 (defence in depth): `known` is a PARAMETER now, defaulting to the old
  *  in-function `knownStepOids(context)` call. Both ABANDON and RESTART tear their active children
@@ -1210,6 +1347,7 @@ function clearStepScopedState(context: WorkflowContext, oids: Iterable<string>):
     delete context.state.blockedOnResources[oid];
     delete context.state.childActive[oid];
     delete context.state.releasedOnCatch[oid];
+    delete context.state.resolvedAmounts[oid];
     delete context.state.armedGates[oid];
     delete context.state.scriptRuns[oid];
   }
@@ -1313,6 +1451,7 @@ async function resetStepIfExists(tx: Db, context: WorkflowContext, oid: string, 
   delete context.state.waitAll[oid];
   delete context.state.blockedOnResources[oid];
   delete context.state.releasedOnCatch[oid]; // final-review fix — see EngineState.releasedOnCatch
+  delete context.state.resolvedAmounts[oid];
   // GATE spec 2026-08-29: drop this step's own armed-gate entry AND any entry that
   // paired a gate to it as predecessor (the gate is being reset out from under it).
   delete context.state.armedGates[oid];
@@ -1827,8 +1966,13 @@ export async function failStep(
   error: string | null,
   deps: EngineDeps,
   actionIndex?: number,
+  /** `nothingHeld`: the step failed before acquiring anything (a property-sourced Acquire count
+   *  it could not use — tryActivateResources), so its declared releases must not run, neither
+   *  at catch time nor when a RETURN COMPLETE later re-seeds it into drainCascade. */
+  opts?: { nothingHeld?: boolean },
 ): Promise<boolean> {
   const stepDef = context.spec.steps.find(s => s.oid === target.stepOid);
+  delete context.state.resolvedAmounts[target.stepOid]; // a failed step waits for nothing
 
   // GATE spec §5.3.4: a failing step with an armed successor gate tears that gate down —
   // TRY/CATCH owns what happens next; the gate must not keep cycling or hold completion.
@@ -1904,8 +2048,13 @@ export async function failStep(
     // declared completion (Release / Release Pool Amount) commands before the catch network
     // activates — the resource model has no per-holder tracking, so the step's own declared
     // releases ARE the release semantics — then resumes whatever the freed capacity unblocks.
-    if (matching.release_on_catch !== false && stepDef.resource_command_specifications?.length) {
-      releaseResourceCompletionCommands(context, target.stepOid, stepDef.resource_command_specifications);
+    if (opts?.nothingHeld) {
+      // Nothing was acquired, so there is nothing to give back. Mark the release as already
+      // spent so drainCascade's dequeue-time release skips it on a RETURN COMPLETE as well.
+      context.state.releasedOnCatch[target.stepOid] = true;
+    } else if (matching.release_on_catch !== false && stepDef.resource_command_specifications?.length) {
+      const releaseErrors = releaseResourceCompletionCommands(context, target.stepOid, stepDef.resource_command_specifications);
+      await recordReleaseErrors(tx, context, target.stepOid, releaseErrors);
       // Final-review fix: record that THIS acquire's release is already spent, so drainCascade's
       // dequeue-time release skips it if the catch later force-completes this same step (RETURN
       // COMPLETE re-seeds the trigger — returnComplete). Persisted, because that RETURN can
@@ -2742,6 +2891,17 @@ export async function processReadyStep(tx: Db, instanceId: string, deps: EngineD
 
   if (stepDef.resource_command_specifications?.length) {
     const granted = tryActivateResources(stepCtx, target.stepOid, stepDef.resource_command_specifications);
+    if (typeof granted === 'object') {
+      // A property-sourced Acquire count is unusable: fail the step (TRY-catchable, mode ERROR)
+      // with nothing held or queued — the same tail as failOperatorCancelledWaits.
+      const settled = await failStep(
+        tx, stepCtx, { id: target.id, stepOid: target.stepOid }, 'ERROR', granted.error, deps, undefined, { nothingHeld: true },
+      );
+      if (settled) return true;
+      await settleIfComplete(tx, context, target.nodeOid, deps);
+      await context.persist(tx);
+      return true;
+    }
     if (!granted) {
       await stepCtx.recordTrace(tx, target.stepOid, 'WAITING');
       // I3 fix: an activation list can grant EARLIER commands before a LATER one blocks (e.g.

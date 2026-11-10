@@ -15,6 +15,7 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { Copy, CopyPlus, Scissors, Clipboard, Trash2, ArrowUpToLine, ArrowDownToLine, Columns3 } from 'lucide-react'
 import { ownRowTarget, rowAboveTarget } from '@/lib/form-document/column-ops'
 import { useFormDocumentStore } from '@/stores/formDocumentStore'
+import { useScreenDocument } from './useScreenDocument'
 
 interface BlockContextMenuProps {
   position: { x: number; y: number } | null
@@ -36,7 +37,7 @@ export function BlockContextMenu({ position, targetBlockId, onClose }: BlockCont
   const cut = useFormDocumentStore((s) => s.cut)
   const paste = useFormDocumentStore((s) => s.paste)
   const clipboard = useFormDocumentStore((s) => s.clipboard)
-  const formDoc = useFormDocumentStore((s) => s.document)
+  const formDoc = useScreenDocument() // the rows of the tab being edited
   const moveIntoRowAbove = useFormDocumentStore((s) => s.moveIntoRowAbove)
   const moveToOwnRow = useFormDocumentStore((s) => s.moveToOwnRow)
   const arrangeColumns = useFormDocumentStore((s) => s.arrangeColumns)

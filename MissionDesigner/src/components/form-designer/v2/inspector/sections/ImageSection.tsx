@@ -16,6 +16,7 @@ import { resolveScalePercent } from '@mission/form-schema'
 import type { Block, ImageBlock } from '@mission/form-schema'
 import { scalePatchAt } from '@/lib/form-document/layout-ops'
 import { useFormDocumentStore } from '@/stores/formDocumentStore'
+import { SCREEN_NAME } from '../../BreakpointTabs'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { getSpecImages, setSpecImage, dedupeImageFilename } from '@/stores/specificationStore/imageHelpers'
 
@@ -152,7 +153,7 @@ export function ImageSection({
           className="text-muted-foreground"
           style={{ fontSize: 11, display: 'inline-block', marginBottom: 2 }}
         >
-          Scale (%)
+          Scale (%) ({SCREEN_NAME[bp]})
         </label>
         {bp !== 'base' && ownScale === undefined && (
           <span className="text-muted-foreground" style={{ fontSize: 11, marginLeft: 6 }}>

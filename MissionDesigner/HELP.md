@@ -510,6 +510,8 @@ The tabs above the canvas switch the device frame. In the designer the frames ar
 - **Undoing an override.** **Clear tablet override** (or **Clear phone override**) in the Layout section returns the element to the inherited layout.
 - **Shared settings.** Everything else, such as content, data settings, alignment, minimum height and maximum width, is the same on every device.
 
+**Rows per device.** Each device can have its own rows, so an element can sit in a different row, beside different elements, on a tablet or a phone. Tablet starts with Desktop's rows and Phone starts with Tablet's. On the Tablet or Phone tab, drag elements and rows, or use **Columns in this row**, **Move into row above** and **Move to its own row**, and only that device's rows change. The line under the tabs says where that device's rows come from: _Rows: same as Desktop_, _Rows: same as Tablet_ or _Rows: this screen's own_. When the device has its own, **Use Desktop rows** (on Tablet) or **Use Tablet rows** (on Phone; **Use Desktop rows** when Tablet has no rows of its own) goes back to the rows it inherits. Adding or deleting an element, and moving it into or out of the bottom bar, applies on every device: an element added on Tablet or Phone gets a row of its own on Desktop, and **Visible** hides an element on one device only.
+
 For example, to stack side-by-side elements on a phone, select the **Phone** tab and give each element a **Span** of 12.
 
 #### Previewing a Screen

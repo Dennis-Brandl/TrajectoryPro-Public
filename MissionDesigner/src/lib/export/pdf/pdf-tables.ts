@@ -242,7 +242,12 @@ export function buildResourceCommandsTable(commands: StepResourceCommand[] | und
 
   return {
     head: [['Command Type', 'Resource Name', 'Count', 'Target/Source']],
-    body: commands.map((c) => [c.commandType, c.resourceName, String(c.count), c.target ?? c.source ?? '']),
+    body: commands.map((c) => [
+      c.commandType,
+      c.resourceName,
+      c.countValueType === 'property' ? `from ${c.countProperty ?? ''}` : String(c.count),
+      c.target ?? c.source ?? '',
+    ]),
   }
 }
 

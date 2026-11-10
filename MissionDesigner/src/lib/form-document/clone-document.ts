@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import type { FormDocument } from '@mission/form-schema'
+import { pruneRowsAt, type FormDocument } from '@mission/form-schema'
 import { generateOID, WORKER_INTERNAL } from '@/lib/snowflake'
 
 /**
@@ -27,13 +27,37 @@ export function cloneFormDocument(doc: FormDocument): FormDocument {
   const clone = structuredClone(doc)
   for (const section of clone.sections) {
     section.id = generateOID(WORKER_INTERNAL)
+    // Old -> new ids within this section, so the Tablet/Phone arrangements (`rowsAt`) point at
+    // the clone's blocks, not the original's. A layout row that shares a desktop row's id keeps
+    // sharing it; any other layout row gets a fresh id too.
+    const rowIds = new Map<string, string>()
+    const blockIds = new Map<string, string>()
     for (const row of section.rows) {
-      row.id = generateOID(WORKER_INTERNAL)
+      const rowId = generateOID(WORKER_INTERNAL)
+      rowIds.set(row.id, rowId)
+      row.id = rowId
       for (const block of row.blocks) {
-        block.id = generateOID(WORKER_INTERNAL)
+        const blockId = generateOID(WORKER_INTERNAL)
+        blockIds.set(block.id, blockId)
+        block.id = blockId
         if (block.type === 'image' && block.imageOid) block.imageOid = generateOID(WORKER_INTERNAL)
       }
     }
+    if (section.rowsAt) {
+      for (const layout of [section.rowsAt.tablet, section.rowsAt.phone]) {
+        for (const lr of layout ?? []) {
+          let rowId = rowIds.get(lr.id)
+          if (rowId === undefined) {
+            rowId = generateOID(WORKER_INTERNAL)
+            rowIds.set(lr.id, rowId)
+          }
+          lr.id = rowId
+          // An id that is not a block of the section is stale: dropped (the tidy below removes
+          // a row or arrangement left empty).
+          lr.blockIds = lr.blockIds.flatMap((id) => blockIds.get(id) ?? [])
+        }
+      }
+    }
   }
-  return clone
+  return { ...clone, sections: clone.sections.map(pruneRowsAt) }
 }

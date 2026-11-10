@@ -51,6 +51,38 @@ describe('cloneFormDocument', () => {
     expect(b1.label).toBe('Name')
     expect((clone.sections[0].rows[0].blocks[1] as { src: string }).src).toBe('photo.png')
   })
+  it('remaps the Tablet/Phone rows (rowsAt) onto the clone block and row ids', () => {
+    const withRows: FormDocument = {
+      version: 2,
+      sections: [
+        {
+          id: 'content',
+          role: 'content',
+          rows: [
+            { id: 'r1', blocks: [{ id: 'b1', type: 'text', content: '1' }] },
+            { id: 'r2', blocks: [{ id: 'b2', type: 'text', content: '2' }] },
+          ],
+          rowsAt: {
+            tablet: [{ id: 'r1', blockIds: ['b2', 'b1'] }],
+            phone: [
+              { id: 'p1', gap: 'sm', blockIds: ['b1', 'stale'] },
+              { id: 'p2', blockIds: ['b2'] },
+            ],
+          },
+        },
+      ],
+    }
+    const clone = cloneFormDocument(withRows)
+    const s = clone.sections[0]
+    const [nb1, nb2] = s.rows.map((r) => r.blocks[0].id)
+    expect(s.rowsAt?.tablet).toEqual([{ id: s.rows[0].id, blockIds: [nb2, nb1] }]) // shared row id stays shared
+    const phone = s.rowsAt?.phone ?? []
+    expect(phone.map((r) => r.blockIds)).toEqual([[nb1], [nb2]]) // stale id dropped
+    expect(phone[0].gap).toBe('sm')
+    expect(phone.map((r) => r.id)).not.toContain('p1')
+    expect(phone.map((r) => r.id)).not.toContain('p2')
+    expect(withRows.sections[0].rowsAt?.tablet?.[0].blockIds).toEqual(['b2', 'b1']) // source untouched
+  })
   it('does not mutate the source', () => {
     const before = JSON.stringify(source)
     cloneFormDocument(source)

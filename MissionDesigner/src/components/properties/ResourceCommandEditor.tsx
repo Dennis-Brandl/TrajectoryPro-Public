@@ -30,6 +30,9 @@ import { Plus, Trash2 } from 'lucide-react'
 import { useAvailableResources, type ResourceGroup } from '@/hooks/useAvailableResources'
 import { OutputParameterSelect } from './OutputParameterSelect'
 import { SendSourceSelect } from './SendSourceSelect'
+import { ValuePropertyInput, type ExtraPickerGroup } from './ValuePropertyInput'
+import { ValueTypeRadios } from './ValueTypeRadios'
+import { useSourcePickerExtraGroups } from '@/hooks/useSourcePickerExtraGroups'
 import type { StepResourceCommand, ResourceCommandType } from '@/types/nodes'
 import { generateOID, WORKER_INTERNAL } from '@/lib/snowflake'
 
@@ -41,6 +44,8 @@ interface ResourceCommandEditorProps {
   readOnly?: boolean
   /** When true, hides the empty-state "Resource Commands" title (accordion supplies it) */
   hideHeading?: boolean
+  /** Current node ID — excludes this step's own outputs from the count Source picker */
+  nodeId?: string
 }
 
 function ResourceCommandEditorComponent({
@@ -48,8 +53,13 @@ function ResourceCommandEditorComponent({
   onChange,
   readOnly = false,
   hideHeading = false,
+  nodeId,
 }: ResourceCommandEditorProps) {
   const { groups, allResources } = useAvailableResources()
+  // Count Source picker: the same groups Input Parameters get, minus this step's own
+  // input parameters (no includeOwnInputs) and Action Properties (ValuePropertyInput's
+  // includeActionProperties stays off) — both resolve only AFTER the resource gate.
+  const countSourceGroups = useSourcePickerExtraGroups(nodeId)
   const hasResources = allResources.size > 0
 
   // Split commands into acquire, release, and sync groups. Memoized on their
@@ -176,6 +186,7 @@ function ResourceCommandEditorComponent({
         onUpdate={updateCommand}
         onRemove={removeCommand}
         readOnly={readOnly}
+        countSourceGroups={countSourceGroups}
       />
 
       {/* Release at Step End */}
@@ -190,6 +201,7 @@ function ResourceCommandEditorComponent({
         onUpdate={updateCommand}
         onRemove={removeCommand}
         readOnly={readOnly}
+        countSourceGroups={countSourceGroups}
       />
 
       {/* Sync Commands (max 1 per step) */}
@@ -221,6 +233,7 @@ function CommandSection({
   onUpdate,
   onRemove,
   readOnly,
+  countSourceGroups,
 }: {
   label: string
   commands: StepResourceCommand[]
@@ -232,6 +245,7 @@ function CommandSection({
   onUpdate: (id: string, updates: Partial<StepResourceCommand>) => void
   onRemove: (id: string) => void
   readOnly: boolean
+  countSourceGroups: ExtraPickerGroup[]
 }) {
   return (
     <div className="space-y-1.5">
@@ -306,24 +320,14 @@ function CommandSection({
                   </SelectContent>
                 </Select>
 
-                {/* Count */}
-                <div className="flex gap-1 items-center">
-                  {isCountLimited ? (
-                    <div className="flex items-center gap-0.5">
-                      <Label className="text-xs text-muted-foreground whitespace-nowrap">Count:</Label>
-                      <Input
-                        type="number"
-                        min={1}
-                        value={cmd.count}
-                        onChange={(e) => onUpdate(cmd.id, { count: Math.max(1, parseInt(e.target.value) || 1) })}
-                        className="w-20 h-7 text-xs"
-                        disabled={readOnly}
-                      />
-                    </div>
-                  ) : (
+                {/* Count — Text (a fixed number) or Source (read from a property at runtime) */}
+                {isCountLimited ? (
+                  <CountField cmd={cmd} onUpdate={onUpdate} readOnly={readOnly} sourceGroups={countSourceGroups} />
+                ) : (
+                  <div className="flex gap-1 items-center">
                     <span className="text-xs text-muted-foreground whitespace-nowrap">Count: 1</span>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* Named + Acquire: store acquired name */}
                 {resourceSpec?.resourceType === 'Named' && commandType === 'Acquire' && (
@@ -364,6 +368,55 @@ function CommandSection({
           </div>
         )
       })}
+    </div>
+  )
+}
+
+/** Count Limited Acquire/Release count: the Input Parameters Text/Source model. */
+function CountField({
+  cmd,
+  onUpdate,
+  readOnly,
+  sourceGroups,
+}: {
+  cmd: StepResourceCommand
+  onUpdate: (id: string, updates: Partial<StepResourceCommand>) => void
+  readOnly: boolean
+  sourceGroups: ExtraPickerGroup[]
+}) {
+  const isProperty = cmd.countValueType === 'property'
+  return (
+    <div className="space-y-0.5">
+      <div className="flex items-center gap-2">
+        <Label className="text-xs text-muted-foreground whitespace-nowrap">Count:</Label>
+        <ValueTypeRadios
+          name={`countValueType-${cmd.id}`}
+          isProperty={isProperty}
+          // `count` is never touched here, so switching back to Text restores the last number.
+          onChange={(countValueType) => onUpdate(cmd.id, { countValueType })}
+          disabled={readOnly}
+        />
+      </div>
+      {isProperty ? (
+        <ValuePropertyInput
+          value={cmd.countProperty ?? ''}
+          onChange={(value) => onUpdate(cmd.id, { countProperty: value })}
+          placeholder="Select workflow or property source..."
+          className="w-full"
+          extraGroups={sourceGroups}
+          readOnly={readOnly}
+        />
+      ) : (
+        <Input
+          type="number"
+          min={1}
+          aria-label="Count"
+          value={cmd.count}
+          onChange={(e) => onUpdate(cmd.id, { count: Math.max(1, parseInt(e.target.value) || 1) })}
+          className="w-20 h-7 text-xs"
+          disabled={readOnly}
+        />
+      )}
     </div>
   )
 }

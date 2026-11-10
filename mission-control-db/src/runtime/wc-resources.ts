@@ -96,7 +96,7 @@ export async function lockRegistry(tx: Db, workCenterId: string, names: string[]
   return { resources, waiters };
 }
 
-/** This instance's current holdings, for hydrating EngineState.envHolds and for auto-release. */
+/** This instance's current holdings, for hydrating EngineState.envHolds. */
 export async function readHolders(tx: Db, instanceId: string): Promise<HolderRow[]> {
   return tx.select({
     name: wcResourceHolder.name, stepOid: wcResourceHolder.stepOid,
@@ -152,27 +152,85 @@ export async function applyRegistryWrites(tx: Db, w: RegistryWrites): Promise<vo
 }
 
 /**
- * Drop everything this instance holds or waits on — the auto-release primitive (spec §5.5,
- * user decision U4). Returns the resource names touched, so the caller can re-grant on them.
- * Does NOT adjust counters: the caller re-runs the grant pass through the manager, which is the
- * single place pool arithmetic lives.
+ * Drop every QUEUE entry this instance has — queued and granted-but-unconsumed waiter rows —
+ * at its terminal settle. Returns the resource names touched, so the caller can re-run the
+ * grant pass on them. Does NOT adjust counters: the caller gives back unconsumed grants and
+ * re-runs the grant pass through the manager, the single place pool arithmetic lives.
  *
- * Both deletes are keyed by instance_id alone: an instance belongs to exactly one work center,
- * so instance_id already disambiguates the row set. There is no `workCenterId` parameter —
- * one was not needed to scope the query, and keeping an unused parameter around just because an
- * earlier draft had it would be worse than an honest, minimal signature.
+ * HOLDER rows are deliberately left alone (user ruling 2026-11-10, replacing spec §5.5 / U4's
+ * auto-release on terminal): an Environment hold survives the end of the workflow that took it,
+ * and another workflow's Release (`consumeForeignHolders`) or an operator verb releases it.
+ *
+ * Keyed by instance_id alone: an instance belongs to exactly one work center.
  */
-export async function releaseInstanceHoldings(tx: Db, instanceId: string): Promise<string[]> {
-  const touched = new Set<string>();
-  const held = await tx.delete(wcResourceHolder)
-    .where(eq(wcResourceHolder.instanceId, instanceId))
-    .returning({ name: wcResourceHolder.name });
-  for (const h of held) touched.add(h.name);
+export async function releaseInstanceWaiters(tx: Db, instanceId: string): Promise<string[]> {
   const waited = await tx.delete(wcResourceWaiter)
     .where(eq(wcResourceWaiter.instanceId, instanceId))
     .returning({ name: wcResourceWaiter.name });
-  for (const w of waited) touched.add(w.name);
-  return [...touched];
+  return [...new Set(waited.map((w) => w.name))];
+}
+
+/** One Release, by an instance that holds none of the resource, whose counter change already
+ *  happened in the manager (`release()` returned true). */
+export type ForeignRelease = {
+  name: string; resourceType: string; amount: number; heldName: string | null;
+};
+
+/**
+ * Hand a cross-workflow Release's units over from the holder rows of OTHER instances (user
+ * ruling 2026-11-10: one workflow may acquire an Environment resource and another release it).
+ * The counter itself was already changed by the caller's manager; this only keeps the ledger
+ * matching it, so Commander stops listing the former holder and the former holder's own later
+ * Release finds its hold gone (openContext's revoked-hold diff) instead of freeing it twice.
+ *
+ * Which rows, by type:
+ *  - binary exclusive use: every row on the resource (there should be one);
+ *  - binary shared use: one unit, oldest row first;
+ *  - countable pool: `amount` units, oldest rows first — a row is decremented, and deleted at 0;
+ *    releasing more than is held consumes every row;
+ *  - named pool: the oldest row holding `heldName` (nothing without a name).
+ * No foreign row (an untracked legacy hold, spec §5.7): nothing to do — the counter release
+ * stands alone, as before.
+ *
+ * Never touches `instanceId`'s own rows. The caller must hold `lockRegistry`'s lock on `name`.
+ * Returns the instances whose rows changed, so the caller can wake them.
+ */
+export async function consumeForeignHolders(
+  tx: Db, workCenterId: string, instanceId: string, r: ForeignRelease,
+): Promise<string[]> {
+  const rows = (await readResourceHolders(tx, workCenterId, r.name)).filter((h) => h.instanceId !== instanceId);
+  const deleteIds: number[] = [];
+  const updates: Array<{ id: number; amount: number }> = [];
+  const affected = new Set<string>();
+  switch (r.resourceType) {
+    case 'binary exclusive use':
+      for (const h of rows) { deleteIds.push(h.id); affected.add(h.instanceId); }
+      break;
+    case 'named pool': {
+      if (r.heldName === null) break;
+      const h = rows.find((x) => x.heldName === r.heldName);
+      if (h) { deleteIds.push(h.id); affected.add(h.instanceId); }
+      break;
+    }
+    case 'binary shared use with pool limits':
+    case 'countable use with pool limits': {
+      let left = r.resourceType === 'countable use with pool limits' ? r.amount : 1;
+      for (const h of rows) {
+        if (left <= 0) break;
+        affected.add(h.instanceId);
+        if (h.amount <= left) { deleteIds.push(h.id); left -= h.amount; }
+        else { updates.push({ id: h.id, amount: h.amount - left }); left = 0; }
+      }
+      break;
+    }
+    default:
+      break;
+  }
+  if (deleteIds.length > 0) await tx.delete(wcResourceHolder).where(inArray(wcResourceHolder.id, deleteIds));
+  for (const u of updates) {
+    await tx.update(wcResourceHolder).set({ amount: u.amount }).where(eq(wcResourceHolder.id, u.id));
+  }
+  return [...affected];
 }
 
 /** A holder row as the operator verbs need it: the ledger row's own id (the CM sends it back

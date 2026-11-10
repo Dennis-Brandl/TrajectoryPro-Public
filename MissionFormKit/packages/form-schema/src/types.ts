@@ -247,10 +247,31 @@ export interface Row {
   blocks: Block[]
 }
 
+/**
+ * One row of a screen type's own arrangement. It holds the ids of blocks that live in the
+ * section's `rows`; the blocks themselves (content, bindings, outputs) are never copied.
+ */
+export interface LayoutRow {
+  id: string
+  gap?: SpaceToken
+  blockIds: string[]
+}
+
+/**
+ * A section's own row arrangement per screen type. Absent = inherit: tablet uses the desktop
+ * `rows`, phone uses tablet's arrangement (or desktop's). Resolve with `resolveSectionRows`.
+ */
+export interface RowsAt {
+  tablet?: LayoutRow[]
+  phone?: LayoutRow[]
+}
+
 export interface Section {
   id: string
   role: 'content' | 'footer'
+  /** The desktop arrangement, and the one home of every block in the section. */
   rows: Row[]
+  rowsAt?: RowsAt
 }
 
 export interface FormDocument {

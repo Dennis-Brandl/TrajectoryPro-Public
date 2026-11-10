@@ -227,6 +227,23 @@ describe('buildResourceCommandsTable', () => {
     expect(result!.body[0]).toEqual(['Acquire', 'Camera', '1', 'CameraSlot.Value'])
   })
 
+  it('prints "from <key>" for a count read from a property, and the number in Text mode', () => {
+    const commands: StepResourceCommand[] = [
+      {
+        id: '3',
+        commandType: 'Acquire',
+        resourceName: 'Slots',
+        count: 2,
+        countValueType: 'property',
+        countProperty: 'Batch.Size',
+      },
+      { id: '4', commandType: 'Release', resourceName: 'Slots', count: 2, countValueType: 'literal' },
+    ]
+    const result = buildResourceCommandsTable(commands)
+    expect(result!.body[0]).toEqual(['Acquire', 'Slots', 'from Batch.Size', ''])
+    expect(result!.body[1]).toEqual(['Release', 'Slots', '2', ''])
+  })
+
   it('uses source when target is absent', () => {
     const commands: StepResourceCommand[] = [
       {

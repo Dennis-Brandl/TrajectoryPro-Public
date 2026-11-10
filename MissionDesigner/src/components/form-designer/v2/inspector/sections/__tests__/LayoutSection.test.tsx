@@ -24,7 +24,7 @@ describe('LayoutSection', () => {
     const block = { ...createDefaultBlock('text'), layout: { align: 'center' as const } }
     const onUpdate = vi.fn()
     render(<LayoutSection block={block} onUpdate={onUpdate} />)
-    fireEvent.change(screen.getByLabelText('Span'), { target: { value: '6' } })
+    fireEvent.change(screen.getByLabelText('Span (Desktop)'), { target: { value: '6' } })
     // patch must include BOTH the new span and the pre-existing align
     expect(onUpdate).toHaveBeenCalledWith({ layout: { align: 'center', span: { base: 6 } } })
   })
@@ -34,7 +34,7 @@ describe('LayoutSection', () => {
     const block = { ...createDefaultBlock('text'), layout: { span: { base: 12 as const } } }
     const onUpdate = vi.fn()
     render(<LayoutSection block={block} onUpdate={onUpdate} />)
-    fireEvent.change(screen.getByLabelText('Span'), { target: { value: '4' } })
+    fireEvent.change(screen.getByLabelText('Span (Phone)'), { target: { value: '4' } })
     expect(onUpdate).toHaveBeenCalledWith({ layout: { span: { base: 12, phone: 4 } } })
   })
 
@@ -49,7 +49,7 @@ describe('LayoutSection', () => {
       const block = { ...createDefaultBlock('text'), layout: { align: 'center' as const } }
       const onUpdate = vi.fn()
       render(<LayoutSection block={block} onUpdate={onUpdate} />)
-      fireEvent.change(screen.getByLabelText('Order (base)'), { target: { value: '3' } })
+      fireEvent.change(screen.getByLabelText('Order (Desktop)'), { target: { value: '3' } })
       expect(onUpdate).toHaveBeenCalledWith({ layout: { align: 'center', order: { base: 3 } } })
     })
 
@@ -58,7 +58,7 @@ describe('LayoutSection', () => {
       const block = { ...createDefaultBlock('text'), layout: { order: { base: 1 as const } } }
       const onUpdate = vi.fn()
       render(<LayoutSection block={block} onUpdate={onUpdate} />)
-      fireEvent.change(screen.getByLabelText('Order (phone)'), { target: { value: '3' } })
+      fireEvent.change(screen.getByLabelText('Order (Phone)'), { target: { value: '3' } })
       expect(onUpdate).toHaveBeenCalledWith({ layout: { order: { base: 1, phone: 3 } } })
     })
 
@@ -69,7 +69,7 @@ describe('LayoutSection', () => {
       }
       const onUpdate = vi.fn()
       render(<LayoutSection block={block} onUpdate={onUpdate} />)
-      fireEvent.change(screen.getByLabelText('Order (base)'), { target: { value: '' } })
+      fireEvent.change(screen.getByLabelText('Order (Desktop)'), { target: { value: '' } })
       expect(onUpdate).toHaveBeenCalledWith({ layout: { align: 'center' } })
     })
 
@@ -78,7 +78,7 @@ describe('LayoutSection', () => {
       const block = { ...createDefaultBlock('text'), layout: { align: 'center' as const } }
       const onUpdate = vi.fn()
       render(<LayoutSection block={block} onUpdate={onUpdate} />)
-      fireEvent.change(screen.getByLabelText('Order (phone)'), { target: { value: '3' } })
+      fireEvent.change(screen.getByLabelText('Order (Phone)'), { target: { value: '3' } })
       expect(onUpdate).toHaveBeenCalledWith({ layout: { align: 'center', order: { base: 0, phone: 3 } } })
     })
 
@@ -208,6 +208,42 @@ describe('LayoutSection', () => {
       render(<LayoutSection block={blockOf('A')} onUpdate={vi.fn()} />)
       fireEvent.click(screen.getByRole('button', { name: 'Arrange in 2 columns' }))
       expect(shape()).toEqual(['AB', 'C'])
+    })
+
+    it('labels name the screen being edited', () => {
+      useFormDocumentStore.getState().setActiveBreakpoint('tablet')
+      render(<LayoutSection block={createDefaultBlock('text')} onUpdate={vi.fn()} />)
+      expect(screen.getByLabelText('Span (Tablet)')).toBeTruthy()
+      expect(screen.getByLabelText('Order (Tablet)')).toBeTruthy()
+      expect(screen.getByText('Visible on tablet')).toBeTruthy()
+    })
+
+    it('column commands act on the Tablet rows on the Tablet tab', () => {
+      useFormDocumentStore.getState().openForNode('n', {
+        ...rowsDoc(['A', 'B', 'C']),
+        sections: [
+          {
+            ...rowsDoc(['A', 'B', 'C']).sections[0],
+            rowsAt: {
+              tablet: [
+                { id: 't0', blockIds: ['A', 'B'] },
+                { id: 't1', blockIds: ['C'] },
+              ],
+            },
+          },
+        ],
+      })
+      useFormDocumentStore.getState().setActiveBreakpoint('tablet')
+      render(<LayoutSection block={blockOf('B')} onUpdate={vi.fn()} />)
+      // B is in the top row on Tablet, so there is no row above it there (there is on Desktop).
+      expect((screen.getByRole('button', { name: /move into row above/i }) as HTMLButtonElement).disabled).toBe(true)
+      fireEvent.click(screen.getByRole('button', { name: /move to its own row/i }))
+      expect(shape()).toEqual(['A', 'B', 'C']) // desktop rows untouched
+      expect(useFormDocumentStore.getState().document.sections[0].rowsAt?.tablet?.map((r) => r.blockIds)).toEqual([
+        ['A'],
+        ['B'],
+        ['C'],
+      ])
     })
 
     it('moves into the row above, and back to its own row', () => {

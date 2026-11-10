@@ -15,6 +15,8 @@ import type { Block, BlockLayout, GridSpan, SpaceToken } from '@mission/form-sch
 import { useFormDocumentStore } from '@/stores/formDocumentStore'
 import { resolveBp, setBp, clearBp, isOverridden } from '@/lib/form-document/layout-ops'
 import { ownRowTarget, rowAboveTarget } from '@/lib/form-document/column-ops'
+import { useScreenDocument } from '../../useScreenDocument'
+import { SCREEN_NAME } from '../../BreakpointTabs'
 
 const field: React.CSSProperties = { marginBottom: 10 }
 const labelCls = 'text-muted-foreground'
@@ -31,7 +33,7 @@ const SPANS: GridSpan[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
 export function LayoutSection({ block, onUpdate }: { block: Block; onUpdate: (patch: Partial<Block>) => void }) {
   const bp = useFormDocumentStore((s) => s.activeBreakpoint)
-  const formDoc = useFormDocumentStore((s) => s.document)
+  const formDoc = useScreenDocument() // the rows of the tab being edited
   const arrangeColumns = useFormDocumentStore((s) => s.arrangeColumns)
   const moveIntoRowAbove = useFormDocumentStore((s) => s.moveIntoRowAbove)
   const moveToOwnRow = useFormDocumentStore((s) => s.moveToOwnRow)
@@ -104,7 +106,7 @@ export function LayoutSection({ block, onUpdate }: { block: Block; onUpdate: (pa
       {/* Span (per-breakpoint) */}
       <div style={field}>
         <label htmlFor="tfk-span" className={labelCls} style={labelSt}>
-          Span
+          Span ({SCREEN_NAME[bp]})
         </label>
         <select
           id="tfk-span"
@@ -138,7 +140,7 @@ export function LayoutSection({ block, onUpdate }: { block: Block; onUpdate: (pa
       {/* Order (per-breakpoint); empty input or the Auto button = unset (DOM order) */}
       <div style={field}>
         <label htmlFor="tfk-order" className={labelCls} style={labelSt}>
-          Order ({bp})
+          Order ({SCREEN_NAME[bp]})
         </label>
         <div style={{ display: 'flex', gap: 6 }}>
           <input

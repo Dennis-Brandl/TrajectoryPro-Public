@@ -81,6 +81,18 @@ describe('PreviewCanvas', () => {
     expect(screen.getByRole('button', { name: 'Continue' })).toBeTruthy()
   })
 
+  it("shows the active tab's rows (Tablet/Phone can have their own)", () => {
+    const doc = textDoc()
+    doc.sections[0].rows.push({ id: 'r2', blocks: [{ id: 'b2', type: 'text', content: 'Second' }] })
+    doc.sections[0].rowsAt = { tablet: [{ id: 't', blockIds: ['b2', 'b1'] }] }
+    useFormDocumentStore.getState().openForNode('n1', doc)
+    useFormDocumentStore.getState().setActiveBreakpoint('tablet')
+    const { container } = render(<PreviewCanvas />)
+    expect(container.querySelector('[data-rows-breakpoint]')?.getAttribute('data-rows-breakpoint')).toBe('tablet')
+    const text = container.textContent ?? ''
+    expect(text.indexOf('Second')).toBeLessThan(text.indexOf('Hello preview'))
+  })
+
   it('renders an oid-backed image via the resolver', () => {
     useFormDocumentStore.getState().openForNode('n1', imageDoc())
     const { container } = render(<PreviewCanvas />)

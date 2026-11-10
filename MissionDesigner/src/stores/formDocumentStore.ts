@@ -49,6 +49,26 @@ import { generateOID, WORKER_INTERNAL } from '@/lib/snowflake'
 import { useFlowStore } from '@/stores/flowStore'
 import { resizeSpan as resizeSpanOp } from '@/lib/form-document/span-resize'
 import { arrangeColumns as arrangeColumnsOp, ownRowTarget, rowAboveTarget } from '@/lib/form-document/column-ops'
+import {
+  applyScreenEdit,
+  projectForScreen,
+  resetScreenRows as resetScreenRowsOp,
+} from '@/lib/form-document/screen-rows'
+
+const newOid = () => generateOID(WORKER_INTERNAL)
+
+/** Run a structural edit on the rows of the tab being edited (see screen-rows.applyScreenEdit). */
+function onScreen(
+  s: Pick<FormDocumentState, 'document' | 'activeBreakpoint'>,
+  edit: (view: FormDocument) => FormDocument,
+): FormDocument {
+  return applyScreenEdit(s.document, s.activeBreakpoint, edit, newOid)
+}
+
+/** The document as the tab being edited shows it (that screen's rows; no `rowsAt`). */
+function screenDocument(s: Pick<FormDocumentState, 'document' | 'activeBreakpoint'>): FormDocument {
+  return projectForScreen(s.document, s.activeBreakpoint)
+}
 
 /** The open form's step kind, looked up from the flow node the editor was opened for. */
 function openStepKind(openNodeId: string | null) {
@@ -62,7 +82,7 @@ function realizeFooter(doc: FormDocument, sectionId: string): { doc: FormDocumen
   if (sectionId !== BOTTOM_BAR_PLACEHOLDER_ID) return { doc, sectionId }
   const existing = doc.sections.find((s) => s.role === 'footer')
   if (existing) return { doc, sectionId: existing.id }
-  const id = generateOID(WORKER_INTERNAL)
+  const id = newOid()
   return { doc: { ...doc, sections: [...doc.sections, { id, role: 'footer', rows: [] }] }, sectionId: id }
 }
 
@@ -101,6 +121,8 @@ interface FormDocumentState {
   copy: (blockId: string) => void
   cut: (blockId: string) => void
   paste: () => void
+  /** Tablet/Phone tab: drop that screen's own rows so it shows the rows it inherits (one undo step). */
+  resetScreenRows: () => void
   /** Moves the open form onto job buttons: ONE document change (one undo step); untouched when nothing changes. */
   convertButtons: (stepKind: StepKind) => ConvertButtonsResult
   setActiveBreakpoint: (bp: BreakpointKey) => void
@@ -156,80 +178,100 @@ export const useFormDocumentStore = create<FormDocumentState>()(
       updateBlock: (blockId, patch) =>
         set({ document: updateBlockInDocument(get().document, blockId, patch), isDirty: true }),
       deleteBlock: (blockId) =>
-        set((s) => ({
-          document: deleteBlockFromDocument(s.document, blockId),
-          selection: s.selection === blockId ? null : s.selection,
-          isDirty: true,
-        })),
+        set((s) => {
+          const document = onScreen(s, (view) => deleteBlockFromDocument(view, blockId))
+          if (document === s.document) return s
+          return { document, selection: s.selection === blockId ? null : s.selection, isDirty: true }
+        }),
       insertBlock: (type) => {
         const block = createDefaultBlock(type, { stepKind: openStepKind(get().openNodeId), document: get().document })
-        set((s) => ({ document: insertBlockIntoDocument(s.document, block), selection: block.id, isDirty: true }))
+        set((s) => ({
+          document: onScreen(s, (view) => insertBlockIntoDocument(view, block)),
+          selection: block.id,
+          isDirty: true,
+        }))
       },
       moveBlock: (blockId, target) =>
         set((s) => {
-          let base = s.document
-          let t = target
-          if (target.kind === 'new-row') {
-            const r = realizeFooter(base, target.sectionId)
-            base = r.doc
-            t = { ...target, sectionId: r.sectionId }
-          }
-          const document = moveBlockOp(base, blockId, t)
-          if (document === s.document || document === base) return s // no-op: no new reference, no undo entry
+          const document = onScreen(s, (view) => {
+            let base = view
+            let t = target
+            if (target.kind === 'new-row') {
+              const r = realizeFooter(base, target.sectionId)
+              base = r.doc
+              t = { ...target, sectionId: r.sectionId }
+            }
+            const out = moveBlockOp(base, blockId, t, s.activeBreakpoint)
+            return out === base ? view : out
+          })
+          if (document === s.document) return s // no-op: no new reference, no undo entry
           return { document, selection: blockId, isDirty: true }
         }),
+      // Targets are found in the rows of the tab being edited (Desktop, Tablet or Phone).
       moveIntoRowAbove: (blockId) => {
-        const target = rowAboveTarget(get().document, blockId)
+        const target = rowAboveTarget(screenDocument(get()), blockId)
         if (target) get().moveBlock(blockId, target)
       },
       moveToOwnRow: (blockId) => {
-        const target = ownRowTarget(get().document, blockId)
+        const target = ownRowTarget(screenDocument(get()), blockId)
         if (target) get().moveBlock(blockId, target)
       },
       arrangeColumns: (blockId, columns) =>
         set((s) => {
-          const document = arrangeColumnsOp(s.document, blockId, columns)
+          const document = onScreen(s, (view) => arrangeColumnsOp(view, blockId, columns, s.activeBreakpoint))
           return document === s.document ? s : { document, selection: blockId, isDirty: true }
         }),
       resizeSpan: (leftId, rightId, deltaCols) =>
         set((s) => {
-          const document = resizeSpanOp(s.document, leftId, rightId, deltaCols, s.activeBreakpoint)
+          const document = onScreen(s, (view) => resizeSpanOp(view, leftId, rightId, deltaCols, s.activeBreakpoint))
           return document === s.document ? s : { document, isDirty: true }
         }),
       moveRow: (rowId, target) =>
         set((s) => {
-          const r = realizeFooter(s.document, target.sectionId)
-          const document = moveRowOp(r.doc, rowId, { ...target, sectionId: r.sectionId })
-          if (document === s.document || document === r.doc) return s
+          const document = onScreen(s, (view) => {
+            const r = realizeFooter(view, target.sectionId)
+            const out = moveRowOp(r.doc, rowId, { ...target, sectionId: r.sectionId })
+            return out === r.doc ? view : out
+          })
+          if (document === s.document) return s
           return { document, isDirty: true }
         }),
       insertBlockInBottomBar: (block) =>
         set((s) => ({
-          document: insertBlockIntoBottomBar(s.document, block, () => generateOID(WORKER_INTERNAL)),
+          document: onScreen(s, (view) => insertBlockIntoBottomBar(view, block, newOid)),
           selection: block.id,
           isDirty: true,
         })),
       convertButtons: (stepKind) => {
-        const result = convertButtonsOp(get().document, stepKind, () => generateOID(WORKER_INTERNAL))
+        const result = convertButtonsOp(get().document, stepKind, newOid)
         if (result.changed) set({ document: result.document, isDirty: true })
         return result
       },
       insertBlockAt: (type, target) => {
         const block = createDefaultBlock(type, { stepKind: openStepKind(get().openNodeId), document: get().document })
-        set((s) => {
-          let base = s.document
-          let t = target
-          if (target.kind === 'new-row') {
-            const r = realizeFooter(base, target.sectionId)
-            base = r.doc
-            t = { ...target, sectionId: r.sectionId }
-          }
-          return { document: insertBlockAtOp(base, block, t), selection: block.id, isDirty: true }
-        })
+        set((s) => ({
+          document: onScreen(s, (view) => {
+            let base = view
+            let t = target
+            if (target.kind === 'new-row') {
+              const r = realizeFooter(base, target.sectionId)
+              base = r.doc
+              t = { ...target, sectionId: r.sectionId }
+            }
+            return insertBlockAtOp(base, block, t, s.activeBreakpoint)
+          }),
+          selection: block.id,
+          isDirty: true,
+        }))
       },
       duplicateBlock: (blockId) =>
         set((s) => {
-          const { document, newId } = duplicateBlockInDocument(s.document, blockId)
+          let newId = blockId
+          const document = onScreen(s, (view) => {
+            const r = duplicateBlockInDocument(view, blockId)
+            newId = r.newId
+            return r.document
+          })
           return { document, selection: newId, isDirty: true }
         }),
       copy: (blockId) => {
@@ -242,7 +284,7 @@ export const useFormDocumentStore = create<FormDocumentState>()(
           if (!b) return s
           return {
             clipboard: structuredClone(b),
-            document: deleteBlockFromDocument(s.document, blockId),
+            document: onScreen(s, (view) => deleteBlockFromDocument(view, blockId)),
             selection: s.selection === blockId ? null : s.selection,
             isDirty: true,
           }
@@ -251,7 +293,17 @@ export const useFormDocumentStore = create<FormDocumentState>()(
         set((s) => {
           if (!s.clipboard) return s
           const block = cloneBlockWithFreshIdentity(s.clipboard)
-          return { document: insertBlockIntoDocument(s.document, block), selection: block.id, isDirty: true }
+          return {
+            document: onScreen(s, (view) => insertBlockIntoDocument(view, block)),
+            selection: block.id,
+            isDirty: true,
+          }
+        }),
+      resetScreenRows: () =>
+        set((s) => {
+          if (s.activeBreakpoint === 'base') return s
+          const document = resetScreenRowsOp(s.document, s.activeBreakpoint)
+          return document === s.document ? s : { document, isDirty: true }
         }),
       setActiveBreakpoint: (bp) => set({ activeBreakpoint: bp }),
       setDocument: (document) => set({ document, isDirty: true }),

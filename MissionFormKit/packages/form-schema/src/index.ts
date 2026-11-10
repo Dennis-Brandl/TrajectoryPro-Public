@@ -14,6 +14,7 @@
 export * from './types'
 export * from './esignature'
 export * from './resolve'
+export * from './layout-rows'
 export * from './buttons'
 export * from './validate'
 export * from './fixtures/kitchen-sink'

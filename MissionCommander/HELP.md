@@ -651,7 +651,7 @@ left. Operators in the Pilot can continue a timed gate or a repeating script ear
 
 ### Finished Runs
 
-A finished run stays in the Runtime views for about an hour and is then removed from them. It remains available in [History](#16-history). The history entry is written the moment the run finishes, so deleting a finished run from the Runtime tab does not delete its history.
+A finished run stays in the Runtime views for about an hour and is then removed from them. A finished run that still holds a shared resource stays until that hold is released (see [When a Run Ends Holding a Shared Resource](#when-a-run-ends-holding-a-shared-resource)). It remains available in [History](#16-history). The history entry is written the moment the run finishes, so deleting a finished run from the Runtime tab does not delete its history.
 
 ---
 
@@ -703,6 +703,12 @@ Every resource action requires Mission System Commander. An action on a shared r
 | **Cancel** (on a waiter) | Cancel that run's wait. The step fails (a TRY rule can catch it), and any capacity already reserved for it is returned                                  |
 
 **Reset**, **Clear** and **Cancel** ask for confirmation first.
+
+### When a Run Ends Holding a Shared Resource
+
+A run's own (_workflow_) resources end with the run. A shared (_environment_) resource does not: if a run ends -- completed, errored, stopped or aborted -- while holding one, it keeps the hold, and **Held by** still shows that run. Another runtime workflow's Release frees it (one workflow may acquire a resource and a different one release it), or a Mission System Commander can use **Release…**. What the ending run was only waiting for is dropped, so the next run in line is served.
+
+When a run releases a shared resource it does not hold, the hold passes from whoever held it: the holding run's chip disappears, and if that run is still going, its own later Release of that hold does nothing.
 
 ### Value Properties
 

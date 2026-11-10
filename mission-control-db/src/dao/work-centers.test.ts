@@ -72,6 +72,17 @@ test('createWorkCenter rejects an unknown dispatch policy and a missing parent',
   await close();
 });
 
+test('createWorkCenter takes a time zone, blank meaning the deployment zone, and refuses an unknown one', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    expect((await createWorkCenter(db, { name: 'Chicago', timeZone: ' America/Chicago ' })).timeZone).toBe('America/Chicago');
+    expect((await createWorkCenter(db, { name: 'Blank', timeZone: '  ' })).timeZone).toBeNull();
+    expect((await createWorkCenter(db, { name: 'None' })).timeZone).toBeNull();
+    await expect(createWorkCenter(db, { name: 'Mars', timeZone: 'Mars/Olympus' })).rejects.toMatchObject({ code: 'INVALID_TIME_ZONE' });
+    expect(await db.select().from(workCenter).where(eq(workCenter.name, 'Mars'))).toHaveLength(0);
+  } finally { await close(); }
+});
+
 test('updateWorkCenter renames and reparents', async () => {
   const { db, close } = await makeTestDb();
   const a = await createWorkCenter(db, { name: 'A' });

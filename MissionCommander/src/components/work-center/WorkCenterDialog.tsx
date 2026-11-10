@@ -72,6 +72,10 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 
+const browserZone = (): string => {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { return ''; }
+};
+
 function defaultValuesFor(initial: WorkCenter | null): FormValues {
   return {
     name: initial?.name ?? '',
@@ -82,7 +86,8 @@ function defaultValuesFor(initial: WorkCenter | null): FormValues {
     sortOrder: initial?.sortOrder ?? 0,
     parentWorkCenterId: initial?.parentWorkCenterId ?? ROOT_VALUE,
     runtimeIdTemplate: initial?.runtimeIdTemplate ?? '',
-    timeZone: initial?.timeZone ?? '',
+    // A new work center starts in this browser's zone, so schedule times are not read as UTC by surprise.
+    timeZone: initial ? (initial.timeZone ?? '') : browserZone(),
   };
 }
 
@@ -170,7 +175,7 @@ export function WorkCenterDialog({ open, onOpenChange, initial, parentWorkCenter
             // Only sent when changed, so saving other fields never touches the zone.
             ...((values.timeZone ?? '').trim() !== (initial.timeZone ?? '') ? { timeZone: (values.timeZone ?? '').trim() || null } : {}),
           })
-        : await workCenters.create({ ...shared, parentWorkCenterId });
+        : await workCenters.create({ ...shared, parentWorkCenterId, timeZone: (values.timeZone ?? '').trim() || null });
       toast.success('Work center saved');
       onSaved(view);
       onOpenChange(false);
@@ -273,7 +278,7 @@ export function WorkCenterDialog({ open, onOpenChange, initial, parentWorkCenter
               )}
             />
           )}
-          {isEdit && (
+          {(
             <div className="space-y-1">
               <Label htmlFor="wc-time-zone">Time zone</Label>
               <Input id="wc-time-zone" placeholder="e.g. America/Chicago" {...register('timeZone')} />

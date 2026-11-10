@@ -192,6 +192,7 @@ Work centers are arranged in a tree.
 | **Dispatch policy**            | The default way operators are suggested for steps. See [Dispatch and Auto-claim](#11-dispatch-and-auto-claim)          |
 | **Auto-claim follow-on steps** | When on, steps that follow a claimed step are claimed for the same operator automatically                             |
 | **Parent**                     | Edit only: move the work center under a different work center, or to the top level                                    |
+| **Time zone**                  | The zone its schedules run in, such as America/Chicago. A new work center starts with your browser's zone. Blank uses the deployment's zone |
 | **Sort order**                 | Orders sibling work centers                                                                                          |
 
 The **Type** suggestions are Enterprise, Site, Area, Plant Area, Work Unit, Device, Process Cell, Unit, Production Line, Production Unit, Storage Zone, Storage Unit and Equipment. Custom names are allowed, and the type is optional. It is shown after the work center's name in the hierarchy (for example, _Line 1 · Production Line_) and in the detail panel.
@@ -995,7 +996,7 @@ Open the schedule to see which. The reason is written beside each failed or lost
 
 A schedule uses its work center's time zone, and shows times in it. The editor says which zone that is and what time it is there now, as a time you enter is read on that clock.
 
-A work center with no time zone of its own uses the deployment's zone. If that differs from yours, the editor warns you and offers to set the work center to your zone, because 09:50 there may be hours away from 09:50 where you are. A time that has passed on that clock gives **This schedule has no future start**, even if it is still ahead on your own clock.
+A new work center starts with your browser's time zone, which you can change or clear when you create it. A work center with no time zone of its own uses the deployment's zone. If that differs from yours, the editor warns you and offers to set the work center to your zone, because 09:50 there may be hours away from 09:50 where you are. A time that has passed on that clock gives **This schedule has no future start**, even if it is still ahead on your own clock.
 
 A Runtime Schedule keeps the zone it had at Enable: changing the work center's zone later does not move it. When clocks go forward, a time that does not exist that day starts at the first moment after the gap. When clocks go back, a time that happens twice starts only the first time.
 

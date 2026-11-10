@@ -19,6 +19,7 @@ import {
   type WorkCenter, RUNTIME_ACTIVE_STATUSES,
 } from '../db/schema/index.js';
 import { DaoError, assertDispatchPolicy, pgErrorCode } from './errors.js';
+import { isValidTimeZone } from './system-settings.js';
 import { assertNameLength } from './names.js';
 import { normalizeTypeName } from './type-name.js';
 import { renderRuntimeId, runtimeIdBucket, validateRuntimeIdTemplate } from '../lib/runtime-id.js';
@@ -249,6 +250,8 @@ export type CreateWorkCenterInput = {
   dispatchPolicy?: string;
   autoClaim?: boolean;
   runtimeIdTemplate?: string | null;
+  /** The IANA zone its schedules run in; null or absent uses the deployment's zone. */
+  timeZone?: string | null;
 };
 // Note for anyone adding a field here: `PATCH /api/work-centers/:id`
 // (MissionCommander/src/server/routes/work-centers.ts) passes its parsed request body
@@ -260,8 +263,8 @@ export type CreateWorkCenterInput = {
 // `runtimeIdTemplate` rides that same cast, so the route MUST whitelist and type-check it
 // explicitly (it does — routes/work-centers.ts), and the DAO validates it again below.
 // `timeZone` (spec 2026-11-08 §5): the IANA zone schedules run in; null clears it, so the
-// deployment's zone applies. Update-only, like the schedules it serves.
-export type UpdateWorkCenterPatch = Partial<CreateWorkCenterInput> & { timeZone?: string | null };
+// deployment's zone applies. Set at create or later by an edit.
+export type UpdateWorkCenterPatch = Partial<CreateWorkCenterInput>;
 
 // True when another work center already uses `name` among the given parent's children
 // (or among roots when parentId is null). `excludeId` skips the row being updated.
@@ -292,6 +295,8 @@ export async function createWorkCenter(db: Db, input: CreateWorkCenterInput): Pr
   const template = normaliseTemplate(input.runtimeIdTemplate, input.name);
   const typeName = input.typeName !== undefined ? normalizeTypeName(input.typeName) : undefined;
   const parentId = input.parentWorkCenterId ?? null;
+  const timeZone = input.timeZone?.trim() || null;
+  if (timeZone !== null && !isValidTimeZone(timeZone)) throw new DaoError('INVALID_TIME_ZONE', `"${timeZone}" is not a known time zone`);
   return db.transaction(async (tx) => {
     if (parentId !== null) {
       const [parent] = await tx.select({ id: workCenter.id }).from(workCenter).where(eq(workCenter.id, parentId));
@@ -307,6 +312,7 @@ export async function createWorkCenter(db: Db, input: CreateWorkCenterInput): Pr
       ...(input.dispatchPolicy !== undefined ? { dispatchPolicy: input.dispatchPolicy } : {}),
       ...(input.autoClaim !== undefined ? { autoClaim: input.autoClaim } : {}),
       ...(template !== undefined ? { runtimeIdTemplate: template } : {}),
+      timeZone,
     }).returning();
     return wc!;
   });

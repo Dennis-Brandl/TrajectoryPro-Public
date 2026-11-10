@@ -268,9 +268,31 @@ describe('WorkCenterDialog Type field', () => {
       expect(await screen.findByText('Not a known time zone')).toBeInTheDocument();
       expect(updateSpy).not.toHaveBeenCalled();
     });
-    it('is not offered when creating', () => {
+    it('is offered when creating, starts in this browser\'s zone, and is sent with the new work center', async () => {
+      const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const createSpy = vi.spyOn(wc.workCenters, 'create').mockResolvedValue({ workCenter: { id: 'n', name: 'Ops' } } as never);
       render(<WorkCenterDialog open initial={null} parentWorkCenterId={null} onOpenChange={() => {}} onSaved={() => {}} />);
-      expect(screen.queryByLabelText('Time zone')).toBeNull();
+      expect(screen.getByLabelText('Time zone')).toHaveValue(zone);
+      const field = screen.getByLabelText('Time zone');
+      await userEvent.clear(field);
+      await userEvent.type(field, 'Europe/Paris');
+      await userEvent.type(screen.getByLabelText(/^name/i), 'Ops');
+      await userEvent.click(screen.getByRole('button', { name: /create/i }));
+      await waitFor(() => expect(createSpy).toHaveBeenCalledWith(expect.objectContaining({ name: 'Ops', timeZone: 'Europe/Paris' })));
+    });
+    it('a cleared zone on create is sent as null, and an unknown one is refused', async () => {
+      const createSpy = vi.spyOn(wc.workCenters, 'create').mockResolvedValue({ workCenter: { id: 'n', name: 'Ops' } } as never);
+      render(<WorkCenterDialog open initial={null} parentWorkCenterId={null} onOpenChange={() => {}} onSaved={() => {}} />);
+      const field = screen.getByLabelText('Time zone');
+      await userEvent.clear(field);
+      await userEvent.type(field, 'Mars/Olympus');
+      await userEvent.type(screen.getByLabelText(/^name/i), 'Ops');
+      await userEvent.click(screen.getByRole('button', { name: /create/i }));
+      expect(await screen.findByText('Not a known time zone')).toBeInTheDocument();
+      expect(createSpy).not.toHaveBeenCalled();
+      await userEvent.clear(field);
+      await userEvent.click(screen.getByRole('button', { name: /create/i }));
+      await waitFor(() => expect(createSpy).toHaveBeenCalledWith(expect.objectContaining({ timeZone: null })));
     });
   });
 });

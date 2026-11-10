@@ -105,12 +105,20 @@ workCenterRoutes.post('/work-centers', requirePermission('work_center:create'), 
     autoClaim?: boolean;
     runtimeIdTemplate?: string | null;
     typeName?: string | null;
+    timeZone?: string | null;
   };
   if (!input.name || typeof input.name !== 'string') {
     return httpError(c, 400, 'validation', 'name is required');
   }
   if (input.autoClaim !== undefined && typeof input.autoClaim !== 'boolean') {
     return httpError(c, 400, 'validation', 'autoClaim must be a boolean');
+  }
+  // The zone its schedules run in, checked as PATCH checks it: a valid IANA zone, or null or blank.
+  if (input.timeZone !== undefined && input.timeZone !== null) {
+    if (typeof input.timeZone !== 'string') return httpError(c, 400, 'validation', 'timeZone must be a string or null');
+    const zone = input.timeZone.trim();
+    if (zone !== '' && !isValidTimeZone(zone)) return httpError(c, 400, 'validation', `"${zone}" is not a known time zone`);
+    input.timeZone = zone === '' ? null : zone;
   }
   // Explicit guard: this body is CAST into the DAO patch (the documented dispatchParams-leak
   // seam at dao/work-centers.ts), so the type must be checked here, not assumed.
@@ -142,6 +150,7 @@ workCenterRoutes.post('/work-centers', requirePermission('work_center:create'), 
       autoClaim: input.autoClaim,
       runtimeIdTemplate: input.runtimeIdTemplate,
       typeName: input.typeName ?? null,
+      timeZone: input.timeZone ?? null,
     });
     const view = await workCenterView(db, wc.id);
     return c.json(view, 201);

@@ -45,6 +45,18 @@ describe('work-center writes', () => {
     expect(((await res.json()) as { workCenter: { name: string } }).workCenter.name).toBe('Ops');
   });
 
+  it('create takes a time zone and refuses one that is unknown or not text', async () => {
+    await as('steward');
+    const res = await req(app, 'POST', '/api/work-centers', { json: { name: 'Zoned', timeZone: 'America/Chicago' } });
+    expect(res.status).toBe(201);
+    expect(((await res.json()) as { workCenter: { timeZone: string | null } }).workCenter.timeZone).toBe('America/Chicago');
+    for (const bad of ['Mars/Olympus', 7]) {
+      expect((await req(app, 'POST', '/api/work-centers', { json: { name: `Bad-${bad}`, timeZone: bad } })).status).toBe(400);
+    }
+    const blank = await req(app, 'POST', '/api/work-centers', { json: { name: 'Blank', timeZone: ' ' } });
+    expect(((await blank.json()) as { workCenter: { timeZone: string | null } }).workCenter.timeZone).toBeNull();
+  });
+
   it('duplicate sibling name → 409', async () => {
     await createWorkCenter(db, { name: 'Dup' });
     await as('steward');

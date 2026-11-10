@@ -14,7 +14,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup, fireEvent, waitFor, within, act } from '@testing-library/react'
 import type { FormDocumentViewProps } from '@mission/form-renderer'
-import type { FormDocument } from '@mission/form-schema'
+import type { ButtonBlock, FormDocument } from '@mission/form-schema'
 import { WorkView, type WorkViewProps } from '../WorkView'
 import { api, ApiError } from '../../api/client'
 import { Toasts } from '../../toast'
@@ -36,7 +36,25 @@ vi.mock('@mission/form-renderer', () => ({
     const d = props.document as FormDocument
     const block = d.sections[0]?.rows?.[0]?.blocks?.[0] as { fieldName?: string } | undefined
     rendererProps.set(block?.fieldName ?? 'unknown', props)
-    return <div data-testid={`renderer-${block?.fieldName ?? 'unknown'}`} />
+    // The form draws the step's button (Pilot adds it when the form has none): mirror the real
+    // ButtonBlockView's label and enabled rules so tests press it by name.
+    const buttons = d.sections.flatMap((s) =>
+      s.rows.flatMap((r) => r.blocks.filter((b): b is ButtonBlock => b.type === 'button' && !!b.job)),
+    )
+    return (
+      <div data-testid={`renderer-${block?.fieldName ?? 'unknown'}`}>
+        {buttons.map((b) => (
+          <button
+            key={b.id}
+            type="button"
+            disabled={props.buttonJobs?.[b.job!].enabled === false}
+            onClick={() => props.onEvent?.({ kind: 'job', blockId: b.id, job: b.job! })}
+          >
+            {b.label.trim() || props.buttonJobs?.[b.job!].label}
+          </button>
+        ))}
+      </div>
+    )
   },
 }))
 

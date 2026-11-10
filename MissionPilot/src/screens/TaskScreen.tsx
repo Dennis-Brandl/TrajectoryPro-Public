@@ -14,13 +14,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FormDocumentView } from '@mission/form-renderer'
 import type { ButtonJobs } from '@mission/form-renderer'
-import { checkNeverStuck, computeValidation, findESignatureBlock, hasJobButtons, signedLabel } from '@mission/form-schema'
+import { computeValidation, findESignatureBlock, withStepButtons } from '@mission/form-schema'
 import type { FormDocument, FormEvent, FormValues, SignatureDraft } from '@mission/form-schema'
 import { api, ApiError } from '../api/client'
 import type { InboxTask, Me, SubmitBody } from '../api/types'
 import { seedDefaults, EMPTY_TIMERS } from '../host/gate'
-import { missingItems, type MissingItem } from './missing-fields'
-import { MissingFields } from '../task/MissingFields'
 import { ReleaseButton } from '../task/ReleaseButton'
 import { RuntimeId } from '../frame/RuntimeId'
 import { Sheet } from '../frame/Sheet'
@@ -248,6 +246,8 @@ export function TaskScreen({
   }
 
   const decide = (value: 'yes' | 'no') => submit(signed({ kind: 'decision', value, values: doc ? values : undefined }))
+  // A step with a form submits its values; a step without one just completes.
+  const pressContinue = () => (doc ? submit(signed({ kind: 'submit', values })) : submit({ kind: 'complete' }))
 
   const onEvent = (e: FormEvent) => {
     switch (e.kind) {
@@ -271,7 +271,7 @@ export function TaskScreen({
         // Spec 2026-10-28 §5.3: a job button presses the same action Pilot's own button would,
         // under exactly the same enabled rules — a job that doesn't fit this step does nothing.
         if (!jobEnabled[e.job]) break
-        if (e.job === 'continue') submit(signed({ kind: 'submit', values }))
+        if (e.job === 'continue') pressContinue()
         else if (e.job === 'yes') decide('yes')
         else decide('no')
         break
@@ -313,119 +313,27 @@ export function TaskScreen({
     [task.instanceId],
   )
 
-  // Spec §5.4: missing fields are links that jump to the field; a running timer is not
-  // something to fill in, so it reads "Waiting for" instead (P0 minor). Only for
-  // document-backed steps — the doc-less Continue has no gate. Ids are per assignment
-  // because WorkView keeps every pane's TaskScreen mounted at once.
-  const items = doc && !gate.ok ? missingItems(doc, gate.missing) : []
-  const fields = items.filter((i) => i.kind !== 'timer')
-  const timers = items.filter((i) => i.kind === 'timer')
-  const missingId = items.length > 0 ? `missing-${task.assignmentId}` : undefined
-  const ready = doc !== null && !isYesNo && gate.ok && !locked
-
-  // Spec 2026-10-28 §5.3: a form that carries its own job buttons replaces Pilot's Continue/Yes/No —
-  // unless they would leave the operator stuck on some device, in which case Pilot keeps its own.
+  // User ruling 2026-11-10: the form's own button is the step's one button. Pilot adds a
+  // centered one only where the form has none (form-schema withStepButtons) and draws no button bar,
+  // status line or "Missing" list of its own: a button that may not be pressed is disabled.
   const stepKind = isYesNo ? 'yesno' : 'continue'
-  const formOwnsButtons = useMemo(
-    () => doc !== null && hasJobButtons(doc) && checkNeverStuck(doc, stepKind).length === 0,
-    [doc, stepKind],
-  )
-  // The renderer draws the buttons; Pilot decides whether each may be pressed (same rules as its own).
+  const shownDoc = useMemo(() => withStepButtons(doc, stepKind), [doc, stepKind])
+  // The renderer draws the buttons; Pilot decides whether each may be pressed.
   const buttonJobs: ButtonJobs = {
-    continue: { enabled: jobEnabled.continue, label: task.continueLabel || 'Continue', describedBy: missingId },
-    yes: { enabled: jobEnabled.yes, label: yesNoConfig?.yes_label ?? 'Yes', describedBy: !gate.ok ? missingId : undefined },
-    no: { enabled: jobEnabled.no, label: yesNoConfig?.no_label ?? 'No', describedBy: !noGateOk ? missingId : undefined },
+    continue: { enabled: jobEnabled.continue, label: task.continueLabel || 'Continue' },
+    yes: { enabled: jobEnabled.yes, label: yesNoConfig?.yes_label ?? 'Yes' },
+    no: { enabled: jobEnabled.no, label: yesNoConfig?.no_label ?? 'No' },
     signed: esig !== null,
   }
 
   const typedCount = doc ? Object.keys(typedValues(values, seed)).length : 0
 
   const rootRef = useRef<HTMLElement>(null)
-  // The form's pinned bottom bar sits just above the action strip, whose height changes as the
-  // status line wraps or the Release confirm opens, so measure it rather than guess.
-  const actionsRef = useRef<HTMLElement>(null)
-  useEffect(() => {
-    const root = rootRef.current
-    const actions = actionsRef.current
-    if (!formOwnsButtons || !root || !actions || typeof ResizeObserver === 'undefined') return
-    const sync = () => root.style.setProperty('--task-actions-h', `${actions.offsetHeight}px`)
-    sync()
-    const ro = new ResizeObserver(sync)
-    ro.observe(actions)
-    return () => ro.disconnect()
-  }, [formOwnsButtons])
-  const jumpTo = (item: MissingItem) => {
-    const block = [...(rootRef.current?.querySelectorAll<HTMLElement>('[data-block-id]') ?? [])].find(
-      (el) => el.dataset.blockId === item.blockId,
-    )
-    if (!block) return
-    block.scrollIntoView?.({ block: 'center' })
-    ;(block.querySelector<HTMLElement>('input, select, textarea, button') ?? block).focus()
-  }
-
-  const missingBlock = missingId && (
-    <div className="task-missing" id={missingId}>
-      {fields.length > 0 && <MissingFields items={fields} onJump={jumpTo} />}
-      {timers.length > 0 && <p className="task-waiting">Waiting for: {timers.map((t) => t.label).join(', ')}</p>}
-    </div>
-  )
-
-  const primary = isYesNo ? (
-    <>
-      <button
-        type="button"
-        className="task-primary"
-        disabled={!gate.ok || locked}
-        aria-describedby={!gate.ok ? missingId : undefined}
-        onClick={() => decide('yes')}
-      >
-        {esig ? signedLabel(yesNoConfig?.yes_label ?? 'Yes') : (yesNoConfig?.yes_label ?? 'Yes')}
-      </button>
-      <button
-        type="button"
-        className="task-primary"
-        disabled={!noGateOk || locked}
-        aria-describedby={!noGateOk ? missingId : undefined}
-        onClick={() => decide('no')}
-      >
-        {yesNoConfig?.no_label ?? 'No'}
-      </button>
-    </>
-  ) : doc ? (
-    <button
-      type="button"
-      className="task-primary"
-      disabled={!gate.ok || locked}
-      aria-describedby={missingId}
-      aria-keyshortcuts="Control+Enter"
-      onClick={() => submit(signed({ kind: 'submit', values }))}
-    >
-      {esig ? signedLabel(task.continueLabel || 'Continue') : task.continueLabel || 'Continue'}
-    </button>
-  ) : (
-    <button
-      type="button"
-      className="task-primary"
-      disabled={locked}
-      aria-keyshortcuts="Control+Enter"
-      onClick={() => submit({ kind: 'complete' })}
-    >
-      {task.continueLabel || 'Continue'}
-    </button>
-  )
 
   // P4-R2: Ctrl+Enter presses the one primary button, only on the pane on screen and only
   // when that button is enabled. Never a Yes/No answer (two choices), never under the
   // Release question.
-  const primaryAction = isYesNo
-    ? null
-    : doc
-      ? gate.ok && !locked
-        ? () => submit(signed({ kind: 'submit', values }))
-        : null
-      : !locked
-        ? () => submit({ kind: 'complete' })
-        : null
+  const primaryAction = jobEnabled.continue ? pressContinue : null
   useShortcut(
     'submit',
     primaryAction
@@ -445,7 +353,7 @@ export function TaskScreen({
   return (
     <main
       ref={rootRef}
-      className={formOwnsButtons ? 'task-screen task-owns-buttons' : 'task-screen'}
+      className="task-screen"
       // Click, not pointer-down: dropping the banner moves everything below it up, and on
       // pointer-down that happened before the pointer came back up — the click then landed
       // on another element and the operator's first Continue/Approve was lost (P1d Task 1).
@@ -467,28 +375,30 @@ export function TaskScreen({
 
       {task.paused && <p role="status">{PAUSED_COPY}</p>}
 
-      {/* Below 1280 px the side panel is hidden and this opens it as a sheet (Ruling 5). */}
-      <button type="button" className="where-toggle" aria-haspopup="dialog" onClick={() => setWhereOpen(true)}>
-        Where you are
-      </button>
+      {/* Below 1280 px the side panel is hidden and "Where you are" opens it as a sheet (Ruling 5).
+          Release sits at the right of the same line (user ruling 2026-11-10). */}
+      <div className="task-topline">
+        <button type="button" className="where-toggle" aria-haspopup="dialog" onClick={() => setWhereOpen(true)}>
+          Where you are
+        </button>
+        <ReleaseButton typedCount={typedCount} disabled={submitting || offline} onRelease={release} />
+      </div>
 
       <div className="task-body">
         <div className="task-form">
-          {doc && (
-            <FormDocumentView
-              key={task.stepInstanceId}
-              document={doc}
-              mode="run"
-              values={values}
-              images={resolveImage}
-              onEvent={onEvent}
-              signature={signature}
-              signatureError={signatureError}
-              signatureHint={signatureHint}
-              surfaceColor={surfaceColor}
-              buttonJobs={buttonJobs}
-            />
-          )}
+          <FormDocumentView
+            key={task.stepInstanceId}
+            document={shownDoc}
+            mode="run"
+            values={values}
+            images={resolveImage}
+            onEvent={onEvent}
+            signature={signature}
+            signatureError={signatureError}
+            signatureHint={signatureHint}
+            surfaceColor={surfaceColor}
+            buttonJobs={buttonJobs}
+          />
         </div>
         <aside className="task-where">
           <WhereYouAre runtimeLabel={task.runtimeLabel} data={where} />
@@ -500,18 +410,6 @@ export function TaskScreen({
           <WhereYouAre runtimeLabel={task.runtimeLabel} data={where} showTitle={false} />
         </Sheet>
       )}
-
-      {/* Spec §5.4: stays on screen at the bottom of the task (pilot.css). */}
-      <footer ref={actionsRef} className={formOwnsButtons ? 'task-actions task-actions-compact' : 'task-actions'}>
-        <div className="task-status">
-          {missingBlock}
-          {ready && <p className="task-ready">Ready to submit</p>}
-        </div>
-        <div className="task-buttons">
-          <ReleaseButton typedCount={typedCount} disabled={submitting || offline} onRelease={release} />
-          {!formOwnsButtons && primary}
-        </div>
-      </footer>
     </main>
   )
 }

@@ -51,9 +51,7 @@ describe('inbox, picker and diagram styles (spec §5.5, §5.7)', () => {
     expect(rule(pilot, '.wf-graph-scroll')).toMatch(/overflow:\s*auto/)
   })
 
-  it('link buttons are full touch targets and never pick up the plain-button hover (P1c minors)', () => {
-    expect(rule(pilot, '.link-btn')).toMatch(/min-width:\s*var\(--pilot-touch-min\)/)
-    expect(rule(pilot, '.link-btn:hover:not(:disabled)')).toMatch(/background:\s*transparent/)
+  it('the inbox Open link is a full touch target and never pick up the plain-button hover (P1c minors)', () => {
     expect(rule(pilot, '.inbox-open')).toMatch(/min-width:\s*var\(--pilot-touch-min\)/)
     expect(rule(pilot, '.inbox-open:hover:not(:disabled)')).toMatch(/background:\s*transparent/)
   })

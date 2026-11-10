@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import type { ButtonBlock, ButtonJob, FormDocument, Row, Section, StepKind } from './types'
+import type { ButtonBlock, ButtonJob, FormDocument, GridSpan, Row, Section, StepKind } from './types'
 import { JOB_DEFAULT_LABEL, JOB_OUTPUT_VALUE, checkNeverStuck, type StuckProblem } from './buttons'
 
 export interface ConvertButtonsResult {
@@ -84,12 +84,15 @@ export function convertButtons(doc: FormDocument, stepKind: StepKind, newId: () 
   if (missing.length > 0) {
     const footerIndex = result.sections.findIndex((s) => s.role === 'footer')
     const footer: Section = result.sections[footerIndex] ?? { id: newId(), role: 'footer', rows: [] }
+    // Centered, and side by side when there are two (Yes and No).
+    const span = (12 / missing.length) as GridSpan
     const row: Row = {
       id: newId(),
       blocks: missing.map(
         (job): ButtonBlock => ({
           id: newId(),
           type: 'button',
+          layout: { span: { base: span }, align: 'center' },
           job,
           label: '',
           outputValue: JOB_OUTPUT_VALUE[job],

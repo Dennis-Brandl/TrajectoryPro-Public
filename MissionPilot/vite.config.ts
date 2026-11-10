@@ -29,6 +29,8 @@ const { accent, surface } = tokenColors()
 
 export default defineConfig({
   root: appRoot,
+  // The FormKit packages are file: links with their own node_modules: one React only.
+  resolve: { dedupe: ['react', 'react-dom'] },
   plugins: [
     react(),
     VitePWA({

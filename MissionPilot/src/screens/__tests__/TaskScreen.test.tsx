@@ -44,8 +44,12 @@ vi.mock('@mission/form-renderer', () => ({
               <div key={b.id} data-block-id={b.id}>
                 {'fieldName' in b ? <input aria-label={`field ${b.fieldName}`} /> : null}
                 {b.type === 'button' ? (
+                  // The real ButtonBlockView's label and enabled rules: the job's label from
+                  // buttonJobs unless the author typed one, "Sign & …" on a signed step (not No).
                   <button
                     type="button"
+                    data-job={b.job ?? 'none'}
+                    disabled={b.job ? props.buttonJobs?.[b.job].enabled === false : undefined}
                     onClick={() =>
                       props.onEvent?.(
                         b.job
@@ -54,7 +58,11 @@ vi.mock('@mission/form-renderer', () => ({
                       )
                     }
                   >
-                    {`job ${b.job ?? 'none'}`}
+                    {b.job
+                      ? ((l) => (props.buttonJobs?.signed && b.job !== 'no' && !/^\s*sign\b/i.test(l) ? `Sign & ${l}` : l))(
+                          b.label.trim() || props.buttonJobs?.[b.job].label || b.job,
+                        )
+                      : b.label}
                   </button>
                 ) : null}
               </div>
@@ -312,7 +320,8 @@ describe('TaskScreen', () => {
 
     render(<TaskScreen task={t} onDone={onDone} onError={vi.fn()} />)
 
-    expect(screen.queryByTestId('renderer')).toBeNull()
+    // No form: Pilot still draws the step's one button through the form view (user ruling 2026-11-10).
+    expect(screen.getByTestId('renderer')).toBeTruthy()
     const continueButton = screen.getByRole('button', { name: 'Continue' })
     expect((continueButton as HTMLButtonElement).disabled).toBe(false)
 
@@ -329,7 +338,8 @@ describe('TaskScreen', () => {
 
     render(<TaskScreen task={t} onDone={onDone} onError={vi.fn()} />)
 
-    expect(screen.queryByTestId('renderer')).toBeNull()
+    // No form: Pilot still draws the step's one button through the form view (user ruling 2026-11-10).
+    expect(screen.getByTestId('renderer')).toBeTruthy()
     const yesButton = screen.getByRole('button', { name: 'Yes' })
     const noButton = screen.getByRole('button', { name: 'No' })
     expect((yesButton as HTMLButtonElement).disabled).toBe(false)
@@ -532,18 +542,19 @@ describe('TaskScreen', () => {
     expect(resolve('No image selected')).toBeUndefined()
   })
 
-  it('every action chrome variant (Submit / Continue / Yes-No) renders inside the .task-actions container', () => {
-    const submit = render(<TaskScreen task={task({ formDocument: REQUIRED_NAME_DOC })} onDone={vi.fn()} onError={vi.fn()} />)
-    expect(screen.getByRole('button', { name: 'Continue' }).closest('.task-actions')).toBeTruthy()
-    submit.unmount()
-
-    const cont = render(<TaskScreen task={task({ formDocument: null })} onDone={vi.fn()} onError={vi.fn()} />)
-    expect(screen.getByRole('button', { name: 'Continue' }).closest('.task-actions')).toBeTruthy()
-    cont.unmount()
-
+  it('one button per step, drawn by the form; no Pilot button bar; Release on the "Where you are" line (user ruling 2026-11-10)', () => {
+    for (const t of [task({ formDocument: REQUIRED_NAME_DOC }), task({ formDocument: null })]) {
+      const v = render(<TaskScreen task={t} onDone={vi.fn()} onError={vi.fn()} />)
+      expect(screen.getAllByRole('button', { name: 'Continue' })).toHaveLength(1)
+      expect(screen.getByRole('button', { name: 'Continue' }).closest('[data-testid="renderer"]')).toBeTruthy()
+      expect(v.container.querySelector('footer')).toBeNull()
+      expect(screen.getByRole('button', { name: 'Release' }).closest('.task-topline')).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Where you are' }).closest('.task-topline')).toBeTruthy()
+      v.unmount()
+    }
     render(<TaskScreen task={task({ stepType: 'YES_NO' })} onDone={vi.fn()} onError={vi.fn()} />)
-    expect(screen.getByRole('button', { name: 'Yes' }).closest('.task-actions')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'No' }).closest('.task-actions')).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: 'Yes' })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'No' })).toHaveLength(1)
   })
 
   // 2026-09-14: the label authored in Designer's Actions panel (InboxTask.continueLabel) replaces the
@@ -598,7 +609,8 @@ describe('TaskScreen', () => {
 
     render(<TaskScreen task={t} onDone={vi.fn()} onError={vi.fn()} />)
 
-    expect(screen.queryByTestId('renderer')).toBeNull()
+    // No form: Pilot still draws the step's one button through the form view (user ruling 2026-11-10).
+    expect(screen.getByTestId('renderer')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Continue' })).toBeTruthy()
   })
 
@@ -632,87 +644,20 @@ describe('TaskScreen', () => {
     expect(screen.queryByText('Paused — actions are disabled until this step resumes.')).toBeNull()
   })
 
-  it('a gated Submit lists what is missing beside it, then says Ready to submit once the gate is ok', async () => {
-    render(<TaskScreen task={task({ formDocument: LABELLED_DOC })} onDone={vi.fn()} onError={vi.fn()} />)
-
-    const submit = screen.getByRole('button', { name: 'Continue' })
-    // The disabled button points at its reason for assistive technology.
-    expect(submit.getAttribute('aria-describedby')).toBe('missing-a1')
-    expect(document.getElementById('missing-a1')!.textContent).toBe('Missing: Operator name')
-    expect(screen.queryByText('Ready to submit')).toBeNull()
-
+  it('no "Missing" list and no "Ready to submit": the button is simply disabled until the form is complete (user ruling 2026-11-10)', async () => {
+    render(<TaskScreen task={task({ formDocument: TIMER_DOC })} onDone={vi.fn()} onError={vi.fn()} />)
+    expect((screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.queryByText(/Missing:/)).toBeNull()
+    expect(screen.queryByText(/Waiting for/)).toBeNull()
+    expect(lastRendererProps!.buttonJobs!.continue.describedBy).toBeUndefined()
     act(() => {
-      lastRendererProps!.onEvent!({ kind: 'fieldChange', fieldName: 'name', value: 'Ada' })
       lastRendererProps!.onEvent!({ kind: 'validation', ok: true, missing: [] })
     })
-
-    await waitFor(() => expect(screen.queryByText(/Missing:/)).toBeNull())
-    expect(screen.getByRole('button', { name: 'Continue' }).getAttribute('aria-describedby')).toBeNull()
-    expect(screen.getByText('Ready to submit')).toBeTruthy()
-  })
-
-  it('YES_NO shows the missing line too (Yes is gated by the same form)', () => {
-    render(
-      <TaskScreen
-        task={task({ stepType: 'YES_NO', formDocument: REQUIRED_NAME_DOC })}
-        onDone={vi.fn()}
-        onError={vi.fn()}
-      />,
-    )
-    expect(document.getElementById('missing-a1')!.textContent).toBe('Missing: name')
-  })
-
-  it('a doc-less Continue never shows a missing line or Ready to submit', () => {
-    render(<TaskScreen task={task({ formDocument: null })} onDone={vi.fn()} onError={vi.fn()} />)
-    expect(screen.queryByText(/Missing:/)).toBeNull()
+    await waitFor(() => expect((screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement).disabled).toBe(false))
     expect(screen.queryByText('Ready to submit')).toBeNull()
   })
 
-  it('a missing-field link scrolls to that field and focuses it (spec §5.4)', () => {
-    const scrolled = vi.fn()
-    Element.prototype.scrollIntoView = scrolled
-    try {
-      render(<TaskScreen task={task({ formDocument: LABELLED_DOC })} onDone={vi.fn()} onError={vi.fn()} />)
-
-      fireEvent.click(screen.getByRole('button', { name: 'Operator name' }))
-
-      expect(document.activeElement).toBe(screen.getByLabelText('field name'))
-      expect(scrolled).toHaveBeenCalledWith({ block: 'center' })
-    } finally {
-      delete (Element.prototype as Partial<Element>).scrollIntoView
-    }
-  })
-
-  it('a running timer reads "Waiting for", not as a field to fill in (P0)', () => {
-    render(<TaskScreen task={task({ formDocument: TIMER_DOC })} onDone={vi.fn()} onError={vi.fn()} />)
-
-    expect(document.querySelector('.task-missing-fields')!.textContent).toBe('Missing: Operator name')
-    expect(document.querySelector('.task-waiting')!.textContent).toBe('Waiting for: Cure time')
-    expect(screen.queryByRole('button', { name: 'Cure time' })).toBeNull()
-  })
-
-  it('a long missing list shows three links and a "+N more" that reveals the rest (P0)', () => {
-    render(<TaskScreen task={task({ formDocument: FIVE_DOC })} onDone={vi.fn()} onError={vi.fn()} />)
-    const links = () => [...document.querySelectorAll('.task-missing-fields .link-btn')].map((b) => b.textContent)
-
-    expect(links()).toEqual(['A', 'B', 'C', '+2 more'])
-    fireEvent.click(screen.getByRole('button', { name: '+2 more' }))
-    expect(links()).toEqual(['A', 'B', 'C', 'D', 'E'])
-  })
-
-  it('No points at the missing reason when it is gated, and not when only the signature is missing (P0)', () => {
-    const gated = render(
-      <TaskScreen task={task({ stepType: 'YES_NO', formDocument: REQUIRED_NAME_DOC })} onDone={vi.fn()} onError={vi.fn()} />,
-    )
-    expect(screen.getByRole('button', { name: 'No' }).getAttribute('aria-describedby')).toBe('missing-a1')
-    gated.unmount()
-
-    render(<TaskScreen task={task({ stepType: 'YES_NO', formDocument: ESIG_DOC })} onDone={vi.fn()} onError={vi.fn()} />)
-    expect(screen.getByRole('button', { name: 'No' }).getAttribute('aria-describedby')).toBeNull()
-  })
-
-
-  it('Release in the footer asks before discarding typed values, then releases, clears the draft and reports it', async () => {
+  it('Release asks before discarding typed values, then releases, clears the draft and reports it', async () => {
     vi.mocked(api.release).mockResolvedValue(undefined)
     const onReleased = vi.fn()
     render(
@@ -789,7 +734,6 @@ describe('TaskScreen', () => {
     })
     ctrlEnter(screen.getByLabelText('field name'))
     await waitFor(() => expect(api.submit).toHaveBeenCalledWith('a1', { kind: 'submit', values: { name: 'Ada' } }))
-    expect(screen.getByRole('button', { name: 'Continue' }).getAttribute('aria-keyshortcuts')).toBe('Control+Enter')
   })
 
   it('Ctrl+Enter does nothing in a background pane, offline, or on a Yes/No step', () => {
@@ -1055,53 +999,37 @@ describe('TaskScreen — job buttons (spec 2026-10-28 §5.3)', () => {
       lastRendererProps!.onEvent!({ kind: 'validation', ok: true, missing: [] })
     })
 
-  it("a form with job buttons hides Pilot's Continue/Yes/No but keeps Release and the missing/ready strip", async () => {
+  it("a form's own job buttons are the step's buttons: Pilot adds none (user ruling 2026-11-10)", () => {
     const a = render(<TaskScreen task={task({ formDocument: CONTINUE_JOB_DOC })} onDone={vi.fn()} onError={vi.fn()} />)
-    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Release' })).toBeTruthy()
-    expect(document.getElementById('missing-a1')!.textContent).toBe('Missing: name')
-    pass()
-    await waitFor(() => expect(screen.getByText('Ready to submit')).toBeTruthy())
+    expect(screen.getAllByRole('button', { name: 'Continue' })).toHaveLength(1)
+    expect(lastRendererProps!.document).toBe(CONTINUE_JOB_DOC) // nothing to add: the same document
     a.unmount()
-
     render(<TaskScreen task={task({ stepType: 'YES_NO', formDocument: YESNO_JOB_DOC })} onDone={vi.fn()} onError={vi.fn()} />)
-    expect(screen.queryByRole('button', { name: 'Yes' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'No' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Release' })).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: 'Yes' })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'No' })).toHaveLength(1)
   })
 
-  it('a form that owns its buttons gets the compact action strip and a pinned bottom bar; other forms keep the full strip', () => {
-    const a = render(<TaskScreen task={task({ formDocument: CONTINUE_JOB_DOC })} onDone={vi.fn()} onError={vi.fn()} />)
-    expect(a.container.querySelector('footer.task-actions')!.classList.contains('task-actions-compact')).toBe(true)
-    expect(a.container.querySelector('main')!.classList.contains('task-owns-buttons')).toBe(true)
-    a.unmount()
-
-    for (const doc of [JOBLESS_BUTTON_DOC, YESNO_PHONE_HIDDEN_DOC, REQUIRED_NAME_DOC]) {
-      const b = render(
-        <TaskScreen
-          task={task({ stepType: doc === YESNO_PHONE_HIDDEN_DOC ? 'YES_NO' : 'USER_INTERACTION', formDocument: doc })}
-          onDone={vi.fn()}
-          onError={vi.fn()}
-        />,
-      )
-      expect(b.container.querySelector('footer.task-actions')!.classList.contains('task-actions-compact')).toBe(false)
-      expect(b.container.querySelector('main')!.classList.contains('task-owns-buttons')).toBe(false)
-      b.unmount()
-    }
+  it('a form with no button gets one Continue, centered on a new bottom row', () => {
+    render(<TaskScreen task={task({ formDocument: REQUIRED_NAME_DOC })} onDone={vi.fn()} onError={vi.fn()} />)
+    const doc = lastRendererProps!.document as FormDocument
+    const footer = doc.sections.find((s) => s.role === 'footer')!
+    expect(footer.rows).toHaveLength(1)
+    expect(footer.rows[0]!.blocks).toEqual([
+      expect.objectContaining({ type: 'button', job: 'continue', layout: { span: { base: 12 }, align: 'center' } }),
+    ])
   })
 
   it("buttonJobs mirror Pilot's gating: continue disabled until the gate passes, then a job press submits signed values", async () => {
     vi.mocked(api.submit).mockResolvedValue(undefined)
     render(<TaskScreen task={task({ formDocument: CONTINUE_JOB_DOC })} onDone={vi.fn()} onError={vi.fn()} />)
     expect(lastRendererProps!.buttonJobs!.continue.enabled).toBe(false)
-    expect(lastRendererProps!.buttonJobs!.continue.describedBy).toBe('missing-a1')
     expect(lastRendererProps!.buttonJobs!.yes.enabled).toBe(false)
-    fireEvent.click(screen.getByRole('button', { name: 'job continue' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
     expect(api.submit).not.toHaveBeenCalled()
 
     pass()
     await waitFor(() => expect(lastRendererProps!.buttonJobs!.continue.enabled).toBe(true))
-    fireEvent.click(screen.getByRole('button', { name: 'job continue' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
     await waitFor(() => expect(api.submit).toHaveBeenCalledWith('a1', { kind: 'submit', values: { name: 'Ada' } }))
   })
 
@@ -1114,9 +1042,9 @@ describe('TaskScreen — job buttons (spec 2026-10-28 §5.3)', () => {
     expect(jobs().yes.enabled).toBe(false)
     expect(jobs().no.enabled).toBe(true)
     expect(jobs().continue.enabled).toBe(false)
-    fireEvent.click(screen.getByRole('button', { name: 'job yes' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sign & Yes' }))
     expect(api.submit).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: 'job no' }))
+    fireEvent.click(screen.getByRole('button', { name: 'No' }))
     await waitFor(() => expect(api.submit).toHaveBeenCalledWith('a1', { kind: 'decision', value: 'no', values: {} }))
 
     act(() => {
@@ -1124,7 +1052,7 @@ describe('TaskScreen — job buttons (spec 2026-10-28 §5.3)', () => {
       lastRendererProps!.onEvent!({ kind: 'validation', ok: true, missing: [] })
     })
     await waitFor(() => expect(jobs().yes.enabled).toBe(true))
-    fireEvent.click(screen.getByRole('button', { name: 'job yes' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sign & Yes' }))
     await waitFor(() =>
       expect(api.submit).toHaveBeenCalledWith('a1', {
         kind: 'decision',
@@ -1186,18 +1114,24 @@ describe('TaskScreen — job buttons (spec 2026-10-28 §5.3)', () => {
     expect(lastRendererProps!.buttonJobs!.signed).toBe(false)
   })
 
-  it("a form whose job buttons would leave the operator stuck keeps Pilot's own buttons", () => {
+  it('a button the form hides on one screen type gets a stand-in that only that screen shows', () => {
     render(<TaskScreen task={task({ stepType: 'YES_NO', formDocument: YESNO_PHONE_HIDDEN_DOC })} onDone={vi.fn()} onError={vi.fn()} />)
-    expect(screen.getByRole('button', { name: 'Yes' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'No' })).toBeTruthy()
+    const doc = lastRendererProps!.document as FormDocument
+    const added = doc.sections.find((s) => s.role === 'footer')!.rows[1]!.blocks
+    expect(added).toEqual([
+      expect.objectContaining({
+        job: 'no',
+        layout: { span: { base: 12 }, align: 'center', visible: { base: false, tablet: false, phone: true } },
+      }),
+    ])
   })
 
-  it("a job-less authored button changes nothing: Pilot's buttons stay and its action still submits", async () => {
+  it("a job-less authored button becomes the step's Continue: still one button, and it submits", async () => {
     vi.mocked(api.submit).mockResolvedValue(undefined)
     render(<TaskScreen task={task({ formDocument: JOBLESS_BUTTON_DOC })} onDone={vi.fn()} onError={vi.fn()} />)
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeTruthy()
+    expect(screen.getAllByRole('button').filter((b) => b.closest('[data-testid="renderer"]'))).toHaveLength(1)
     pass()
-    fireEvent.click(screen.getByRole('button', { name: 'job none' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Go' }))
     await waitFor(() => expect(api.submit).toHaveBeenCalledWith('a1', { kind: 'submit', values: { name: 'Ada' } }))
   })
 

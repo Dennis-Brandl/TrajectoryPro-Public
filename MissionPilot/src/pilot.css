@@ -155,7 +155,11 @@
     color: var(--pilot-text);
   }
 
-  .where-toggle {
+  .task-topline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--pilot-space-2) var(--pilot-space-3);
     margin-top: var(--pilot-space-3);
   }
 
@@ -188,6 +192,20 @@
     .where-toggle {
       display: none;
     }
+  }
+
+  /* User 2026-11-10: a long "Where you are" list made the whole task scroll and pushed the
+     step's button far down. The panel is capped at the visible height of the pane, stays put
+     while the form scrolls, and scrolls its own list. 100cqh is the pane's height
+     (frame.css .work-panes is a size container); with no container it falls back to the
+     viewport. */
+  .task-where {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    max-height: calc(100cqh - var(--pilot-space-4));
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .where {
@@ -255,135 +273,25 @@
     color: var(--pilot-text-muted);
   }
 
-  /* The action footer stays on screen at the bottom of the task (§5.4). */
-  .task-actions {
+  /* User ruling 2026-11-10: the form's own button is the step's one button and Pilot draws no
+     button bar. The form's bottom bar (where a step's button goes when the form has none) stays
+     on screen at the bottom of the task. */
+  .task-screen .tfk-footer {
     position: sticky;
     bottom: 0;
-    z-index: 1;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--pilot-space-3) var(--pilot-space-4);
-    margin-inline: calc(-1 * var(--pilot-space-4));
-    padding: var(--pilot-space-3) var(--pilot-space-4);
-    border-top: var(--pilot-border-w) solid var(--pilot-border);
-    background: var(--pilot-surface-raised);
-  }
-
-  .task-status {
-    flex: 1 1 20rem;
-    min-width: 0;
-  }
-
-  .task-missing p,
-  .task-ready {
-    margin: 0;
-  }
-
-  .task-missing-fields {
-    color: var(--pilot-alarm);
-  }
-
-  .task-waiting {
-    color: var(--pilot-text-muted);
-  }
-
-  .task-ready {
-    color: var(--pilot-ok);
-    font-weight: var(--pilot-weight-strong);
-  }
-
-  /* A missing-field link: text-sized, still a full touch target tall. */
-  .link-btn {
-    display: inline-flex;
-    align-items: center;
-    min-height: var(--pilot-touch-min);
-    min-width: var(--pilot-touch-min);
-    justify-content: center;
-    padding: 0 var(--pilot-space-1);
-    border: none;
-    background: transparent;
-    color: inherit;
-    font: inherit;
-    text-decoration: underline;
-  }
-
-  /* The base button hover is (0,2,0); a link keeps its own look (P1c minor). */
-  .link-btn:hover:not(:disabled) {
-    background: transparent;
-    text-decoration-thickness: 2px;
-  }
-
-  .task-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--pilot-space-3);
-    margin-left: auto;
-  }
-
-  .task-primary {
-    min-height: var(--pilot-control-h-lg);
-    min-width: 12rem;
-    padding: 0 var(--pilot-space-6);
-    border-color: var(--pilot-accent);
-    background: var(--pilot-accent);
-    color: var(--pilot-accent-fg);
-    font-size: var(--pilot-text-lg);
-    font-weight: var(--pilot-weight-strong);
-  }
-
-  .task-primary:hover:not(:disabled) {
-    border-color: var(--pilot-accent-hover);
-    background: var(--pilot-accent-hover);
-  }
-
-  /* A real disabled style (spec §3), not bare opacity: the reason sits beside it. */
-  .task-primary:disabled {
-    border-color: var(--pilot-border-strong);
-    background: var(--pilot-surface-sunken);
-    color: var(--pilot-text-muted);
-    opacity: 1;
-  }
-
-  .task-buttons .release-btn {
-    min-height: var(--pilot-control-h-lg);
-    padding: 0 var(--pilot-space-5);
-  }
-
-  /* A form that owns its Continue/Yes/No (spec 2026-10-28 §5.2-5.3): its bottom bar is the
-     button bar, pinned just above Pilot's strip; the strip shrinks to a quiet line holding the
-     status and Release. --task-actions-h is the strip's measured height (TaskScreen). */
-  .task-owns-buttons .tfk-footer {
-    position: sticky;
-    bottom: var(--task-actions-h, 0px);
     z-index: 1;
     background: inherit; /* the form's own surface, so scrolled content never shows through */
   }
 
-  .task-actions-compact {
-    flex-wrap: nowrap;
-    padding-block: var(--pilot-space-1);
-    gap: var(--pilot-space-3);
-  }
-
-  .task-actions-compact .task-status {
-    flex: 1 1 auto;
-    font-size: var(--pilot-text-sm);
-  }
-
-  .task-actions-compact .task-buttons {
-    flex: none;
-  }
-
-  .task-actions-compact .task-ready {
-    font-weight: var(--pilot-weight-medium);
-  }
-
-  .task-actions-compact .release-btn {
+  /* Release, at the right of the "Where you are" line. */
+  .task-topline .release-btn {
+    margin-left: auto;
     min-height: var(--pilot-touch-min);
     padding: 0 var(--pilot-space-3);
-    font-size: var(--pilot-text-sm);
+  }
+
+  .task-topline .release-confirm {
+    margin-left: auto;
   }
 
   .release-confirm {

@@ -65,7 +65,7 @@ export function ButtonSection({ block, onUpdate }: { block: Block; onUpdate: (pa
         </select>
         {!job && (
           <span className={labelCls} style={{ fontSize: 11, display: 'block', marginTop: 2 }}>
-            Pick a job so this button replaces Pilot&apos;s own.
+            Pick a job so Pilot knows what this button does.
           </span>
         )}
       </div>

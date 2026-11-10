@@ -72,13 +72,13 @@ describe('PreviewCanvas', () => {
     useFormDocumentStore.getState().close()
   })
 
-  it('renders the document in run mode with a decision bar', () => {
+  it('renders the document in run mode with the one Continue Pilot will show, and no bar of its own', () => {
     useFormDocumentStore.getState().openForNode('n1', textDoc())
     render(<PreviewCanvas />)
     expect(screen.getByText('Hello preview')).toBeTruthy()
-    expect(screen.getByTestId('preview-decision-bar')).toBeTruthy()
-    // No flowStore node → default userInteraction Continue.
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeTruthy()
+    expect(screen.queryByTestId('preview-decision-bar')).toBeNull()
+    // No flowStore node → default userInteraction: the form has no button, so a centered Continue is added.
+    expect(screen.getAllByRole('button', { name: 'Continue' })).toHaveLength(1)
   })
 
   it("shows the active tab's rows (Tablet/Phone can have their own)", () => {
@@ -135,11 +135,13 @@ describe('PreviewCanvas', () => {
       expect(screen.getByTestId('preview-last-decision').textContent).toContain('true')
     })
 
-    it('keeps the bar when the form would leave the author stuck', () => {
+    it('adds the button the form lacks, as Pilot does, instead of a bar', () => {
       asYesNo()
       useFormDocumentStore.getState().openForNode('n1', jobDoc([btn('y', 'yes')])) // no "No"
       render(<PreviewCanvas />)
-      expect(screen.getByTestId('preview-decision-bar')).toBeTruthy()
+      expect(screen.queryByTestId('preview-decision-bar')).toBeNull()
+      expect(screen.getAllByRole('button', { name: 'Yes' })).toHaveLength(1)
+      expect(screen.getAllByRole('button', { name: 'No' })).toHaveLength(1)
     })
   })
 })

@@ -14,6 +14,9 @@
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
+  // The FormKit packages are file: links with their own node_modules: without this, the real
+  // FormDocumentView (rendered by the app-level tests) would load a second copy of React.
+  resolve: { dedupe: ['react', 'react-dom'] },
   test: {
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],

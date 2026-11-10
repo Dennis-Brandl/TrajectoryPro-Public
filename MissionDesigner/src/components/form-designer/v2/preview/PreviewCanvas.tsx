@@ -13,9 +13,8 @@
 // limitations under the License.
 import { useMemo } from 'react'
 import { RotateCcw } from 'lucide-react'
-import { toast } from 'sonner'
 import { FormDocumentView } from '@mission/form-renderer'
-import { checkNeverStuck, findESignatureBlock, hasJobButtons } from '@mission/form-schema'
+import { findESignatureBlock, withStepButtons } from '@mission/form-schema'
 import '@mission/form-tokens/css/light'
 import '@mission/form-renderer/layout.css'
 import '@mission/form-renderer/controls.css'
@@ -27,8 +26,7 @@ import { BreakpointTabs, BREAKPOINT_FRAME_WIDTH } from '../BreakpointTabs'
 import { stepKindOfNode } from '@/lib/form-document/step-kind'
 import { useImageResolver } from '../useImageResolver'
 import { usePreviewHost } from './usePreviewHost'
-import { buttonJobsFromDecision, derivePreviewDecision, withSignatureLabels } from './previewDecision'
-import { PreviewDecisionBar } from './PreviewDecisionBar'
+import { buttonJobsFromDecision, derivePreviewDecision } from './previewDecision'
 
 const EMPTY_DATA = {} as StepNodeData
 
@@ -43,10 +41,17 @@ export function PreviewCanvas() {
 
   const node = useFlowStore((s) => s.nodes.find((n) => n.id === openNodeId))
   const workflowValues = useFlowStore((s) => s.workflowValues)
-  // Lists bound to an input parameter show the elements Pilot will list (preview only).
+  // Lists bound to an input parameter show the elements Pilot will list (preview only). The
+  // step's one button is the form's own, with a centered one added where the form has none —
+  // exactly what Mission Pilot shows (user ruling 2026-11-10).
+  const stepKind = stepKindOfNode(node?.type)
   const previewDocument = useMemo(
-    () => fillPreviewLists(document, (node?.data as StepNodeData | undefined)?.inputs, workflowValues),
-    [document, node?.data, workflowValues],
+    () =>
+      withStepButtons(
+        fillPreviewLists(document, (node?.data as StepNodeData | undefined)?.inputs, workflowValues),
+        stepKind,
+      ),
+    [document, node?.data, workflowValues, stepKind],
   )
   const plainDecision = derivePreviewDecision(
     node?.type ?? 'userInteractionStep',
@@ -54,16 +59,8 @@ export function PreviewCanvas() {
     document,
   )
   const hasSignature = findESignatureBlock(document) !== null
-  const decision = withSignatureLabels(plainDecision, hasSignature)
   const host = usePreviewHost(document, plainDecision)
-  // Spec 2026-10-28 section 4: the form's own buttons replace the bar unless they would leave the author stuck.
-  const formOwnsButtons = hasJobButtons(document) && checkNeverStuck(document, stepKindOfNode(node?.type)).length === 0
   const buttonJobs = buttonJobsFromDecision(plainDecision, host.gate, host.noGateOk, hasSignature)
-
-  const onDecide = (value: string, isNo = false) => {
-    host.decide(value, isNo)
-    toast(`Preview decision: “${value}” — no navigation in preview`)
-  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -95,9 +92,6 @@ export function PreviewCanvas() {
             signature={host.signature}
             buttonJobs={buttonJobs}
           />
-          {!formOwnsButtons && (
-            <PreviewDecisionBar decision={decision} gate={host.gate} noGateOk={host.noGateOk} onDecide={onDecide} />
-          )}
           <div
             style={{
               display: 'flex',

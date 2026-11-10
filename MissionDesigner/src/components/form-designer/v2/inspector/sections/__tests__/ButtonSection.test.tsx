@@ -56,7 +56,7 @@ describe('ButtonSection', () => {
     const sel = screen.getByLabelText('Job') as HTMLSelectElement
     expect(sel.value).toBe('')
     expect(screen.getByText(/None \(old button\)/)).toBeTruthy()
-    expect(screen.getByText("Pick a job so this button replaces Pilot's own.")).toBeTruthy()
+    expect(screen.getByText('Pick a job so Pilot knows what this button does.')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Output Value'), { target: { value: 'x' } })
     expect(onUpdate).toHaveBeenCalledWith({ outputValue: 'x' })
   })

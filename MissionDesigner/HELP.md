@@ -519,7 +519,7 @@ For example, to stack side-by-side elements on a phone, select the **Phone** tab
 Click **Preview** to try the screen as an operator would:
 
 - **The screen behaves as at runtime.** Fields accept input, and required fields and any e-signature are enforced.
-- **The step's buttons are gated.** **Continue**, or **Yes** and **No**, stay disabled until the screen is complete. Hover over a disabled button in the preview's own bar to see what is missing. The screen's own [Button Element](#button-element) buttons follow the same rules and are greyed out while something is missing, but they show no hover hint.
+- **The step's buttons are gated.** **Continue**, or **Yes** and **No**, stay disabled until the screen is complete. The preview shows exactly the buttons Mission Pilot will: the screen's own, plus a centered one where the screen has none (see [Pilot's buttons](#button-element)).
 - **Nothing is recorded.** Pressing a button shows the value that would be recorded, but nothing is saved and the workflow does not advance.
 - **Other controls.** **Restart** clears the preview, and the device tabs let you check each layout. Editing is unavailable while previewing.
 
@@ -584,9 +584,9 @@ The Layout section (span, order, visible per device, alignment) works as for any
 
 **The bottom bar.** The dashed band at the bottom of the canvas, labelled _Bottom bar — drag buttons here_, is a bar that stays pinned at the bottom of the screen in Mission Pilot while the rest of the form scrolls. Only buttons can go in it. Drop a button anywhere on the bar to put it beside the last button there (so Yes and No sit side by side), or drop it on the line above or below a row of buttons to start a new row. Drag buttons in and out of it and arrange them like any row. An empty bar is removed when you save.
 
-**Pilot's own buttons.** Pilot hides its own **Continue**, **Yes** and **No** only when the screen's job buttons cover **every** device (Desktop, Tablet and Phone) for that kind of step: a Continue on a normal step, or both a Yes and a No on a Yes/No step. Otherwise Pilot keeps its own buttons as a fallback, so an operator is never left without a way to finish. Pilot always keeps its **Release** button and the line that says what is missing or that the step is ready.
+**Pilot's buttons.** Mission Pilot shows only the screen's own buttons; it has no button bar of its own. On a User Interaction step every button on the screen is the step's **Continue**, and on a Yes/No step a button that sends true is **Yes** and one that sends false is **No**. When the screen has no such button, Pilot adds one, centered on a new row of the bottom bar (**Yes** and **No** side by side on a Yes/No step). When a button is hidden on some device, Pilot adds a centered one that only that device shows, so an operator is never left without a way to finish. A button stays disabled until the screen is complete; Pilot does not list what is missing. **Release** is at the right of the _Where you are_ line.
 
-**Old buttons.** Screens made in older versions can hold buttons with no job. The Inspector shows **None (old button)** and the hint _Pick a job so this button replaces Pilot's own._ Such buttons work exactly as before and never hide Pilot's buttons, until you give them a job.
+**Old buttons.** Screens made in older versions can hold buttons with no job. The Inspector shows **None (old button)**. Pilot treats such a button as described above; giving it a job in the Inspector, or using **Convert buttons**, makes that explicit.
 
 **Problems are reported, not blocking.** The **Actions** panel shows a red alert for a screen that could leave the operator stuck, for example _No "No" button is visible on Phone._ or _A Yes button only works on a Yes/No step._ Workflow validation, which runs on export, lists the same problems as **Form buttons: ...**. **Save** is never blocked.
 

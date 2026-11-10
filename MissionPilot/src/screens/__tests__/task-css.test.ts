@@ -23,9 +23,8 @@ const frame = strip(readFileSync(join(process.cwd(), 'src/frame/frame.css'), 'ut
 // Every class the task screen renders. A rename in TSX without the CSS (or the other way
 // round) fails here instead of shipping an unstyled control.
 const CLASSES = [
-  'task-heading', 'task-arrival', 'where-toggle', 'task-body', 'task-form', 'task-where',
-  'task-actions', 'task-status', 'task-missing', 'task-missing-fields', 'task-waiting', 'task-ready',
-  'task-actions-compact', 'task-owns-buttons', 'link-btn', 'task-buttons', 'task-primary', 'release-btn', 'release-confirm',
+  'task-heading', 'task-arrival', 'task-topline', 'where-toggle', 'task-body', 'task-form', 'task-where',
+  'release-btn', 'release-confirm',
   'where', 'where-title', 'where-note', 'where-list', 'where-step', 'where-icon', 'where-name', 'where-state',
   'where-done', 'where-current', 'where-active', 'where-problem', 'where-todo',
 ]
@@ -42,27 +41,34 @@ describe('task screen styles (spec §5.4, §5.6, §4)', () => {
     expect(missing).toEqual([])
   })
 
-  it('the action footer stays on screen and the toasts sit clear of it, under the top bar', () => {
-    const footer = rule(pilot, '.task-actions')
-    expect(footer).toMatch(/position:\s*sticky/)
-    expect(footer).toMatch(/bottom:\s*0/)
+  it("the form's bottom bar (its button) stays on screen; the toasts sit under the top bar", () => {
+    const bar = rule(pilot, '.task-screen .tfk-footer')
+    expect(bar).toMatch(/position:\s*sticky/)
+    expect(bar).toMatch(/bottom:\s*0/)
+    expect(bar).toMatch(/background:/)
     const toasts = rule(pilot, '.toast-region')
     expect(toasts).toMatch(/top:/)
     expect(toasts).not.toMatch(/bottom:/)
   })
 
-  it("a form that owns its buttons: its bottom bar pins just above a compact strip (spec 2026-10-28 §5.2)", () => {
-    const bar = rule(pilot, '.task-owns-buttons .tfk-footer')
-    expect(bar).toMatch(/position:\s*sticky/)
-    expect(bar).toContain('bottom: var(--task-actions-h')
-    expect(bar).toMatch(/background:/)
-    const compact = rule(pilot, '.task-actions-compact')
-    expect(compact).toContain('padding-block: var(--pilot-space-1)')
-    // One line even on a phone: status and Release share the row; long status text wraps in its column.
-    expect(compact).toContain('flex-wrap: nowrap')
-    // Smaller than the full strip's 3.5 rem Release, never below the 44 px touch floor.
-    expect(rule(pilot, '.task-actions-compact .release-btn')).toContain('min-height: var(--pilot-touch-min)')
-    expect(rule(pilot, '.task-actions-compact .task-status')).toContain('font-size: var(--pilot-text-sm)')
+  it('a long "Where you are" list scrolls on its own, not the whole task (user 2026-11-10)', () => {
+    const at = pilot.lastIndexOf('.task-where {')
+    const where = pilot.slice(at, pilot.indexOf('}', at))
+    expect(where).toMatch(/position:\s*sticky/)
+    expect(where).toMatch(/align-self:\s*start/)
+    expect(where).toMatch(/max-height:\s*calc\(100cqh/)
+    expect(where).toMatch(/overflow-y:\s*auto/)
+    // 100cqh is the pane's height only because the pane is a size container.
+    expect(rule(frame, '.work-panes')).toMatch(/container-type:\s*size/)
+  })
+
+  it('Release sits at the right of the "Where you are" line (user ruling 2026-11-10)', () => {
+    expect(rule(pilot, '.task-topline')).toMatch(/display:\s*flex/)
+    expect(rule(pilot, '.task-topline .release-btn')).toContain('margin-left: auto')
+    expect(rule(pilot, '.task-topline .release-btn')).toContain('min-height: var(--pilot-touch-min)')
+    // Pilot draws no button bar of its own any more.
+    expect(pilot).not.toMatch(/\.task-actions(?![\w-])/)
+    expect(pilot).not.toMatch(/\.task-primary(?![\w-])/)
   })
 
   it('forms are capped at 960 px, the side panel joins from 1280 px, and the context bar can flash', () => {

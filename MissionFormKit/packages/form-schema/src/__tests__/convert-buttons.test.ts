@@ -109,7 +109,20 @@ describe('convertButtons', () => {
       id: 'n1',
       role: 'footer',
       rows: [
-        { id: 'n2', blocks: [{ id: 'n3', type: 'button', job: 'continue', label: '', outputValue: 'continue', emphasis: 'primary' }] },
+        {
+          id: 'n2',
+          blocks: [
+            {
+              id: 'n3',
+              type: 'button',
+              layout: { span: { base: 12 }, align: 'center' },
+              job: 'continue',
+              label: '',
+              outputValue: 'continue',
+              emphasis: 'primary',
+            },
+          ],
+        },
       ],
     })
     expect(r.changes).toContain('Added a Continue button to the bottom bar.')
@@ -121,6 +134,11 @@ describe('convertButtons', () => {
     expect(r.document.sections).toHaveLength(1)
     expect(r.document.sections[0]!.rows).toHaveLength(1)
     expect(buttons(r.document).map((x) => x.job)).toEqual(['yes', 'no'])
+    // Side by side and centered: half the row each.
+    expect(buttons(r.document).map((x) => x.layout)).toEqual([
+      { span: { base: 6 }, align: 'center' },
+      { span: { base: 6 }, align: 'center' },
+    ])
     expect(r.problems).toEqual([])
   })
 

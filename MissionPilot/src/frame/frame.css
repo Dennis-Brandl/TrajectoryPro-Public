@@ -47,6 +47,9 @@
     flex: 1;
     min-height: 0;
     overflow: auto;
+    /* Its height comes from the shell, never its content, so it can be a size container:
+       the "Where you are" panel caps itself at 100cqh, the pane's visible height. */
+    container-type: size;
     padding: 0 var(--pilot-space-4) var(--pilot-space-4);
     /* Keep a Tab-focused or keyboard-revealed field clear of the sticky action footer. */
     scroll-padding-bottom: calc(var(--pilot-control-h-lg) + 4 * var(--pilot-space-3));

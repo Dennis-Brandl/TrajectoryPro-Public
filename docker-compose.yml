@@ -53,6 +53,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    networks:
+      - autopilot
     restart: unless-stopped
 
   mission-autopilot-server:
@@ -85,6 +87,20 @@ services:
       # Uploads only — the server currently keeps all state in Postgres via
       # DATABASE_URL; package archives are handled in memory and never touch disk.
       - missionautopilot-data:/data
+    # Audit 2026-10-20 security H5: action authors' Python runs in this container, so it is
+    # locked down: read-only file system (only /data and a /tmp in memory are writable), no
+    # Linux capabilities, no privilege escalation.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # Its own network: action code can reach its database and the engine, never Commander's
+    # database or the Broker.
+    networks:
+      - autopilot
     restart: unless-stopped
 
   mission-autopilot-console:
@@ -100,6 +116,8 @@ services:
       # browser asks for the key once and keeps it for the session.
     depends_on:
       - mission-autopilot-server
+    networks:
+      - autopilot
     restart: unless-stopped
 
   # Action Tester. Standalone single-file React app (no backend, no DB) for
@@ -243,6 +261,10 @@ services:
       # Spec 2026-10-19 §C2: the engine sends MISSION_BROKER_TOKEN only to MISSION_BROKER_URL's origin. Bind the "Distributed Workflow Management" environment to exactly that address.
       - MISSION_BROKER_URL=${MISSION_BROKER_URL:-http://mission-broker:3007}
       - MISSION_BROKER_TOKEN=${MISSION_BROKER_TOKEN:?Run scripts/setup-secrets.sh}
+    # The engine is the one fleet service on both networks: it calls the Autopilot server.
+    networks:
+      - default
+      - autopilot
     restart: unless-stopped
 
   # Mission Broker (spec 2026-10-15): the action server for the GLOBAL
@@ -284,3 +306,8 @@ volumes:
   missionautopilot-pgdata:
   missioncommander-pgdata:
   missioncommander-data:
+
+networks:
+  # Mission Autopilot's own network (audit 2026-10-20 security H5). Everything else stays on
+  # the project's default network.
+  autopilot:

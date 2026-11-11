@@ -25,6 +25,6 @@ const step = {
   step_type: 'SCRIPT',
   script_config: { source: '(async () => { throw new Error("x"); })(); Promise.reject(1); output.ok = "yes";' },
 } as unknown as MasterWorkflowStep;
-console.log(JSON.stringify(executeScript(step, new PropertyStore(), {}, 1000)));
+console.log(JSON.stringify(await executeScript(step, new PropertyStore(), {}, 1000)));
 if (mode === 'host') void Promise.reject(new Error('engine bug'));
 setTimeout(() => console.log('still alive'), 200);

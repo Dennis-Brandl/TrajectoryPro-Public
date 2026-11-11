@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createTestDb, type TestDb } from '../testing.js'
-import { databaseSchemaStatus } from '../database.js'
+import { createPool, databaseSchemaStatus } from '../database.js'
 import { EnvironmentRepository } from '../repositories/environment.repository.js'
 
 // The old suite tested `openDatabase(':memory:')` — a synchronous better-sqlite3
@@ -76,5 +76,18 @@ describe('createTestDb', () => {
     } finally {
       await otherDb.close()
     }
+  })
+})
+
+describe('createPool (audit DB-scale H6)', () => {
+  it('logs a dropped idle connection instead of throwing, and gives up connecting after 5 s', async () => {
+    // pg connects lazily, so no database is needed.
+    const pool = createPool('postgres://nobody@127.0.0.1:1/none')
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    expect(() => pool.emit('error', new Error('terminating connection'))).not.toThrow()
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('terminating connection'))
+    log.mockRestore()
+    expect(pool.options.connectionTimeoutMillis).toBe(5000)
+    await pool.end()
   })
 })

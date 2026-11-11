@@ -2211,7 +2211,7 @@ export async function activateRepeatingScript(
   stepDef: MasterWorkflowStep, deps: EngineDeps,
 ): Promise<{ settled: boolean; completed: boolean }> {
   const inputs = context.state.stepSnapshots[target.stepOid]?.inputParameters ?? {};
-  const run = runRepeatingScript(stepDef, inputs, undefined, deps.config.scriptTimeoutMs);
+  const run = await runRepeatingScript(stepDef, inputs, undefined, deps.config.scriptTimeoutMs);
   if (!run.success) {
     const settled = await failStep(tx, context, target, 'ERROR', run.error ?? null, deps);
     return { settled, completed: false };
@@ -2253,7 +2253,7 @@ export async function activateGateStep(
   // Spec 2026-10-13 §3.4: a pure timer never runs its script — it only parks.
   if (mode !== 'timer' && !hasBindings) {
     const inputs = context.state.stepSnapshots[target.stepOid]?.inputParameters ?? {};
-    const result = executeGateScript(stepDef, inputs, deps.config.scriptTimeoutMs);
+    const result = await executeGateScript(stepDef, inputs, deps.config.scriptTimeoutMs);
     if (!result.success) {
       const settled = await failStep(tx, context, target, 'ERROR', result.error ?? null, deps);
       return { settled, completed: false };
@@ -2468,7 +2468,7 @@ export async function runStepActivation(
     case 'SCRIPT': {
       if (scriptRepeat(stepDef)) return await activateRepeatingScript(tx, context, target, stepDef, deps);
       const inputs = context.state.stepSnapshots[target.stepOid]?.inputParameters ?? {};
-      const result = executeScript(stepDef, context.props, inputs, deps.config.scriptTimeoutMs);
+      const result = await executeScript(stepDef, context.props, inputs, deps.config.scriptTimeoutMs);
       if (!result.success) {
         const settled = await failStep(tx, context, target, 'ERROR', result.error ?? null, deps);
         return { settled, completed: false };

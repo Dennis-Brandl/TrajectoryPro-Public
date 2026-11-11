@@ -23,7 +23,7 @@ import { checkWaits } from './waits.js';
 import { purgeOldRecords, RETENTION_INTERVAL_MS } from './retention.js';
 
 const cfg = loadConfig();
-const pool = new pg.Pool({ connectionString: cfg.databaseUrl, max: 5 });
+const pool = new pg.Pool({ connectionString: cfg.databaseUrl, max: 5, connectionTimeoutMillis: 5000 });
 // An idle pooled client that loses its connection emits 'error' on the pool; unhandled, that
 // would crash the process. The pool replaces the client on the next query.
 pool.on('error', (e) => console.error('[broker] idle database connection error:', e));

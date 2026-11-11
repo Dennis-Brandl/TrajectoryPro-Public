@@ -33,6 +33,56 @@ import type { Interface as ReadlineInterface } from 'node:readline'
 import { EventEmitter } from 'node:events'
 import type { SidecarRequest, SidecarResponse } from './types.js'
 
+// Audit 2026-10-20 security H2: action code runs with full Python builtins, so whatever is in
+// the worker's environment is readable by any action author — and the server's environment
+// holds DATABASE_URL and ACTIONS_API_KEY. The worker gets only what Python itself needs
+// (paths, locale, temp, proxies, certificates) plus any variable an operator deliberately
+// hands to actions by naming it ACTION_ENV_<NAME>. Names compare upper-case (Windows keys
+// such as "Path" are case-insensitive).
+const SIDECAR_ENV_NAMES = new Set([
+  'PATH',
+  'PATHEXT',
+  'HOME',
+  'USERPROFILE',
+  'LANG',
+  'LANGUAGE',
+  'TZ',
+  'TMPDIR',
+  'TEMP',
+  'TMP',
+  'SYSTEMROOT',
+  'SYSTEMDRIVE',
+  'WINDIR',
+  'COMSPEC',
+  'PYTHONPATH',
+  'PYTHONHOME',
+  'PYTHONIOENCODING',
+  'PYTHONUTF8',
+  'VIRTUAL_ENV',
+  'HTTP_PROXY',
+  'HTTPS_PROXY',
+  'NO_PROXY',
+  'SSL_CERT_FILE',
+  'SSL_CERT_DIR',
+])
+const ACTION_ENV_PREFIX = 'ACTION_ENV_'
+
+export function sidecarEnv(env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  const out: NodeJS.ProcessEnv = {}
+  for (const [name, value] of Object.entries(env)) {
+    if (value === undefined) continue
+    const upper = name.toUpperCase()
+    if (
+      SIDECAR_ENV_NAMES.has(upper) ||
+      upper.startsWith('LC_') ||
+      upper.startsWith(ACTION_ENV_PREFIX)
+    ) {
+      out[name] = value
+    }
+  }
+  return out
+}
+
 /** Max bytes to buffer from subprocess stderr for diagnostics */
 const MAX_STDERR_BYTES = 64 * 1024
 
@@ -55,6 +105,7 @@ export class PythonWorker extends EventEmitter {
     // Spawn python -u sandbox_runner.py with piped stdio
     this.process = spawn(pythonPath, ['-u', scriptPath], {
       stdio: ['pipe', 'pipe', 'pipe'],
+      env: sidecarEnv(),
     })
 
     // Set up readline on stdout for line-by-line JSON parsing

@@ -24,10 +24,12 @@ vi.mock('@tanstack/react-router', async (orig) => {
 vi.mock('~/lib/auth-client', () => ({ authClient: { getSession: vi.fn() }, signOut: vi.fn() }));
 vi.mock('@/lib/api/me', () => ({ me: vi.fn() }));
 
-import { XoLayout, XoUnreachable, SwitcherButton, Route } from './_xo';
+import { XoLayout, XoUnreachable, Route } from './_xo';
+import { SwitcherButton } from '~/components/shell/WorkCenterSwitcher';
 import { authClient } from '~/lib/auth-client';
 import { me as fetchMe } from '@/lib/api/me';
 import { useMeStore } from '~/stores/meStore';
+import { useWorkCenterStore } from '~/stores/workCenterStore';
 import { usePrincipalStore } from '@/stores/principalStore';
 import type { MePrincipal } from '@/lib/api/types';
 
@@ -92,6 +94,30 @@ describe('_xo layout', () => {
     expect(screen.getByText('outlet content')).toBeInTheDocument();
     expect(screen.getByText('Mission XO')).toBeInTheDocument();
     expect(screen.getByText('Sam')).toBeInTheDocument();
+  });
+
+  it('puts the work-center switcher in the top bar on a wide screen, not on a phone', () => {
+    const original = window.matchMedia;
+    const atWidth = (px: number) => {
+      window.matchMedia = ((query: string) => ({
+        matches: px >= Number(/min-width:\s*(\d+)px/.exec(query)?.[1] ?? 0), media: query, onchange: null,
+        addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
+      })) as unknown as typeof window.matchMedia;
+    };
+    try {
+      useMeStore.getState().setMe(person('steward'));
+      useWorkCenterStore.setState({ name: 'Alpha' });
+      atWidth(1440);
+      render(<XoLayout />);
+      expect(screen.getByRole('button', { name: /alpha/i })).toBeInTheDocument();
+      cleanup();
+      atWidth(390); // the phone row in WorkCenterShell carries it instead
+      render(<XoLayout />);
+      expect(screen.queryByRole('button', { name: /alpha/i })).toBeNull();
+    } finally {
+      window.matchMedia = original;
+      useWorkCenterStore.setState({ name: null });
+    }
   });
 
   it('does not redirect when me() fails with a session present; offers Retry', async () => {

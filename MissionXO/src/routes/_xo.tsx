@@ -19,10 +19,10 @@ import { useMeStore } from '~/stores/meStore';
 import { usePrincipalStore } from '@/stores/principalStore';
 import { canUseXo } from '~/lib/access';
 import { Button } from '@/components/ui/button';
-import { ChevronDown } from 'lucide-react';
-import { useNavigate } from '@tanstack/react-router';
 import { useWorkCenterStore } from '~/stores/workCenterStore';
 import { NotForYou } from '~/components/NotForYou';
+import { SwitcherButton } from '~/components/shell/WorkCenterSwitcher';
+import { useLayout } from '~/lib/layout';
 
 export const Route = createFileRoute('/_xo')({
   beforeLoad: async () => {
@@ -59,10 +59,13 @@ async function leave() {
 export function XoLayout() {
   const me = useMeStore((s) => s.me);
   const { theme, toggleTheme } = useTheme();
+  const layout = useLayout();
   if (!me) return null;
   if (!canUseXo(me)) return <NotForYou onSignOut={leave} />;
   return (
-    <div className="flex h-screen flex-col">
+    // dvh, not vh: on a phone 100vh reaches under the browser's own toolbar, which hid the
+    // bottom bar (Available / Running / History / Schedules).
+    <div className="flex h-dvh flex-col">
       <AppHeader
         appName="Mission XO"
         buildVersion={__APP_VERSION__}
@@ -72,7 +75,8 @@ export function XoLayout() {
         onToggleTheme={toggleTheme}
         userName={me.displayName}
         onSignOut={leave}
-        tools={<WorkCenterSwitcher />}
+        // Phones show the switcher in its own row (WorkCenterShell): the top bar has no room.
+        tools={layout === 'phone' ? undefined : <WorkCenterSwitcher />}
       />
       <div className="min-h-0 flex-1"><Outlet /></div>
     </div>
@@ -92,19 +96,4 @@ export function XoUnreachable() {
 function WorkCenterSwitcher() {
   const name = useWorkCenterStore((s) => s.name);
   return name ? <SwitcherButton name={name} /> : null;
-}
-
-// Returns to the picker without clearing the remembered work center.
-export function SwitcherButton({ name }: { name: string }) {
-  const navigate = useNavigate();
-  return (
-    <button
-      type="button"
-      onClick={() => { void navigate({ to: '/', search: { pick: true } }); }}
-      className="flex min-h-11 items-center xl:min-h-9 gap-1 rounded-md px-2 text-sm font-semibold hover:bg-muted"
-    >
-      <span className="truncate">{name}</span>
-      <ChevronDown className="size-4 shrink-0" aria-hidden />
-    </button>
-  );
 }

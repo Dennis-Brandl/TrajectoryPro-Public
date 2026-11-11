@@ -16,7 +16,12 @@ import { drizzle as drizzlePg, type NodePgDatabase } from 'drizzle-orm/node-post
 import { Pool } from 'pg';
 import * as schema from './schema/index.js';
 
+// Audit 2026-10-20 DB-scale H6 (same settings as the engine): a connection attempt gives up
+// after 5 s instead of hanging a request, and an idle client that loses its connection (a
+// database restart) is logged instead of crashing the process; the pool replaces it.
 export function createPgClient(url: string): NodePgDatabase<typeof schema> {
-  return drizzlePg(new Pool({ connectionString: url }), { schema });
+  const pool = new Pool({ connectionString: url, connectionTimeoutMillis: 5000 });
+  pool.on('error', (err) => { console.error(`[mission-control-db] idle database client error: ${err.message}`); });
+  return drizzlePg(pool, { schema });
 }
 export type Schema = typeof schema;

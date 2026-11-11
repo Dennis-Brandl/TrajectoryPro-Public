@@ -109,8 +109,10 @@ RUN sed -i 's/\r$//' /app/docker-entrypoint.sh && chmod +x /app/docker-entrypoin
 # (verified: `grep -rn "uploads" packages/server/src` has no matches). The
 # mount point + VOLUME below are kept anyway, matching the rest of the
 # Mission Suite image family's convention (see docker-entrypoint.sh).
+# /app stays owned by root (audit 2026-10-20 security H5): the app user — and the action
+# authors' Python it runs — cannot rewrite the server bundle or the sidecar.
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
- && mkdir -p /data && chown -R appuser:appgroup /app /data
+ && mkdir -p /data && chown -R appuser:appgroup /data
 USER appuser
 
 # HOST=0.0.0.0 is container-internal only — the port mapping and the console's

@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import * as vm from 'node:vm';
+import { scriptPool, type SandboxOutcome } from './script-pool.js';
 import { types as utilTypes } from 'node:util';
 import type {
   MasterWorkflowStep,
@@ -192,8 +192,8 @@ export interface ScriptResult {
  * Map a SCRIPT (or GATE) execution failure to a user-facing message.
  *
  * SCRIPT and GATE steps both run server-side, in the Mission Engine sandbox,
- * via `vm.runInNewContext` (see `executeScript` and `executeGateScript`
- * below) — never via `eval`/`new Function()` in a browser page.
+ * via `vm.runInNewContext` on a worker thread (see `executeScript`, `executeGateScript` and
+ * script-pool.ts) — never via `eval`/`new Function()` in a browser page.
  *
  * A script's own throws — compile errors included, since the source is compiled inside the
  * sandbox — are caught and String()-ed THERE (under the vm timeout), so the `"Error: <message>"`
@@ -262,25 +262,21 @@ function ownDataString(obj: unknown, key: string): string | undefined {
  * After execution, output keys are mapped through output_parameter_specifications
  * into the PropertyStore.
  */
-export function executeScript(
+export async function executeScript(
   step: MasterWorkflowStep,
   propertyStore: PropertyStore,
   inputParameters: Record<string, string>,
   scriptTimeoutMs: number,
-): ScriptResult {
+): Promise<ScriptResult> {
   const config = step.script_config;
   if (!config?.source) {
     return { success: true }; // No source — pass through
   }
 
-  let raw: unknown;
-  try {
-    raw = runInSandbox(SCRIPT_WRAPPER, sandboxData(step, inputParameters, config.source), scriptTimeoutMs);
-  } catch (err) {
-    return { success: false, error: scriptErrorMessage(err) };
-  }
+  const run = await runInSandbox(SCRIPT_WRAPPER, sandboxData(step, inputParameters, config.source), scriptTimeoutMs);
+  if (run.error !== undefined) return { success: false, error: run.error };
 
-  const envelope = readSandboxEnvelope(raw);
+  const envelope = readSandboxEnvelope(run.raw);
   if (typeof envelope.error === 'string') return { success: false, error: envelope.error };
   commitScriptOutputs(step, propertyStore, envelope.output ?? {});
   return { success: true };
@@ -298,11 +294,12 @@ export type ScriptOutputs = Record<string, string | null>;
  * reachable from inside), and the source is compiled inside the sandbox with that realm's
  * `Function`, so it cannot close the wrapper and run outside its catches. Promise callbacks run
  * before runInNewContext returns, under the same timeout (microtaskMode 'afterEvaluate').
+ *
+ * The run happens on a worker thread (script-pool.ts, audit DB-scale H5), so a slow script no
+ * longer holds up the engine's own thread; the vm call and its error message are the same.
  */
-function runInSandbox(wrapper: string, data: Record<string, string>, timeoutMs: number): unknown {
-  const sandbox: Record<string, string> = Object.create(null) as Record<string, string>;
-  Object.assign(sandbox, data);
-  return vm.runInNewContext(wrapper, sandbox, { timeout: timeoutMs, microtaskMode: 'afterEvaluate' });
+function runInSandbox(wrapper: string, data: Record<string, string>, timeoutMs: number): Promise<SandboxOutcome> {
+  return scriptPool(SCRIPT_UNREADABLE_ERROR).run(wrapper, data, timeoutMs);
 }
 
 /** Captured before the script body runs, so a script that reassigns JSON / String / Object /
@@ -503,28 +500,29 @@ export interface RepeatRunResult {
  * parameter the wrapper returns). Nothing is committed here: the caller decides whether the
  * outputs become pending or final. No source → done at once (executeScript's pass-through).
  */
-export function runRepeatingScript(
+export async function runRepeatingScript(
   step: MasterWorkflowStep,
   inputParameters: Record<string, string>,
   previousState: unknown,
   scriptTimeoutMs: number,
-): RepeatRunResult {
+): Promise<RepeatRunResult> {
   const source = step.script_config?.source;
   if (!source) {
     const startState: unknown = previousState === undefined ? {} : JSON.parse(JSON.stringify(previousState));
     return { success: true, done: true, output: {}, state: startState };
   }
-  let raw: unknown;
+  let data: Record<string, string>;
   try {
     // state and output are built inside the sandbox (never host objects the script could reach
     // through); state serialisation and output String()-ing run there too, under the timeout.
-    const data = sandboxData(step, inputParameters, repeatBody(source));
+    data = sandboxData(step, inputParameters, repeatBody(source));
     data.__stateIn = previousState === undefined ? '' : JSON.stringify(previousState);
-    raw = runInSandbox(REPEAT_WRAPPER, data, scriptTimeoutMs);
   } catch (err) {
     return { success: false, error: scriptErrorMessage(err), done: false, output: {}, state: previousState };
   }
-  const envelope = readSandboxEnvelope(raw);
+  const run = await runInSandbox(REPEAT_WRAPPER, data, scriptTimeoutMs);
+  if (run.error !== undefined) return { success: false, error: run.error, done: false, output: {}, state: previousState };
+  const envelope = readSandboxEnvelope(run.raw);
   if (typeof envelope.error === 'string') return { success: false, error: envelope.error, done: false, output: {}, state: previousState };
   const json = typeof envelope.stateJson === 'string' ? envelope.stateJson : undefined;
   if (json !== undefined && Buffer.byteLength(json, 'utf8') > SCRIPT_STATE_MAX_BYTES) {
@@ -621,22 +619,18 @@ export interface GateResult {
  * object (a GATE has no output parameters). No source → pass-through TRUE (mirrors
  * executeScript's no-source success and keeps everything about GATE optional in files).
  */
-export function executeGateScript(
+export async function executeGateScript(
   step: MasterWorkflowStep,
   inputParameters: Record<string, string>,
   scriptTimeoutMs: number,
-): GateResult {
+): Promise<GateResult> {
   const source = step.gate_config?.source;
   if (!source) return { success: true, open: true };
-  let raw: unknown;
-  try {
-    // Same wrapper discipline as SCRIPT: the verdict is truthiness-coerced and any throw String()-ed
-    // inside the sandbox, so no script value is ever converted on the host (where no timeout runs).
-    raw = runInSandbox(GATE_WRAPPER, sandboxData(step, inputParameters, source), scriptTimeoutMs);
-  } catch (err) {
-    return { success: false, error: scriptErrorMessage(err) };
-  }
-  const envelope = readSandboxEnvelope(raw);
+  // Same wrapper discipline as SCRIPT: the verdict is truthiness-coerced and any throw String()-ed
+  // inside the sandbox, so no script value is ever converted on the host (where no timeout runs).
+  const run = await runInSandbox(GATE_WRAPPER, sandboxData(step, inputParameters, source), scriptTimeoutMs);
+  if (run.error !== undefined) return { success: false, error: run.error };
+  const envelope = readSandboxEnvelope(run.raw);
   if (typeof envelope.error === 'string') return { success: false, error: envelope.error };
   return { success: true, open: envelope.open === true };
 }

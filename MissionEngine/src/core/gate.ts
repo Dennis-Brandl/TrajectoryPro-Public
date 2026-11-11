@@ -102,7 +102,7 @@ export async function evaluateGateOnClaim(
   stepCtx.state.stepSnapshots[row.stepOid] = { inputParameters: inputs };
   const target = { id: row.id, stepOid: row.stepOid };
 
-  const result = executeGateScript(stepDef, inputs, deps.config.scriptTimeoutMs);
+  const result = await executeGateScript(stepDef, inputs, deps.config.scriptTimeoutMs);
   if (!result.success) {
     const settled = await failStep(tx, stepCtx, target, 'ERROR', result.error ?? null, deps);
     if (!settled) await settleIfComplete(tx, context, row.nodeOid, deps);

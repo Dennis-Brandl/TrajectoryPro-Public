@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { useLayout } from '~/lib/layout';
 import type { WcMode } from '~/lib/access';
 import { ViewOnlyBanner } from './ViewOnlyBanner';
+import { PhoneWorkCenterBar } from './WorkCenterSwitcher';
 
 export type XoView = 'running' | 'new' | 'history' | 'schedules';
 
@@ -152,6 +153,7 @@ export function WorkCenterShell({ wc, active, onSelect, scheduleAttention = 0, c
   } else {
     body = (
       <div className="flex h-full min-h-0 flex-col">
+        <PhoneWorkCenterBar name={wc.name} />
         {content}
         <BottomBar active={active} onSelect={onSelect} attention={scheduleAttention} />
       </div>

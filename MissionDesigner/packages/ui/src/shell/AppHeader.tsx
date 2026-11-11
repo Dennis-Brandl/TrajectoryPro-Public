@@ -69,13 +69,21 @@ export function AppHeader({
         <img src="/ic_launcher_round.png" alt="" className="size-6" />
       </button>
       <span className="shrink-0 whitespace-nowrap text-sm font-semibold">{appName}</span>
-      <span className="mr-3 shrink-0 text-xs text-muted-foreground">v{buildVersion}</span>
+      {/* Phones (below 640 px): the version moves to the About box and Help / Sign out show
+          their icons only, so the bar fits and leaves room for the app's tools. */}
+      <span className="mr-3 hidden shrink-0 text-xs text-muted-foreground sm:inline">v{buildVersion}</span>
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden text-xs">{tools}</div>
 
       <Button variant="ghost" size="sm" asChild className="shrink-0">
-        <a href={helpHref} target="_blank" rel="noopener noreferrer" title="Open the user guide in a new tab">
+        <a
+          href={helpHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Open the user guide in a new tab"
+          aria-label="Help"
+        >
           <HelpCircle className="size-4" />
-          Help
+          <span className="hidden sm:inline">Help</span>
         </a>
       </Button>
       <Button
@@ -107,9 +115,16 @@ export function AppHeader({
         </span>
       ) : null}
       <div className="h-5 w-px shrink-0 bg-border" aria-hidden="true" />
-      <Button variant="ghost" size="sm" className="shrink-0" onClick={onSignOut} title={signOutTitle}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="shrink-0"
+        onClick={onSignOut}
+        title={signOutTitle}
+        aria-label="Sign out"
+      >
         <LogOut className="size-4" />
-        Sign out
+        <span className="hidden sm:inline">Sign out</span>
       </Button>
 
       <AboutDialog

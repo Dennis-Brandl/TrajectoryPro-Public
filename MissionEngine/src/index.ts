@@ -36,12 +36,15 @@ import { OPERATOR_CHANGE_CHANNEL } from './core/reconcile.js';
 import { PILOT_THEME_CHANNEL } from 'mission-control-db/src/dao/pilot-theme-store';
 import { startPropertyWatch } from './core/property-watch.js';
 import { installScriptRejectionGuard } from './core/step-handlers.js';
+import { configureScriptPool } from './core/script-pool.js';
 
 // A SCRIPT or GATE that leaves a promise rejected must not take the engine down (Node's default
 // for an unhandled rejection is to exit); the engine's own rejections still do.
 installScriptRejectionGuard();
 
 const cfg = loadConfig(process.env);
+// One script worker thread per runtime the engine can work on at once (audit DB-scale H5).
+configureScriptPool(cfg.workerConcurrency);
 const { db } = createDb(cfg.databaseUrl);
 
 // Spec 2026-09-05 decision B: ACTION_SERVER_ALLOWLIST seeds the Mission Commander's list on first

@@ -430,9 +430,13 @@ export function startStubActionServer(port: number, opts: StubOptions = {}): Stu
     uri,
     control,
     invokes,
+    // Like a real action server going away: open event streams end too. Without it, close()
+    // waits forever on an engine subscription to an action that is still running when a test
+    // ends — whether that stream is connected yet depends only on timing.
     close: () =>
       new Promise<void>((resolve, reject) => {
         server.close((err) => (err ? reject(err) : resolve()));
+        (server as { closeAllConnections?: () => void }).closeAllConnections?.();
       }),
   };
 }

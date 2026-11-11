@@ -34,7 +34,14 @@ import { clearStampedActionTimeouts } from './actionTimeoutMigration'
 const useMemoryDb = process.env.NODE_ENV === 'test' || !!process.env.VITEST
 
 const pglite = useMemoryDb ? new PGlite() : null
-const pool = useMemoryDb ? null : new Pool({ connectionString: process.env.DATABASE_URL })
+const pool = useMemoryDb
+  ? null
+  : new Pool({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 5000 })
+// Audit 2026-10-20 DB-scale H6: an idle client that loses its connection (a database restart)
+// emits 'error' on the pool; unhandled, that crashes the server. The pool replaces the client.
+pool?.on('error', (err) => {
+  console.error(`[designer] idle database client error: ${err.message}`)
+})
 
 export const db = (useMemoryDb ? drizzlePglite(pglite!, { schema }) : drizzlePg(pool!, { schema })) as NodePgDatabase<
   typeof schema

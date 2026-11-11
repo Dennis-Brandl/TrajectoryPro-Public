@@ -13,8 +13,9 @@
 // limitations under the License.
 //
 // The engine's process-level guard, in real child processes: Node exits on an unhandled
-// rejection, so without the guard a script's `Promise.reject` takes the engine down; with it the
-// engine survives, and an engine-side rejection still exits.
+// rejection. Scripts now run on a worker thread (script-pool.ts, audit DB-scale H5), which drops
+// a script's leftover rejected promise itself, so the engine survives even without the guard;
+// with it too, and an engine-side rejection still exits.
 import { expect, test } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -22,10 +23,12 @@ import { fileURLToPath } from 'node:url';
 const CHILD = fileURLToPath(new URL('./helpers/rejection-guard-child.ts', import.meta.url));
 const run = (mode: string) => spawnSync(process.execPath, ['--import', 'tsx', CHILD, mode], { encoding: 'utf8', timeout: 30_000 });
 
-test('without the guard, a script\'s rejected promise kills the process (the bug the guard fixes)', () => {
+test('without the guard, a script\'s rejected promise still cannot reach the engine process', () => {
   const r = run('none');
-  expect(r.status).not.toBe(0);
-  expect(r.stdout).not.toContain('still alive');
+  expect(r.status).toBe(0);
+  expect(r.stdout).toContain('{"success":true}');
+  expect(r.stdout).toContain('still alive');
+  expect(r.stderr).toContain('[script] a script left a rejected promise unhandled; ignored');
 }, 40_000);
 
 test('with the guard, the process survives and logs a constant line', () => {

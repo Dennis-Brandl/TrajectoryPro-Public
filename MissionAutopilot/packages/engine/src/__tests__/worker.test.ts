@@ -23,7 +23,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { PythonWorker } from '../python-pool/worker.js'
+import { PythonWorker, sidecarEnv } from '../python-pool/worker.js'
 import type { SidecarRequest } from '../python-pool/types.js'
 
 // ============================================================
@@ -283,4 +283,52 @@ describe('PythonWorker', () => {
     expect(err.message).toContain('FATAL: disk on fire')
     expect(err.message).not.toContain('OLD NOISE')
   }, 20000)
+})
+
+describe('sidecar environment (audit security H2)', () => {
+  it('keeps what Python needs and ACTION_ENV_ names; drops the server secrets', () => {
+    const env = sidecarEnv({
+      Path: '/usr/bin',
+      HOME: '/home/app',
+      LC_ALL: 'C.UTF-8',
+      PYTHONIOENCODING: 'utf-8',
+      ACTION_ENV_PLANT: 'north',
+      DATABASE_URL: 'postgres://secret',
+      ACTIONS_API_KEY: 'k',
+      POSTGRES_PASSWORD: 'p',
+      INTERNAL_TOKEN: 't',
+    })
+    expect(env).toEqual({
+      Path: '/usr/bin',
+      HOME: '/home/app',
+      LC_ALL: 'C.UTF-8',
+      PYTHONIOENCODING: 'utf-8',
+      ACTION_ENV_PLANT: 'north',
+    })
+  })
+
+  it('action code cannot read a server secret but can read an ACTION_ENV_ variable', async () => {
+    process.env['DATABASE_URL_H2_PROBE'] = 'postgres://secret'
+    process.env['ACTION_ENV_H2_PROBE'] = 'visible'
+    try {
+      const worker = createWorker()
+      const response = await worker.execute(
+        makeRequest({
+          source_code: [
+            'import os',
+            'def execute(inputs, outputs, props, action_props):',
+            '    outputs["secret"] = str(os.environ.get("DATABASE_URL_H2_PROBE"))',
+            '    outputs["shared"] = str(os.environ.get("ACTION_ENV_H2_PROBE"))',
+            '    return True',
+          ].join('\n'),
+        })
+      )
+      expect(response.success).toBe(true)
+      expect(response.outputs['secret']).toBe('None')
+      expect(response.outputs['shared']).toBe('visible')
+    } finally {
+      delete process.env['DATABASE_URL_H2_PROBE']
+      delete process.env['ACTION_ENV_H2_PROBE']
+    }
+  })
 })

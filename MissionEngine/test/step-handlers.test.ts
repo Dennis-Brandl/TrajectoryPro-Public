@@ -421,40 +421,40 @@ function scriptStep(source: string, outputSpecs?: Array<{ id: string; target?: s
   } as unknown as MasterWorkflowStep;
 }
 
-test('executeScript: happy path with no source passes through', () => {
+test('executeScript: happy path with no source passes through', async () => {
   const store = new PropertyStore();
   const step = { oid: 's1', step_type: 'SCRIPT', description: 'Script', script_config: {} } as unknown as MasterWorkflowStep;
-  expect(executeScript(step, store, {}, 5000)).toEqual({ success: true });
+  expect((await executeScript(step, store, {}, 5000))).toEqual({ success: true });
 });
 
-test('executeScript: input parameters are injected as named locals, output mapped via output_parameter_specifications target', () => {
+test('executeScript: input parameters are injected as named locals, output mapped via output_parameter_specifications target', async () => {
   const store = new PropertyStore();
   const step = scriptStep('output.total = Number(a) + Number(b);', [{ id: 'total', target: 'Result.Total' }]);
-  const result = executeScript(step, store, { a: '2', b: '3' }, 5000);
+  const result = (await executeScript(step, store, { a: '2', b: '3' }, 5000));
   expect(result).toEqual({ success: true });
   expect(store.get('Result.Total')).toBe('5');
 });
 
-test('executeScript: without output_parameter_specifications, output keys are written directly as dotted properties', () => {
+test('executeScript: without output_parameter_specifications, output keys are written directly as dotted properties', async () => {
   const store = new PropertyStore();
   const step = scriptStep('output["Direct.Key"] = "value1"; output.Other = "value2";');
-  const result = executeScript(step, store, {}, 5000);
+  const result = (await executeScript(step, store, {}, 5000));
   expect(result).toEqual({ success: true });
   expect(store.get('Direct.Key')).toBe('value1');
   expect(store.get('Other')).toBe('value2');
 });
 
-test('executeScript: a spec id not present on output is not written', () => {
+test('executeScript: a spec id not present on output is not written', async () => {
   const store = new PropertyStore();
   const step = scriptStep('output.other = "x";', [{ id: 'total', target: 'Result.Total' }]);
-  executeScript(step, store, {}, 5000);
+  (await executeScript(step, store, {}, 5000));
   expect(store.get('Result.Total')).toBeUndefined();
 });
 
-test('executeScript: returns {success:false, error} when the script throws', () => {
+test('executeScript: returns {success:false, error} when the script throws', async () => {
   const store = new PropertyStore();
   const step = scriptStep('throw new Error("boom");');
-  const result = executeScript(step, store, {}, 5000);
+  const result = (await executeScript(step, store, {}, 5000));
   expect(result.success).toBe(false);
   // node:vm runs the script in a separate realm, so the thrown Error is not an
   // `instanceof` the calling realm's Error — scriptErrorMessage's `instanceof Error`
@@ -463,20 +463,20 @@ test('executeScript: returns {success:false, error} when the script throws', () 
   expect(result.error).toContain('boom');
 });
 
-test('executeScript: a syntax error in the source is caught and reported, not thrown', () => {
+test('executeScript: a syntax error in the source is caught and reported, not thrown', async () => {
   const store = new PropertyStore();
   const step = scriptStep('this is not valid javascript {{{');
-  const result = executeScript(step, store, {}, 5000);
+  const result = (await executeScript(step, store, {}, 5000));
   expect(result.success).toBe(false);
   expect(result.error).toBeTruthy();
 });
 
-test('executeScript: an infinite-loop script is rejected by the vm timeout within 2x scriptTimeoutMs', () => {
+test('executeScript: an infinite-loop script is rejected by the vm timeout within 2x scriptTimeoutMs', async () => {
   const store = new PropertyStore();
   const step = scriptStep('while (true) {}');
   const budgetMs = 200;
   const start = Date.now();
-  const result = executeScript(step, store, {}, budgetMs);
+  const result = (await executeScript(step, store, {}, budgetMs));
   const elapsed = Date.now() - start;
   expect(result.success).toBe(false);
   expect(elapsed).toBeLessThan(budgetMs * 2);
@@ -489,20 +489,20 @@ const gateStep = (config?: Record<string, unknown>): any => ({
   step_type: 'GATE', ...(config ? { gate_config: config } : {}),
 });
 
-test('gate script RETURNS its verdict — truthy opens', () => {
-  expect(executeGateScript(gateStep({ source: 'return Number(t) > 100;' }), { t: '150' }, 5000)).toEqual({ success: true, open: true });
-  expect(executeGateScript(gateStep({ source: 'return Number(t) > 100;' }), { t: '50' }, 5000)).toEqual({ success: true, open: false });
+test('gate script RETURNS its verdict — truthy opens', async () => {
+  expect((await executeGateScript(gateStep({ source: 'return Number(t) > 100;' }), { t: '150' }, 5000))).toEqual({ success: true, open: true });
+  expect((await executeGateScript(gateStep({ source: 'return Number(t) > 100;' }), { t: '50' }, 5000))).toEqual({ success: true, open: false });
 });
-test('no source = pass-through TRUE (spec §4 optionality)', () => {
-  expect(executeGateScript(gateStep(), {}, 5000)).toEqual({ success: true, open: true });
+test('no source = pass-through TRUE (spec §4 optionality)', async () => {
+  expect((await executeGateScript(gateStep(), {}, 5000))).toEqual({ success: true, open: true });
 });
-test('non-boolean return coerces by JS truthiness', () => {
-  expect(executeGateScript(gateStep({ source: 'return "yes";' }), {}, 5000).open).toBe(true);
-  expect(executeGateScript(gateStep({ source: 'return 0;' }), {}, 5000).open).toBe(false);
-  expect(executeGateScript(gateStep({ source: '/* no return */' }), {}, 5000).open).toBe(false);
+test('non-boolean return coerces by JS truthiness', async () => {
+  expect((await executeGateScript(gateStep({ source: 'return "yes";' }), {}, 5000)).open).toBe(true);
+  expect((await executeGateScript(gateStep({ source: 'return 0;' }), {}, 5000)).open).toBe(false);
+  expect((await executeGateScript(gateStep({ source: '/* no return */' }), {}, 5000)).open).toBe(false);
 });
-test('a throwing gate script reports failure, not FALSE (ruling G3)', () => {
-  const r = executeGateScript(gateStep({ source: 'throw new Error("boom");' }), {}, 5000);
+test('a throwing gate script reports failure, not FALSE (ruling G3)', async () => {
+  const r = (await executeGateScript(gateStep({ source: 'throw new Error("boom");' }), {}, 5000));
   expect(r.success).toBe(false);
   expect(r.error).toContain('boom');
 });
@@ -522,43 +522,43 @@ function repeatStep(source: string | undefined, repeat: Record<string, unknown> 
   } as unknown as MasterWorkflowStep;
 }
 
-test('runRepeatingScript: state carries between runs; only `return true` is done', () => {
+test('runRepeatingScript: state carries between runs; only `return true` is done', async () => {
   const step = repeatStep('state.n = (state.n || 0) + 1; output.n = state.n; return state.n >= 2;');
-  const first = runRepeatingScript(step, {}, undefined, 5000);
+  const first = (await runRepeatingScript(step, {}, undefined, 5000));
   expect(first).toEqual({ success: true, done: false, output: { n: '1' }, state: { n: 1 } });
-  const second = runRepeatingScript(step, {}, first.state, 5000);
+  const second = (await runRepeatingScript(step, {}, first.state, 5000));
   expect(second).toEqual({ success: true, done: true, output: { n: '2' }, state: { n: 2 } });
-  expect(runRepeatingScript(repeatStep('return "yes";'), {}, undefined, 5000).done).toBe(false);
-  expect(runRepeatingScript(repeatStep('return 1;'), {}, undefined, 5000).done).toBe(false);
+  expect((await runRepeatingScript(repeatStep('return "yes";'), {}, undefined, 5000)).done).toBe(false);
+  expect((await runRepeatingScript(repeatStep('return 1;'), {}, undefined, 5000)).done).toBe(false);
 });
 
-test('runRepeatingScript: reassigning state persists', () => {
-  const r = runRepeatingScript(repeatStep('state = { reading: Number(level) }; return false;'), { level: '42' }, { old: true }, 5000);
+test('runRepeatingScript: reassigning state persists', async () => {
+  const r = (await runRepeatingScript(repeatStep('state = { reading: Number(level) }; return false;'), { level: '42' }, { old: true }, 5000));
   expect(r.state).toEqual({ reading: 42 });
 });
 
-test('runRepeatingScript: inputs are named locals; a previous state object is never mutated in place', () => {
+test('runRepeatingScript: inputs are named locals; a previous state object is never mutated in place', async () => {
   const previous = { n: 1 };
-  const r = runRepeatingScript(repeatStep('state.n += Number(step); return false;'), { step: '2' }, previous, 5000);
+  const r = (await runRepeatingScript(repeatStep('state.n += Number(step); return false;'), { step: '2' }, previous, 5000));
   expect(r.state).toEqual({ n: 3 });
   expect(previous).toEqual({ n: 1 });
 });
 
-test('runRepeatingScript: oversized or non-JSON state fails the run', () => {
-  const big = runRepeatingScript(repeatStep('state.blob = "x".repeat(70000); return false;'), {}, undefined, 5000);
+test('runRepeatingScript: oversized or non-JSON state fails the run', async () => {
+  const big = (await runRepeatingScript(repeatStep('state.blob = "x".repeat(70000); return false;'), {}, undefined, 5000));
   expect(big).toMatchObject({ success: false, error: 'Script state exceeds 64 KB' });
-  const bigint = runRepeatingScript(repeatStep('state.big = 10n; return false;'), {}, undefined, 5000);
+  const bigint = (await runRepeatingScript(repeatStep('state.big = 10n; return false;'), {}, undefined, 5000));
   expect(bigint).toMatchObject({ success: false, error: 'Script state is not JSON' });
-  const circular = runRepeatingScript(repeatStep('state.self = state; return false;'), {}, undefined, 5000);
+  const circular = (await runRepeatingScript(repeatStep('state.self = state; return false;'), {}, undefined, 5000));
   expect(circular).toMatchObject({ success: false, error: 'Script state is not JSON' });
 });
 
-test('runRepeatingScript: a throw fails the run; no source is done at once; undefined state resets to {}', () => {
-  const boom = runRepeatingScript(repeatStep('throw new Error("sensor offline");'), {}, { n: 1 }, 5000);
+test('runRepeatingScript: a throw fails the run; no source is done at once; undefined state resets to {}', async () => {
+  const boom = (await runRepeatingScript(repeatStep('throw new Error("sensor offline");'), {}, { n: 1 }, 5000));
   expect(boom.success).toBe(false);
   expect(boom.error).toContain('sensor offline');
-  expect(runRepeatingScript(repeatStep(undefined), {}, undefined, 5000)).toEqual({ success: true, done: true, output: {}, state: {} });
-  expect(runRepeatingScript(repeatStep('state = undefined; return false;'), {}, { n: 1 }, 5000).state).toEqual({});
+  expect((await runRepeatingScript(repeatStep(undefined), {}, undefined, 5000))).toEqual({ success: true, done: true, output: {}, state: {} });
+  expect((await runRepeatingScript(repeatStep('state = undefined; return false;'), {}, { n: 1 }, 5000)).state).toEqual({});
 });
 
 test('commitScriptOutputs: the one SCRIPT commit rule (specs map by id; no specs write keys; null means unset)', () => {
@@ -580,45 +580,45 @@ test('commitScriptOutputs: the one SCRIPT commit rule (specs map by id; no specs
 const SLOW_MS = 50;
 const BUSY = 'const t = Date.now(); while (Date.now() - t < 2000) {}';
 
-test('runRepeatingScript: a state getter that busy-waits is cut off by the timeout (F1)', () => {
+test('runRepeatingScript: a state getter that busy-waits is cut off by the timeout (F1)', async () => {
   const start = Date.now();
-  const r = runRepeatingScript(repeatStep(`Object.defineProperty(state, "slow", { enumerable: true, get() { ${BUSY} return 1; } }); return false;`), {}, undefined, SLOW_MS);
+  const r = (await runRepeatingScript(repeatStep(`Object.defineProperty(state, "slow", { enumerable: true, get() { ${BUSY} return 1; } }); return false;`), {}, undefined, SLOW_MS));
   expect(r.success).toBe(false);
   expect(Date.now() - start).toBeLessThan(1000);
-  const loop = runRepeatingScript(repeatStep('state = { toJSON() { while (true) {} } }; return false;'), {}, { n: 1 }, SLOW_MS);
+  const loop = (await runRepeatingScript(repeatStep('state = { toJSON() { while (true) {} } }; return false;'), {}, { n: 1 }, SLOW_MS));
   expect(loop).toMatchObject({ success: false, state: { n: 1 } });
 });
 
-test('runRepeatingScript: a state getter that throws is "Script state is not JSON" (F1)', () => {
-  const r = runRepeatingScript(repeatStep('Object.defineProperty(state, "bad", { enumerable: true, get() { throw new Error("x"); } }); return false;'), {}, undefined, 5000);
+test('runRepeatingScript: a state getter that throws is "Script state is not JSON" (F1)', async () => {
+  const r = (await runRepeatingScript(repeatStep('Object.defineProperty(state, "bad", { enumerable: true, get() { throw new Error("x"); } }); return false;'), {}, undefined, 5000));
   expect(r).toMatchObject({ success: false, error: 'Script state is not JSON' });
 });
 
-test('runRepeatingScript and executeScript: an output whose toString loops is cut off by the timeout (F1)', () => {
+test('runRepeatingScript and executeScript: an output whose toString loops is cut off by the timeout (F1)', async () => {
   const src = 'output.v = { toString() { while (true) {} } };';
   let start = Date.now();
-  expect(runRepeatingScript(repeatStep(`${src} return false;`), {}, undefined, SLOW_MS).success).toBe(false);
+  expect((await runRepeatingScript(repeatStep(`${src} return false;`), {}, undefined, SLOW_MS)).success).toBe(false);
   expect(Date.now() - start).toBeLessThan(1000);
   start = Date.now();
-  expect(executeScript(scriptStep(src), new PropertyStore(), {}, SLOW_MS).success).toBe(false);
+  expect((await executeScript(scriptStep(src), new PropertyStore(), {}, SLOW_MS)).success).toBe(false);
   expect(Date.now() - start).toBeLessThan(1000);
 });
 
-test('executeScript: an output that cannot be String()-ed fails the step instead of throwing (F1)', () => {
-  const r = executeScript(scriptStep('output.v = Object.create(null);'), new PropertyStore(), {}, 5000);
+test('executeScript: an output that cannot be String()-ed fails the step instead of throwing (F1)', async () => {
+  const r = (await executeScript(scriptStep('output.v = Object.create(null);'), new PropertyStore(), {}, 5000));
   expect(r).toEqual({ success: false, error: 'TypeError: Cannot convert object to primitive value' });
 });
 
-test('executeScript: an unmapped un-stringifiable output is ignored; mapped outputs commit (F2)', () => {
+test('executeScript: an unmapped un-stringifiable output is ignored; mapped outputs commit (F2)', async () => {
   const store = new PropertyStore();
   const step = scriptStep('output.tmp = Object.create(null); output.total = 7;', [{ id: 'total', target: 'Result.Total' }]);
-  expect(executeScript(step, store, {}, 5000)).toEqual({ success: true });
+  expect((await executeScript(step, store, {}, 5000))).toEqual({ success: true });
   expect(store.get('Result.Total')).toBe('7');
 });
 
-test('runRepeatingScript: only spec ids become pending outputs; unmapped keys are never converted (F2)', () => {
+test('runRepeatingScript: only spec ids become pending outputs; unmapped keys are never converted (F2)', async () => {
   const step = repeatStep('output.tmp = Object.create(null); output.total = 7; return true;', {}, [{ id: 'total', target: 'Result.Total' }]);
-  expect(runRepeatingScript(step, {}, undefined, 5000)).toEqual({ success: true, done: true, output: { total: '7' }, state: {} });
+  expect((await runRepeatingScript(step, {}, undefined, 5000))).toEqual({ success: true, done: true, output: { total: '7' }, state: {} });
 });
 
 test('repeat timing helpers: cycle default 5, deadline from started_at, wake never past the deadline', () => {
@@ -645,23 +645,23 @@ test('repeat timing helpers: cycle default 5, deadline from started_at, wake nev
  *  String() ran it with no timeout. */
 const NESTED_THROW = 'throw { toString() { throw { toString() { const t = Date.now(); while (Date.now() - t < 3000) {} return "late"; } }; } };';
 
-test('a nested throw never reaches the host: SCRIPT, repeating SCRIPT and GATE all fail fast with the constant message', () => {
+test('a nested throw never reaches the host: SCRIPT, repeating SCRIPT and GATE all fail fast with the constant message', async () => {
   let start = Date.now();
-  expect(executeScript(scriptStep(NESTED_THROW), new PropertyStore(), {}, 5000)).toEqual({ success: false, error: SCRIPT_UNREADABLE_ERROR });
+  expect((await executeScript(scriptStep(NESTED_THROW), new PropertyStore(), {}, 5000))).toEqual({ success: false, error: SCRIPT_UNREADABLE_ERROR });
   expect(Date.now() - start).toBeLessThan(1000);
   start = Date.now();
-  expect(runRepeatingScript(repeatStep(NESTED_THROW), {}, { n: 1 }, 5000)).toMatchObject({ success: false, error: SCRIPT_UNREADABLE_ERROR, state: { n: 1 } });
+  expect((await runRepeatingScript(repeatStep(NESTED_THROW), {}, { n: 1 }, 5000))).toMatchObject({ success: false, error: SCRIPT_UNREADABLE_ERROR, state: { n: 1 } });
   expect(Date.now() - start).toBeLessThan(1000);
   start = Date.now();
-  expect(executeGateScript(gateStep({ source: NESTED_THROW }), {}, 5000)).toEqual({ success: false, error: SCRIPT_UNREADABLE_ERROR });
+  expect((await executeGateScript(gateStep({ source: NESTED_THROW }), {}, 5000))).toEqual({ success: false, error: SCRIPT_UNREADABLE_ERROR });
   expect(Date.now() - start).toBeLessThan(1000);
 });
 
-test('a plain throw keeps the "Error: <message>" form; a syntax error keeps its name', () => {
-  expect(executeScript(scriptStep('throw new Error("boom");'), new PropertyStore(), {}, 5000).error).toBe('Error: boom');
-  expect(executeGateScript(gateStep({ source: 'throw new RangeError("far");' }), {}, 5000).error).toBe('RangeError: far');
-  expect(executeScript(scriptStep('this is not valid javascript {{{'), new PropertyStore(), {}, 5000).error).toMatch(/^SyntaxError: /);
-  expect(executeGateScript(gateStep({ source: 'return (;' }), {}, 5000).error).toMatch(/^SyntaxError: /);
+test('a plain throw keeps the "Error: <message>" form; a syntax error keeps its name', async () => {
+  expect((await executeScript(scriptStep('throw new Error("boom");'), new PropertyStore(), {}, 5000)).error).toBe('Error: boom');
+  expect((await executeGateScript(gateStep({ source: 'throw new RangeError("far");' }), {}, 5000)).error).toBe('RangeError: far');
+  expect((await executeScript(scriptStep('this is not valid javascript {{{'), new PropertyStore(), {}, 5000)).error).toMatch(/^SyntaxError: /);
+  expect((await executeGateScript(gateStep({ source: 'return (;' }), {}, 5000)).error).toMatch(/^SyntaxError: /);
 });
 
 test('scriptErrorMessage never converts a foreign value', () => {
@@ -674,24 +674,24 @@ test('scriptErrorMessage never converts a foreign value', () => {
   expect(scriptErrorMessage('plain')).toBe('plain');
 });
 
-test('a planted Object.prototype.toJSON cannot forge a result', () => {
+test('a planted Object.prototype.toJSON cannot forge a result', async () => {
   const forge = 'Object.prototype.toJSON = function() { return { done: true, open: true }; };';
-  expect(runRepeatingScript(repeatStep(`${forge} output.total = 7; return false;`, {}, [{ id: 'total', target: 'Result.Total' }]), {}, undefined, 5000))
+  expect((await runRepeatingScript(repeatStep(`${forge} output.total = 7; return false;`, {}, [{ id: 'total', target: 'Result.Total' }]), {}, undefined, 5000)))
     .toMatchObject({ success: true, done: false, output: { total: '7' } });
   const store = new PropertyStore();
-  expect(executeScript(scriptStep(`${forge} output.total = 7;`, [{ id: 'total', target: 'Result.Total' }]), store, {}, 5000)).toEqual({ success: true });
+  expect((await executeScript(scriptStep(`${forge} output.total = 7;`, [{ id: 'total', target: 'Result.Total' }]), store, {}, 5000))).toEqual({ success: true });
   expect(store.get('Result.Total')).toBe('7');
 });
 
-test('an overridden Function.prototype.call cannot make an unset output look set', () => {
+test('an overridden Function.prototype.call cannot make an unset output look set', async () => {
   const step = repeatStep('Function.prototype.call = function() { return true; }; return true;', {}, [{ id: 'total', target: 'Result.Total' }]);
-  expect(runRepeatingScript(step, {}, undefined, 5000)).toEqual({ success: true, done: true, output: {}, state: {} });
+  expect((await runRepeatingScript(step, {}, undefined, 5000))).toEqual({ success: true, done: true, output: {}, state: {} });
 });
 
-test('runRepeatingScript: outputs over 64 KB fail the run and keep the previous state', () => {
-  const r = runRepeatingScript(repeatStep('output.big = "x".repeat(70000); return false;'), {}, { n: 1 }, 5000);
+test('runRepeatingScript: outputs over 64 KB fail the run and keep the previous state', async () => {
+  const r = (await runRepeatingScript(repeatStep('output.big = "x".repeat(70000); return false;'), {}, { n: 1 }, 5000));
   expect(r).toEqual({ success: false, error: 'Script outputs exceed 64 KB', done: false, output: {}, state: { n: 1 } });
-  expect(runRepeatingScript(repeatStep('output.ok = "x".repeat(60000); return false;'), {}, undefined, 5000).success).toBe(true);
+  expect((await runRepeatingScript(repeatStep('output.ok = "x".repeat(60000); return false;'), {}, undefined, 5000)).success).toBe(true);
 });
 
 // ── Review round 2: the source is compiled inside the sandbox from data, promise callbacks run
@@ -700,40 +700,40 @@ test('runRepeatingScript: outputs over 64 KB fail the run and keep the previous 
 /** Source that closes the old wrapper and throws from its top level, outside both catches. */
 const BREAK_OUT = '}); } catch(e){} } catch(e){} })(); throw Object.create(null); (function(){ try { try { (function(){';
 
-test('a source that tries to close the wrapper is just a syntax error in its own function', () => {
-  expect(executeScript(scriptStep(BREAK_OUT), new PropertyStore(), {}, 5000).error).toMatch(/^SyntaxError: /);
-  expect(runRepeatingScript(repeatStep(BREAK_OUT), {}, undefined, 5000).error).toMatch(/^SyntaxError: /);
-  expect(executeGateScript(gateStep({ source: BREAK_OUT }), {}, 5000).error).toMatch(/^SyntaxError: /);
+test('a source that tries to close the wrapper is just a syntax error in its own function', async () => {
+  expect((await executeScript(scriptStep(BREAK_OUT), new PropertyStore(), {}, 5000)).error).toMatch(/^SyntaxError: /);
+  expect((await runRepeatingScript(repeatStep(BREAK_OUT), {}, undefined, 5000)).error).toMatch(/^SyntaxError: /);
+  expect((await executeGateScript(gateStep({ source: BREAK_OUT }), {}, 5000)).error).toMatch(/^SyntaxError: /);
 });
 
-test('promise callbacks run under the timeout, not after the run returns', () => {
+test('promise callbacks run under the timeout, not after the run returns', async () => {
   const slow = 'Promise.resolve().then(() => { const t = Date.now(); while (Date.now() - t < 3000) {} });';
   let start = Date.now();
-  expect(executeScript(scriptStep(slow), new PropertyStore(), {}, 200).success).toBe(false);
+  expect((await executeScript(scriptStep(slow), new PropertyStore(), {}, 200)).success).toBe(false);
   expect(Date.now() - start).toBeLessThan(1500);
   start = Date.now();
-  expect(executeGateScript(gateStep({ source: `${slow} return true;` }), {}, 200).success).toBe(false);
+  expect((await executeGateScript(gateStep({ source: `${slow} return true;` }), {}, 200)).success).toBe(false);
   expect(Date.now() - start).toBeLessThan(1500);
   start = Date.now();
-  expect(runRepeatingScript(repeatStep(`${slow} return true;`), {}, undefined, 200).success).toBe(false);
+  expect((await runRepeatingScript(repeatStep(`${slow} return true;`), {}, undefined, 200)).success).toBe(false);
   expect(Date.now() - start).toBeLessThan(1500);
 });
 
-test('the sandbox exposes no host object: the classic constructor escape finds no process', () => {
+test('the sandbox exposes no host object: the classic constructor escape finds no process', async () => {
   const store = new PropertyStore();
   const step = scriptStep('output.r = this.constructor.constructor("return typeof process")();', [{ id: 'r', target: 'Probe.R' }]);
-  expect(executeScript(step, store, { a: '1' }, 5000)).toEqual({ success: true });
+  expect((await executeScript(step, store, { a: '1' }, 5000))).toEqual({ success: true });
   expect(store.get('Probe.R')).toBe('undefined');
 });
 
-test('inputs and outputs still bind by name, including an input that shadows nothing', () => {
+test('inputs and outputs still bind by name, including an input that shadows nothing', async () => {
   const store = new PropertyStore();
   const step = scriptStep('output.sum = Number(a) + Number(b); output.self = typeof output;', [{ id: 'sum', target: 'R.Sum' }, { id: 'self', target: 'R.Self' }]);
-  expect(executeScript(step, store, { a: '2', b: '3' }, 5000)).toEqual({ success: true });
+  expect((await executeScript(step, store, { a: '2', b: '3' }, 5000))).toEqual({ success: true });
   expect(store.get('R.Sum')).toBe('5');
   expect(store.get('R.Self')).toBe('object');
-  expect(executeGateScript(gateStep({ source: 'return Number(t) > 100;' }), { t: '150' }, 5000)).toEqual({ success: true, open: true });
-  expect(runRepeatingScript(repeatStep('state = { n: Number(a) }; return true;'), { a: '4' }, undefined, 5000).state).toEqual({ n: 4 });
+  expect((await executeGateScript(gateStep({ source: 'return Number(t) > 100;' }), { t: '150' }, 5000))).toEqual({ success: true, open: true });
+  expect((await runRepeatingScript(repeatStep('state = { n: Number(a) }; return true;'), { a: '4' }, undefined, 5000)).state).toEqual({ n: 4 });
 });
 
 test('scriptErrorMessage reads an error whose prototype is a proxy without running a trap', () => {
@@ -763,11 +763,11 @@ test('isSandboxPromise: a script realm promise is one; the engine\'s own promise
   expect(isSandboxPromise(null)).toBe(false);
 });
 
-test('a script that overwrites the output-key global cannot make unmapped outputs convert', () => {
+test('a script that overwrites the output-key global cannot make unmapped outputs convert', async () => {
   const src = '__outKeys = "null"; output.tmp = { toString() { throw new Error("touched"); } }; output.total = 7;';
   const specs = [{ id: 'total', target: 'Result.Total' }];
   const store = new PropertyStore();
-  expect(executeScript(scriptStep(src, specs), store, {}, 5000)).toEqual({ success: true });
+  expect((await executeScript(scriptStep(src, specs), store, {}, 5000))).toEqual({ success: true });
   expect(store.get('Result.Total')).toBe('7');
-  expect(runRepeatingScript(repeatStep(`${src} return false;`, {}, specs), {}, undefined, 5000)).toMatchObject({ success: true, output: { total: '7' } });
+  expect((await runRepeatingScript(repeatStep(`${src} return false;`, {}, specs), {}, undefined, 5000))).toMatchObject({ success: true, output: { total: '7' } });
 });

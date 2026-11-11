@@ -16,6 +16,9 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { WorkCenterShell, xoViewFromPath } from './WorkCenterShell';
 
+const navigate = vi.fn();
+vi.mock('@tanstack/react-router', () => ({ useNavigate: () => navigate }));
+
 function setWidth(px: number) {
   window.matchMedia = ((query: string) => {
     const min = Number(/min-width:\s*(\d+)px/.exec(query)?.[1] ?? 0);
@@ -49,6 +52,24 @@ describe('WorkCenterShell', () => {
     expect(screen.getByRole('tablist')).toBeInTheDocument();
     expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Available', 'Running', 'History', 'Schedules']);
     expect(screen.queryByTestId('xo-rail')).toBeNull();
+  });
+
+  it('on a phone, the work center has its own row and opens the picker (the top bar has no room)', () => {
+    setWidth(390);
+    show();
+    expect(screen.getByTestId('xo-phone-wc-bar')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /alpha/i }));
+    expect(navigate).toHaveBeenCalledWith({ to: '/', search: { pick: true } });
+  });
+
+  it('no work-center row on tablet or desktop (the switcher is in the top bar there)', () => {
+    setWidth(1024);
+    show();
+    expect(screen.queryByTestId('xo-phone-wc-bar')).toBeNull();
+    cleanup();
+    setWidth(1440);
+    show();
+    expect(screen.queryByTestId('xo-phone-wc-bar')).toBeNull();
   });
 
   it('renders a bottom bar at 390 px', () => {

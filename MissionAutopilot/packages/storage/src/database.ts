@@ -28,8 +28,19 @@ export interface Queryable {
   query(text: string, params?: unknown[]): Promise<{ rows: any[]; rowCount: number | null }>
 }
 
+// Audit 2026-10-20 DB-scale H6: a connection attempt gives up after 5 s instead of hanging a
+// request, and an idle client that loses its connection (a database restart) is logged
+// instead of crashing the server; the pool replaces it on the next query.
 export function createPool(databaseUrl: string): pg.Pool {
-  return new pg.Pool({ connectionString: databaseUrl, max: 10 })
+  const pool = new pg.Pool({
+    connectionString: databaseUrl,
+    max: 10,
+    connectionTimeoutMillis: 5000,
+  })
+  pool.on('error', (err) => {
+    console.error(`[autopilot] idle database client error: ${err.message}`)
+  })
+  return pool
 }
 
 export const EXPECTED_TABLES = [

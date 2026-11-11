@@ -65,6 +65,16 @@ services:
       - ACTIONS_ALLOWED_ORIGINS=${ACTIONS_ALLOWED_ORIGINS:-}
     volumes:
       - missionautopilot-data:/data
+    # Audit 2026-10-20 security H5: action authors' Python runs in this container, so it is
+    # locked down: read-only file system (only /data and a /tmp in memory are writable), no
+    # Linux capabilities, no privilege escalation.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
 
   mission-autopilot-console:

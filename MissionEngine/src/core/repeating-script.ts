@@ -82,7 +82,7 @@ export async function evaluateScriptOnClaim(
   stepCtx.props.resolveInputParameters(stepDef.input_parameter_specifications);
   const inputs = { ...stepCtx.props.getInputParameters(), ...(overlay ?? {}) };
   stepCtx.state.stepSnapshots[row.stepOid] = { inputParameters: inputs };
-  const run = runRepeatingScript(stepDef, inputs, saved?.state, deps.config.scriptTimeoutMs);
+  const run = await runRepeatingScript(stepDef, inputs, saved?.state, deps.config.scriptTimeoutMs);
   if (!run.success) return await failRepeatingScript(tx, context, stepCtx, row, run.error ?? null, deps);
   if (run.done) return await completeRepeatingScript(tx, context, stepCtx, row, stepDef, deps, run.output);
   context.root.state.scriptRuns[row.stepOid] = { state: run.state, pendingOutputs: run.output };

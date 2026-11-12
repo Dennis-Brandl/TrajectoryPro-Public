@@ -17,10 +17,19 @@
 // There is still no client-config mechanism in this console for external tool
 // URLs, so the link follows the host the console was opened on: a console
 // opened at http://plant-pc:3003 links to http://plant-pc:3004, one opened on
-// localhost links to localhost. The tester's compose service is published on
-// :3004 (docs/superpowers/specs/2026-08-07-action-tester-port-design.md).
+// localhost links to localhost.
+//
+// The port depends on how the apps run. The Docker image serves a production
+// build, and the tester's compose service is published on :3004. A console
+// run from source with `npm run dev` pairs with the tester's dev server on
+// :5180 (RUN_LOCALLY-README.md step 5).
+export const DOCKER_TESTER_PORT = 3004
+export const DEV_TESTER_PORT = 5180
+
 export function actionTesterUrl(
-  loc: Pick<Location, 'protocol' | 'hostname'> = window.location
+  loc: Pick<Location, 'protocol' | 'hostname'> = window.location,
+  dev: boolean = import.meta.env.DEV
 ): string {
-  return `${loc.protocol}//${loc.hostname}:3004`
+  const port = dev ? DEV_TESTER_PORT : DOCKER_TESTER_PORT
+  return `${loc.protocol}//${loc.hostname}:${port}`
 }

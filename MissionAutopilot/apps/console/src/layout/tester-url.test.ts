@@ -16,9 +16,15 @@ import { describe, it, expect } from 'vitest'
 import { actionTesterUrl } from './tester-url'
 
 describe('actionTesterUrl', () => {
-  it('builds from protocol and hostname', () => {
-    expect(actionTesterUrl({ protocol: 'http:', hostname: 'plant-pc' })).toBe(
+  it('links to the Docker tester port in a production build', () => {
+    expect(actionTesterUrl({ protocol: 'http:', hostname: 'plant-pc' }, false)).toBe(
       'http://plant-pc:3004'
+    )
+  })
+
+  it('links to the tester dev server when the console runs from source', () => {
+    expect(actionTesterUrl({ protocol: 'http:', hostname: 'localhost' }, true)).toBe(
+      'http://localhost:5180'
     )
   })
 })

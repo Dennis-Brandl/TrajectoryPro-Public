@@ -126,9 +126,17 @@ cd mission-control-db
 DATABASE_URL=postgres://mission:choose-a-password@localhost:5432/mission_control npm run db:migrate
 cd ..
 
+# Build the form style sheets (Mission Pilot's build needs them)
+cd MissionFormKit && npm run build:tokens && cd ..
+
 # Build Mission Pilot into the Engine
 cd MissionPilot && npm run build && cd ..
+
+# Build Mission Autopilot's packages (its server needs them to start)
+cd MissionAutopilot && npm run build && cd ..
 ```
+
+The form style sheets and Autopilot's packages are generated files, so a fresh checkout doesn't have them. If you skip the Autopilot build, `npm run dev` still opens the console on port 5176, but the server stops with `ERR_MODULE_NOT_FOUND`. Run both builds again after you update the code.
 
 In PowerShell, install each app with `foreach ($app in 'MissionFormKit','MissionDesigner','mission-control-db','MissionCommander','MissionEngine','MissionPilot','MissionAutopilot','MissionAutopilotTester','MissionBroker') { Push-Location $app; npm install; Pop-Location }`, and set the database address with `$env:DATABASE_URL = "postgres://..."` before `npm run db:migrate`.
 

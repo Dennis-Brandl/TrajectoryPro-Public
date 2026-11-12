@@ -13,13 +13,7 @@
 // limitations under the License.
 import { create } from 'zustand'
 import { temporal } from 'zundo'
-import {
-  convertButtons as convertButtonsOp,
-  type Block,
-  type ConvertButtonsResult,
-  type FormDocument,
-  type StepKind,
-} from '@mission/form-schema'
+import type { Block, FormDocument } from '@mission/form-schema'
 import type { BreakpointKey } from '@mission/form-schema'
 import type { ActionLabelDraft } from '@/lib/form-document/action-labels'
 import {
@@ -27,10 +21,8 @@ import {
   updateBlockInDocument,
   deleteBlockFromDocument,
   insertBlockIntoDocument,
-  insertBlockIntoBottomBar,
   duplicateBlockInDocument,
   findBlock,
-  BOTTOM_BAR_PLACEHOLDER_ID,
 } from '@/lib/form-document/document-ops'
 import {
   createDefaultBlock,
@@ -44,9 +36,7 @@ import {
   type MoveTarget,
   type RowTarget,
 } from '@/lib/form-document/structural-ops'
-import { stepKindOfNode } from '@/lib/form-document/step-kind'
 import { generateOID, WORKER_INTERNAL } from '@/lib/snowflake'
-import { useFlowStore } from '@/stores/flowStore'
 import { resizeSpan as resizeSpanOp } from '@/lib/form-document/span-resize'
 import { arrangeColumns as arrangeColumnsOp, ownRowTarget, rowAboveTarget } from '@/lib/form-document/column-ops'
 import {
@@ -70,22 +60,6 @@ function screenDocument(s: Pick<FormDocumentState, 'document' | 'activeBreakpoin
   return projectForScreen(s.document, s.activeBreakpoint)
 }
 
-/** The open form's step kind, looked up from the flow node the editor was opened for. */
-function openStepKind(openNodeId: string | null) {
-  return stepKindOfNode(useFlowStore.getState().nodes.find((n) => n.id === openNodeId)?.type)
-}
-
-/** The canvas shows a display-only placeholder bottom bar. When a drop targets it, swap in a real
- *  footer (or the existing one) so the structural op sees a real section. Done inside the same
- *  `set` as the op, so it is ONE document change / undo step. */
-function realizeFooter(doc: FormDocument, sectionId: string): { doc: FormDocument; sectionId: string } {
-  if (sectionId !== BOTTOM_BAR_PLACEHOLDER_ID) return { doc, sectionId }
-  const existing = doc.sections.find((s) => s.role === 'footer')
-  if (existing) return { doc, sectionId: existing.id }
-  const id = newOid()
-  return { doc: { ...doc, sections: [...doc.sections, { id, role: 'footer', rows: [] }] }, sectionId: id }
-}
-
 export type PreviewMode = 'edit' | 'preview'
 
 interface FormDocumentState {
@@ -107,8 +81,6 @@ interface FormDocumentState {
   updateBlock: (blockId: string, patch: Partial<Block>) => void
   deleteBlock: (blockId: string) => void
   insertBlock: (type: PaletteBlockType) => void
-  /** Append a (button) block as a new row of the bottom bar, creating the footer when absent. */
-  insertBlockInBottomBar: (block: Block) => void
   moveBlock: (blockId: string, target: MoveTarget) => void
   /** Column commands (right-click menu + Inspector): no-ops when they would change nothing. */
   moveIntoRowAbove: (blockId: string) => void
@@ -123,8 +95,6 @@ interface FormDocumentState {
   paste: () => void
   /** Tablet/Phone tab: drop that screen's own rows so it shows the rows it inherits (one undo step). */
   resetScreenRows: () => void
-  /** Moves the open form onto job buttons: ONE document change (one undo step); untouched when nothing changes. */
-  convertButtons: (stepKind: StepKind) => ConvertButtonsResult
   setActiveBreakpoint: (bp: BreakpointKey) => void
   setDocument: (document: FormDocument) => void
   setPreviewMode: (mode: PreviewMode) => void
@@ -184,7 +154,7 @@ export const useFormDocumentStore = create<FormDocumentState>()(
           return { document, selection: s.selection === blockId ? null : s.selection, isDirty: true }
         }),
       insertBlock: (type) => {
-        const block = createDefaultBlock(type, { stepKind: openStepKind(get().openNodeId), document: get().document })
+        const block = createDefaultBlock(type)
         set((s) => ({
           document: onScreen(s, (view) => insertBlockIntoDocument(view, block)),
           selection: block.id,
@@ -193,17 +163,7 @@ export const useFormDocumentStore = create<FormDocumentState>()(
       },
       moveBlock: (blockId, target) =>
         set((s) => {
-          const document = onScreen(s, (view) => {
-            let base = view
-            let t = target
-            if (target.kind === 'new-row') {
-              const r = realizeFooter(base, target.sectionId)
-              base = r.doc
-              t = { ...target, sectionId: r.sectionId }
-            }
-            const out = moveBlockOp(base, blockId, t, s.activeBreakpoint)
-            return out === base ? view : out
-          })
+          const document = onScreen(s, (view) => moveBlockOp(view, blockId, target, s.activeBreakpoint))
           if (document === s.document) return s // no-op: no new reference, no undo entry
           return { document, selection: blockId, isDirty: true }
         }),
@@ -228,38 +188,14 @@ export const useFormDocumentStore = create<FormDocumentState>()(
         }),
       moveRow: (rowId, target) =>
         set((s) => {
-          const document = onScreen(s, (view) => {
-            const r = realizeFooter(view, target.sectionId)
-            const out = moveRowOp(r.doc, rowId, { ...target, sectionId: r.sectionId })
-            return out === r.doc ? view : out
-          })
+          const document = onScreen(s, (view) => moveRowOp(view, rowId, target))
           if (document === s.document) return s
           return { document, isDirty: true }
         }),
-      insertBlockInBottomBar: (block) =>
-        set((s) => ({
-          document: onScreen(s, (view) => insertBlockIntoBottomBar(view, block, newOid)),
-          selection: block.id,
-          isDirty: true,
-        })),
-      convertButtons: (stepKind) => {
-        const result = convertButtonsOp(get().document, stepKind, newOid)
-        if (result.changed) set({ document: result.document, isDirty: true })
-        return result
-      },
       insertBlockAt: (type, target) => {
-        const block = createDefaultBlock(type, { stepKind: openStepKind(get().openNodeId), document: get().document })
+        const block = createDefaultBlock(type)
         set((s) => ({
-          document: onScreen(s, (view) => {
-            let base = view
-            let t = target
-            if (target.kind === 'new-row') {
-              const r = realizeFooter(base, target.sectionId)
-              base = r.doc
-              t = { ...target, sectionId: r.sectionId }
-            }
-            return insertBlockAtOp(base, block, t, s.activeBreakpoint)
-          }),
+          document: onScreen(s, (view) => insertBlockAtOp(view, block, target, s.activeBreakpoint)),
           selection: block.id,
           isDirty: true,
         }))

@@ -306,6 +306,9 @@ export interface MasterWorkflowStep extends ManagedElement {
     align?: string
     value2?: string
   }>
+  button_bar?: { format: 'fixed'; size?: string; color?: string; yes_color?: string; no_color?: string }
+  allow_back?: boolean
+  allow_stop?: boolean
   yes_no_config?: {
     yes_label?: string
     no_label?: string

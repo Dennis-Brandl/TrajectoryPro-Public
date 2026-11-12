@@ -15,6 +15,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import { FormDocumentCanvas } from '../FormDocumentCanvas'
 import { useFormDocumentStore } from '@/stores/formDocumentStore'
+import { useFlowStore } from '@/stores/flowStore'
 
 const doc = {
   version: 2 as const,
@@ -28,6 +29,7 @@ const doc = {
 }
 
 beforeEach(() => {
+  useFlowStore.setState({ nodes: [] })
   useFormDocumentStore.getState().close()
   useFormDocumentStore.getState().openForNode('n', doc)
 })
@@ -98,5 +100,24 @@ describe('FormDocumentCanvas job buttons', () => {
     expect(label()).toBe('Proceed')
     act(() => useFormDocumentStore.getState().updateActionDraft({ kind: 'continue', label: 'Onward' }))
     expect(label()).toBe('Onward')
+  })
+
+  it('a legacy step gets no bottom-bar placeholder and no step bar strip', () => {
+    const { container } = render(<FormDocumentCanvas />)
+    expect(container.querySelector('.tfk-footer')).toBeNull()
+    expect(screen.queryByTestId('fixed-bar-strip')).toBeNull()
+  })
+
+  it('a fixed step shows its bar as a non-editable strip at the bottom', () => {
+    useFlowStore.setState({
+      nodes: [{ id: 'n', type: 'userInteractionStep', position: { x: 0, y: 0 }, data: { buttonBar: {} } }] as never,
+    })
+    useFormDocumentStore.getState().seedActions({ kind: 'continue', label: 'Proceed', color: '#22c55e' })
+    render(<FormDocumentCanvas />)
+    const strip = screen.getByTestId('fixed-bar-strip')
+    expect(strip.hasAttribute('inert')).toBe(true)
+    expect(strip.querySelector('.tfk-step-bar')?.textContent).toContain('Proceed')
+    act(() => useFormDocumentStore.getState().updateActionDraft({ kind: 'continue', label: 'Onward' }))
+    expect(strip.textContent).toContain('Onward')
   })
 })

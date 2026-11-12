@@ -15,7 +15,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import type { FormDocument } from '@mission/form-schema'
 import { validateFormDocument } from '@mission/form-schema'
 import { useFormDocumentStore } from '@/stores/formDocumentStore'
-import { findBlock, pruneEmptyFooters, BOTTOM_BAR_PLACEHOLDER_ID } from '@/lib/form-document/document-ops'
+import { findBlock, pruneEmptyFooters } from '@/lib/form-document/document-ops'
 
 /**
  * Real edit -> save -> validate coverage through the actual `useFormDocumentStore` (no mocks).
@@ -104,36 +104,21 @@ describe('edit -> save -> validate integration (real store)', () => {
   })
 })
 
-describe('bottom bar on the canvas', () => {
-  const contentOnly: FormDocument = {
+describe('an old bottom bar on the canvas', () => {
+  const withOldBar: FormDocument = {
     version: 2,
     sections: [
       { id: 's-content', role: 'content', rows: [{ id: 'r1', blocks: [{ id: 't1', type: 'text', content: 'Hi' }] }] },
+      {
+        id: 's-foot',
+        role: 'footer',
+        rows: [{ id: 'rf', blocks: [{ id: 'bb', type: 'button', label: 'Go', outputValue: 'continue' }] }],
+      },
     ],
   }
 
-  it('dropping a button on the placeholder creates a real footer in ONE undo step', () => {
-    useFormDocumentStore.getState().openForNode('n1', contentOnly)
-    useFormDocumentStore.getState().insertBlock('button')
-    const btnId = useFormDocumentStore.getState().selection as string
-    const before = useFormDocumentStore.temporal.getState().pastStates.length
-    useFormDocumentStore
-      .getState()
-      .moveBlock(btnId, { kind: 'new-row', sectionId: BOTTOM_BAR_PLACEHOLDER_ID, afterRowId: null })
-    const doc = useFormDocumentStore.getState().document
-    const footers = doc.sections.filter((s) => s.role === 'footer')
-    expect(footers).toHaveLength(1)
-    expect(footers[0].id).not.toBe(BOTTOM_BAR_PLACEHOLDER_ID)
-    expect(footers[0].rows[0].blocks[0].id).toBe(btnId)
-    expect(doc.sections.some((s) => s.id === BOTTOM_BAR_PLACEHOLDER_ID)).toBe(false)
-    expect(useFormDocumentStore.temporal.getState().pastStates.length).toBe(before + 1)
-  })
-
-  it('insert a Button in the bottom bar, drag it back into content, save: no footer, valid', () => {
-    useFormDocumentStore.getState().openForNode('n1', contentOnly)
-    useFormDocumentStore
-      .getState()
-      .insertBlockInBottomBar({ id: 'bb', type: 'button', label: 'Go', outputValue: 'continue' })
+  it('drag its button into content, save: no footer, valid', () => {
+    useFormDocumentStore.getState().openForNode('n1', withOldBar)
     useFormDocumentStore.getState().moveBlock('bb', { kind: 'new-row', sectionId: 's-content', afterRowId: 'r1' })
     // handleSave runs pruneEmptyFooters before validateFormDocument
     const saved = pruneEmptyFooters(useFormDocumentStore.getState().document)

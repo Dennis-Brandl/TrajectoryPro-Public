@@ -27,4 +27,21 @@ describe('defaultStepData', () => {
     expect(d.label).toBe('My Return')
     expect(d.stepType).toBe('return')
   })
+  it.each(['userInteractionStep', 'yesNoStep'] as const)(
+    'a new %s starts on the fixed button row (spec §5.3)',
+    (type) => {
+      const d = defaultStepData(type, 'Step')
+      expect(d.buttonBar).toEqual({})
+      expect(d.allowBack).toBe(false)
+      expect(d.allowStop).toBe(false)
+    },
+  )
+  it('other step types get no button row', () => {
+    for (const type of ['scriptStep', 'gateStep', 'start'] as const) {
+      const d = defaultStepData(type, 'X')
+      expect(d.buttonBar).toBeUndefined()
+      expect(d.allowBack).toBeUndefined()
+      expect(d.allowStop).toBeUndefined()
+    }
+  })
 })

@@ -20,7 +20,7 @@ import {
   workCenter, workflow, workflowNode, workflowAllowedRole, role, appUser, workCenterUserRole, workCenterUser,
   workflowInstance, stepInstance, instanceAssignment, operatorPresence,
 } from '../db/schema/index.js';
-import { reconcileAssignments, masterNodeOidFor, resolveStepAllowedRoles, sweepSoleCandidateClaims } from './assignments.js';
+import { reconcileAssignments, masterNodeOidFor, resolveStepAllowedRoles, sweepSoleCandidateClaims, claimStepForUser } from './assignments.js';
 
 // Frozen recipe used by most cases: root spec node 'rt_1' (master_oid 'M-root', unrestricted —
 // no allowed-role row on the root workflow_node) and a child spec node 'rt_2' (master_oid
@@ -745,6 +745,64 @@ describe('released_from_user_id column (migration 0023)', () => {
     await db.delete(appUser).where(eq(appUser.id, u.id));
     const [after] = await db.select().from(instanceAssignment).where(eq(instanceAssignment.id, a.id));
     expect(after.releasedFromUserId).toBeNull();
+    await close();
+  });
+});
+
+describe('claimStepForUser (fixed button row: Back hands the reopened screen to its operator)', () => {
+  const T = new Date('2030-03-01T00:00:00Z');
+
+  async function setup(nodeOid = 'rt_1') {
+    const { db, close } = await makeTestDb();
+    const s = await seedWorkflow(db);
+    const inst = await seedInstance(db, s, SPEC_WITH_MASTER);
+    const st = await seedStep(db, inst.id, { nodeOid, stepOid: 'A' });
+    const [a] = await db.insert(instanceAssignment)
+      .values({ stepInstanceId: st.id, workCenterId: s.wc.id, status: 'offered' }).returning();
+    return { db, close, s, inst, a };
+  }
+
+  it('a member holding an allowed role claims the offer (presence not required)', async () => {
+    const { db, close, s, inst, a } = await setup('rt_2'); // rt_2 is restricted to roleR
+    const user = await seedOperator(db, s.wc.id, s.roleR.id, 'none');
+    expect(await claimStepForUser(db, { instanceId: inst.id, stepOid: 'A', userId: user.id, now: () => T })).toBe(true);
+    const [row] = await db.select().from(instanceAssignment).where(eq(instanceAssignment.id, a.id));
+    expect(row.status).toBe('claimed');
+    expect(row.assignedUserId).toBe(user.id);
+    expect(row.claimedAt).toEqual(T);
+    expect(row.resolvedRoleId).toBe(s.roleR.id);
+    expect(row.dispatchReason).toBe('went_back');
+    await close();
+  });
+
+  it('a member lacking the allowed role leaves the offer alone', async () => {
+    const { db, close, s, inst, a } = await setup('rt_2');
+    const user = await seedOperator(db, s.wc.id, undefined, 'none');
+    expect(await claimStepForUser(db, { instanceId: inst.id, stepOid: 'A', userId: user.id, now: () => T })).toBe(false);
+    const [row] = await db.select().from(instanceAssignment).where(eq(instanceAssignment.id, a.id));
+    expect(row.status).toBe('offered');
+    await close();
+  });
+
+  it('a non-member is refused', async () => {
+    const { db, close, inst, a } = await setup();
+    const [user] = await db.insert(appUser).values({ email: `nm-${Math.random()}@t.test`, displayName: 'U' }).returning();
+    expect(await claimStepForUser(db, { instanceId: inst.id, stepOid: 'A', userId: user.id, now: () => T })).toBe(false);
+    const [row] = await db.select().from(instanceAssignment).where(eq(instanceAssignment.id, a.id));
+    expect(row.status).toBe('offered');
+    await close();
+  });
+
+  it('no offered row -> false', async () => {
+    const { db, close, s, inst, a } = await setup();
+    const other = await seedOperator(db, s.wc.id, undefined, 'none');
+    await db.update(instanceAssignment).set({ status: 'claimed', assignedUserId: other.id, claimedAt: T })
+      .where(eq(instanceAssignment.id, a.id));
+    const user = await seedOperator(db, s.wc.id, undefined, 'none');
+    expect(await claimStepForUser(db, { instanceId: inst.id, stepOid: 'A', userId: user.id, now: () => T })).toBe(false);
+    expect(await claimStepForUser(db, { instanceId: inst.id, stepOid: 'missing', userId: user.id, now: () => T })).toBe(false);
+    const [row] = await db.select().from(instanceAssignment).where(eq(instanceAssignment.id, a.id));
+    expect(row.assignedUserId).toBe(other.id);
     await close();
   });
 });

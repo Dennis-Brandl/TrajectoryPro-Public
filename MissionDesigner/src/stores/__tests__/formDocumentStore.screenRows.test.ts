@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { describe, it, expect, beforeEach } from 'vitest'
-import type { Block, FormDocument } from '@mission/form-schema'
+import type { FormDocument } from '@mission/form-schema'
 import { useFormDocumentStore } from '@/stores/formDocumentStore'
 
 const half = { layout: { span: { base: 6 as const } } }
@@ -64,15 +64,7 @@ function onTablet(): FormDocument {
 const ops: [string, () => void][] = [
   ['deleteBlock', () => store().deleteBlock('b')],
   ['insertBlock', () => store().insertBlock('divider')],
-  [
-    'insertBlockInBottomBar',
-    () => store().insertBlockInBottomBar({ id: 'y', type: 'button', label: 'Go', job: 'continue' } as unknown as Block),
-  ],
   ['moveBlock', () => store().moveBlock('a', { kind: 'in-row', rowId: 't2', beforeBlockId: null })],
-  [
-    'moveBlock into the bottom-bar placeholder',
-    () => store().moveBlock('a', { kind: 'new-row', sectionId: '__bottom-bar__', afterRowId: null }),
-  ],
   ['moveIntoRowAbove', () => store().moveIntoRowAbove('b')],
   ['moveToOwnRow', () => store().moveToOwnRow('c')],
   ['arrangeColumns', () => store().arrangeColumns('a', 3)],

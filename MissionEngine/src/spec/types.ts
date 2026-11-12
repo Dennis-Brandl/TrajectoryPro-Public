@@ -460,6 +460,13 @@ export interface MasterWorkflowStep extends ManagedElement {
   /** v2 FormDocument (schemaVersion 5.0 envelope) — treated structurally; see getFormElements. */
   form_document?: Record<string, unknown>;
   yes_no_config?: YesNoConfig;
+  /** Fixed button row (spec 2026-11-11): absent = legacy in-form buttons. Button text stays in the
+   *  Button ui-parameter value / yes_no_config labels. */
+  button_bar?: { format: 'fixed'; size?: string; color?: string; yes_color?: string; no_color?: string };
+  /** Offer Back on the fixed bar (ignored without button_bar). */
+  allow_back?: boolean;
+  /** Offer Stop on the fixed bar (ignored without button_bar). */
+  allow_stop?: boolean;
   script_config?: ScriptConfig;
   gate_config?: GateConfig;
   /** Spec 2026-09-04 §5.1: Action-Property bindings for a NON-GATE step — acquired once at step

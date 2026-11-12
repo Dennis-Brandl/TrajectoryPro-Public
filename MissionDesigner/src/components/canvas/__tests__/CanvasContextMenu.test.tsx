@@ -52,11 +52,9 @@ describe('CanvasContextMenu read-only gating', () => {
     expect(screen.getByText(/read-only/i)).not.toBeNull()
   })
 
-  it('pane menu offers Convert buttons only when editable', () => {
-    const { unmount } = render(<CanvasContextMenu position={pos} type="pane" onClose={() => {}} canEdit />)
-    expect(screen.getByText('Convert buttons in all forms...')).not.toBeNull()
-    unmount()
-    render(<CanvasContextMenu position={pos} type="pane" onClose={() => {}} canEdit={false} />)
+  it('pane menu no longer offers Convert buttons in all forms', () => {
+    render(<CanvasContextMenu position={pos} type="pane" onClose={() => {}} canEdit />)
+    expect(screen.getByText('Paste')).not.toBeNull()
     expect(screen.queryByText('Convert buttons in all forms...')).toBeNull()
   })
 })

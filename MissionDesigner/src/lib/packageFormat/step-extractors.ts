@@ -102,6 +102,34 @@ export function extractUIParameters(data: Record<string, unknown>):
 }
 
 /**
+ * Fixed button row fields (screen steps only). Legacy data (no `buttonBar`) yields an empty object,
+ * so the step exports exactly as before.
+ */
+export function extractButtonBarFields(
+  nodeType: string,
+  data: Record<string, unknown>,
+): {
+  button_bar?: { format: 'fixed'; size?: string; color?: string; yes_color?: string; no_color?: string }
+  allow_back?: boolean
+  allow_stop?: boolean
+} {
+  if (nodeType !== 'userInteractionStep' && nodeType !== 'yesNoStep') return {}
+  const bar = data.buttonBar as { size?: string; color?: string; yesColor?: string; noColor?: string } | undefined
+  if (!bar || typeof bar !== 'object') return {}
+  return {
+    button_bar: {
+      format: 'fixed',
+      ...(bar.size ? { size: bar.size } : {}),
+      ...(bar.color ? { color: bar.color } : {}),
+      ...(bar.yesColor ? { yes_color: bar.yesColor } : {}),
+      ...(bar.noColor ? { no_color: bar.noColor } : {}),
+    },
+    ...(typeof data.allowBack === 'boolean' ? { allow_back: data.allowBack } : {}),
+    ...(typeof data.allowStop === 'boolean' ? { allow_stop: data.allowStop } : {}),
+  }
+}
+
+/**
  * Extracts Yes/No step configuration.
  */
 export function extractYesNoConfig(data: Record<string, unknown>):

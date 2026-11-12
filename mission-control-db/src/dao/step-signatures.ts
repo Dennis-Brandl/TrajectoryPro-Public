@@ -14,7 +14,7 @@
 //
 // Spec 2026-09-06 D6: the e-signature audit rows. One responsibility — write an attempt, list an
 // instance's attempts, and delete an instance's attempts when its history is deleted/purged.
-import { asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import { stepSignature, type SignatureOutcome, type StepSignature, type NewStepSignature } from '../db/schema/execution.js';
 import type { Schema } from '../db/client.js';
 import type { PgDatabase } from 'drizzle-orm/pg-core';
@@ -29,6 +29,7 @@ export type StepSignatureView = {
   signerLoginName: string; signerDisplayName: string | null;
   roleName: string | null; meaning: string | null; decision: string | null;
   outcome: SignatureOutcome; failureCode: string | null; signedAt: Date;
+  supersededAt: string | null;
 };
 
 export async function insertStepSignature(db: Db, row: NewStepSignature): Promise<StepSignature> {
@@ -44,10 +45,25 @@ export async function listStepSignatures(db: Db, workflowInstanceId: string): Pr
     signerLoginName: stepSignature.signerLoginName, signerDisplayName: stepSignature.signerDisplayName,
     roleName: stepSignature.roleName, meaning: stepSignature.meaning, decision: stepSignature.decision,
     outcome: stepSignature.outcome, failureCode: stepSignature.failureCode, signedAt: stepSignature.signedAt,
+    supersededAt: stepSignature.supersededAt,
   }).from(stepSignature)
     .where(eq(stepSignature.workflowInstanceId, workflowInstanceId))
     .orderBy(asc(stepSignature.signedAt), asc(stepSignature.id));
-  return rows.map((r) => ({ ...r, outcome: r.outcome as SignatureOutcome }));
+  return rows.map((r) => ({
+    ...r, outcome: r.outcome as SignatureOutcome, supersededAt: r.supersededAt ? r.supersededAt.toISOString() : null,
+  }));
+}
+
+/** Back (spec 2026-11-11): the step's signed rows stop counting. Returns how many were marked. */
+export async function markSignaturesSuperseded(
+  db: Db, p: { workflowInstanceId: string; stepOid: string; at: Date },
+): Promise<number> {
+  const res = await db.update(stepSignature).set({ supersededAt: p.at })
+    .where(and(
+      eq(stepSignature.workflowInstanceId, p.workflowInstanceId), eq(stepSignature.stepOid, p.stepOid),
+      eq(stepSignature.outcome, 'signed'), isNull(stepSignature.supersededAt),
+    )).returning({ id: stepSignature.id });
+  return res.length;
 }
 
 export async function deleteStepSignaturesForInstances(db: Db, instanceIds: string[]): Promise<number> {

@@ -272,6 +272,8 @@ export const stepSignature = pgTable('step_signature', {
   outcome: text('outcome').notNull(),
   failureCode: text('failure_code'),
   signedAt: timestamp('signed_at', { withTimezone: true }).notNull().defaultNow(),
+  // Back/Stop spec 2026-11-11: set when the step was sent back, so the old signature no longer counts.
+  supersededAt: timestamp('superseded_at', { withTimezone: true }),
 }, (t) => [
   index('step_signature_instance_idx').on(t.workflowInstanceId),
   index('step_signature_wc_signed_idx').on(t.workCenterId, t.signedAt.desc()),
@@ -284,7 +286,7 @@ export type NewStepSignature = typeof stepSignature.$inferInsert;
 // workflow PDF). Soft-linked to the instance and step exactly like step_signature, for the same
 // reason (no KEY SHARE lock on the instance row; survives the finished-instance sweep). No unique
 // index: a double write must not abort the engine's transaction.
-export const STEP_RUN_RESULTS = ['completed', 'failed', 'caught', 'aborted', 'stopped', 'cancelled'] as const;
+export const STEP_RUN_RESULTS = ['completed', 'failed', 'caught', 'aborted', 'stopped', 'cancelled', 'went_back'] as const;
 export type StepRunResult = (typeof STEP_RUN_RESULTS)[number];
 export const STEP_RUN_KINDS = ['user', 'script', 'action', 'gate', 'system'] as const;
 export type StepRunKind = (typeof STEP_RUN_KINDS)[number];
@@ -335,6 +337,9 @@ export const runtimeControlEvent = pgTable('runtime_control_event', {
   // U8: a remote sender's own runtime (the parent / calling instance). Soft link, NO FK: it may be
   // deleted long before this record.
   actorInstanceId: uuid('actor_instance_id'),
+  // Back/Stop spec 2026-11-11: the step the operator pressed Stop on (null for other senders).
+  stepOid: text('step_oid'),
+  stepName: text('step_name'),
   at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index('runtime_control_event_instance_idx').on(t.workflowInstanceId),

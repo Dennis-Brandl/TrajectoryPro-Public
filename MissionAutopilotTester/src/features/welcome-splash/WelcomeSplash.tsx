@@ -23,12 +23,12 @@ export function WelcomeSplash({ onContinue }: WelcomeSplashProps) {
   return (
     <div className={styles.backdrop}>
       <div className={styles.card}>
-        <img
-          src={splashImage}
-          alt="Mission Autopilot Tester"
-          className={styles.splash}
-        />
-        <p className={styles.copyright}>Copyright 2026 Dennis L. Brandl · Apache License 2.0</p>
+        <img src={splashImage} alt="Mission Autopilot Tester" className={styles.splash} />
+        <p className={styles.copyright}>
+          Copyright 2026 Dennis L. Brandl · Apache License 2.0
+          <br />
+          Version {__APP_VERSION__}
+        </p>
         <p className={styles.body}>Test Environment Actions</p>
         <button type="button" className={styles.continue} onClick={onContinue}>
           Continue

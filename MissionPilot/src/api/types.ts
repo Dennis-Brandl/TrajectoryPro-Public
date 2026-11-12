@@ -35,6 +35,14 @@ export interface InboxTask {
   yesNoConfig: unknown | null;
   /** Completion-button label authored in Designer's Actions panel; absent/null = Submit (form) or Continue. */
   continueLabel?: string | null;
+  /** Fixed step button bar (spec 2026-11-11). null/absent = legacy step: the form draws its own button. */
+  buttonBar?: { size?: string; color?: string; yesColor?: string; noColor?: string } | null;
+  /** The step lets its operator stop the whole workflow. */
+  allowStop?: boolean;
+  /** The step lets its operator go back to the previous screen. */
+  backAvailable?: boolean;
+  /** Values submitted on the screen this one was reached back from, verbatim. */
+  prefillValues?: Record<string, unknown> | null;
 }
 
 export interface InboxSnapshot {

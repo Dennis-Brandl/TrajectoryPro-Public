@@ -134,3 +134,40 @@
   .tfk-hide-tablet { display: revert; }
   .tfk-hide-phone { display: none; }
 }
+
+/* Step button bar (StepButtonBar): Back left, step buttons centered, Stop right. */
+/* The outer element is the size container and carries no horizontal padding, so its width is the
+   task width — the same width Pilot's topline measures, and both hide/show Back and Stop together. */
+.tfk-step-bar {
+  container-type: inline-size;
+  border-top: 1px solid var(--form-color-border);
+}
+.tfk-step-bar-inner {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--form-space-md, 8px);
+  padding: var(--form-space-md, 8px) var(--form-space-lg, 16px);
+}
+.tfk-step-bar-left { justify-self: start; }
+.tfk-step-bar-right { justify-self: end; }
+.tfk-step-bar-main { grid-column: 2; display: flex; gap: var(--form-space-md, 8px); justify-content: center; }
+.tfk-step-bar-aux {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 var(--form-space-md, 12px);
+  font: inherit;
+  font-size: var(--form-type-size-sm, 0.875rem);
+  border-radius: var(--form-radius-control);
+  border: 1px solid var(--form-color-border);
+  background: transparent;
+  color: var(--form-color-text);
+  cursor: pointer;
+}
+.tfk-step-bar-stop { background: transparent; border-color: var(--form-color-text-muted, currentColor); }
+.tfk-step-bar-aux:focus-visible { outline: 2px solid var(--form-color-accent); outline-offset: 1px; }
+.tfk-step-bar-aux:disabled { opacity: 0.55; cursor: default; }
+/* Phones show Back and Stop elsewhere (topline and the menu), so the bar keeps only the buttons. */
+@container (max-width: 599px) {
+  .tfk-step-bar-left, .tfk-step-bar-right { display: none; }
+}

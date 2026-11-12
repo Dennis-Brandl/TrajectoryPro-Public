@@ -11,16 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import { useMemo, useState, type CSSProperties } from 'react'
-import { toast } from 'sonner'
-import { Button } from '@mission/ui'
-import type { FormDocument } from '@mission/form-schema'
-import { useCanEditActiveSpec } from '@/hooks/useCanEditActiveSpec'
-import { checkNeverStuck } from '@mission/form-schema'
+import { useMemo, type CSSProperties } from 'react'
+import { checkNeverStuck, type TypeToken } from '@mission/form-schema'
 import { useFormDocumentStore } from '@/stores/formDocumentStore'
 import { useFlowStore } from '@/stores/flowStore'
 import { stepKindOfNode } from '@/lib/form-document/step-kind'
+import type { StepNodeData } from '@/types/nodes'
 import { FormButtonProblems } from './FormButtonProblems'
+import { ColorPickerField } from './shared/ColorPickerField'
 import type { ActionLabelDraft } from '@/lib/form-document/action-labels'
 
 const labelSt: CSSProperties = { fontSize: 11, display: 'block', marginBottom: 2 }
@@ -33,12 +31,17 @@ const inputSt: CSSProperties = {
 }
 const inputCls = 'bg-background border border-border'
 const labelCls = 'text-muted-foreground'
+const SIZE_TOKENS: TypeToken[] = ['xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl']
+/** What an unset color shows in the swatch (the renderer then uses the theme accent). */
+const THEME_SWATCH = '#3b82f6'
+
+type ColorKey = 'color' | 'yesColor' | 'noColor'
 
 /**
- * Edits the labels of the step's host-chrome decision buttons (Continue, or a Yes/No pair)
- * from inside the form designer. The draft is buffered by the modal and committed to the
- * node's uiParameters on Save — Cancel discards it. onKeyDown is stopped so typing here
- * (e.g. Backspace) never reaches the modal's block-delete shortcut.
+ * The step's Buttons: their text (Continue, or Yes and No) and, on a fixed button row, one text
+ * size and the color(s). The draft is buffered by the modal and committed to the node on Save —
+ * Cancel discards it. onKeyDown is stopped so typing here (e.g. Backspace) never reaches the
+ * modal's block-delete shortcut.
  */
 export function ActionsPanel({
   draft,
@@ -49,31 +52,54 @@ export function ActionsPanel({
 }) {
   const document = useFormDocumentStore((s) => s.document)
   const openNodeId = useFormDocumentStore((s) => s.openNodeId)
-  const nodeType = useFlowStore((s) => s.nodes.find((n) => n.id === openNodeId)?.type)
+  const node = useFlowStore((s) => s.nodes.find((n) => n.id === openNodeId))
+  const nodeType = node?.type
+  const fixed = !!(node?.data as StepNodeData | undefined)?.buttonBar
   const problems = useMemo(
-    () => checkNeverStuck(document, stepKindOfNode(nodeType)).map((p) => p.message),
-    [document, nodeType],
+    // A fixed bar has no button blocks to leave the operator stuck; only legacy forms are checked.
+    () => (fixed ? [] : checkNeverStuck(document, stepKindOfNode(nodeType)).map((p) => p.message)),
+    [document, nodeType, fixed],
   )
-  const canEdit = useCanEditActiveSpec()
-  // Buttons the conversion could not give a job. Tied to the document they were computed for, so
-  // they disappear as soon as the author edits the form (checkNeverStuck then speaks for itself).
-  const [leftover, setLeftover] = useState<{ doc: FormDocument; messages: string[] } | null>(null)
-  const extra = leftover && leftover.doc === document ? leftover.messages.filter((m) => !problems.includes(m)) : []
-  const convert = () => {
-    const result = useFormDocumentStore.getState().convertButtons(stepKindOfNode(nodeType))
-    setLeftover({
-      doc: result.document,
-      messages: [...result.changes.filter((c) => /needs a job/i.test(c)), ...result.problems.map((p) => p.message)],
-    })
-    toast.success(result.changed ? result.changes.join(' ') : 'Nothing to convert.')
-  }
   if (!draft) return null
+  const setStyle = (key: 'size' | ColorKey, value: string | undefined) => {
+    const next = { ...draft } as Record<string, unknown>
+    if (value) next[key] = value
+    else delete next[key]
+    onChange(next as ActionLabelDraft)
+  }
+  const colorField = (key: ColorKey, label: string) => {
+    const value = (draft as Partial<Record<ColorKey, string>>)[key]
+    return (
+      <div style={{ marginTop: 8 }} data-testid={`tfk-action-${key}`}>
+        <span className={labelCls} style={labelSt}>
+          {label}
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <ColorPickerField color={value ?? THEME_SWATCH} onChange={(c) => setStyle(key, c)} />
+          {value ? (
+            <button
+              type="button"
+              onClick={() => setStyle(key, undefined)}
+              className="text-link"
+              style={{ fontSize: 11, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+            >
+              Use theme color
+            </button>
+          ) : (
+            <span className={labelCls} style={{ fontSize: 11 }}>
+              Theme color
+            </span>
+          )}
+        </div>
+      </div>
+    )
+  }
   return (
     <div
       onKeyDown={(e) => e.stopPropagation()}
       style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}
     >
-      <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', marginBottom: 6 }}>Actions</div>
+      <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', marginBottom: 6 }}>Buttons</div>
       {draft.kind === 'continue' ? (
         <div>
           <label htmlFor="tfk-action-continue" className={labelCls} style={labelSt}>
@@ -82,7 +108,7 @@ export function ActionsPanel({
           <input
             id="tfk-action-continue"
             value={draft.label}
-            onChange={(e) => onChange({ kind: 'continue', label: e.target.value })}
+            onChange={(e) => onChange({ ...draft, label: e.target.value })}
             className={inputCls}
             style={inputSt}
           />
@@ -115,17 +141,38 @@ export function ActionsPanel({
           </div>
         </>
       )}
-      <Button
-        variant="outline"
-        size="sm"
-        className="mt-2"
-        disabled={!canEdit}
-        title={canEdit ? undefined : 'This workflow is read-only'}
-        onClick={convert}
-      >
-        Convert buttons
-      </Button>
-      <FormButtonProblems messages={[...problems, ...extra]} />
+      {fixed && (
+        <>
+          <div style={{ marginTop: 8 }}>
+            <label htmlFor="tfk-action-size" className={labelCls} style={labelSt}>
+              Text size
+            </label>
+            <select
+              id="tfk-action-size"
+              value={draft.size ?? ''}
+              onChange={(e) => setStyle('size', e.target.value || undefined)}
+              className={inputCls}
+              style={inputSt}
+            >
+              <option value="">Default</option>
+              {SIZE_TOKENS.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
+          {draft.kind === 'continue' ? (
+            colorField('color', 'Color')
+          ) : (
+            <>
+              {colorField('yesColor', 'Yes color')}
+              {colorField('noColor', 'No color')}
+            </>
+          )}
+        </>
+      )}
+      <FormButtonProblems messages={problems} />
     </div>
   )
 }

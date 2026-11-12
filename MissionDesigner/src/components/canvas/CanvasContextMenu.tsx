@@ -28,7 +28,6 @@ import {
   AlignCenterHorizontal,
   AlignEndHorizontal,
   Rows3,
-  Replace,
 } from 'lucide-react'
 import { useFlowStore } from '@/stores/flowStore'
 import { useLibraryStore } from '@/stores/libraryStore'
@@ -42,22 +41,13 @@ interface CanvasContextMenuProps {
   targetId?: string
   onClose: () => void
   canEdit: boolean
-  /** Opens the workflow-wide Convert buttons dialog (owned by the canvas, since this menu closes). */
-  onConvertButtons?: () => void
 }
 
 /**
  * Positioned dropdown menu that appears at cursor position on right-click.
  * Three variants: node, pane (empty canvas), and edge context menus.
  */
-export function CanvasContextMenu({
-  position,
-  type,
-  targetId,
-  onClose,
-  canEdit,
-  onConvertButtons,
-}: CanvasContextMenuProps) {
+export function CanvasContextMenu({ position, type, targetId, onClose, canEdit }: CanvasContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
 
   // Close on click outside
@@ -100,9 +90,7 @@ export function CanvasContextMenu({
       }}
     >
       {type === 'node' && <NodeContextMenuItems targetId={targetId} onClose={onClose} canEdit={canEdit} />}
-      {type === 'pane' && (
-        <PaneContextMenuItems onClose={onClose} canEdit={canEdit} onConvertButtons={onConvertButtons} />
-      )}
+      {type === 'pane' && <PaneContextMenuItems onClose={onClose} canEdit={canEdit} />}
       {type === 'edge' && <EdgeContextMenuItems targetId={targetId} onClose={onClose} canEdit={canEdit} />}
     </div>
   )
@@ -328,15 +316,7 @@ function NodeContextMenuItems({
 // Pane context menu (right-click empty canvas)
 // ──────────────────────────────────────────────────────────────
 
-function PaneContextMenuItems({
-  onClose,
-  canEdit,
-  onConvertButtons,
-}: {
-  onClose: () => void
-  canEdit: boolean
-  onConvertButtons?: () => void
-}) {
+function PaneContextMenuItems({ onClose, canEdit }: { onClose: () => void; canEdit: boolean }) {
   const setNodes = useFlowStore((s) => s.setNodes)
   const nodes = useFlowStore((s) => s.nodes)
 
@@ -357,16 +337,6 @@ function PaneContextMenuItems({
       {canEdit && <SelectionMenuItems onClose={onClose} />}
       {canEdit && (
         <MenuItem icon={<Clipboard className="h-3.5 w-3.5" />} label="Paste" onClick={handlePaste} shortcut="Ctrl+V" />
-      )}
-      {canEdit && (
-        <MenuItem
-          icon={<Replace className="h-3.5 w-3.5" />}
-          label="Convert buttons in all forms..."
-          onClick={() => {
-            onConvertButtons?.()
-            onClose()
-          }}
-        />
       )}
       <MenuItem
         icon={<MousePointerSquareDashed className="h-3.5 w-3.5" />}

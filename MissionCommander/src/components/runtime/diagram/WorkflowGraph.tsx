@@ -281,9 +281,16 @@ export interface WorkflowGraphProps {
   highlightedStepOid: string | null
   resetKey: string
   onStepTap(step: DiagramStep, anchor: { x: number; y: number }): void
+  /** Short text written inside a step's box (Commander: who holds it, or "Offered"). Box
+   *  shapes only; the other symbols are too small to carry text. */
+  captions?: ReadonlyMap<string, string>
 }
 
-export function WorkflowGraph({ spec, states, mineOids, highlightedStepOid, resetKey, onStepTap }: WorkflowGraphProps) {
+function truncateCaption(text: string): string {
+  return text.length > 17 ? `${text.slice(0, 16)}…` : text
+}
+
+export function WorkflowGraph({ spec, states, mineOids, highlightedStepOid, resetKey, onStepTap, captions }: WorkflowGraphProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const notation = spec.notation
@@ -408,6 +415,7 @@ export function WorkflowGraph({ spec, states, mineOids, highlightedStepOid, rese
           const strokeW = highlighted ? 4 : (visual.strokeWidth ?? 0)
           const { w: dw, h } = drawnNodeSize(step.stepType)
           const { cx } = stepCenter(step)
+          const caption = captions?.get(step.oid)
           return (
             <g
               key={step.oid}
@@ -426,6 +434,17 @@ export function WorkflowGraph({ spec, states, mineOids, highlightedStepOid, rese
                 />
               )}
               {shapeFor(step, notation, visual.fill, visual.opacity ?? 1, stroke, strokeW, visual.dashed ?? false)}
+              {caption && dw === RECT_DRAW_W && (
+                // Dark text with a white halo reads on every state fill, light or saturated.
+                <text
+                  data-testid="step-caption"
+                  x={cx} y={step.y + h / 2 + 4} textAnchor="middle" fontSize={10} fontWeight={600}
+                  fill="#0f172a" stroke="#ffffff" strokeWidth={3} paintOrder="stroke" pointerEvents="none"
+                >
+                  <title>{caption}</title>
+                  {truncateCaption(caption)}
+                </text>
+              )}
               {!GATE_STEP_TYPES.has(step.stepType) && (
                 <text
                   x={cx} y={step.y + h + 13} textAnchor="middle" fontSize={11}

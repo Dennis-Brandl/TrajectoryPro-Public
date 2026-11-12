@@ -585,11 +585,13 @@ export async function getRuntimeWorkflowLiveStates(
 
 /** Lean cross-WC projection for the Runtime pane's 5 s tree poll: every ACTIVE instance in
  *  every work center, ordered (workCenterId, runtimeNumber) for stable grouping. Deliberately
- *  narrower than RuntimeWorkflowSummary — the tree renders id/number/label/name/version/status
- *  only, and widening would drag the createdBy join onto a hot cross-WC poll. */
+ *  narrower than RuntimeWorkflowSummary — no createdBy join, no spec walk. `assignees` (who holds
+ *  each claimed live step, like XO's row) and `waiting` (a step parked for an operator nobody
+ *  has claimed) come from one indexed assignment query over the active ids. */
 export type ActiveRuntimeLeaf = {
   id: string; workCenterId: string; runtimeNumber: number; runtimeLabel: string;
   masterName: string; masterVersion: string; status: RuntimeWorkflowStatus;
+  assignees: string[]; waiting: boolean;
 };
 
 export async function listActiveRuntimeLeaves(db: Db): Promise<ActiveRuntimeLeaf[]> {
@@ -601,7 +603,35 @@ export async function listActiveRuntimeLeaves(db: Db): Promise<ActiveRuntimeLeaf
   }).from(workflowInstance)
     .where(inArray(workflowInstance.status, [...RUNTIME_ACTIVE_STATUSES]))
     .orderBy(workflowInstance.workCenterId, workflowInstance.runtimeNumber);
-  return rows as ActiveRuntimeLeaf[];
+  if (rows.length === 0) return [];
+
+  const live = await db.select({
+    instanceId: stepInstance.workflowInstanceId, status: instanceAssignment.status,
+    state: stepInstance.state, name: appUser.displayName,
+  }).from(instanceAssignment)
+    .innerJoin(stepInstance, eq(stepInstance.id, instanceAssignment.stepInstanceId))
+    .leftJoin(appUser, eq(appUser.id, instanceAssignment.assignedUserId))
+    .where(and(
+      inArray(stepInstance.workflowInstanceId, rows.map((r) => r.id)),
+      inArray(stepInstance.state, [...NON_TERMINAL_STEP_STATES]),
+      inArray(instanceAssignment.status, ['offered', 'claimed']),
+    ));
+  const assignees = new Map<string, string[]>();
+  const waiting = new Set<string>();
+  for (const a of live) {
+    if (a.status === 'claimed') {
+      const list = assignees.get(a.instanceId) ?? [];
+      const name = a.name ?? 'unknown';
+      if (!list.includes(name)) list.push(name);
+      assignees.set(a.instanceId, list);
+    } else if (a.state === 'WAITING_USER') {
+      waiting.add(a.instanceId);
+    }
+  }
+  return rows.map((r) => ({
+    ...(r as Omit<ActiveRuntimeLeaf, 'assignees' | 'waiting'>),
+    assignees: assignees.get(r.id) ?? [], waiting: waiting.has(r.id),
+  }));
 }
 
 export type AssignmentCandidate = { userId: string; name: string | null; presence: 'online' | 'away' | 'offline' };

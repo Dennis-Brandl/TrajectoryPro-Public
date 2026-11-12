@@ -62,6 +62,8 @@ export const api = {
   continueStep: (instanceId: string, stepInstanceId: string, reason?: string) =>
     post(`/api/runtime-workflows/${encodeURIComponent(instanceId)}/steps/${encodeURIComponent(stepInstanceId)}/continue`, reason ? { reason } : {}),
   release: (id: string) => post(`/api/assignments/${id}/release`),
+  back: (id: string) => post(`/api/assignments/${id}/back`),
+  stop: (id: string) => post(`/api/assignments/${id}/stop`),
   submit: (id: string, body: SubmitBody) => post(`/api/assignments/${id}/submit`, body),
   enterPresence: (wcId: string) => post('/api/presence', { workCenterId: wcId }),
   heartbeat: (status?: 'away' | 'back') => post('/api/presence/heartbeat', status ? { status } : {}),

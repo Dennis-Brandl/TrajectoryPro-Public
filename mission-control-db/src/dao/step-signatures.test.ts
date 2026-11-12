@@ -18,7 +18,7 @@ import { makeTestDb } from '../../test/helpers/db.js';
 import { appUser, role, stepSignature, workCenter } from '../db/schema/index.js';
 import { createUser } from './users.js';
 import { createRole } from './roles.js';
-import { insertStepSignature, listStepSignatures, deleteStepSignaturesForInstances } from './step-signatures.js';
+import { insertStepSignature, listStepSignatures, deleteStepSignaturesForInstances, markSignaturesSuperseded } from './step-signatures.js';
 
 const INSTANCE_A = '11111111-1111-4111-8111-111111111111';
 const INSTANCE_B = '22222222-2222-4222-8222-222222222222';
@@ -55,7 +55,7 @@ test('insert + list: rows come back oldest first as the view shape; a soft-linke
   expect(list.map((s) => s.id)).toEqual([first.id, second.id]);
   expect(list[0]).toEqual({
     id: first.id, stepOid: 's-1', stepName: 'Approve batch', signerLoginName: 'jane', signerDisplayName: 'Jane Lee',
-    roleName: 'QA Lead', meaning: 'I approve', decision: 'yes', outcome: 'signed', failureCode: null, signedAt: new Date('2026-09-07T10:00:00Z'),
+    roleName: 'QA Lead', meaning: 'I approve', decision: 'yes', outcome: 'signed', failureCode: null, signedAt: new Date('2026-09-07T10:00:00Z'), supersededAt: null,
   });
   expect(list[1]).toMatchObject({ outcome: 'failed', failureCode: 'SIGNATURE_INVALID_CREDENTIALS', signerDisplayName: null, roleName: null });
   expect(await listStepSignatures(db, '33333333-3333-4333-8333-333333333333')).toEqual([]);
@@ -84,5 +84,24 @@ test('deleteStepSignaturesForInstances removes only the named instances and repo
   expect(await deleteStepSignaturesForInstances(db, [])).toBe(0);
   expect(await deleteStepSignaturesForInstances(db, [INSTANCE_A])).toBe(2);
   expect((await listStepSignatures(db, INSTANCE_B)).length).toBe(1);
+  await close();
+});
+
+test('markSignaturesSuperseded marks only signed, not-yet-superseded rows of that step', async () => {
+  const { db, close } = await makeTestDb();
+  const f = await fixture(db);
+  await insertStepSignature(db, row(f, INSTANCE_A, { stepOid: 'a', signedAt: new Date('2026-11-11T10:00:00Z') }));
+  await insertStepSignature(db, row(f, INSTANCE_A, { stepOid: 'a', signedAt: new Date('2026-11-11T10:01:00Z') }));
+  await insertStepSignature(db, row(f, INSTANCE_A, {
+    stepOid: 'a', outcome: 'failed', failureCode: 'SIGNATURE_INVALID_CREDENTIALS', signedAt: new Date('2026-11-11T10:02:00Z'),
+  }));
+  await insertStepSignature(db, row(f, INSTANCE_A, { stepOid: 'b', signedAt: new Date('2026-11-11T10:03:00Z') }));
+  const at = new Date('2026-11-11T11:00:00Z');
+  expect(await markSignaturesSuperseded(db, { workflowInstanceId: INSTANCE_A, stepOid: 'a', at })).toBe(2);
+  const list = await listStepSignatures(db, INSTANCE_A);
+  expect(list.map((r) => [r.stepOid, r.outcome, r.supersededAt])).toEqual([
+    ['a', 'signed', at.toISOString()], ['a', 'signed', at.toISOString()], ['a', 'failed', null], ['b', 'signed', null],
+  ]);
+  expect(await markSignaturesSuperseded(db, { workflowInstanceId: INSTANCE_A, stepOid: 'a', at })).toBe(0);
   await close();
 });

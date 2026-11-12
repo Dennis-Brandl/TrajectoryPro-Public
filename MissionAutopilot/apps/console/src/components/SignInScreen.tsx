@@ -59,6 +59,7 @@ export function SignInScreen({
     <SignInFrame
       splashSrc="/MissionAutopilotSplashScreen.png"
       splashAlt="Mission Autopilot"
+      version={__APP_VERSION__}
       description={DESCRIPTION}
     >
       <form

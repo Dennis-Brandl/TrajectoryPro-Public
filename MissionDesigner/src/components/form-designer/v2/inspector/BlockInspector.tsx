@@ -14,7 +14,6 @@
 import type { Block, FormDocument } from '@mission/form-schema'
 import { useFormDocumentStore } from '@/stores/formDocumentStore'
 import { findBlock } from '@/lib/form-document/document-ops'
-import { ButtonSection } from './sections/ButtonSection'
 import { AppearanceSection } from './sections/AppearanceSection'
 import { ContentSection } from './sections/ContentSection'
 import { DataSection } from './sections/DataSection'
@@ -93,7 +92,6 @@ function renderSections(block: Block, onUpdate: (patch: Partial<Block>) => void,
   return (
     <>
       {hasAppearance && <AppearanceSection block={block} onUpdate={onUpdate} />}
-      {t === 'button' && <ButtonSection block={block} onUpdate={onUpdate} />}
       {hasContent && <ContentSection block={block} />}
       {hasData && <DataSection block={block} onUpdate={onUpdate} allBlocks={allBlocks} />}
       {hasOptions && <OptionsSection block={block} onUpdate={onUpdate} />}

@@ -40,7 +40,7 @@ function base(over: Partial<RuntimeHistoryDetail> = {}): RuntimeHistoryDetail {
 
 const sig = (p: Partial<StepSignatureView>): StepSignatureView => ({
   id: 's1', stepOid: 'qa', stepName: 'QA Approve', signerLoginName: 'qa1', signerDisplayName: 'Quinn Ames', roleName: 'QA',
-  meaning: 'Approved', decision: 'approve', outcome: 'signed', failureCode: null, signedAt: '2026-10-27T15:09:30Z', ...p,
+  meaning: 'Approved', decision: 'approve', outcome: 'signed', failureCode: null, signedAt: '2026-10-27T15:09:30Z', supersededAt: null, ...p,
 });
 
 function loopDetail(): RuntimeHistoryDetail {
@@ -268,6 +268,21 @@ describe('final review fixes', () => {
   });
 });
 
+describe('went back wording', () => {
+  const at = (min: string) => `2026-10-27T15:${min}:00Z`;
+  it('a went_back run reads "went back"', () => {
+    const m = buildRecordModel(base({ stepRuns: [run({ stepOid: 'qa', stepName: 'QA Approve', startedAt: at('01'), finishedAt: at('02'), result: 'went_back' })] }), opts);
+    expect(m.log[0].kind === 'run' && m.log[0].result).toBe('went back');
+  });
+  it('a superseded signature carries the replaced suffix', () => {
+    const m = buildRecordModel(base({
+      stepRuns: [run({ stepOid: 'qa', stepName: 'QA Approve', startedAt: at('01'), finishedAt: at('09') })],
+      signatures: [sig({ signedAt: at('03'), supersededAt: at('04') })],
+    }), opts);
+    expect(m.log[0].kind === 'run' && m.log[0].signatures[0]).toMatch(/ \(replaced — the operator went back\)$/);
+  });
+});
+
 describe('step-run labels', () => {
   const node = (proxyRun: number, workflowName: string) => ({ proxyStepOid: workflowName, proxyRun, workflowName });
   it('path text numbers later proxy runs only', () => {
@@ -302,7 +317,7 @@ describe('operator trace attribution and unnamed requesters', () => {
   it('an empty actorName falls back to Unknown requester', () => {
     const m = buildRecordModel(base({ controlEvents: [{
       at: '2026-10-27T15:02:00Z', verb: 'stop', effect: 'request', fromStatus: 'running', toStatus: 'stopping_cleanup',
-      actorKind: 'user', actorUserId: null, actorName: '', actorInstanceId: null,
+      actorKind: 'user', actorUserId: null, actorName: '', actorInstanceId: null, stepName: null,
     }] }), opts);
     expect(m.log.map(r => r.kind === 'event' && r.performedBy)).toEqual(['Unknown requester']);
   });
@@ -311,7 +326,7 @@ describe('operator trace attribution and unnamed requesters', () => {
 describe('control events', () => {
   const ev = (over: Partial<RuntimeHistoryDetail['controlEvents'][number]>): RuntimeHistoryDetail['controlEvents'][number] => ({
     at: '2026-10-27T15:02:00Z', verb: 'stop', effect: 'request', fromStatus: 'running', toStatus: 'stopping_cleanup',
-    actorKind: 'user', actorUserId: 'u1', actorName: 'Jane Doe', actorInstanceId: null, ...over,
+    actorKind: 'user', actorUserId: 'u1', actorName: 'Jane Doe', actorInstanceId: null, stepName: null, ...over,
   });
   it('control events become event rows performed by the requester', () => {
     const m = buildRecordModel(base({

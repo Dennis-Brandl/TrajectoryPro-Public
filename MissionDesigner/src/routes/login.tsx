@@ -66,7 +66,10 @@ export function LoginPage() {
           {/* w-64, not a fixed height: the splash art is ~1.42:1, so sizing it by
               height shrinks it to a strip too narrow to read the product name. */}
           <img src="/MissionDesignerSplashScreen.png" alt="Mission Designer" className="w-64 h-auto rounded-lg" />
-          <p className="text-xs text-muted-foreground">Copyright 2026 Dennis L. Brandl · Apache License 2.0</p>
+          <div className="text-center text-xs text-muted-foreground">
+            <p>Copyright 2026 Dennis L. Brandl · Apache License 2.0</p>
+            <p className="mt-1">Version {__APP_VERSION__}</p>
+          </div>
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-primary" />
           <span className="text-sm text-muted-foreground">Loading...</span>
         </div>
@@ -78,6 +81,7 @@ export function LoginPage() {
     <SignInFrame
       splashSrc="/MissionDesignerSplashScreen.png"
       splashAlt="Mission Designer"
+      version={__APP_VERSION__}
       description="Design and manage workflows, procedures, recipes, and batch processes. Author step-by-step specifications for Trajectory Pro Mission Control runtime environments."
     >
       <div className="w-80 space-y-4 rounded-[10px] border border-border p-6">

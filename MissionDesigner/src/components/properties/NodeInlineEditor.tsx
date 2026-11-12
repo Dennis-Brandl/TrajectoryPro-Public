@@ -48,6 +48,9 @@ import { useAvailableValueTypes } from '@/hooks/useAvailableValueTypes'
 import { useActionProxySyncState } from '@/hooks/useActionProxySyncState'
 import * as Accordion from '@radix-ui/react-accordion'
 import { CollapsibleSection } from './CollapsibleSection'
+import { toast } from 'sonner'
+import { useCanEditActiveSpec } from '@/hooks/useCanEditActiveSpec'
+import { legacyStepConversion } from '@/lib/form-document/convert-on-open'
 import type { StepNodeData, NodeType, ParameterSpec, ResourceSpec, ValueSpec } from '@/types/nodes'
 
 const ScriptEditorModal = lazy(() => import('./ScriptEditorModal').then((m) => ({ default: m.ScriptEditorModal })))
@@ -173,6 +176,26 @@ export function NodeInlineEditor({
     setDraft((prev) => ({ ...prev, ...updates }))
   }, [])
 
+  // Fixed button row (spec 2026-11-11): a legacy screen step in an editable spec converts once, when
+  // its panel opens. Effective (read-only) specs are never converted.
+  const canEditSpec = useCanEditActiveSpec()
+  useEffect(() => {
+    // Read the live node (the form modal may already have converted it), not the opening snapshot.
+    const live = useFlowStore.getState().nodes.find((n) => n.id === nodeId)?.data as StepNodeData | undefined
+    const r = legacyStepConversion(
+      nodeType,
+      live ?? initialDataRef.current,
+      useFlowStore.getState().edges,
+      nodeId,
+      canEditSpec,
+    )
+    if (!r) return
+    useFlowStore.getState().updateNodeData(nodeId, r.data)
+    setDraft(structuredClone(r.data))
+    if (r.note) toast.info(r.note)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodeId, canEditSpec])
+
   // Derived from draft — must come after draft is declared
   const currentCatchId = (draft.catchId as string | undefined) ?? ''
 
@@ -289,6 +312,12 @@ export function NodeInlineEditor({
   const showActionSelector = nodeType === 'actionProxyWait'
   const showSubWorkflowSelector = nodeType === 'workflowProxy'
   const showUIParameters = UI_STEP_TYPES.includes(nodeType)
+  // The conversion message stays only while a connection still routes on a removed button's value.
+  const stillRouted = allEdges.some(
+    (e) =>
+      e.source === nodeId &&
+      (draft.routingValues ?? []).includes((e.data as { condition?: string } | undefined)?.condition ?? ''),
+  )
 
   // The lists behind the parameter sections — an embedded sub-workflow edits the child's
   // own lists, everything else edits the step's. Their lengths are shown in the section
@@ -427,6 +456,37 @@ export function NodeInlineEditor({
           <CollapsibleSection value="form" title="Form">
             <div className="rounded border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
               Form designer available via double-click on canvas node
+            </div>
+          </CollapsibleSection>
+        )}
+
+        {/* Fixed button row switches (spec 2026-11-11) */}
+        {showUIParameters && draft.buttonBar !== undefined && (
+          <CollapsibleSection value="buttons" title="Buttons">
+            <div className="space-y-2">
+              <label className="flex items-center gap-1.5 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={draft.allowBack === true}
+                  disabled={!canEditSpec}
+                  onChange={(e) => updateDraft({ allowBack: e.target.checked })}
+                />
+                Allow Back — return to the operator's previous screen
+              </label>
+              <label className="flex items-center gap-1.5 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={draft.allowStop === true}
+                  disabled={!canEditSpec}
+                  onChange={(e) => updateDraft({ allowStop: e.target.checked })}
+                />
+                Allow Stop — let the operator stop the whole workflow
+              </label>
+              {draft.routingProblem && stillRouted && (
+                <div className="rounded border border-destructive/50 p-2 text-xs text-destructive">
+                  <p>{draft.routingProblem}</p>
+                </div>
+              )}
             </div>
           </CollapsibleSection>
         )}

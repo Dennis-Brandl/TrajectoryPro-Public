@@ -20,7 +20,7 @@ import type { StepSignatureView } from '@/lib/api/types';
 
 const signed: StepSignatureView = {
   id: 'sig1', stepOid: 's-1', stepName: 'Approve batch', signerLoginName: 'jane', signerDisplayName: 'Jane Lee',
-  roleName: 'QA Lead', meaning: null, decision: 'yes', outcome: 'signed', failureCode: null, signedAt: '2026-09-07T10:00:00.000Z',
+  roleName: 'QA Lead', meaning: null, decision: 'yes', outcome: 'signed', failureCode: null, signedAt: '2026-09-07T10:00:00.000Z', supersededAt: null,
 };
 const failed: StepSignatureView = {
   ...signed, id: 'sig2', signerLoginName: 'bob', signerDisplayName: null, roleName: null, decision: null,

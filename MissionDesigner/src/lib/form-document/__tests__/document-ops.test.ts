@@ -22,11 +22,8 @@ import {
   deleteBlockFromDocument,
   insertBlockIntoDocument,
   duplicateBlockInDocument,
-  insertBlockIntoBottomBar,
-  withBottomBarPlaceholder,
   pruneEmptyFooters,
   isButtonsOnlyDrop,
-  BOTTOM_BAR_PLACEHOLDER_ID,
 } from '../document-ops'
 import { createDefaultBlock } from '../create-block'
 
@@ -115,26 +112,6 @@ describe('duplicateBlockInDocument', () => {
   })
 })
 
-describe('insertBlockIntoBottomBar', () => {
-  let n = 0
-  const newId = () => `id${++n}`
-  it('creates a footer section when there is none', () => {
-    const btn = createDefaultBlock('button')
-    const out = insertBlockIntoBottomBar(docWithBlock, btn, newId)
-    const footer = out.sections.find((s) => s.role === 'footer')!
-    expect(out.sections[out.sections.length - 1]).toBe(footer)
-    expect(footer.rows).toHaveLength(1)
-    expect(footer.rows[0].blocks[0]).toBe(btn)
-    expect(validateFormDocument(out).ok).toBe(true)
-  })
-  it('reuses an existing footer', () => {
-    const one = insertBlockIntoBottomBar(docWithBlock, createDefaultBlock('button'), newId)
-    const two = insertBlockIntoBottomBar(one, createDefaultBlock('button', { stepKind: 'yesno' }), newId)
-    expect(two.sections.filter((s) => s.role === 'footer')).toHaveLength(1)
-    expect(two.sections.find((s) => s.role === 'footer')!.rows).toHaveLength(2)
-  })
-})
-
 describe('bottom bar helpers', () => {
   const content = {
     id: 's1',
@@ -144,16 +121,6 @@ describe('bottom bar helpers', () => {
   const btnRow = { id: 'rb', blocks: [{ id: 'b', type: 'button' as const, label: 'Go', outputValue: 'continue' }] }
   const base = { version: 2 as const, sections: [content] }
 
-  it('withBottomBarPlaceholder adds one placeholder only when no footer exists', () => {
-    const out = withBottomBarPlaceholder(base)
-    expect(out.sections.filter((s) => s.role === 'footer')).toEqual([
-      { id: BOTTOM_BAR_PLACEHOLDER_ID, role: 'footer', rows: [] },
-    ])
-    expect(base.sections).toHaveLength(1)
-    const withFooter = { ...base, sections: [content, { id: 'f', role: 'footer' as const, rows: [btnRow] }] }
-    expect(withBottomBarPlaceholder(withFooter)).toBe(withFooter)
-  })
-
   it('pruneEmptyFooters removes an emptied footer, keeps a non-empty one, same ref when nothing to drop', () => {
     const empty = { ...base, sections: [content, { id: 'f', role: 'footer' as const, rows: [] }] }
     expect(pruneEmptyFooters(empty).sections.map((s) => s.id)).toEqual(['s1'])
@@ -161,14 +128,13 @@ describe('bottom bar helpers', () => {
     expect(pruneEmptyFooters(full)).toBe(full)
   })
 
-  it('isButtonsOnlyDrop: footer takes buttons only; content takes anything', () => {
+  it('isButtonsOnlyDrop: an old footer takes its buttons only; content takes anything', () => {
     const doc = { ...base, sections: [content, { id: 'f', role: 'footer' as const, rows: [btnRow] }] }
     expect(isButtonsOnlyDrop(doc, { kind: 'block', id: 'b' }, 'f')).toBe(true)
     expect(isButtonsOnlyDrop(doc, { kind: 'block', id: 't' }, 'f')).toBe(false)
     expect(isButtonsOnlyDrop(doc, { kind: 'row', id: 'r1' }, 'f')).toBe(false)
     expect(isButtonsOnlyDrop(doc, { kind: 'row', id: 'rb' }, 'f')).toBe(true)
-    expect(isButtonsOnlyDrop(doc, { kind: 'palette', type: 'text' }, BOTTOM_BAR_PLACEHOLDER_ID)).toBe(false)
-    expect(isButtonsOnlyDrop(doc, { kind: 'palette', type: 'button' }, BOTTOM_BAR_PLACEHOLDER_ID)).toBe(true)
+    expect(isButtonsOnlyDrop(doc, { kind: 'palette', type: 'text' }, 'f')).toBe(false)
     expect(isButtonsOnlyDrop(doc, { kind: 'block', id: 'b' }, 's1')).toBe(true)
     expect(isButtonsOnlyDrop(doc, { kind: 'block', id: 't' }, 's1')).toBe(true)
   })

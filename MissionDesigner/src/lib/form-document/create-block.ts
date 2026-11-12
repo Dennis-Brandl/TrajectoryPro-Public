@@ -11,13 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import { JOB_OUTPUT_VALUE, jobButtons } from '@mission/form-schema'
-import type { Block, BlockType, ButtonJob, FormDocument, OptionEntry, StepKind } from '@mission/form-schema'
+import type { Block, BlockType, OptionEntry } from '@mission/form-schema'
 import { generateOID, WORKER_INTERNAL } from '@/lib/snowflake'
 
-/** The palette offers every block type. A `button` is an author-placed job button
- *  (continue / yes / no, spec 2026-10-28). */
-export type PaletteBlockType = BlockType
+/** The palette offers every block type except `button`: a step's buttons belong to the step's
+ *  fixed button row now (spec 2026-11-11). Old stored forms may still hold Button blocks. */
+export type PaletteBlockType = Exclude<BlockType, 'button'>
 
 /** Runtime roster of palette block types. `satisfies` rejects a typo/extra entry; the switch in
  *  createDefaultBlock is exhaustive (its default throws), so an unknown type never yields a
@@ -34,7 +33,6 @@ export const PALETTE_BLOCK_TYPES = [
   'divider',
   'timer',
   'esignature',
-  'button',
 ] as const satisfies readonly PaletteBlockType[]
 
 export function isPaletteBlockType(value: string): value is PaletteBlockType {
@@ -63,18 +61,7 @@ const THREE_OPTIONS: OptionEntry[] = [
 /** A fresh, schema-VALID default block for a palette type. Mirrors the converter's `mapBlock`
  *  defaults so every result passes `validateFormDocument` (image needs layout.aspectRatio;
  *  timer needs label/fieldName/durationSeconds/direction). */
-/** The job a new Button takes: Continue on a normal step; on a Yes/No step the job the form still
- *  lacks (Yes first, then No), so the second button an author adds is the No they need. */
-export function nextButtonJob(stepKind: StepKind | undefined, document?: FormDocument): ButtonJob {
-  if (stepKind !== 'yesno') return 'continue'
-  const present = new Set(document ? jobButtons(document).map((b) => b.job) : [])
-  return present.has('yes') && !present.has('no') ? 'no' : 'yes'
-}
-
-export function createDefaultBlock(
-  type: PaletteBlockType,
-  opts?: { stepKind?: StepKind; document?: FormDocument },
-): Block {
+export function createDefaultBlock(type: PaletteBlockType): Block {
   const id = generateOID(WORKER_INTERNAL)
   switch (type) {
     case 'text':
@@ -132,10 +119,6 @@ export function createDefaultBlock(
         meaning: '',
         requireDifferentUser: false,
       }
-    case 'button': {
-      const job = nextButtonJob(opts?.stepKind, opts?.document)
-      return { id, type, label: '', job, outputValue: JOB_OUTPUT_VALUE[job], emphasis: 'primary' }
-    }
     default:
       // Exhaustive over PaletteBlockType (a new member forces a case here); at runtime this also
       // throws on an invalid type (e.g. a garbage palette drag id) instead of returning undefined.

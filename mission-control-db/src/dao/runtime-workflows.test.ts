@@ -623,8 +623,35 @@ test('listActiveRuntimeLeaves: active statuses only, cross-WC, ordered, lean pro
   expect(perWc.get(wc2.id)).toEqual([1]);
   // Lean projection: exactly these keys, nothing heavy.
   expect(Object.keys(leaves[0]!).sort()).toEqual(
-    ['id', 'masterName', 'masterVersion', 'runtimeLabel', 'runtimeNumber', 'status', 'workCenterId'],
+    ['assignees', 'id', 'masterName', 'masterVersion', 'runtimeLabel', 'runtimeNumber', 'status', 'waiting', 'workCenterId'],
   );
+  expect(leaves.every((l) => l.assignees.length === 0 && !l.waiting)).toBe(true);
+  await close();
+});
+
+test('listActiveRuntimeLeaves: claimed live steps name their assignee; an unclaimed operator step marks waiting', async () => {
+  const { db, close } = await makeTestDb();
+  const { wc, wf, user } = await seed(db);
+  const john = await createUser(db, { email: `john-${Math.random()}@t.test`, displayName: 'John Adams' });
+  const claimedRun = await createRuntimeWorkflow(db, { workflowId: wf.id, params: {}, userId: user.id });
+  const offeredRun = await createRuntimeWorkflow(db, { workflowId: wf.id, params: {}, userId: user.id });
+  await db.update(workflowInstance).set({ status: 'running' })
+    .where(inArray(workflowInstance.id, [claimedRun.id, offeredRun.id]));
+  const [sClaimed, sDone, sOffered] = await db.insert(stepInstance).values([
+    { workflowInstanceId: claimedRun.id, nodeOid: 'n', stepOid: 'ask', stepType: 'USER_INTERACTION', state: 'WAITING_USER', orderIndex: 2 },
+    { workflowInstanceId: claimedRun.id, nodeOid: 'n', stepOid: 'old', stepType: 'USER_INTERACTION', state: 'COMPLETED', orderIndex: 1 },
+    { workflowInstanceId: offeredRun.id, nodeOid: 'n', stepOid: 'ask', stepType: 'USER_INTERACTION', state: 'WAITING_USER', orderIndex: 1 },
+  ]).returning();
+  await db.insert(instanceAssignment).values([
+    { stepInstanceId: sClaimed.id, workCenterId: wc.id, assignedUserId: john.id, status: 'claimed', claimedAt: new Date() },
+    // A finished step's claim is history, not a current holder.
+    { stepInstanceId: sDone.id, workCenterId: wc.id, assignedUserId: user.id, status: 'completed', claimedAt: new Date() },
+    { stepInstanceId: sOffered.id, workCenterId: wc.id, status: 'offered' },
+  ]);
+
+  const leaves = await listActiveRuntimeLeaves(db);
+  expect(leaves.find((l) => l.id === claimedRun.id)).toMatchObject({ assignees: ['John Adams'], waiting: false });
+  expect(leaves.find((l) => l.id === offeredRun.id)).toMatchObject({ assignees: [], waiting: true });
   await close();
 });
 

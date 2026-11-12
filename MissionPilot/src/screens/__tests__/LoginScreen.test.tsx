@@ -44,6 +44,13 @@ describe('LoginScreen', () => {
     expect(screen.getByRole('button', { name: 'Sign In' })).toBeTruthy()
   })
 
+  it('shows its own version under the copyright, before anyone signs in', () => {
+    render(<LoginScreen />)
+    const line = screen.getByText(/Copyright 2026 Dennis L\. Brandl/).textContent ?? ''
+    expect(line).toMatch(/Version \d+\.\d+\.\d+/)
+    expect(line).toContain(`Version ${__APP_VERSION__}`)
+  })
+
   it('submits the typed email and password to signIn', async () => {
     signIn.mockResolvedValue(undefined)
     render(<LoginScreen />)

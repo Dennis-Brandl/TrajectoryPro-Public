@@ -36,6 +36,8 @@ export interface ControlEventView {
   actorName: string;
   /** remote: the sender's own runtime id (parent / calling instance), when known; else null. */
   actorInstanceId: string | null;
+  /** Stop pressed in a step: that step's name; else null. */
+  stepName: string | null;
 }
 
 const COLS = {
@@ -44,19 +46,20 @@ const COLS = {
   actorKind: runtimeControlEvent.actorKind, actorUserId: runtimeControlEvent.actorUserId,
   actorLoginName: runtimeControlEvent.actorLoginName, actorDisplayName: runtimeControlEvent.actorDisplayName,
   actorLabel: runtimeControlEvent.actorLabel, actorInstanceId: runtimeControlEvent.actorInstanceId,
+  stepName: runtimeControlEvent.stepName,
 };
 
 function toView(r: {
   at: Date; verb: string; effect: string; fromStatus: string; toStatus: string; actorKind: string;
   actorUserId: string | null; actorLoginName: string | null; actorDisplayName: string | null; actorLabel: string | null;
-  actorInstanceId: string | null;
+  actorInstanceId: string | null; stepName: string | null;
 }): ControlEventView {
   return {
     at: r.at.toISOString(), verb: r.verb as ControlVerb, effect: r.effect as ControlEffect,
     fromStatus: r.fromStatus, toStatus: r.toStatus, actorKind: r.actorKind as ControlActor['kind'],
     actorUserId: r.actorUserId,
     actorName: r.actorKind === 'user' ? (r.actorDisplayName ?? r.actorLoginName ?? '') : (r.actorLabel ?? ''),
-    actorInstanceId: r.actorInstanceId,
+    actorInstanceId: r.actorInstanceId, stepName: r.stepName,
   };
 }
 

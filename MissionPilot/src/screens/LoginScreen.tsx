@@ -68,7 +68,11 @@ export function LoginScreen() {
         fallbackAlt="Mission Pilot"
         logoAlt={appTitle}
       />
-      <p className="login-copyright">Copyright 2026 Dennis L. Brandl · Apache License 2.0</p>
+      <p className="login-copyright">
+        Copyright 2026 Dennis L. Brandl · Apache License 2.0
+        <br />
+        Version {__APP_VERSION__}
+      </p>
 
       <form onSubmit={onSubmit}>
         <label htmlFor="cockpit-login-email">Email</label>

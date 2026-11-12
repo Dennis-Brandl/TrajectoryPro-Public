@@ -170,6 +170,28 @@ describe('FormDocumentDesignerModal bridge', () => {
     ])
   })
 
+  it('Buttons panel edits size and color and writes them to the step', () => {
+    useFlowStore.setState({
+      nodes: [
+        {
+          id: 'n1',
+          type: 'userInteractionStep',
+          position: { x: 0, y: 0 },
+          data: { formDocument: NODE_DOCUMENT, buttonBar: {}, allowBack: false, allowStop: false },
+        },
+      ] as never,
+    })
+    const updateNodeData = vi.spyOn(useFlowStore.getState(), 'updateNodeData')
+    useFormDocumentStore.getState().openForNode('n1', { version: 2, sections: [] })
+    render(<FormDocumentDesignerModal />)
+    fireEvent.change(screen.getByLabelText('Text size'), { target: { value: 'lg' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Open color picker' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Select color #22c55e' }))
+    fireEvent.click(screen.getByRole('button', { name: /save/i }))
+    const payload = updateNodeData.mock.lastCall![1] as { buttonBar?: Record<string, unknown> }
+    expect(payload.buttonBar).toEqual({ size: 'lg', color: '#22c55e' })
+  })
+
   it('is full-bleed and layered above app chrome (covers the header/minimap)', () => {
     // The editor must sit above the app header (z-50) and the canvas minimap toggle (z-10),
     // which are positioned with a z-index; a full-bleed modal with no z-index let them show through.

@@ -22,8 +22,6 @@ const TOP = '@top'
 const END = '@end'
 export const gapDropId = (sectionId: string, afterRowId: string | null) => `gap:${sectionId}:${afterRowId ?? TOP}`
 export const slotDropId = (rowId: string, beforeBlockId: string | null) => `slot:${rowId}:${beforeBlockId ?? END}`
-/** The whole bottom-bar band: a drop anywhere on it that misses a precise gap/slot. */
-export const barDropId = (sectionId: string) => `bar:${sectionId}`
 
 export type ParsedDrag =
   | { kind: 'block'; id: string }
@@ -33,7 +31,6 @@ export type ParsedDrag =
 export type ParsedDrop =
   | { zone: 'gap'; sectionId: string; afterRowId: string | null }
   | { zone: 'slot'; rowId: string; beforeBlockId: string | null }
-  | { zone: 'bar'; sectionId: string }
   | null
 
 export function parseDragId(id: string): ParsedDrag {
@@ -55,15 +52,7 @@ export function parseDropId(id: string | null): ParsedDrop {
     const [rowId, anchor] = splitFirst(rest)
     return { zone: 'slot', rowId, beforeBlockId: anchor === END ? null : anchor }
   }
-  if (zone === 'bar' && rest) return { zone: 'bar', sectionId: rest }
   return null
-}
-
-/** Collision-order rule for the canvas: the bar band overlaps the bar's own gaps and slots, so a
- *  precise zone the pointer is also within wins; the band only catches what they miss. Stable. */
-export function preferPreciseZones<T extends { id: string | number }>(collisions: T[]): T[] {
-  const isBar = (c: T) => String(c.id).startsWith('bar:')
-  return [...collisions.filter((c) => !isBar(c)), ...collisions.filter(isBar)]
 }
 
 /** Split on the first ':' only. */

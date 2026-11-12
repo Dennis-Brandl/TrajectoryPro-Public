@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { eq, and, inArray } from 'drizzle-orm';
-import { workflowInstance, stepInstance, ENGINE_STEP_STATES } from 'mission-control-db/src/db/schema/index';
+import { workflowInstance, stepInstance, ENGINE_STEP_STATES, type StepRunResult } from 'mission-control-db/src/db/schema/index';
 import type { Db } from '../db.js';
 import type { EngineDeps } from '../config.js';
 import type {
@@ -26,6 +26,7 @@ import {
 import { isRunningLike, RUNNING_LIKE_STATUSES, isCleanupActive, useInheritedHold, releasesInheritedHold, forgetInheritedHold, envHoldKey } from './operator-cleanup.js';
 import { afterHaltDrained, endOperatorCleanup, type LiveActionRef } from './operator-cleanup-flow.js';
 import { canonicalStepType, needsUserAction, executeScript, handleSelect1, activateCatchStep, executeGateScript, gateMode, gateUsesBindings, nextGateWake, runRepeatingScript, commitScriptOutputs, nextScriptWake, scriptRepeat } from './step-handlers.js';
+import { carriedBackTarget, isJoinType } from './back-target.js';
 import { notifyWorkCenter } from './reconcile.js';
 import { ACTIVE_ROW_STATES, recordStepRun } from './step-run.js';
 import { splitResourceCommands, sortActivationCommands, type InMemoryResourceManager } from './resources.js';
@@ -912,6 +913,11 @@ export function getRoutedConnections(context: WorkflowContext, stepOid: string):
  */
 async function materializeAndActivate(
   tx: Db, context: WorkflowContext, stepOid: string, stepDef: MasterWorkflowStep, deps: EngineDeps,
+  /** Fixed button row: the back target drainCascade routes in (core/back-target.ts). Recorded
+   *  only when this call really (re)activates or completes the step — never over a live row,
+   *  whose back target is the one it was activated with. Omitted (activateAndCascade's
+   *  GOTO/RETRY/CATCH entries) leaves backFrom untouched. */
+  backTarget?: string | null,
 ): Promise<{ settled: boolean; completed: boolean }> {
   if (context.dead) return { settled: false, completed: false }; // torn-down subtree (spec §3.3)
   if (await refuseOutsideCleanup(tx, context, stepOid, deps)) return { settled: true, completed: false };
@@ -926,6 +932,7 @@ async function materializeAndActivate(
         // GATE spec §5.3.4: the predecessor's terminal routed into an ALREADY-OPEN armed
         // gate — complete it now; the BFS wave routes its successors next.
         delete context.root.state.armedGates[stepOid];
+        if (backTarget !== undefined) context.state.backFrom[stepOid] = backTarget;
         await context.recordTrace(tx, stepOid, 'COMPLETED');
         await tx.update(stepInstance).set({
           state: 'COMPLETED', completedAt: deps.now(), updatedAt: deps.now(), wakeAt: null,
@@ -964,6 +971,7 @@ async function materializeAndActivate(
     }).returning();
     target = { id: inserted.id, stepOid };
   }
+  if (backTarget !== undefined) context.state.backFrom[stepOid] = backTarget;
 
   if (stepDef.resource_command_specifications?.length) {
     const granted = tryActivateResources(context, stepOid, stepDef.resource_command_specifications);
@@ -1091,12 +1099,19 @@ export async function drainCascade(tx: Db, context: WorkflowContext, seed: strin
         }
 
         const outgoing = getRoutedConnections(context, stepOid);
+        // Fixed button row: the back target each successor inherits (core/back-target.ts).
+        // A dequeued oid not in this spec (defensive) carries nothing.
+        const carry = carriedBackTarget(
+          canonicalStepType(dequeuedDef?.step_type ?? ''), stepOid, context.state.backFrom[stepOid], outgoing.length,
+        );
         for (const conn of outgoing) {
           if (context.dead) break; // this dequeued step's own routing died mid-iteration
           const stepDef = context.spec.steps.find(s => s.oid === conn.to_step_id);
           if (!stepDef) continue; // dangling target — the validator rejects this before instance start
 
-          if (canonicalStepType(stepDef.step_type) === 'WAIT ALL') {
+          const targetType = canonicalStepType(stepDef.step_type);
+          if (targetType === 'WAIT ALL') {
+            context.state.backFrom[stepDef.oid] = null; // a join never has a back target
             if (await refuseOutsideCleanup(tx, context, stepDef.oid, deps)) return true;
             const justCompleted = await waitAllArrival(tx, context, stepDef, stepOid, deps);
             if (justCompleted) context.cascadeQueue.push(stepDef.oid);
@@ -1107,7 +1122,7 @@ export async function drainCascade(tx: Db, context: WorkflowContext, seed: strin
               throw new CascadeExceededError(MAX_CASCADE_ACTIVATIONS);
             }
             context.root.cascadeActivationCount++;
-            const result = await materializeAndActivate(tx, context, conn.to_step_id, stepDef, deps);
+            const result = await materializeAndActivate(tx, context, conn.to_step_id, stepDef, deps, isJoinType(targetType) ? null : carry);
             if (result.settled) return true;
             if (result.completed) context.cascadeQueue.push(conn.to_step_id);
           }
@@ -1411,7 +1426,11 @@ async function tearDownActiveChild(tx: Db, context: WorkflowContext, parentStepO
  *  reset-before-reactivate: idle-trace + delete the row (a no-op if none exists — already the
  *  IDLE equivalent) and drop this step's per-step tracking from every EngineState map —
  *  including (I2 fix) any active child/grandchild this step spawned. */
-async function resetStepIfExists(tx: Db, context: WorkflowContext, oid: string, deps: EngineDeps): Promise<void> {
+export async function resetStepIfExists(
+  tx: Db, context: WorkflowContext, oid: string, deps: EngineDeps,
+  /** How a still-active row's run is recorded — 'went_back' when an operator pressed Back on it. */
+  runResult: StepRunResult = 'cancelled',
+): Promise<void> {
   const [existing] = await tx.select().from(stepInstance)
     .where(and(eq(stepInstance.workflowInstanceId, context.id), eq(stepInstance.stepOid, oid)));
   if (!existing) return;
@@ -1443,7 +1462,7 @@ async function resetStepIfExists(tx: Db, context: WorkflowContext, oid: string, 
       releaseEnvReservations(root, reservations);
     }
   }
-  if (ACTIVE_ROW_STATES.has(existing.state)) await recordStepRun(tx, context, oid, 'cancelled'); // spec 2026-10-27 §6.2
+  if (ACTIVE_ROW_STATES.has(existing.state)) await recordStepRun(tx, context, oid, runResult); // spec 2026-10-27 §6.2
   await context.recordTrace(tx, oid, 'IDLE');
   await tx.delete(stepInstance).where(eq(stepInstance.id, existing.id));
   delete context.state.routingContext[oid];
@@ -1452,6 +1471,10 @@ async function resetStepIfExists(tx: Db, context: WorkflowContext, oid: string, 
   delete context.state.blockedOnResources[oid];
   delete context.state.releasedOnCatch[oid]; // final-review fix — see EngineState.releasedOnCatch
   delete context.state.resolvedAmounts[oid];
+  // Fixed button row: a reset step's back target and Back prefill go with its row; its
+  // lastFormValues stay (they are what a later Back prefills from).
+  delete context.state.backFrom[oid];
+  delete context.state.backPrefill[oid];
   // GATE spec 2026-08-29: drop this step's own armed-gate entry AND any entry that
   // paired a gate to it as predecessor (the gate is being reset out from under it).
   delete context.state.armedGates[oid];

@@ -49,6 +49,7 @@ export function LoginPage() {
     <SignInFrame
       splashSrc="/xo/MissionXOSplashScreen.png"
       splashAlt="Mission XO"
+      version={__APP_VERSION__}
       description="Runs the day's workflows in a work center: start them, watch them, and look back at what finished."
     >
       {notSetUp ? (

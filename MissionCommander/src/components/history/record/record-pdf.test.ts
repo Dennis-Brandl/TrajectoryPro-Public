@@ -44,7 +44,7 @@ function mockupDetail(): RuntimeHistoryDetail {
     ],
     signatures: [{
       id: 's1', stepOid: 'qa', stepName: 'QA Approve', signerLoginName: 'qlee', signerDisplayName: 'Q. Lee', roleName: 'Quality',
-      meaning: 'Approved', decision: null, outcome: 'signed', failureCode: null, signedAt: '2026-10-27T14:21:45Z',
+      meaning: 'Approved', decision: null, outcome: 'signed', failureCode: null, signedAt: '2026-10-27T14:21:45Z', supersededAt: null,
     }],
   };
 }
@@ -89,7 +89,7 @@ describe('renderRecordPdf control events', () => {
   it('PDF text contains "Stop requested" and "Jane Doe"', () => {
     const detail = { ...mockupDetail(), controlEvents: [{
       at: '2026-10-27T14:16:00Z', verb: 'stop' as const, effect: 'request' as const, fromStatus: 'running', toStatus: 'stopping_cleanup',
-      actorKind: 'user' as const, actorUserId: 'u1', actorName: 'Jane Doe', actorInstanceId: null,
+      actorKind: 'user' as const, actorUserId: 'u1', actorName: 'Jane Doe', actorInstanceId: null, stepName: null,
     }] };
     const { doc } = renderRecordPdf(buildRecordModel(detail, { timeZone: 'America/Chicago', now: new Date('2026-10-27T19:02:00Z'), loginName: 'admin' }));
     const all = Array.from({ length: doc.getNumberOfPages() }, (_, i) => pageContent(doc, i + 1)).join('\n');

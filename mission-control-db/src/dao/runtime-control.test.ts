@@ -375,3 +375,19 @@ test("requestSkipCleanup('abort') from aborting_cleanup goes to aborting", async
     expect(await listControlEvents(db, id)).toMatchObject([{ verb: 'abort', effect: 'skip_cleanup', fromStatus: 'aborting_cleanup', toStatus: 'aborting' }]);
   } finally { await close(); }
 });
+
+test('requestStop with a step records it on the control event', async () => {
+  const { db, close } = await makeTestDb();
+  const { wc, wf } = await seed(db);
+  const user = await createUser(db, { email: 'st@x.io', displayName: 'Stu', loginName: 'stu' });
+  const mk = async () => (await db.insert(workflowInstance).values({
+    workflowId: wf.id, workCenterId: wc.id, triggeredBy: 'manual', status: 'running', ...runtimeCols(),
+  }).returning())[0];
+  const a = await mk();
+  await requestStop(db, a.id, { kind: 'user', userId: user.id }, { stepOid: 's1', stepName: 'Weigh' });
+  expect((await listControlEvents(db, a.id))[0].stepName).toBe('Weigh');
+  const b = await mk();
+  await requestStop(db, b.id, SYS);
+  expect((await listControlEvents(db, b.id))[0].stepName).toBeNull();
+  await close();
+});

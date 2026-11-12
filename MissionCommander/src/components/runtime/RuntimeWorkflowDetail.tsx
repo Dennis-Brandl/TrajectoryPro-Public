@@ -191,17 +191,7 @@ export function RuntimeWorkflowDetail() {
         </dd>
       </dl>
 
-      <LiveCreatedRuntimes instanceId={s.id} onOpen={(t) => {
-        if (t.kind === 'live') { setHierarchy('runtime'); selectRuntimeWorkflow(t.id); }
-        else setHistoryId(t.id);
-      }} />
-
-      <RuntimeDiagramCard instanceId={s.id} canCommand={canCommand} busy={busy}
-        onAssign={(assignmentId, stepName) => setAssignFor({ assignmentId, stepName })}
-        onForceRelease={(assignmentId, stepName) => setConfirm({ kind: 'force-release', assignmentId, stepName })} />
-
-      <RuntimeResourcesSection instanceId={s.id} workCenterId={s.workCenterId} />
-
+      {/* Right under the summary: who holds what is the first thing a commander looks for. */}
       <div className="space-y-1">
         <h3 className="text-sm font-medium">Active steps</h3>
         {steps.length === 0 && <p className="text-sm text-muted-foreground">No steps yet</p>}
@@ -217,6 +207,9 @@ export function RuntimeWorkflowDetail() {
                 {st.assignment.claimant.name ?? 'unknown'}
                 <span className="sr-only">({st.assignment.claimant.presence})</span>
               </span>
+            )}
+            {st.assignment?.status === 'offered' && (
+              <span className="text-xs text-status-info-fg">Offered</span>
             )}
             {st.assignment?.status === 'offered' && !RUNTIME_TERMINAL.has(status) && (
               <RequiresTooltip reason={reason}>
@@ -248,6 +241,17 @@ export function RuntimeWorkflowDetail() {
           </div>
         ))}
       </div>
+
+      <LiveCreatedRuntimes instanceId={s.id} onOpen={(t) => {
+        if (t.kind === 'live') { setHierarchy('runtime'); selectRuntimeWorkflow(t.id); }
+        else setHistoryId(t.id);
+      }} />
+
+      <RuntimeDiagramCard instanceId={s.id} canCommand={canCommand} busy={busy}
+        onAssign={(assignmentId, stepName) => setAssignFor({ assignmentId, stepName })}
+        onForceRelease={(assignmentId, stepName) => setConfirm({ kind: 'force-release', assignmentId, stepName })} />
+
+      <RuntimeResourcesSection instanceId={s.id} workCenterId={s.workCenterId} />
 
       <SignaturesSection signatures={signatures} />
 

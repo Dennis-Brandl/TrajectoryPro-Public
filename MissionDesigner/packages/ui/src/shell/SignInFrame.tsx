@@ -18,17 +18,23 @@ export function SignInFrame({
   splashSrc,
   splashAlt,
   description,
+  version,
   children,
 }: {
   splashSrc: string
   splashAlt: string
   description: string
+  /** The app's own version, shown under the copyright so nobody has to sign in to read it. */
+  version?: string
   children: ReactNode
 }) {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 p-6">
       <img src={splashSrc} alt={splashAlt} className="w-80 rounded-lg" />
-      <p className="text-xs text-muted-foreground">Copyright 2026 Dennis L. Brandl · Apache License 2.0</p>
+      <div className="text-center text-xs text-muted-foreground">
+        <p>Copyright 2026 Dennis L. Brandl · Apache License 2.0</p>
+        {version && <p className="mt-1">Version {version}</p>}
+      </div>
       <p className="max-w-sm text-center text-sm text-muted-foreground">{description}</p>
       {children}
     </div>

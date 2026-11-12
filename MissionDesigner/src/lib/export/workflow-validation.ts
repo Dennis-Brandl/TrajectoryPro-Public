@@ -278,11 +278,12 @@ export function validateWorkflow(
     }
   }
 
-  // Forms with job buttons must never leave the operator stuck (spec 2026-10-28 section 5.4).
+  // A legacy step (no fixed bar — e.g. an imported form that keeps its Button blocks) must never
+  // leave the operator stuck (spec 2026-10-28 section 5.4). Fixed-bar steps draw their own buttons.
   for (const node of nodes) {
     if (node.type !== 'userInteractionStep' && node.type !== 'yesNoStep') continue
-    const formDocument = (node.data as StepNodeData).formDocument
-    if (!formDocument) continue
+    const { formDocument, buttonBar } = node.data as StepNodeData
+    if (!formDocument || buttonBar) continue
     for (const problem of checkNeverStuck(formDocument, stepKindOfNode(node.type))) {
       errors.push({
         nodeId: node.id,
@@ -291,6 +292,25 @@ export function validateWorkflow(
         message: `Form buttons: ${problem.message}`,
       })
     }
+  }
+
+  // A fixed-bar UI step has no routing context, so the engine fires every outgoing connection
+  // whatever its condition (spec 2026-11-11). Any condition left on one means the step used to
+  // route on which button was pressed: blocked until it is reworked. Structural, so it survives a
+  // package round trip and catches every spelling of the value.
+  for (const node of nodes) {
+    if (node.type !== 'userInteractionStep' || !(node.data as StepNodeData).buttonBar) continue
+    const routed = edges.find(
+      (e) => e.source === node.id && ((e.data as { condition?: string } | undefined)?.condition ?? '').trim() !== '',
+    )
+    if (!routed) continue
+    const condition = ((routed.data as { condition?: string }).condition ?? '').trim()
+    errors.push({
+      nodeId: node.id,
+      nodeName: (node.data as { label?: string })?.label || node.id,
+      nodeType: node.type,
+      message: `This step routed on which button was pressed ("${condition}"). Make it a Yes/No step or add a decision step after it.`,
+    })
   }
 
   errors.push(...validateTryCatchReturn(nodes, edges, workflowTrySpecs))

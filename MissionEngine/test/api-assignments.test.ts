@@ -24,6 +24,7 @@ import {
   workflowInstance, stepInstance, instanceAssignment,
 } from 'mission-control-db/src/db/schema/index';
 import { requestPause, requestResume } from 'mission-control-db/src/dao/runtime-control';
+import { listControlEvents } from 'mission-control-db/src/dao/control-events';
 import { makeApi, type ApiHarness } from './helpers/api.js';
 import { pumpUntilQuiet } from './helpers/pump.js';
 
@@ -537,5 +538,158 @@ test('a released step never bounces back to its sole online releaser — release
   await app.request('/api/presence', { method: 'POST', headers: jsonHeaders(cookie), body: JSON.stringify({ workCenterId: wi.workCenterId }) });
   row = await assignmentRow(db, id);
   expect(row.status).toBe('offered');
+  await close();
+});
+
+// ── Back (fixed button row, spec 2026-11-11) ──
+
+const BACK_SPEC = {
+  local_id: 'wf', oid: 'wf-back', version: '1.0.0', last_modified_date: '2026-01-01',
+  steps: [
+    step('start', 'START'),
+    step('A', 'USER_INTERACTION', { button_bar: { format: 'fixed' } }),
+    step('B', 'USER_INTERACTION', { button_bar: { format: 'fixed' }, allow_back: true }),
+    step('end', 'END'),
+  ],
+  connections: [
+    { from_step_id: 'start', to_step_id: 'A' },
+    { from_step_id: 'A', to_step_id: 'B' },
+    { from_step_id: 'B', to_step_id: 'end' },
+  ],
+};
+
+test('back route: claimant -> 200 {ok:true} and A reopens claimed; not claimant -> 409 NOT_CLAIMANT; unknown id -> 404', async () => {
+  const { db, app, cookieFor, seedOperator, deps, close } = await makeApi();
+  const wi = await seedQueued(db, BACK_SPEC, 'wf-back');
+  await pumpUntilQuiet(db, deps);
+  const userA = await seedOperator('op-back-a@example.com', wi.workCenterId);
+  await seedOperator('op-back-b@example.com', wi.workCenterId);
+  const cookieA = await cookieFor('op-back-a@example.com');
+  const cookieB = await cookieFor('op-back-b@example.com');
+
+  const aId = await offeredAssignmentId(db, wi.id);
+  expect((await app.request(`/api/assignments/${aId}/claim`, { method: 'POST', headers: { cookie: cookieA } })).status).toBe(200);
+  expect((await app.request(`/api/assignments/${aId}/submit`, {
+    method: 'POST', headers: jsonHeaders(cookieA), body: JSON.stringify({ kind: 'submit', values: { qty: 3 } }),
+  })).status).toBe(200);
+  const bId = await offeredAssignmentId(db, wi.id);
+  expect((await app.request(`/api/assignments/${bId}/claim`, { method: 'POST', headers: { cookie: cookieA } })).status).toBe(200);
+
+  const refused = await app.request(`/api/assignments/${bId}/back`, { method: 'POST', headers: { cookie: cookieB } });
+  expect(refused.status).toBe(409);
+  expect((await refused.json() as { code?: string }).code).toBe('NOT_CLAIMANT');
+
+  const res = await app.request(`/api/assignments/${bId}/back`, { method: 'POST', headers: { cookie: cookieA } });
+  expect(res.status).toBe(200);
+  expect(await res.json()).toEqual({ ok: true });
+  expect((await stepRow(db, wi.id, 'A'))?.state).toBe('WAITING_USER');
+  expect(await stepRow(db, wi.id, 'B')).toBeUndefined();
+  const [live] = await db.select({ a: instanceAssignment }).from(instanceAssignment)
+    .innerJoin(stepInstance, eq(instanceAssignment.stepInstanceId, stepInstance.id))
+    .where(and(eq(stepInstance.workflowInstanceId, wi.id), eq(stepInstance.stepOid, 'A'), eq(instanceAssignment.status, 'claimed')));
+  expect(live?.a.assignedUserId).toBe(userA);
+
+  const missing = await app.request('/api/assignments/00000000-0000-4000-8000-000000000000/back', { method: 'POST', headers: { cookie: cookieA } });
+  expect(missing.status).toBe(404);
+  await close();
+});
+
+// ── Stop from Pilot (fixed button row, spec 2026-11-11) ──
+
+const STOP_SPEC = {
+  local_id: 'wf', oid: 'wf-stop', version: '1.0.0', last_modified_date: '2026-01-01',
+  steps: [
+    step('start', 'START'),
+    step('A', 'USER_INTERACTION', { button_bar: { format: 'fixed' }, allow_stop: true }),
+    step('end', 'END'),
+  ],
+  connections: [{ from_step_id: 'start', to_step_id: 'A' }, { from_step_id: 'A', to_step_id: 'end' }],
+};
+
+async function claimedFirst(spec: unknown, oid: string) {
+  const h = await makeApi();
+  const wi = await seedQueued(h.db, spec, oid);
+  await pumpUntilQuiet(h.db, h.deps);
+  const userId = await h.seedOperator(`op-${oid}@example.com`, wi.workCenterId);
+  const cookie = await h.cookieFor(`op-${oid}@example.com`);
+  const aId = await offeredAssignmentId(h.db, wi.id);
+  expect((await h.app.request(`/api/assignments/${aId}/claim`, { method: 'POST', headers: { cookie } })).status).toBe(200);
+  return { ...h, wi, userId, cookie, aId };
+}
+const instStatus = async (db: TestDb, id: string) =>
+  (await db.select({ s: workflowInstance.status }).from(workflowInstance).where(eq(workflowInstance.id, id)))[0].s;
+
+test('stop from a step that allows it stops the workflow and records who and where', async () => {
+  const { db, app, deps, wi, userId, cookie, aId, close } = await claimedFirst(STOP_SPEC, 'wf-stop');
+  const res = await app.request(`/api/assignments/${aId}/stop`, { method: 'POST', headers: { cookie } });
+  expect(res.status).toBe(200);
+  expect(await res.json()).toEqual({ ok: true });
+  expect(await instStatus(db, wi.id)).toBe('stopping');
+  const events = (await listControlEvents(db, wi.id)).filter(e => e.verb === 'stop');
+  expect(events).toHaveLength(1);
+  expect(events[0].actorUserId).toBe(userId);
+  expect(events[0].stepName).toBe('A');
+  await pumpUntilQuiet(db, deps);
+  expect(await instStatus(db, wi.id)).toBe('stopped');
+  await close();
+});
+
+test('stop is refused on a step that does not allow it', async () => {
+  for (const extra of [{ button_bar: { format: 'fixed' }, allow_stop: false }, {}]) {
+    const spec = { ...STOP_SPEC, steps: [step('start', 'START'), step('A', 'USER_INTERACTION', extra), step('end', 'END')] };
+    const { db, app, wi, cookie, aId, close } = await claimedFirst(spec, 'wf-stop');
+    const res = await app.request(`/api/assignments/${aId}/stop`, { method: 'POST', headers: { cookie } });
+    expect(res.status).toBe(409);
+    expect((await res.json() as { code?: string }).code).toBe('STOP_NOT_ALLOWED');
+    expect(await instStatus(db, wi.id)).toBe('running');
+    expect(await listControlEvents(db, wi.id)).toHaveLength(0);
+    await close();
+  }
+});
+
+test('stop by someone who is not the claimant is refused', async () => {
+  const { db, app, wi, aId, seedOperator, cookieFor, close } = await claimedFirst(STOP_SPEC, 'wf-stop');
+  await seedOperator('other-stop@example.com', wi.workCenterId);
+  const other = await cookieFor('other-stop@example.com');
+  const res = await app.request(`/api/assignments/${aId}/stop`, { method: 'POST', headers: { cookie: other } });
+  expect(res.status).toBe(409);
+  expect((await res.json() as { code?: string }).code).toBe('NOT_CLAIMANT');
+  expect(await instStatus(db, wi.id)).toBe('running');
+  await close();
+});
+
+test('stop after the step was submitted is refused', async () => {
+  const { db, app, wi, cookie, aId, close } = await claimedFirst(STOP_SPEC, 'wf-stop');
+  expect((await app.request(`/api/assignments/${aId}/submit`, {
+    method: 'POST', headers: jsonHeaders(cookie), body: JSON.stringify({ kind: 'submit', values: {} }),
+  })).status).toBe(200);
+  const res = await app.request(`/api/assignments/${aId}/stop`, { method: 'POST', headers: { cookie } });
+  expect(res.status).toBe(409);
+  expect(await instStatus(db, wi.id)).not.toBe('stopping');
+  expect(await listControlEvents(db, wi.id)).toHaveLength(0);
+  await close();
+});
+
+test('stop on a paused workflow is refused: status unchanged, no stop event', async () => {
+  const { db, app, deps, wi, cookie, aId, close } = await claimedFirst(STOP_SPEC, 'wf-stop');
+  await requestPause(db, wi.id);
+  await pumpUntilQuiet(db, deps);
+  expect(await instStatus(db, wi.id)).toBe('paused');
+  const res = await app.request(`/api/assignments/${aId}/stop`, { method: 'POST', headers: { cookie } });
+  expect(res.status).toBe(409);
+  expect((await res.json() as { code?: string }).code).toBe('NOT_RUNNING');
+  expect(await instStatus(db, wi.id)).toBe('paused');
+  expect((await listControlEvents(db, wi.id)).filter(e => e.verb === 'stop')).toHaveLength(0);
+  await close();
+});
+
+test('stop on a legacy step is refused with STOP_NOT_ALLOWED even when allow_stop is set', async () => {
+  const spec = { ...STOP_SPEC, steps: [step('start', 'START'), step('A', 'USER_INTERACTION', { allow_stop: true }), step('end', 'END')] };
+  const { db, app, wi, cookie, aId, close } = await claimedFirst(spec, 'wf-stop');
+  const res = await app.request(`/api/assignments/${aId}/stop`, { method: 'POST', headers: { cookie } });
+  expect(res.status).toBe(409);
+  expect((await res.json() as { code?: string }).code).toBe('STOP_NOT_ALLOWED');
+  expect(await instStatus(db, wi.id)).toBe('running');
+  expect(await listControlEvents(db, wi.id)).toHaveLength(0);
   await close();
 });

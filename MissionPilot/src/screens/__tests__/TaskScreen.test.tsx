@@ -14,7 +14,8 @@
 import { useState as useMockState } from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach, onTestFinished } from 'vitest'
 import { render, screen, cleanup, fireEvent, waitFor, act, within } from '@testing-library/react'
-import type { FormDocumentViewProps } from '@mission/form-renderer'
+import type { FormDocumentViewProps, StepButtonBarProps } from '@mission/form-renderer'
+import { withStepButtons } from '@mission/form-schema'
 import type { FormDocument } from '@mission/form-schema'
 import { TaskScreen } from '../TaskScreen'
 import { api, ApiError } from '../../api/client'
@@ -29,6 +30,25 @@ let lastRendererProps: FormDocumentViewProps | undefined
 let rendererMountCount = 0
 
 vi.mock('@mission/form-renderer', () => ({
+  StepButtonBar: (props: StepButtonBarProps) => (
+    <div data-testid="step-bar">
+      {props.back && (
+        <button type="button" disabled={props.back.disabled} onClick={props.back.onBack}>
+          Back
+        </button>
+      )}
+      {(props.kind === 'yesno' ? (['yes', 'no'] as const) : (['continue'] as const)).map((job) => (
+        <button key={job} type="button" disabled={!props.jobs[job].enabled} onClick={() => props.onPress(job)}>
+          {props.jobs[job].label}
+        </button>
+      ))}
+      {props.stop && (
+        <button type="button" disabled={props.stop.disabled} onClick={props.stop.onStop}>
+          Stop
+        </button>
+      )}
+    </div>
+  ),
   FormDocumentView: (props: FormDocumentViewProps) => {
     lastRendererProps = props
     useMockState(() => {
@@ -85,7 +105,7 @@ vi.mock('../../api/client', () => {
     }
   }
   return {
-    api: { submit: vi.fn(), release: vi.fn() },
+    api: { submit: vi.fn(), release: vi.fn(), back: vi.fn(), stop: vi.fn() },
     ApiError,
   }
 })
@@ -247,6 +267,185 @@ function task(overrides: Partial<InboxTask> = {}): InboxTask {
     ...overrides,
   }
 }
+
+const OLD_BUTTON_DOC: FormDocument = {
+  version: 2,
+  sections: [
+    { id: 's1', role: 'content', rows: [NAME_ROW] },
+    { id: 's2', role: 'footer', rows: [{ id: 'r2', blocks: [{ id: 'g1', type: 'button', label: 'Old', outputValue: 'x' }] }] },
+  ],
+}
+const QTY_DOC: FormDocument = {
+  version: 2,
+  sections: [{ id: 's1', role: 'content', rows: [{ id: 'r1', blocks: [{ id: 'q', type: 'textInput', fieldName: 'qty' }] }] }],
+}
+const STOP_COPY = 'Stop the whole workflow «MIX-20261007-001»? Its cleanup steps will run. This also ends work other people are doing on it.'
+
+describe('TaskScreen fixed button bar', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    lastRendererProps = undefined
+  })
+  afterEach(cleanup)
+
+  it('legacy step renders as today', () => {
+    render(<TaskScreen task={task({ formDocument: CONTINUE_JOB_DOC, buttonBar: null })} onDone={vi.fn()} onError={vi.fn()} />)
+    expect(screen.getAllByRole('button', { name: 'Continue' })).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Stop' })).toBeNull()
+    expect(screen.queryByTestId('step-bar')).toBeNull()
+  })
+
+  it('fixed step draws the step bar and drops form buttons', () => {
+    render(<TaskScreen task={task({ formDocument: OLD_BUTTON_DOC, buttonBar: {} })} onDone={vi.fn()} onError={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: 'Old' })).toBeNull()
+    expect(screen.getAllByRole('button', { name: 'Continue' })).toHaveLength(1)
+    expect(screen.getByTestId('step-bar')).toBeTruthy()
+  })
+
+  it('fixed step still yields a usable button through withStepButtons', () => {
+    const doc: FormDocument = { version: 2, sections: [{ id: 's1', role: 'content', rows: [NAME_ROW] }] }
+    const out = withStepButtons(doc, 'continue')
+    const buttons = out.sections.flatMap((s) => s.rows.flatMap((r) => r.blocks)).filter((b) => b.type === 'button')
+    expect(buttons).toHaveLength(1)
+  })
+
+  it('prefill fills the reopened form', () => {
+    render(<TaskScreen task={task({ formDocument: QTY_DOC, buttonBar: {}, prefillValues: { qty: '3' } })} onDone={vi.fn()} onError={vi.fn()} />)
+    expect(lastRendererProps?.values).toMatchObject({ qty: '3' })
+  })
+
+  it('Back calls the back route without a confirm, then closes the pane', async () => {
+    vi.mocked(api.back).mockResolvedValue(undefined)
+    const onDone = vi.fn()
+    render(<TaskScreen task={task({ buttonBar: {}, backAvailable: true })} onDone={onDone} onError={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+    await waitFor(() => expect(api.back).toHaveBeenCalledWith('a1'))
+    expect(api.back).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(onDone).toHaveBeenCalled())
+  })
+
+  it('phone topline Back also calls the back route', async () => {
+    vi.mocked(api.back).mockResolvedValue(undefined)
+    render(<TaskScreen task={task({ buttonBar: {}, backAvailable: true })} onDone={vi.fn()} onError={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: '‹ Back' }))
+    await waitFor(() => expect(api.back).toHaveBeenCalledWith('a1'))
+  })
+
+  it('Stop asks first', async () => {
+    vi.mocked(api.stop).mockResolvedValue(undefined)
+    render(<TaskScreen task={task({ buttonBar: {}, allowStop: true })} onDone={vi.fn()} onError={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
+    expect(screen.getByRole('alertdialog').textContent).toContain(STOP_COPY)
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(api.stop).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Stop workflow' }))
+    await waitFor(() => expect(api.stop).toHaveBeenCalledWith('a1'))
+  })
+
+  it('Stop from the phone menu asks the same question', () => {
+    render(<TaskScreen task={task({ buttonBar: {}, allowStop: true })} onDone={vi.fn()} onError={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    fireEvent.click(screen.getByText('Stop workflow…'))
+    expect(screen.getByRole('alertdialog').textContent).toContain(STOP_COPY)
+  })
+
+  it('Back and Stop are disabled while paused', () => {
+    render(<TaskScreen task={task({ buttonBar: {}, backAvailable: true, allowStop: true, paused: true })} onDone={vi.fn()} onError={vi.fn()} />)
+    expect((screen.getByRole('button', { name: 'Back' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Stop' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('overlays are portalled to document.body (fixed positioning must stay viewport-relative)', () => {
+    render(<TaskScreen task={task({ buttonBar: {}, allowStop: true })} onDone={vi.fn()} onError={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
+    const dialog = screen.getByRole('alertdialog')
+    expect(dialog.parentElement).toBe(document.body)
+    cleanup()
+    render(<TaskScreen task={task({ buttonBar: {} })} onDone={vi.fn()} onError={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Where you are' }))
+    expect(screen.getByRole('dialog').parentElement?.parentElement).toBe(document.body)
+  })
+
+  it('Escape cancels the Stop confirm and focus returns to the Stop button', () => {
+    render(<TaskScreen task={task({ buttonBar: {}, allowStop: true })} onDone={vi.fn()} onError={vi.fn()} />)
+    const stop = screen.getByRole('button', { name: 'Stop' })
+    stop.focus()
+    fireEvent.click(stop)
+    expect(screen.getByRole('alertdialog')).toBeTruthy()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(api.stop).not.toHaveBeenCalled()
+    expect(document.activeElement).toBe(stop)
+  })
+
+  const CHANGED = 'This task changed — refreshing.'
+  const pressBack = (onError: ReturnType<typeof vi.fn>, onDone = vi.fn()) => {
+    render(<TaskScreen task={task({ buttonBar: {}, backAvailable: true })} onDone={onDone} onError={onError} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+  }
+  const pressStop = (onError: ReturnType<typeof vi.fn>, onDone = vi.fn()) => {
+    render(<TaskScreen task={task({ buttonBar: {}, allowStop: true })} onDone={onDone} onError={onError} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Stop workflow' }))
+  }
+
+  it.each(['NOT_CLAIMANT', 'STEP_NOT_WAITING'])('a 409 %s on Back or Stop is a lost race, like submit', async (code) => {
+    vi.mocked(api.back).mockRejectedValue(new ApiError(409, code, 'raw engine text'))
+    vi.mocked(api.stop).mockRejectedValue(new ApiError(409, code, 'raw engine text'))
+    const onBackError = vi.fn()
+    const onDone = vi.fn()
+    pressBack(onBackError, onDone)
+    await waitFor(() => expect(onBackError).toHaveBeenCalledWith(CHANGED, 'race'))
+    cleanup()
+    const onStopError = vi.fn()
+    pressStop(onStopError, onDone)
+    await waitFor(() => expect(onStopError).toHaveBeenCalledWith(CHANGED, 'race'))
+    expect(onDone).not.toHaveBeenCalled()
+  })
+
+  it('a 409 NOT_RUNNING on Back or Stop keeps the task open, like submit', async () => {
+    vi.mocked(api.back).mockRejectedValue(new ApiError(409, 'NOT_RUNNING', 'raw engine text'))
+    vi.mocked(api.stop).mockRejectedValue(new ApiError(409, 'NOT_RUNNING', 'raw engine text'))
+    const onBackError = vi.fn()
+    pressBack(onBackError)
+    await waitFor(() => expect(onBackError).toHaveBeenCalledWith('Something went wrong — try again.', 'other'))
+    cleanup()
+    const onStopError = vi.fn()
+    pressStop(onStopError)
+    await waitFor(() => expect(onStopError).toHaveBeenCalledWith('Something went wrong — try again.', 'other'))
+  })
+
+  it('a 409 BACK_NOT_ALLOWED says Back is gone, never the raw engine text', async () => {
+    vi.mocked(api.back).mockRejectedValue(new ApiError(409, 'BACK_NOT_ALLOWED', 'step B does not allow Back'))
+    const onError = vi.fn()
+    pressBack(onError)
+    await waitFor(() => expect(onError).toHaveBeenCalledWith("Back isn't available on this step any more.", 'other'))
+  })
+
+  it('a 409 STOP_NOT_ALLOWED says Stop is gone', async () => {
+    vi.mocked(api.stop).mockRejectedValue(new ApiError(409, 'STOP_NOT_ALLOWED', 'step A does not allow Stop'))
+    const onError = vi.fn()
+    pressStop(onError)
+    await waitFor(() => expect(onError).toHaveBeenCalledWith("Stop isn't available on this step any more.", 'other'))
+  })
+
+  it('a 409 RUNTIME_INVALID_STATE on Stop says the workflow is already ending', async () => {
+    vi.mocked(api.stop).mockRejectedValue(new ApiError(409, 'RUNTIME_INVALID_STATE', 'runtime is stopping'))
+    const onError = vi.fn()
+    pressStop(onError)
+    await waitFor(() => expect(onError).toHaveBeenCalledWith('This workflow is already stopping or has finished.', 'other'))
+  })
+
+  it('an unknown refusal on Back never shows the raw engine text', async () => {
+    vi.mocked(api.back).mockRejectedValue(new ApiError(409, 'SOMETHING_ELSE', 'raw engine text'))
+    const onError = vi.fn()
+    pressBack(onError)
+    await waitFor(() => expect(onError).toHaveBeenCalled())
+    expect(onError).not.toHaveBeenCalledWith('raw engine text', expect.anything())
+  })
+})
 
 describe('TaskScreen', () => {
   beforeEach(() => {
@@ -756,6 +955,15 @@ describe('TaskScreen', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'Release' }))
     expect(screen.getByRole('group', { name: 'Confirm release' })).toBeTruthy()
+    ctrlEnter()
+    expect(api.submit).not.toHaveBeenCalled()
+  })
+
+  it('Ctrl+Enter does nothing while the Stop question is showing', () => {
+    stubWhereApi()
+    render(<TaskScreen task={task({ buttonBar: {}, allowStop: true })} onDone={vi.fn()} onError={vi.fn()} active />)
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
+    expect(screen.getByRole('alertdialog', { name: 'Stop workflow' })).toBeTruthy()
     ctrlEnter()
     expect(api.submit).not.toHaveBeenCalled()
   })

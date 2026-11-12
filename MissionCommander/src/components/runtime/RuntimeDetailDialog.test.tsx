@@ -48,7 +48,7 @@ function detail(status: RuntimeWorkflowStatus, over: Partial<RuntimeWorkflowLive
 
 const signed: StepSignatureView = {
   id: 'sig1', stepOid: 's-1', stepName: 'Approve batch', signerLoginName: 'jane', signerDisplayName: 'Jane Lee',
-  roleName: 'QA Lead', meaning: null, decision: 'yes', outcome: 'signed', failureCode: null, signedAt: '2026-08-01T00:00:05.000Z',
+  roleName: 'QA Lead', meaning: null, decision: 'yes', outcome: 'signed', failureCode: null, signedAt: '2026-08-01T00:00:05.000Z', supersededAt: null,
 };
 
 const COMMANDER: MePrincipal = {

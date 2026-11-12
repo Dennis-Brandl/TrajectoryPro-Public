@@ -283,6 +283,73 @@
     background: inherit; /* the form's own surface, so scrolled content never shows through */
   }
 
+  /* Fixed button bar (spec 2026-11-11): the same sticky bottom rule as the form's own footer. */
+  .task-screen .tfk-step-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    background: inherit;
+  }
+
+  /* Phone (< 600 px of task area): Back moves to the topline and Stop into a "⋯" menu; the bar's
+     own Back/Stop hide themselves under the same width. Wider, the topline copies are hidden. */
+  /* The container is the topline only: size containment makes an element the containing block of
+     position:fixed descendants, and the Stop confirm and the Where-you-are sheet must stay
+     viewport-sized. The topline spans the task area, so its width is the task-area width. */
+  .task-topline {
+    container-type: inline-size;
+  }
+  .task-topline-back,
+  .stop-menu {
+    display: none;
+  }
+  @container (max-width: 599px) {
+    .task-topline-back {
+      display: inline-flex;
+      align-items: center;
+      min-height: var(--pilot-touch-min);
+    }
+    .stop-menu {
+      display: inline-block;
+      position: relative;
+    }
+  }
+  .stop-menu-btn {
+    min-height: var(--pilot-touch-min);
+    min-width: var(--pilot-touch-min);
+  }
+  .stop-menu-list {
+    position: absolute;
+    right: 0;
+    z-index: 3;
+    margin-top: var(--pilot-space-1);
+    padding: var(--pilot-space-1);
+    background: var(--pilot-surface-raised);
+    border: var(--pilot-border-w) solid var(--pilot-border);
+    white-space: nowrap;
+  }
+  .stop-confirm {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: grid;
+    place-items: center;
+    background: rgb(0 0 0 / 0.5);
+  }
+  .stop-confirm-box {
+    max-width: 28rem;
+    margin: var(--pilot-space-3);
+    padding: var(--pilot-space-4);
+    background: var(--pilot-surface-raised);
+    color: var(--pilot-text);
+    border: var(--pilot-border-w) solid var(--pilot-border);
+  }
+  .stop-confirm-actions {
+    display: flex;
+    gap: var(--pilot-space-2);
+    justify-content: flex-end;
+  }
+
   /* Release, at the right of the "Where you are" line. */
   .task-topline .release-btn {
     margin-left: auto;

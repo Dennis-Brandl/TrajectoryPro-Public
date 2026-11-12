@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import { useEffect, useState, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useStore } from 'zustand'
 import { Undo2, Redo2, CircleHelp } from 'lucide-react'
@@ -25,7 +25,6 @@ import {
   useSensor,
   useSensors,
   pointerWithin,
-  type CollisionDetection,
   type DragStartEvent,
   type DragEndEvent,
 } from '@dnd-kit/core'
@@ -40,16 +39,15 @@ import { FormPalette, PALETTE_ITEMS } from './FormPalette'
 import { BlockInspector } from './inspector/BlockInspector'
 import { ContentEditorDialog } from './content-editor/ContentEditorDialog'
 import { dropResolver } from './dnd/dropResolver'
-import { parseDragId, preferPreciseZones } from './dnd/dragTypes'
+import { parseDragId } from './dnd/dragTypes'
 
 import { PreviewCanvas } from './preview/PreviewCanvas'
 import { ActionsPanel } from './inspector/ActionsPanel'
 import { PaneResizeHandle } from './PaneResizeHandle'
 import { deriveActionDraft, applyActionLabels } from '@/lib/form-document/action-labels'
+import { useCanEditActiveSpec } from '@/hooks/useCanEditActiveSpec'
+import { convertStepInStore } from '@/lib/form-document/convert-on-open'
 import { ARRANGE_HELP_HREF } from './ArrangeTips'
-
-/** The bar band only catches drops that miss every precise gap/slot (see preferPreciseZones). */
-const collisionDetection: CollisionDetection = (args) => preferPreciseZones(pointerWithin(args))
 
 export default function FormDocumentDesignerModal() {
   const openNodeId = useFormDocumentStore((s) => s.openNodeId)
@@ -94,8 +92,14 @@ export default function FormDocumentDesignerModal() {
 
   // Seed on open + pause workflow undo while editing. The action-label draft is seeded via a
   // store action (not React setState), so it lives here in the effect alongside openForNode.
+  const canEdit = useCanEditActiveSpec()
+  const canEditRef = useRef(canEdit)
+  useEffect(() => {
+    canEditRef.current = canEdit
+  }, [canEdit])
   useEffect(() => {
     if (!openNodeId) return
+    convertStepInStore(openNodeId, canEditRef.current)
     const node = useFlowStore.getState().nodes.find((n) => n.id === openNodeId)
     const data = (node?.data as StepNodeData | undefined) ?? {}
     const document = seedDocument(data)
@@ -108,7 +112,7 @@ export default function FormDocumentDesignerModal() {
   const handleSave = () => {
     const { openNodeId: nodeId, document: rawDocument, actionDirty, actionDraft } = useFormDocumentStore.getState()
     if (!nodeId) return
-    // An emptied bottom bar is not saved; Tablet/Phone rows are tidied of ids they no longer use.
+    // An emptied old bottom bar is not saved; Tablet/Phone rows are tidied of ids they no longer use.
     const document = normalizeForSave(pruneEmptyFooters(rawDocument))
     const result = validateFormDocument(document)
     if (!result.ok) {
@@ -116,10 +120,11 @@ export default function FormDocumentDesignerModal() {
       return
     }
     useFlowStore.temporal.getState().resume()
-    const patch: Partial<StepNodeData> = { formDocument: document }
+    let patch: Partial<StepNodeData> = { formDocument: document }
     if (actionDirty && actionDraft) {
+      // Text goes to uiParameters; on a fixed step the size and color(s) go to buttonBar.
       const node = useFlowStore.getState().nodes.find((n) => n.id === nodeId)
-      patch.uiParameters = applyActionLabels((node?.data as StepNodeData | undefined)?.uiParameters ?? [], actionDraft)
+      patch = { ...patch, ...applyActionLabels((node?.data as StepNodeData | undefined) ?? {}, actionDraft) }
     }
     useFlowStore.getState().updateNodeData(nodeId, patch)
     useFormDocumentStore.getState().close()
@@ -289,7 +294,7 @@ export default function FormDocumentDesignerModal() {
           ) : (
             <DndContext
               sensors={sensors}
-              collisionDetection={collisionDetection}
+              collisionDetection={pointerWithin}
               onDragStart={onDragStart}
               onDragEnd={onDragEnd}
               onDragCancel={onDragCancel}

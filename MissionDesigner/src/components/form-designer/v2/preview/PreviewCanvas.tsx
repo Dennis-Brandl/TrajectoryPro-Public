@@ -13,8 +13,8 @@
 // limitations under the License.
 import { useMemo } from 'react'
 import { RotateCcw } from 'lucide-react'
-import { FormDocumentView } from '@mission/form-renderer'
-import { findESignatureBlock, withStepButtons } from '@mission/form-schema'
+import { FormDocumentView, StepButtonBar } from '@mission/form-renderer'
+import { findESignatureBlock, stripButtonBlocks, withStepButtons } from '@mission/form-schema'
 import '@mission/form-tokens/css/light'
 import '@mission/form-renderer/layout.css'
 import '@mission/form-renderer/controls.css'
@@ -26,13 +26,17 @@ import { BreakpointTabs, BREAKPOINT_FRAME_WIDTH } from '../BreakpointTabs'
 import { stepKindOfNode } from '@/lib/form-document/step-kind'
 import { useImageResolver } from '../useImageResolver'
 import { usePreviewHost } from './usePreviewHost'
-import { buttonJobsFromDecision, derivePreviewDecision } from './previewDecision'
+import { barStyleFromDraft, type ActionLabelDraft } from '@/lib/form-document/action-labels'
+import { buttonJobsFromDecision, derivePreviewDecision, type PreviewDecision } from './previewDecision'
 
 const EMPTY_DATA = {} as StepNodeData
+const NO_OP = () => {}
 
 /** Interactive run-mode preview: the real renderer driven by usePreviewHost, at the active
  *  breakpoint frame width, with a gate-gated decision bar + Restart. Mounted only while
- *  previewMode==='preview', so entering preview re-seeds the host from the current document. */
+ *  previewMode==='preview', so entering preview re-seeds the host from the current document.
+ *  A fixed step (one with `buttonBar`) shows its form without Button blocks and the step's own
+ *  bar below it, as Mission Pilot does; Back/Stop appear when allowed but do nothing here. */
 export function PreviewCanvas() {
   const document = useFormDocumentStore((s) => s.document)
   const openNodeId = useFormDocumentStore((s) => s.openNodeId)
@@ -41,25 +45,23 @@ export function PreviewCanvas() {
 
   const node = useFlowStore((s) => s.nodes.find((n) => n.id === openNodeId))
   const workflowValues = useFlowStore((s) => s.workflowValues)
-  // Lists bound to an input parameter show the elements Pilot will list (preview only). The
+  const actionDraft = useFormDocumentStore((s) => s.actionDraft)
+  const data = (node?.data as StepNodeData | undefined) ?? EMPTY_DATA
+  const fixedBar = data.buttonBar
+  // Lists bound to an input parameter show the elements Pilot will list (preview only). A legacy
   // step's one button is the form's own, with a centered one added where the form has none —
   // exactly what Mission Pilot shows (user ruling 2026-11-10).
   const stepKind = stepKindOfNode(node?.type)
-  const previewDocument = useMemo(
-    () =>
-      withStepButtons(
-        fillPreviewLists(document, (node?.data as StepNodeData | undefined)?.inputs, workflowValues),
-        stepKind,
-      ),
-    [document, node?.data, workflowValues, stepKind],
-  )
-  const plainDecision = derivePreviewDecision(
-    node?.type ?? 'userInteractionStep',
-    (node?.data as StepNodeData) ?? EMPTY_DATA,
-    document,
-  )
-  const hasSignature = findESignatureBlock(document) !== null
-  const host = usePreviewHost(document, plainDecision)
+  const formDocument = useMemo(() => (fixedBar ? stripButtonBlocks(document) : document), [document, fixedBar])
+  const previewDocument = useMemo(() => {
+    const filled = fillPreviewLists(formDocument, data.inputs, workflowValues)
+    return fixedBar ? filled : withStepButtons(filled, stepKind)
+  }, [formDocument, data.inputs, workflowValues, stepKind, fixedBar])
+  const derived = derivePreviewDecision(node?.type ?? 'userInteractionStep', data, formDocument)
+  // A fixed bar follows the Buttons panel as edited (before Save), like the canvas strip.
+  const plainDecision = fixedBar && actionDraft ? withDraftLabels(derived, actionDraft) : derived
+  const hasSignature = findESignatureBlock(formDocument) !== null
+  const host = usePreviewHost(formDocument, plainDecision)
   const buttonJobs = buttonJobsFromDecision(plainDecision, host.gate, host.noGateOk, hasSignature)
 
   return (
@@ -92,6 +94,16 @@ export function PreviewCanvas() {
             signature={host.signature}
             buttonJobs={buttonJobs}
           />
+          {fixedBar && (
+            <StepButtonBar
+              kind={plainDecision.kind}
+              barStyle={actionDraft ? barStyleFromDraft(actionDraft) : fixedBar}
+              jobs={buttonJobs}
+              onPress={(job) => host.onEvent({ kind: 'job', blockId: 'step-bar', job })}
+              back={data.allowBack ? { onBack: NO_OP, disabled: false } : null}
+              stop={data.allowStop ? { onStop: NO_OP, disabled: false } : null}
+            />
+          )}
           <div
             style={{
               display: 'flex',
@@ -117,4 +129,18 @@ export function PreviewCanvas() {
       </div>
     </div>
   )
+}
+
+/** The draft's text over the step's decision (routing values stay the step's). */
+function withDraftLabels(decision: PreviewDecision, draft: ActionLabelDraft): PreviewDecision {
+  if (decision.kind === 'yesno' && draft.kind === 'yesno') {
+    return {
+      ...decision,
+      yes: { ...decision.yes, label: draft.yes || decision.yes.label },
+      no: { ...decision.no, label: draft.no || decision.no.label },
+    }
+  }
+  if (decision.kind === 'continue' && draft.kind === 'continue')
+    return { ...decision, label: draft.label || decision.label }
+  return decision
 }

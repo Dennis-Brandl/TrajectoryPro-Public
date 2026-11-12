@@ -49,7 +49,7 @@ const DETAIL: RuntimeWorkflowLiveDetail = {
 
 const signed: StepSignatureView = {
   id: 'sig1', stepOid: 's-1', stepName: 'Approve batch', signerLoginName: 'jane', signerDisplayName: 'Jane Lee',
-  roleName: 'QA Lead', meaning: null, decision: 'yes', outcome: 'signed', failureCode: null, signedAt: '2026-08-27T00:00:05.000Z',
+  roleName: 'QA Lead', meaning: null, decision: 'yes', outcome: 'signed', failureCode: null, signedAt: '2026-08-27T00:00:05.000Z', supersededAt: null,
 };
 
 function setPrincipal(systemCommanderOf: string[]) {
@@ -77,6 +77,14 @@ describe('RuntimeWorkflowDetail', () => {
     expect(await screen.findByRole('heading', { name: 'MIX-20261007-001 Mix' })).toBeInTheDocument();
     expect(screen.getByText('Fill Details')).toBeInTheDocument();
     expect(screen.getByText('Alice')).toBeInTheDocument();
+  });
+
+  it('puts Active steps above the diagram and labels an open offer', async () => {
+    render(<RuntimeWorkflowDetail />);
+    const heading = await screen.findByRole('heading', { name: 'Active steps' });
+    const diagram = await screen.findByRole('img', { name: /Workflow diagram/ });
+    expect(heading.compareDocumentPosition(diagram) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText('Offered')).toBeInTheDocument();
   });
 
   it('pause acts immediately; stop takes the inline confirm; verbs honor CAN sets', async () => {

@@ -24,8 +24,8 @@ const NODES = [
   { id: 'wc2', name: 'Line 1', parentWorkCenterId: 'wc1', depth: 1, typeName: null },
 ];
 const LEAVES = [
-  { id: 'rw1', workCenterId: 'wc2', runtimeNumber: 1, runtimeLabel: 'MIX-20261007-001', masterName: 'Mix', masterVersion: '1.0.0', status: 'running' as const },
-  { id: 'rw2', workCenterId: 'wc2', runtimeNumber: 2, runtimeLabel: 'BLEND-20261007-002', masterName: 'Fill', masterVersion: '1.0.0', status: 'paused' as const },
+  { id: 'rw1', workCenterId: 'wc2', runtimeNumber: 1, runtimeLabel: 'MIX-20261007-001', masterName: 'Mix', masterVersion: '1.0.0', status: 'running' as const, assignees: ['John Adams'], waiting: false },
+  { id: 'rw2', workCenterId: 'wc2', runtimeNumber: 2, runtimeLabel: 'BLEND-20261007-002', masterName: 'Fill', masterVersion: '1.0.0', status: 'paused' as const, assignees: [], waiting: true },
 ];
 
 beforeEach(() => {
@@ -50,6 +50,15 @@ describe('RuntimeWorkflowTree', () => {
     expect(await screen.findByTitle('2 active runtime workflows')).toHaveTextContent('2');
     await userEvent.click(screen.getByRole('button', { name: /MIX-20261007-001 · Mix/ }));
     expect(useSelectionStore.getState().selectedRuntimeWorkflowId).toBe('rw1');
+  });
+
+  it('names who holds each run, or says it is waiting for an operator', async () => {
+    render(<RuntimeWorkflowTree />);
+    const mix = await screen.findByRole('button', { name: /MIX-20261007-001 · Mix/ });
+    expect(mix).toHaveTextContent('John Adams');
+    expect(mix).not.toHaveTextContent('Waiting');
+    const fill = screen.getByRole('button', { name: /BLEND-20261007-002 · Fill/ });
+    expect(fill).toHaveTextContent('Waiting for operator');
   });
 
   it('collapse hides a center’s leaves', async () => {

@@ -44,11 +44,11 @@ async function seedUser(db: any, email: string) {
   return u;
 }
 
-async function seedInstance(db: any, workCenterId: string, specJsonb: unknown = SPEC) {
+async function seedInstance(db: any, workCenterId: string, specJsonb: unknown = SPEC, engineState?: unknown) {
   const [wf] = await db.insert(workflow).values({ oid: `w-${Math.random()}`, name: 'W', workCenterId, specJsonb: {} }).returning();
   const [inst] = await db.insert(workflowInstance).values({
     workflowId: wf.id, workCenterId, triggeredBy: 'manual', status: 'running',
-    ...runtimeCols({ specJsonb }),
+    ...runtimeCols({ specJsonb, ...(engineState === undefined ? {} : { engineState }) }),
   }).returning();
   return inst;
 }
@@ -467,5 +467,44 @@ describe('waiting timed gates (spec 2026-10-13 §5.3)', () => {
       [poll.id, 'repeat_script', null, 3],
     ]);
     await close();
+  });
+});
+
+describe('buildInbox fixed button bar fields', () => {
+  const specWith = (step: Record<string, unknown>) => ({
+    oid: 'rt_1', master_oid: 'M-root', connections: [],
+    steps: [{ oid: 'ask', local_id: 'Ask', step_type: 'USER_INTERACTION', ...step }],
+    children: [],
+  });
+  async function taskFor(step: Record<string, unknown>, engineState?: unknown) {
+    const { db, close } = await makeTestDb();
+    const wc = await seedWc(db);
+    const inst = await seedInstance(db, wc.id, specWith(step), engineState);
+    const me = await seedUser(db, `me-${Math.random()}@t.test`);
+    const s = await seedStep(db, inst.id, { stepOid: 'ask' });
+    await seedAssignment(db, wc.id, s.id);
+    const inbox = await buildInbox(db, me.id, wc.id);
+    await close();
+    return inbox.offers[0];
+  }
+  const state = { backFrom: { ask: 'prev' }, backPrefill: { ask: { qty: '3' } } };
+
+  it('a fixed step with allow_back and a back target is backAvailable', async () => {
+    const t = await taskFor({ button_bar: { format: 'fixed', color: '#0a0' }, allow_back: true, allow_stop: true }, state);
+    expect(t.buttonBar).toEqual({ color: '#0a0' });
+    expect(t.allowStop).toBe(true);
+    expect(t.backAvailable).toBe(true);
+    expect(t.prefillValues).toEqual({ qty: '3' });
+  });
+  it('a legacy step never offers Back or Stop', async () => {
+    const t = await taskFor({ allow_back: true, allow_stop: true }, state);
+    expect(t.buttonBar).toBeNull();
+    expect(t.allowStop).toBe(false);
+    expect(t.backAvailable).toBe(false);
+  });
+  it('no back target means no Back', async () => {
+    const t = await taskFor({ button_bar: { format: 'fixed' }, allow_back: true }, {});
+    expect(t.backAvailable).toBe(false);
+    expect(t.prefillValues).toBeNull();
   });
 });

@@ -396,3 +396,47 @@ export async function sweepSoleCandidateClaims(
   }
   return changed;
 }
+
+/**
+ * Fixed button row (spec 2026-11-11): after Back reopens a screen, hand it straight to the
+ * operator who pressed Back — claims that step's live 'offered' assignment for them when they
+ * are a member of the work center holding one of the step's allowed roles (in this work
+ * center). Presence is not required: they are at the screen right now. Returns false (offer
+ * left untouched) when there is no such offer or the user is not eligible; the
+ * status='offered' UPDATE guard keeps a racing claim authoritative.
+ */
+export async function claimStepForUser(
+  db: Db, p: { instanceId: string; stepOid: string; userId: string; now: () => Date },
+): Promise<boolean> {
+  const [row] = await db.select({
+    assignmentId: instanceAssignment.id,
+    workCenterId: instanceAssignment.workCenterId,
+    nodeOid: stepInstance.nodeOid,
+    workflowId: workflowInstance.workflowId,
+    specJsonb: workflowInstance.specJsonb,
+  })
+    .from(instanceAssignment)
+    .innerJoin(stepInstance, eq(instanceAssignment.stepInstanceId, stepInstance.id))
+    .innerJoin(workflowInstance, eq(stepInstance.workflowInstanceId, workflowInstance.id))
+    .where(and(
+      eq(stepInstance.workflowInstanceId, p.instanceId),
+      eq(stepInstance.stepOid, p.stepOid),
+      eq(instanceAssignment.status, 'offered'),
+    ));
+  if (!row) return false;
+  const [member] = await db.select({ userId: workCenterUser.userId }).from(workCenterUser)
+    .where(and(eq(workCenterUser.workCenterId, row.workCenterId), eq(workCenterUser.userId, p.userId)));
+  if (!member) return false;
+  const allowed = await resolveStepAllowedRoles(db, {
+    workflowId: row.workflowId, specJsonb: row.specJsonb, recipeNodeOid: row.nodeOid,
+  });
+  const elig = await resolveChainRole(db, p.userId, row.workCenterId, allowed);
+  if (!elig.ok) return false;
+  const updated = await db.update(instanceAssignment).set({
+    status: 'claimed', assignedUserId: p.userId, resolvedRoleId: elig.resolvedRoleId,
+    claimedAt: p.now(), dispatchReason: 'went_back', releasedFromUserId: null,
+  })
+    .where(and(eq(instanceAssignment.id, row.assignmentId), eq(instanceAssignment.status, 'offered')))
+    .returning({ id: instanceAssignment.id });
+  return updated.length > 0;
+}

@@ -51,7 +51,6 @@ import { CanvasToolbar } from './CanvasToolbar'
 import { CanvasContextMenu } from './CanvasContextMenu'
 import { CanvasSearchBar } from './CanvasSearchBar'
 import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog'
-import { ConvertButtonsDialog } from '@/components/form-designer/v2/ConvertButtonsDialog'
 import { AlignDropdown } from './AlignDropdown'
 import { DistributeDropdown } from './DistributeDropdown'
 import type { NodeType, WorkflowNode, StepNodeData, ParameterSpec, ValueSpec, StepResourceCommand } from '@/types/nodes'
@@ -300,7 +299,6 @@ export function FlowCanvas({ onMoveEnd, initialViewport }: FlowCanvasProps = {})
 
   // Keyboard shortcuts dialog state (?)
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false)
-  const [showConvertButtons, setShowConvertButtons] = useState(false)
 
   // MiniMap visibility toggle
   const [showMiniMap, setShowMiniMap] = useState(true)
@@ -815,11 +813,8 @@ export function FlowCanvas({ onMoveEnd, initialViewport }: FlowCanvasProps = {})
           targetId={contextMenu?.targetId}
           onClose={() => setContextMenu(null)}
           canEdit={canEdit}
-          onConvertButtons={() => setShowConvertButtons(true)}
         />
       </div>
-
-      <ConvertButtonsDialog open={showConvertButtons} onClose={() => setShowConvertButtons(false)} />
 
       {/* Keyboard shortcuts dialog (?) */}
       <KeyboardShortcutsDialog open={showShortcutsDialog} onClose={() => setShowShortcutsDialog(false)} />

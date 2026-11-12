@@ -14,7 +14,7 @@
 
 import type { WorkflowTryMode } from '@/lib/try-modes'
 import type { Node } from '@xyflow/react'
-import type { FormDocument } from '@mission/form-schema'
+import type { ButtonBarStyle, FormDocument } from '@mission/form-schema'
 import type { DurationParts } from '@/lib/duration'
 
 /**
@@ -394,6 +394,21 @@ export interface StepNodeData extends Record<string, unknown> {
 
   /** User Interaction / Yes/No step: the step's form, authored in the v2 editor. */
   formDocument?: FormDocument
+
+  /** Fixed button row (UI / Yes-No steps): presence = the step's buttons live in a bottom bar. */
+  buttonBar?: ButtonBarStyle
+
+  /** Fixed bar only: offer Back to the claimant. */
+  allowBack?: boolean
+
+  /** Set when conversion to the fixed bar found a step that routed on a removed button; the editor shows it while a connection routes on `routingValues`. (Export blocks structurally on any connection condition.) */
+  routingProblem?: string
+
+  /** The button values that connections still route on; the editor's note stays while one does. */
+  routingValues?: string[]
+
+  /** Fixed bar only: offer Stop (whole workflow) to the claimant. */
+  allowStop?: boolean
 
   /** Select 1: name of the input parameter to compare */
   select1InputName?: string

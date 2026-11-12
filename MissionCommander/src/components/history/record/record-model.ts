@@ -62,12 +62,12 @@ export function buildRecordModel(detail: RuntimeHistoryDetail, opts: { timeZone:
 
   const signedAll = detail.signatures.filter(x => x.outcome === 'signed')
     .sort((a, b) => new Date(a.signedAt).getTime() - new Date(b.signedAt).getTime());
-  const signatureText = (s: StepSignatureView, withTime: boolean) => [
+  const signatureText = (s: StepSignatureView, withTime: boolean) => ([
     `Signed by ${s.signerDisplayName ?? s.signerLoginName} (${s.roleName ?? 'member'})`,
     ...(s.meaning !== null ? [`"${s.meaning}"`] : []),
     ...(s.decision !== null ? [s.decision] : []),
     ...(withTime ? [fmt.time(s.signedAt, reference)] : []),
-  ].join(' · ');
+  ].join(' · ')) + (s.supersededAt !== null ? ' (replaced — the operator went back)' : '');
   // Each signed signature belongs to exactly one run: same step, covering signedAt, earliest finish.
   const claimed = new Map<number, string[]>();
   const orphans: StepSignatureView[] = [];
@@ -127,7 +127,7 @@ export function buildRecordModel(detail: RuntimeHistoryDetail, opts: { timeZone:
           kind: 'run',
           time: r.startedAt !== null ? `${fmt.time(r.startedAt, reference)} – ${fmt.time(r.finishedAt, reference)}` : fmt.time(r.finishedAt, reference),
           step: r.nodePath.length > 0 ? `${stepRunPathText(r)} › ${r.stepName}` : r.stepName,
-          depth: r.nodePath.length, run: labels[i], result: r.result, performedBy: performedBy(r),
+          depth: r.nodePath.length, run: labels[i], result: r.result.replace('_', ' '), performedBy: performedBy(r),
           params: packRunParams(r.inputParameters, r.outputParameters),
           signatures: claimed.get(i) ?? [], error: r.error,
         },

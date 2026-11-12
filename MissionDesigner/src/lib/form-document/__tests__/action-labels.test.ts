@@ -30,20 +30,23 @@ describe('deriveActionDraft', () => {
   })
 })
 
+const labels = (params: UIParameterSpec[], draft: Parameters<typeof applyActionLabels>[1]) =>
+  applyActionLabels({ uiParameters: params }, draft).uiParameters
+
 describe('applyActionLabels', () => {
   it('updates an existing YesNoButtons param in place, preserving other params', () => {
     const params: UIParameterSpec[] = [
       { id: 'a', type: 'Text', value: 'hi' },
       { id: 'b', type: 'YesNoButtons', value: 'Yes', value2: 'No' },
     ]
-    const out = applyActionLabels(params, { kind: 'yesno', yes: 'Proceed', no: 'Abort' })
+    const out = labels(params, { kind: 'yesno', yes: 'Proceed', no: 'Abort' })
     expect(out).toEqual([
       { id: 'a', type: 'Text', value: 'hi' },
       { id: 'b', type: 'YesNoButtons', value: 'Proceed', value2: 'Abort' },
     ])
   })
   it('appends a YesNoButtons param when none exists (with an id)', () => {
-    const out = applyActionLabels([], { kind: 'yesno', yes: 'Proceed', no: 'Abort' })
+    const out = labels([], { kind: 'yesno', yes: 'Proceed', no: 'Abort' })
     expect(out).toHaveLength(1)
     expect(out[0]).toMatchObject({ type: 'YesNoButtons', value: 'Proceed', value2: 'Abort' })
     expect(typeof out[0].id).toBe('string')
@@ -51,13 +54,53 @@ describe('applyActionLabels', () => {
   })
   it('updates an existing Button param in place', () => {
     const params: UIParameterSpec[] = [{ id: 'b', type: 'Button', value: 'Continue' }]
-    expect(applyActionLabels(params, { kind: 'continue', label: 'Next' })).toEqual([
-      { id: 'b', type: 'Button', value: 'Next' },
-    ])
+    expect(labels(params, { kind: 'continue', label: 'Next' })).toEqual([{ id: 'b', type: 'Button', value: 'Next' }])
   })
   it('appends a Button param when none exists', () => {
-    const out = applyActionLabels([{ id: 'a', type: 'Text', value: 'hi' }], { kind: 'continue', label: 'Next' })
+    const out = labels([{ id: 'a', type: 'Text', value: 'hi' }], { kind: 'continue', label: 'Next' })
     expect(out).toHaveLength(2)
     expect(out[1]).toMatchObject({ type: 'Button', value: 'Next' })
+  })
+})
+
+describe('fixed-bar style in the draft', () => {
+  it('a fixed step seeds size and color(s) from its buttonBar', () => {
+    expect(deriveActionDraft('userInteraction', { buttonBar: { size: 'lg', color: '#22c55e' } })).toEqual({
+      kind: 'continue',
+      label: 'Continue',
+      size: 'lg',
+      color: '#22c55e',
+    })
+    expect(deriveActionDraft('yesNoStep', { buttonBar: { yesColor: '#22c55e', noColor: '#ef4444' } })).toEqual({
+      kind: 'yesno',
+      yes: 'Yes',
+      no: 'No',
+      yesColor: '#22c55e',
+      noColor: '#ef4444',
+    })
+  })
+
+  it('writes text to ui-params and style to buttonBar on a fixed step', () => {
+    const out = applyActionLabels(
+      { uiParameters: [{ id: 'b', type: 'Button', value: 'Go' }], buttonBar: { size: 'sm' } },
+      { kind: 'continue', label: 'Next', size: 'lg', color: '#22c55e' },
+    )
+    expect(out).toEqual({
+      uiParameters: [{ id: 'b', type: 'Button', value: 'Next' }],
+      buttonBar: { size: 'lg', color: '#22c55e' },
+    })
+  })
+
+  it('a cleared style key leaves the bar, Yes/No colors go to yesColor/noColor', () => {
+    const out = applyActionLabels(
+      { uiParameters: [], buttonBar: { size: 'lg', yesColor: '#000000' } },
+      { kind: 'yesno', yes: 'Y', no: 'N', noColor: '#ef4444' },
+    )
+    expect(out.buttonBar).toEqual({ noColor: '#ef4444' })
+  })
+
+  it('never makes a legacy step fixed', () => {
+    const out = applyActionLabels({ uiParameters: [] }, { kind: 'continue', label: 'Next', color: '#22c55e' })
+    expect('buttonBar' in out).toBe(false)
   })
 })

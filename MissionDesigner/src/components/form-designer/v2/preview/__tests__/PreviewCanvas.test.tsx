@@ -144,4 +144,60 @@ describe('PreviewCanvas', () => {
       expect(screen.getAllByRole('button', { name: 'No' })).toHaveLength(1)
     })
   })
+
+  describe('fixed button row', () => {
+    const fixedDoc = (): FormDocument =>
+      ({
+        version: 2,
+        sections: [
+          {
+            id: 's1',
+            role: 'content',
+            rows: [
+              { id: 'r1', blocks: [{ id: 't', type: 'text', content: 'Body' }] },
+              {
+                id: 'r2',
+                blocks: [{ id: 'old', type: 'button', label: 'Old go', outputValue: 'continue', job: 'continue' }],
+              },
+            ],
+          },
+        ],
+      }) as unknown as FormDocument
+    const asFixed = (type: string, extra: Record<string, unknown> = {}) =>
+      useFlowStore.setState({
+        nodes: [{ id: 'n1', type, position: { x: 0, y: 0 }, data: { buttonBar: {}, ...extra } }] as never,
+      })
+
+    it('preview of a fixed step shows the step bar, not form buttons', () => {
+      asFixed('userInteractionStep')
+      useFormDocumentStore.getState().openForNode('n1', fixedDoc())
+      const { container } = render(<PreviewCanvas />)
+      expect(screen.queryByText('Old go')).toBeNull()
+      expect(screen.getAllByRole('button', { name: 'Continue' })).toHaveLength(1)
+      expect(container.querySelector('.tfk-step-bar')).not.toBeNull()
+      expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Stop' })).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+      expect(screen.getByTestId('preview-last-decision').textContent).toContain('complete')
+    })
+
+    it('shows Back and Stop (inert) when the step allows them', () => {
+      asFixed('userInteractionStep', { allowBack: true, allowStop: true })
+      useFormDocumentStore.getState().openForNode('n1', fixedDoc())
+      render(<PreviewCanvas />)
+      fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
+      expect(screen.getByTestId('preview-last-decision').textContent).not.toContain('complete')
+    })
+
+    it('a fixed Yes/No step shows Yes and No from the bar and routes Yes', () => {
+      asFixed('yesNoStep')
+      useFormDocumentStore.getState().openForNode('n1', fixedDoc())
+      render(<PreviewCanvas />)
+      expect(screen.getAllByRole('button', { name: 'Yes' })).toHaveLength(1)
+      expect(screen.getAllByRole('button', { name: 'No' })).toHaveLength(1)
+      fireEvent.click(screen.getByRole('button', { name: 'Yes' }))
+      expect(screen.getByTestId('preview-last-decision').textContent).toContain('true')
+    })
+  })
 })

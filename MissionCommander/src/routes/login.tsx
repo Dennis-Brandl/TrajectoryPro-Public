@@ -52,6 +52,7 @@ export function LoginPage() {
     <SignInFrame
       splashSrc="/MissionCommanderSplashScreen.png"
       splashAlt="Mission Commander"
+      version={__APP_VERSION__}
       description="Runs workflows in work centers. Load released workflow packages, assign people, and watch each run."
     >
       <form noValidate onSubmit={handleSubmit(onSubmit)} className="w-80 space-y-4 rounded-[10px] border border-border p-6">

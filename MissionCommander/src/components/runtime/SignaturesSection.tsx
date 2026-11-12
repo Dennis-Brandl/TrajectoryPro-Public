@@ -32,6 +32,7 @@ export function SignaturesSection({ signatures }: { signatures: StepSignatureVie
               {s.stepName} · {s.signerDisplayName ?? s.signerLoginName} ({s.signerLoginName}) · {s.roleName ?? 'any member'}
               {s.decision ? ` · ${s.decision}` : ''} · {new Date(s.signedAt).toLocaleString()}
               {s.outcome === 'failed' ? ` · failed: ${s.failureCode ?? 'unknown'}` : ''}
+              {s.supersededAt !== null ? ' (replaced — the operator went back)' : ''}
             </li>
           ))}
         </ol>

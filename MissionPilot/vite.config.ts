@@ -26,9 +26,12 @@ export const tokenColors = (): { accent: string; surface: string } => {
   return { accent: tokens.color.light.accent, surface: tokens.color.light.surface }
 }
 const { accent, surface } = tokenColors()
+const appVersion = (JSON.parse(readFileSync(path.resolve(appRoot, 'package.json'), 'utf8')) as { version: string }).version
 
 export default defineConfig({
   root: appRoot,
+  // The sign-in screen shows it under the copyright line.
+  define: { __APP_VERSION__: JSON.stringify(appVersion) },
   // The FormKit packages are file: links with their own node_modules: one React only.
   resolve: { dedupe: ['react', 'react-dom'] },
   plugins: [

@@ -358,6 +358,13 @@
       "when": 1794248815521,
       "tag": "0050_schedule_history",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1794433307812,
+      "tag": "0051_back_and_stop",
+      "breakpoints": true
     }
   ]
 }

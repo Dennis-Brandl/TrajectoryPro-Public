@@ -111,46 +111,6 @@ describe('cloneBlockWithFreshIdentity', () => {
   })
 })
 
-describe('createDefaultBlock button', () => {
-  it('defaults to a Continue job button', () => {
-    const b = createDefaultBlock('button')
-    expect(b).toMatchObject({
-      type: 'button',
-      label: '',
-      job: 'continue',
-      outputValue: 'continue',
-      emphasis: 'primary',
-    })
-    expect(validateFormDocument(docWith(createDefaultBlock('button'))).ok).toBe(true)
-  })
-  it('defaults to a Yes job button on a Yes/No step', () => {
-    const b = createDefaultBlock('button', { stepKind: 'yesno' })
-    expect(b).toMatchObject({ type: 'button', label: '', job: 'yes', outputValue: 'true' })
-    expect(validateFormDocument(docWith(createDefaultBlock('button', { stepKind: 'yesno' }))).ok).toBe(true)
-  })
-  it('on a Yes/No step that already has Yes, a new button is No (the job still missing)', () => {
-    const yes = createDefaultBlock('button', { stepKind: 'yesno' })
-    const b = createDefaultBlock('button', { stepKind: 'yesno', document: docWith(yes) })
-    expect(b).toMatchObject({ job: 'no', outputValue: 'false', label: '' })
-  })
-  it('on a Yes/No step with only No, a new button is Yes; with both, Yes again', () => {
-    const no = { ...createDefaultBlock('button', { stepKind: 'yesno' }), job: 'no' as const, outputValue: 'false' }
-    expect(createDefaultBlock('button', { stepKind: 'yesno', document: docWith(no) })).toMatchObject({ job: 'yes' })
-    const yes = createDefaultBlock('button', { stepKind: 'yesno' })
-    const both: FormDocument = {
-      version: 2,
-      sections: [{ id: 's', role: 'content', rows: [{ id: 'r', blocks: [yes, no] }] }],
-    }
-    expect(createDefaultBlock('button', { stepKind: 'yesno', document: both })).toMatchObject({ job: 'yes' })
-  })
-  it('on a normal step a new button is always Continue', () => {
-    const c = createDefaultBlock('button')
-    expect(createDefaultBlock('button', { stepKind: 'continue', document: docWith(c) })).toMatchObject({
-      job: 'continue',
-    })
-  })
-})
-
 describe('form-document schema copies', () => {
   it('Designer and FormKit schema files are byte-identical', () => {
     const a = readFileSync(resolve(__dirname, '../../schemas/form-document.json'), 'utf8')

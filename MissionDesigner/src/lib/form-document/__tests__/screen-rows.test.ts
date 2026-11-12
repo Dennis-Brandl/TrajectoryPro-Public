@@ -17,12 +17,7 @@ import { applyScreenEdit, normalizeForSave, projectForScreen, resetScreenRows, s
 import { moveBlock, moveRow, insertBlockAt } from '../structural-ops'
 import { arrangeColumns, ownRowTarget, rowAboveTarget } from '../column-ops'
 import { resizeSpan } from '../span-resize'
-import {
-  deleteBlockFromDocument,
-  duplicateBlockInDocument,
-  insertBlockIntoBottomBar,
-  insertBlockIntoDocument,
-} from '../document-ops'
+import { deleteBlockFromDocument, duplicateBlockInDocument, insertBlockIntoDocument } from '../document-ops'
 
 const text = (id: string, extra: Partial<Block> = {}): Block => ({ id, type: 'text', content: id, ...extra }) as Block
 const button = (id: string): Block => ({ id, type: 'button', label: id, job: 'continue' }) as unknown as Block
@@ -184,9 +179,13 @@ describe('applyScreenEdit', () => {
     expect(layout(out.sections[1].rowsAt?.tablet)).toEqual(['YB'])
   })
 
-  it('a section the edit adds (the realized bottom bar) is added with its rows as desktop rows', () => {
+  it('a section the edit adds (e.g. a footer) is added with its rows as desktop rows', () => {
     const d = docOf(section('s', ['A', 'B']))
-    const out = applyScreenEdit(d, 'tablet', (v) => insertBlockIntoBottomBar(v, button('Y'), newId), newId)
+    const addFooter = (v: FormDocument): FormDocument => ({
+      ...v,
+      sections: [...v.sections, { id: newId(), role: 'footer', rows: [{ id: newId(), blocks: [button('Y')] }] }],
+    })
+    const out = applyScreenEdit(d, 'tablet', addFooter, newId)
     expect(out.sections).toHaveLength(2)
     expect(out.sections[1].role).toBe('footer')
     expect(desktop(out, 1)).toEqual(['Y'])

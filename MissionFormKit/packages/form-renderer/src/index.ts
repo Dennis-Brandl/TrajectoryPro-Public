@@ -15,3 +15,4 @@ export { FormDocumentView, breakpointForWidth, type FormDocumentViewProps } from
 export { blockLayoutClasses } from './blockClasses'
 export { useFormRenderer, type FormRendererContextValue, type ButtonJobs, type ButtonJobState } from './context'
 export { guardAuthoredColor, contrastRatio, MIN_AUTHORED_CONTRAST } from './color-guard'
+export { StepButtonBar, type StepButtonBarProps } from './StepButtonBar'

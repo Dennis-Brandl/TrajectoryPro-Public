@@ -36,6 +36,28 @@ export interface InboxTask {
   yesNoConfig: unknown | null;
   /** Completion-button label authored in Designer's form-designer Actions panel; null = host default. */
   continueLabel: string | null;
+  /** Fixed button row style (spec 2026-11-11); null = legacy step with in-form buttons. */
+  buttonBar: InboxButtonBar | null;
+  /** allow_stop on a fixed-bar step. */
+  allowStop: boolean;
+  /** allow_back on a fixed-bar step that has a back target recorded in engine_state.backFrom. */
+  backAvailable: boolean;
+  /** Values submitted the last time this step was left backward (engine_state.backPrefill), verbatim. */
+  prefillValues: Record<string, unknown> | null;
+}
+/** Structurally identical to form-schema's ButtonBarStyle (this package does not depend on it). */
+export interface InboxButtonBar { size?: string; color?: string; yesColor?: string; noColor?: string }
+
+/** The step's fixed button bar style (same rule as form-schema's barStyleOf); null unless `format: 'fixed'`. */
+export function fixedBarOf(def: Record<string, unknown> | null): InboxButtonBar | null {
+  const bar = def?.button_bar as Record<string, unknown> | null | undefined;
+  if (!bar || typeof bar !== 'object' || Array.isArray(bar) || bar.format !== 'fixed') return null;
+  const out: InboxButtonBar = {};
+  if (typeof bar.size === 'string') out.size = bar.size;
+  if (typeof bar.color === 'string') out.color = bar.color;
+  if (typeof bar.yes_color === 'string') out.yesColor = bar.yes_color;
+  if (typeof bar.no_color === 'string') out.noColor = bar.no_color;
+  return out;
 }
 /** A timed GATE or repeating SCRIPT waiting at this work center (spec 2026-10-13 §5.3, §6.7) — Pilot's Waiting list. */
 export interface WaitingStep {
@@ -297,6 +319,10 @@ export async function buildInbox(db: Db, userId: string, workCenterId: string): 
 
   const toTask = (r: (typeof rows)[number]): InboxTask => {
     const def = findStepDef(r.specJsonb, r.step.nodeOid, r.step.stepOid);
+    const buttonBar = fixedBarOf(def);
+    const es = (r.engineState ?? {}) as {
+      backFrom?: Record<string, unknown>; backPrefill?: Record<string, Record<string, unknown>>;
+    };
     return {
       assignmentId: r.a.id, stepInstanceId: r.step.id, stepOid: r.step.stepOid,
       stepType: r.step.stepType,
@@ -312,6 +338,10 @@ export async function buildInbox(db: Db, userId: string, workCenterId: string): 
       formDocument: substituteTaskDocument(def?.form_document ?? null, r.engineState, r.step.stepOid),
       yesNoConfig: def?.yes_no_config ?? null,
       continueLabel: continueLabelOf(def),
+      buttonBar,
+      allowStop: buttonBar !== null && def?.allow_stop === true,
+      backAvailable: buttonBar !== null && def?.allow_back === true && typeof es.backFrom?.[r.step.stepOid] === 'string',
+      prefillValues: es.backPrefill?.[r.step.stepOid] ?? null,
     };
   };
 

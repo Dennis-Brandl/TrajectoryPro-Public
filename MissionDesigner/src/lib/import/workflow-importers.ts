@@ -18,7 +18,7 @@ import type { Specification, SpecificationState } from '@/types/library'
 import type { WorkflowNode, StepNodeData, Select1Operator } from '@/types/nodes'
 import type { ConditionalEdgeData } from '@/types/edges'
 import type { MasterWorkflowSpecification } from '@/lib/packageFormat/export-types'
-import type { FormDocument } from '@mission/form-schema'
+import type { FormDocument, TypeToken } from '@mission/form-schema'
 import { validateFormDocument } from '@mission/form-schema'
 import { generateOID, WORKER_INTERNAL } from '@/lib/snowflake'
 import { validateWorkflowSpecification, validateWorkflowLibrary } from './schema-validator'
@@ -190,6 +190,22 @@ function transformWorkflowSpec(spec: MasterWorkflowSpecification): WorkflowImpor
         }
       : {}
 
+    // Fixed button row (screen steps only)
+    const bar = step.button_bar
+    const buttonBarFields =
+      bar && bar.format === 'fixed' && (nodeType === 'userInteractionStep' || nodeType === 'yesNoStep')
+        ? {
+            buttonBar: {
+              ...(bar.size ? { size: bar.size as TypeToken } : {}),
+              ...(bar.color ? { color: bar.color } : {}),
+              ...(bar.yes_color ? { yesColor: bar.yes_color } : {}),
+              ...(bar.no_color ? { noColor: bar.no_color } : {}),
+            },
+            ...(typeof step.allow_back === 'boolean' ? { allowBack: step.allow_back } : {}),
+            ...(typeof step.allow_stop === 'boolean' ? { allowStop: step.allow_stop } : {}),
+          }
+        : {}
+
     // Map Script configuration — zod-parsed at the boundary (audit item 3); a
     // malformed config is dropped with a warning instead of flowing through a cast.
     const scriptConfig = parseOptionalStepConfig(
@@ -347,6 +363,7 @@ function transformWorkflowSpec(spec: MasterWorkflowSpecification): WorkflowImpor
             )
           : transformUIParams(step.ui_parameter_specifications),
       ...yesNoFields,
+      ...buttonBarFields,
       ...scriptFields,
       ...gateFields,
       ...select1Fields,

@@ -25,7 +25,6 @@ import {
   Minus,
   Timer,
   Signature,
-  MousePointerClick,
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react'
@@ -33,9 +32,7 @@ import type { LucideProps } from 'lucide-react'
 import { useDraggable } from '@dnd-kit/core'
 import { cn } from '@mission/ui'
 import { findESignatureBlock } from '@mission/form-schema'
-import { createDefaultBlock, type PaletteBlockType } from '@/lib/form-document/create-block'
-import { stepKindOfNode } from '@/lib/form-document/step-kind'
-import { useFlowStore } from '@/stores/flowStore'
+import type { PaletteBlockType } from '@/lib/form-document/create-block'
 import { useFormDocumentStore } from '@/stores/formDocumentStore'
 import { paletteDragId } from './dnd/dragTypes'
 import { PaneResizeHandle } from './PaneResizeHandle'
@@ -46,7 +43,8 @@ interface PaletteItem {
   label: string
 }
 
-/** 12 types: v1's 9 + header + esignature + button (an author-placed job button). */
+/** 11 types: v1's 9 + header + esignature. No Button: a step's buttons belong to its fixed
+ *  button row, edited in the Buttons panel (spec 2026-11-11). */
 export const PALETTE_ITEMS: PaletteItem[] = [
   { type: 'text', icon: Type, label: 'Text' },
   { type: 'header', icon: Heading, label: 'Header' },
@@ -59,7 +57,6 @@ export const PALETTE_ITEMS: PaletteItem[] = [
   { type: 'divider', icon: Minus, label: 'Divider' },
   { type: 'timer', icon: Timer, label: 'Timer' },
   { type: 'esignature', icon: Signature, label: 'E-signature' },
-  { type: 'button', icon: MousePointerClick, label: 'Button' },
 ]
 
 /** Left palette column. Click-to-insert + drag-to-insert. Collapsed/width state is local ephemeral UI. */
@@ -67,9 +64,6 @@ export function FormPalette() {
   const [collapsed, setCollapsed] = useState(false)
   const [width, setWidth] = useState(224)
   const insertBlock = useFormDocumentStore((s) => s.insertBlock)
-  const insertBlockInBottomBar = useFormDocumentStore((s) => s.insertBlockInBottomBar)
-  const openNodeId = useFormDocumentStore((s) => s.openNodeId)
-  const stepKind = useFlowStore((s) => stepKindOfNode(s.nodes.find((n) => n.id === openNodeId)?.type))
   const document = useFormDocumentStore((s) => s.document)
   const hasSignature = findESignatureBlock(document) !== null
   return (
@@ -114,11 +108,7 @@ export function FormPalette() {
             key={item.type}
             item={item}
             collapsed={collapsed}
-            onInsert={(type) =>
-              type === 'button'
-                ? insertBlockInBottomBar(createDefaultBlock('button', { stepKind, document }))
-                : insertBlock(type)
-            }
+            onInsert={insertBlock}
             disabledReason={item.type === 'esignature' && hasSignature ? 'A form can hold one e-signature' : undefined}
           />
         ))}

@@ -12,8 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { defineConfig } from 'vitest/config'
+import { readFileSync } from 'node:fs'
+
+const appVersion = (JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }).version
 
 export default defineConfig({
+  define: { __APP_VERSION__: JSON.stringify(appVersion) },
   // The FormKit packages are file: links with their own node_modules: without this, the real
   // FormDocumentView (rendered by the app-level tests) would load a second copy of React.
   resolve: { dedupe: ['react', 'react-dom'] },

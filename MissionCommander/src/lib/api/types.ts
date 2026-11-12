@@ -148,7 +148,7 @@ export type StepSignatureView = {
   id: string; stepOid: string; stepName: string;
   signerLoginName: string; signerDisplayName: string | null;
   roleName: string | null; meaning: string | null; decision: string | null;
-  outcome: 'signed' | 'failed'; failureCode: string | null; signedAt: string;
+  outcome: 'signed' | 'failed'; failureCode: string | null; signedAt: string; supersededAt: string | null;
 };
 export type RuntimeWorkflowLiveDetail = {
   summary: RuntimeWorkflowSummary; steps: RuntimeLiveStep[]; trace: RuntimeTraceEntryView[]; signatures: StepSignatureView[];
@@ -204,7 +204,7 @@ export type RuntimeHistoryDetail = RuntimeHistorySummary & {
 };
 export type StepRunView = {
   id: string; stepInstanceId: string | null; stepOid: string; stepName: string; stepType: string; runNumber: number;
-  startedAt: string | null; finishedAt: string; result: 'completed' | 'failed' | 'caught' | 'aborted' | 'stopped' | 'cancelled';
+  startedAt: string | null; finishedAt: string; result: 'completed' | 'failed' | 'caught' | 'aborted' | 'stopped' | 'cancelled' | 'went_back';
   error: string | null; inputParameters: Record<string, string> | null; outputParameters: Record<string, string> | null;
   performedByLoginName: string | null; performedByKind: 'user' | 'script' | 'action' | 'gate' | 'system';
   nodePath: Array<{ proxyStepOid: string; proxyRun: number; workflowName: string }>;

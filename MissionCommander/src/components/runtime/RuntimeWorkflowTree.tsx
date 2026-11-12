@@ -98,9 +98,18 @@ function RuntimeTreeRow({ node, depth, leavesByWc, selectedId, onSelect }: RowPr
         <div role="group">
           {leaves.map((rw) => (
             <button key={rw.id} type="button" onClick={() => onSelect(rw.id)}
-              className={cn(treeRowClass({ selected: selectedId === rw.id }), 'w-full gap-2 text-left')}
+              className={cn(treeRowClass({ selected: selectedId === rw.id }), 'w-full gap-2 text-left',
+                (rw.assignees.length > 0 || rw.waiting) && 'h-auto min-h-6 py-0.5')}
               style={{ paddingLeft: paddingLeft + 24 }}>
-              <span className="min-w-0 flex-1 truncate">{rw.runtimeLabel} · {rw.masterName}</span>
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate">{rw.runtimeLabel} · {rw.masterName}</span>
+                {/* Who holds the run's live steps, the same line XO's runtime row carries. */}
+                {rw.assignees.length > 0 ? (
+                  <span className="truncate text-xs text-muted-foreground">{rw.assignees.join(', ')}</span>
+                ) : rw.waiting ? (
+                  <span className="truncate text-xs text-status-info-fg">Waiting for operator</span>
+                ) : null}
+              </span>
               <RuntimeStatusBadge status={rw.status} />
             </button>
           ))}

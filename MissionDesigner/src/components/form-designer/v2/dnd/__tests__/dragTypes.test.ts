@@ -22,7 +22,6 @@ describe('parseDragId', () => {
     })
     expect(parseDragId(rowDragId('r1'))).toEqual({ kind: 'row', id: 'r1' })
     expect(parseDragId(paletteDragId('textInput'))).toEqual({ kind: 'palette', type: 'textInput' })
-    expect(parseDragId(paletteDragId('button'))).toEqual({ kind: 'palette', type: 'button' })
   })
 
   it('rejects an unknown palette block type (stale / garbage id) → null', () => {
@@ -30,6 +29,7 @@ describe('parseDragId', () => {
     expect(parseDragId('palette:bogus')).toBeNull()
     expect(parseDragId('palette:carousel')).toBeNull()
     expect(parseDragId('palette:')).toBeNull()
+    expect(parseDragId('palette:button')).toBeNull() // buttons belong to the step now
   })
 
   it('returns null for an unrecognised kind', () => {

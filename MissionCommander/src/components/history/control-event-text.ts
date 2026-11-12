@@ -20,13 +20,18 @@ export const requesterName = (name: string | null | undefined): string => (name 
 const VERB = { stop: 'Stop', abort: 'Abort' } as const;
 const EFFECT = { request: 'requested', escalate: 'escalated', skip_cleanup: 'cleanup skipped' } as const;
 
+const fromPilot = (e: Pick<ControlEventView, 'verb' | 'effect'> & { stepName?: string | null }) =>
+  e.verb === 'stop' && e.effect === 'request' && !!e.stepName;
+
 /** History dialog line start: "Stop requested", "Abort escalated", "Stop cleanup skipped". */
-export function controlEventText(e: Pick<ControlEventView, 'verb' | 'effect'>): string {
+export function controlEventText(e: Pick<ControlEventView, 'verb' | 'effect'> & { stepName?: string | null }): string {
+  if (fromPilot(e)) return `Stop requested from Pilot on «${e.stepName}»`;
   return `${VERB[e.verb]} ${EFFECT[e.effect]}`;
 }
 
 /** Record PDF event text: "Stop requested", "Abort requested (escalated)", "Abort cleanup skipped". */
-export function controlEventRecordText(e: Pick<ControlEventView, 'verb' | 'effect'>): string {
+export function controlEventRecordText(e: Pick<ControlEventView, 'verb' | 'effect'> & { stepName?: string | null }): string {
+  if (fromPilot(e)) return `Stop requested from Pilot on «${e.stepName}»`;
   if (e.effect === 'skip_cleanup') return `${VERB[e.verb]} cleanup skipped`;
   return `${VERB[e.verb]} requested${e.effect === 'escalate' ? ' (escalated)' : ''}`;
 }

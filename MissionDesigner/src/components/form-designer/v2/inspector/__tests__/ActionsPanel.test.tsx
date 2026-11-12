@@ -12,17 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { ActionsPanel } from '../ActionsPanel'
 import { useFormDocumentStore } from '@/stores/formDocumentStore'
 import { useFlowStore } from '@/stores/flowStore'
 import type { FormDocument } from '@mission/form-schema'
 import type { WorkflowNode } from '@/types/nodes'
-
-const toastSuccess = vi.hoisted(() => vi.fn())
-vi.mock('sonner', () => ({ toast: { success: toastSuccess, error: vi.fn() } }))
-const canEditMock = vi.hoisted(() => ({ value: true }))
-vi.mock('@/hooks/useCanEditActiveSpec', () => ({ useCanEditActiveSpec: () => canEditMock.value }))
 
 const doc = (...jobs: Array<'continue' | 'yes' | 'no'>): FormDocument => ({
   version: 2,
@@ -48,8 +43,6 @@ function open(nodeType: string, document: FormDocument) {
 }
 
 beforeEach(() => {
-  canEditMock.value = true
-  toastSuccess.mockClear()
   useFlowStore.setState({ nodes: [] })
 })
 
@@ -73,56 +66,56 @@ describe('ActionsPanel never-stuck report', () => {
   })
 })
 
-describe('ActionsPanel Convert buttons', () => {
-  const panel = () => render(<ActionsPanel draft={{ kind: 'continue', label: 'Continue' }} onChange={() => {}} />)
-  const jobsOf = () =>
-    useFormDocumentStore
-      .getState()
-      .document.sections.flatMap((s) => s.rows.flatMap((r) => r.blocks))
-      .map((b) => (b as { job?: string }).job)
-
-  it('is disabled when the spec cannot be edited', () => {
-    canEditMock.value = false
+describe('Buttons panel', () => {
+  it('is titled Buttons and offers no Convert buttons', () => {
     open('userInteractionStep', doc())
-    panel()
-    expect((screen.getByRole('button', { name: 'Convert buttons' }) as HTMLButtonElement).disabled).toBe(true)
+    render(<ActionsPanel draft={{ kind: 'continue', label: 'Continue' }} onChange={() => {}} />)
+    expect(screen.getByText('Buttons')).toBeTruthy()
+    expect(screen.queryByText('Actions')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Convert buttons' })).toBeNull()
   })
 
-  it('adds the bottom-bar button, toasts the changes, and undoes in one step', () => {
+  it('a legacy step (no fixed bar) shows text only, no size or color', () => {
     open('userInteractionStep', doc())
-    const before = useFormDocumentStore.getState().document
-    panel()
-    fireEvent.click(screen.getByRole('button', { name: 'Convert buttons' }))
-    expect(jobsOf()).toContain('continue')
-    expect(useFormDocumentStore.getState().isDirty).toBe(true)
-    expect(toastSuccess).toHaveBeenCalledTimes(1)
-    act(() => useFormDocumentStore.temporal.getState().undo())
-    expect(useFormDocumentStore.getState().document).toBe(before)
+    render(<ActionsPanel draft={{ kind: 'continue', label: 'Continue' }} onChange={() => {}} />)
+    expect(screen.queryByLabelText('Text size')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Open color picker' })).toBeNull()
   })
 
-  it('says Nothing to convert. and leaves the document alone when nothing changed', () => {
-    open('userInteractionStep', doc('continue'))
-    const before = useFormDocumentStore.getState().document
-    panel()
-    fireEvent.click(screen.getByRole('button', { name: 'Convert buttons' }))
-    expect(useFormDocumentStore.getState().document).toBe(before)
-    expect(toastSuccess).toHaveBeenCalledWith('Nothing to convert.')
+  it('Buttons panel edits size and color of a fixed step', () => {
+    openFixed('userInteractionStep')
+    const onChange = vi.fn()
+    render(<ActionsPanel draft={{ kind: 'continue', label: 'Go' }} onChange={onChange} />)
+    fireEvent.change(screen.getByLabelText('Text size'), { target: { value: 'lg' } })
+    expect(onChange).toHaveBeenLastCalledWith({ kind: 'continue', label: 'Go', size: 'lg' })
+    fireEvent.click(screen.getByRole('button', { name: 'Open color picker' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Select color #22c55e' }))
+    expect(onChange).toHaveBeenLastCalledWith({ kind: 'continue', label: 'Go', color: '#22c55e' })
   })
 
-  it('shows buttons that still need a job in the error box', () => {
-    const jobless: FormDocument = {
-      version: 2,
-      sections: [
-        {
-          id: 's1',
-          role: 'content',
-          rows: [{ id: 'r1', blocks: [{ id: 'x', type: 'button', label: 'Go', outputValue: 'go' }] }],
-        },
-      ],
-    }
-    open('yesNoStep', jobless)
-    panel()
-    fireEvent.click(screen.getByRole('button', { name: 'Convert buttons' }))
-    expect(screen.getByRole('alert').textContent).toMatch(/needs a job/i)
+  it('a fixed Yes/No step has one size and a color each for Yes and No', () => {
+    openFixed('yesNoStep')
+    const onChange = vi.fn()
+    render(<ActionsPanel draft={{ kind: 'yesno', yes: 'Yes', no: 'No' }} onChange={onChange} />)
+    expect(screen.getAllByLabelText('Text size')).toHaveLength(1)
+    const pickers = screen.getAllByRole('button', { name: 'Open color picker' })
+    expect(pickers).toHaveLength(2)
+    fireEvent.click(pickers[1])
+    fireEvent.click(screen.getByRole('button', { name: 'Select color #ef4444' }))
+    expect(onChange).toHaveBeenLastCalledWith({ kind: 'yesno', yes: 'Yes', no: 'No', noColor: '#ef4444' })
   })
 })
+
+function openFixed(nodeType: string) {
+  useFlowStore.setState({
+    nodes: [
+      {
+        id: 'n1',
+        type: nodeType,
+        position: { x: 0, y: 0 },
+        data: { label: 'n1', buttonBar: {} },
+      } as unknown as WorkflowNode,
+    ],
+  })
+  useFormDocumentStore.getState().openForNode('n1', doc())
+}

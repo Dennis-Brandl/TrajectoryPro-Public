@@ -21,6 +21,9 @@ import type { NodeType, StepNodeData } from '@/types/nodes'
  * dropdown's visual default never persists returnConfig (ReturnConfigEditor only writes on a
  * change event), so the label stays blank and the workflow strands at runtime until the user
  * deselects and re-picks the command.
+ *
+ * A new User Interaction or Yes/No step starts on the fixed button row (spec 2026-11-11 §5.3),
+ * with Back and Stop off until the author turns them on.
  */
 export function defaultStepData(type: NodeType, label: string): StepNodeData {
   return {
@@ -28,5 +31,8 @@ export function defaultStepData(type: NodeType, label: string): StepNodeData {
     stepType: type,
     ...(type === 'return' ? { returnConfig: { command: 'ABANDON' as const } } : {}),
     ...(type === 'gateStep' ? { gateCycleSeconds: 5 } : {}),
+    ...(type === 'userInteractionStep' || type === 'yesNoStep'
+      ? { buttonBar: {}, allowBack: false, allowStop: false }
+      : {}),
   } as StepNodeData
 }

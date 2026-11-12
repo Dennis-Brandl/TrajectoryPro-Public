@@ -72,6 +72,7 @@ export type { RuntimeControlEvent, NewRuntimeControlEvent } from './db/schema/ex
 export { RUNTIME_CLEANUP_STATUSES } from './db/schema/execution.js';
 export type { StepRun, NewStepRun, StepRunResult, StepRunKind, StepRunPathEntry } from './db/schema/execution.js';
 export { STEP_RUN_RESULTS, STEP_RUN_KINDS } from './db/schema/execution.js';
+export { claimStepForUser } from './runtime/assignments.js';
 
 // Identity + hierarchy views (CM Planner panes; spec 2026-09-06 — roles are per work center).
 export type { AppUser, Role } from './db/schema/identity.js';

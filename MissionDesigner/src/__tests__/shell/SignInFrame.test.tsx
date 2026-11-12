@@ -30,5 +30,18 @@ describe('SignInFrame', () => {
     expect(img.getAttribute('src')).toBe('/s.png')
     const order = Array.from(container.querySelectorAll('img, p, form'))
     expect(order).toEqual([img, copy, desc, card])
+    expect(screen.queryByText(/^Version /)).toBeNull()
+  })
+
+  it('shows the app version right under the copyright', () => {
+    const { container } = render(
+      <SignInFrame splashSrc="/s.png" splashAlt="Splash" description="Desc here" version="2.4.0">
+        <form aria-label="card" />
+      </SignInFrame>,
+    )
+    const copy = screen.getByText('Copyright 2026 Dennis L. Brandl · Apache License 2.0')
+    const version = screen.getByText('Version 2.4.0')
+    const order: Element[] = Array.from(container.querySelectorAll('p'))
+    expect(order.indexOf(version)).toBe(order.indexOf(copy) + 1)
   })
 })

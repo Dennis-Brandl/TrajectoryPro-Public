@@ -86,6 +86,16 @@ export function RuntimeDiagramCard({ instanceId, canCommand, busy, onAssign, onF
     [level, live],
   );
   const mineOids = useMemo(() => new Set<string>(), []); // commander view: no "yours" ring
+  // Who holds each live step, written on its box so nobody has to tap to find out.
+  const captions = useMemo(() => {
+    const out = new Map<string, string>();
+    for (const step of level?.steps ?? []) {
+      const a = live?.steps[step.oid]?.assignment;
+      if (!a) continue;
+      out.set(step.oid, a.status === 'claimed' ? (a.claimant?.displayName ?? 'Claimed') : 'Offered');
+    }
+    return out;
+  }, [level, live]);
 
   const onStepTap = (step: DiagramStep, anchor: { x: number; y: number }) => {
     if (step.stepType === 'WORKFLOW PROXY') {
@@ -147,6 +157,7 @@ export function RuntimeDiagramCard({ instanceId, canCommand, busy, onAssign, onF
           highlightedStepOid={null}
           resetKey={`${instanceId}:${level.oid}`}
           onStepTap={onStepTap}
+          captions={captions}
         />
         {tooltip && (
           <div className="absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded border bg-popover p-2 text-sm text-popover-foreground shadow"

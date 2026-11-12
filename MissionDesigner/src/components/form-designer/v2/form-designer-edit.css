@@ -29,23 +29,3 @@
   padding-top: 10px;
   padding-bottom: 10px;
 }
-
-/* Bottom bar. The footer section is always a visible drop target in edit mode (an empty one is the
-   display-only placeholder), so authors can see where buttons go. */
-.tfk-viewport[data-mode='edit'] .tfk-footer .tfk-section {
-  min-height: 3rem;
-  outline: 1px dashed #94a3b8;
-  outline-offset: -1px;
-  position: relative;
-}
-.tfk-viewport[data-mode='edit'] .tfk-footer .tfk-section:empty::before {
-  content: 'Bottom bar \2014  drag buttons here';
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  color: #64748b;
-  pointer-events: none;
-}

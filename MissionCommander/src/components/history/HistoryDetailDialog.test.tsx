@@ -48,7 +48,7 @@ function detail(over: Partial<RuntimeHistoryDetail> = {}): RuntimeHistoryDetail 
 
 const signed: StepSignatureView = {
   id: 'sig1', stepOid: 's-1', stepName: 'Approve batch', signerLoginName: 'jane', signerDisplayName: 'Jane Lee',
-  roleName: 'QA Lead', meaning: null, decision: 'yes', outcome: 'signed', failureCode: null, signedAt: '2026-08-01T00:00:05.000Z',
+  roleName: 'QA Lead', meaning: null, decision: 'yes', outcome: 'signed', failureCode: null, signedAt: '2026-08-01T00:00:05.000Z', supersededAt: null,
 };
 
 const ADMIN: MePrincipal = {
@@ -441,9 +441,9 @@ describe('HistoryDetailDialog — fetch (one-shot, no polling)', () => {
 describe('HistoryDetailDialog control requests', () => {
   it('lists control requests with the requester name', async () => {
     await renderDialog(detail({ controlEvents: [
-      { at: '2026-08-01T00:00:03.000Z', verb: 'stop', effect: 'request', fromStatus: 'running', toStatus: 'stopping_cleanup', actorKind: 'user', actorUserId: 'u1', actorName: 'Jane Doe', actorInstanceId: null },
-      { at: '2026-08-01T00:00:04.000Z', verb: 'stop', effect: 'skip_cleanup', fromStatus: 'stopping_cleanup', toStatus: 'stopped', actorKind: 'user', actorUserId: 'u1', actorName: 'Jane Doe', actorInstanceId: null },
-      { at: '2026-08-01T00:00:05.000Z', verb: 'abort', effect: 'escalate', fromStatus: 'stopping_cleanup', toStatus: 'aborting_cleanup', actorKind: 'user', actorUserId: 'u2', actorName: 'Sam Lee', actorInstanceId: null },
+      { at: '2026-08-01T00:00:03.000Z', verb: 'stop', effect: 'request', fromStatus: 'running', toStatus: 'stopping_cleanup', actorKind: 'user', actorUserId: 'u1', actorName: 'Jane Doe', actorInstanceId: null, stepName: null },
+      { at: '2026-08-01T00:00:04.000Z', verb: 'stop', effect: 'skip_cleanup', fromStatus: 'stopping_cleanup', toStatus: 'stopped', actorKind: 'user', actorUserId: 'u1', actorName: 'Jane Doe', actorInstanceId: null, stepName: null },
+      { at: '2026-08-01T00:00:05.000Z', verb: 'abort', effect: 'escalate', fromStatus: 'stopping_cleanup', toStatus: 'aborting_cleanup', actorKind: 'user', actorUserId: 'u2', actorName: 'Sam Lee', actorInstanceId: null, stepName: null },
     ] }));
     expect(screen.getByText('Control requests')).toBeTruthy();
     expect(screen.getByText(/^Stop requested by Jane Doe · /)).toBeTruthy();
@@ -452,7 +452,7 @@ describe('HistoryDetailDialog control requests', () => {
   });
   it('an empty actorName shows Unknown requester', async () => {
     await renderDialog(detail({ controlEvents: [
-      { at: '2026-08-01T00:00:03.000Z', verb: 'abort', effect: 'request', fromStatus: 'running', toStatus: 'aborting', actorKind: 'user', actorUserId: null, actorName: '', actorInstanceId: null },
+      { at: '2026-08-01T00:00:03.000Z', verb: 'abort', effect: 'request', fromStatus: 'running', toStatus: 'aborting', actorKind: 'user', actorUserId: null, actorName: '', actorInstanceId: null, stepName: null },
     ] }));
     expect(screen.getByText(/^Abort requested by Unknown requester · /)).toBeTruthy();
   });

@@ -44,6 +44,7 @@ type ControlRule = { from: readonly string[]; to: string; effect: ControlEffect 
 async function controlTransition(
   db: Db, instanceId: string, verb: ControlVerb, label: string, rules: readonly ControlRule[],
   actor: ControlActor, skip: ControlVerb | null, recordAsVerb: ControlVerb = verb,
+  step: { stepOid: string; stepName: string } | null = null,
 ): Promise<void> {
   await db.transaction(async (tx) => {
     let actorCols;
@@ -68,13 +69,16 @@ async function controlTransition(
       .where(eq(workflowInstance.id, instanceId));
     await tx.insert(runtimeControlEvent).values({
       workflowInstanceId: instanceId, verb: recordAsVerb, effect: rule.effect, fromStatus: cur.status, toStatus: rule.to, ...actorCols,
+      stepOid: step?.stepOid ?? null, stepName: step?.stepName ?? null,
     });
   });
 }
 
-export const requestStop = (db: Db, id: string, actor: ControlActor) => controlTransition(db, id, 'stop', 'stop', [
-  { from: ['running', 'paused', 'pausing'], to: 'stopping', effect: 'request' },
-], actor, null);
+/** `opts`: the step the operator pressed Stop on (Back/Stop spec 2026-11-11), recorded on the event. */
+export const requestStop = (db: Db, id: string, actor: ControlActor, opts?: { stepOid: string; stepName: string }) =>
+  controlTransition(db, id, 'stop', 'stop', [
+    { from: ['running', 'paused', 'pausing'], to: 'stopping', effect: 'request' },
+  ], actor, null, undefined, opts ?? null);
 
 /** `recordAsVerb`: the verb the audit row records when it differs from the transition — a remote
  *  Stop of a queued runtime is carried out as an Abort, but the record shows the Stop that was

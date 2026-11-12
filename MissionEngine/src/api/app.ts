@@ -39,9 +39,12 @@ import { OPERATOR_CHANGE_CHANNEL } from '../core/reconcile.js';
 import { submitUserAction, EngineError } from '../core/submit.js';
 import { canonicalStepType } from '../core/step-handlers.js';
 import { forceCompleteStep } from '../core/force-complete.js';
+import { goBack } from '../core/go-back.js';
+import { requestStop } from 'mission-control-db/src/dao/runtime-control';
+import { DaoError } from 'mission-control-db/src/dao/errors';
 import { VerbError } from '../core/registry-verbs.js';
 import { findESignatureBlock, verifySignature, SignatureError, SIGNATURE_HTTP_STATUS } from '../core/esignature.js';
-import type { UserAction } from '../spec/types.js';
+import type { UserAction, MasterWorkflowStep } from '../spec/types.js';
 import { OperatorEventHub } from './events.js';
 import { clientIpMiddleware, parseTrustedProxies } from './client-ip.js';
 import { isUserDisabled } from 'mission-control-db/src/dao/account-status';
@@ -389,7 +392,7 @@ export function createApiApp(db: Db, deps: EngineDeps, auth: EngineAuth, hub: Op
     const [row] = await db.select({
       a: instanceAssignment, step: stepInstance,
       instanceId: workflowInstance.id, workflowId: workflowInstance.workflowId,
-      specJsonb: workflowInstance.specJsonb,
+      specJsonb: workflowInstance.specJsonb, instanceStatus: workflowInstance.status,
       runtimeNumber: workflowInstance.runtimeNumber, runtimeLabel: workflowInstance.runtimeLabel,
       workCenterName: workCenter.name,
     }).from(instanceAssignment)
@@ -568,6 +571,54 @@ export function createApiApp(db: Db, deps: EngineDeps, auth: EngineAuth, hub: Op
       if (err instanceof EngineError) return c.json({ code: err.code, error: err.message }, 409);
       throw err;
     }
+    hub?.notifyWorkCenter(row.a.workCenterId);
+    return c.json({ ok: true });
+  });
+
+  // Fixed button row (spec 2026-11-11): Back. Claimant-scoped like submit — goBack checks the
+  // live claim, the step's allow_back and its back target inside the instance transaction.
+  app.post('/api/assignments/:id/back', async (c) => {
+    const userId = c.get('userId');
+    const row = await loadAssignment(c.req.param('id'));
+    if (!row) return c.json({ error: 'not found' }, 404);
+    try {
+      await goBack(db, row.instanceId, { assignmentId: row.a.id, userId }, deps);
+    } catch (err) {
+      if (err instanceof EngineError) return c.json({ code: err.code, error: err.message }, 409);
+      throw err;
+    }
+    hub?.notifyWorkCenter(row.a.workCenterId);
+    return c.json({ ok: true });
+  });
+
+  // Fixed button row (spec 2026-11-11): Stop. The claimant of a waiting screen whose step allows
+  // Stop asks for the same workflow stop Commander has; the engine loop then runs the cleanup.
+  app.post('/api/assignments/:id/stop', async (c) => {
+    const userId = c.get('userId');
+    const row = await loadAssignment(c.req.param('id'));
+    if (!row) return c.json({ error: 'not found' }, 404);
+    if (row.a.status !== 'claimed' || row.a.assignedUserId !== userId) {
+      return c.json({ code: 'NOT_CLAIMANT', error: `assignment ${row.a.id} is not held by the caller` }, 409);
+    }
+    // Spec §5.2: Stop is off while the workflow is paused (or already stopping/aborting).
+    if (row.instanceStatus !== 'running') {
+      return c.json({ code: 'NOT_RUNNING', error: `workflow_instance ${row.instanceId} is not running` }, 409);
+    }
+    if (row.step.state !== 'WAITING_USER') {
+      return c.json({ code: 'STEP_NOT_WAITING', error: `step ${row.step.stepOid} is not waiting for an operator` }, 409);
+    }
+    const def = findStepDef(row.specJsonb, row.step.nodeOid, row.step.stepOid) as unknown as MasterWorkflowStep | null;
+    if (!def || def.button_bar?.format !== 'fixed' || def.allow_stop !== true) {
+      return c.json({ code: 'STOP_NOT_ALLOWED', error: `step ${row.step.stepOid} does not allow Stop` }, 409);
+    }
+    const stepName = typeof def.local_id === 'string' ? def.local_id : row.step.stepOid;
+    try {
+      await requestStop(db, row.instanceId, { kind: 'user', userId }, { stepOid: row.step.stepOid, stepName });
+    } catch (err) {
+      if (err instanceof DaoError) return c.json({ code: err.code, error: err.message || err.code }, err.code === 'RUNTIME_NOT_FOUND' ? 404 : 409);
+      throw err;
+    }
+    await notify(db, row.a.workCenterId);
     hub?.notifyWorkCenter(row.a.workCenterId);
     return c.json({ ok: true });
   });

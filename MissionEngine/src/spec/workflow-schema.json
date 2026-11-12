@@ -638,6 +638,18 @@
               "items": { "$ref": "#/$defs/FormLayoutExportEntry" }
             },
             "yes_no_config": { "$ref": "#/$defs/YesNoConfig" },
+            "button_bar": {
+              "type": "object",
+              "properties": {
+                "format": { "const": "fixed" },
+                "size": { "type": "string" },
+                "color": { "type": "string" },
+                "yes_color": { "type": "string" },
+                "no_color": { "type": "string" }
+              }
+            },
+            "allow_back": { "type": "boolean" },
+            "allow_stop": { "type": "boolean" },
             "script_config": { "$ref": "#/$defs/ScriptConfig" },
             "gate_config": { "$ref": "#/$defs/GateConfig" },
             "action_property_bindings": {

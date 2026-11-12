@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as api from '@/lib/api/runtime-workflows';
 import type { RuntimeWorkflowDiagram, RuntimeWorkflowLiveStates } from '@/lib/api/types';
@@ -65,6 +65,21 @@ describe('RuntimeDiagramCard', () => {
     const g = await screen.findByRole('img', { name: 'Workflow diagram: Mix' });
     expect(g.querySelector('[data-step-oid="s-1"]')).toHaveAttribute('data-state', 'WAITING_USER');
     expect(screen.getByText('Executing')).toBeInTheDocument(); // legend entry
+  });
+
+  it('writes who holds a step on its box: the claimant, or Offered', async () => {
+    card();
+    const g = await screen.findByRole('img', { name: 'Workflow diagram: Mix' });
+    await waitFor(() => expect(g.querySelector('[data-step-oid="s-1"] [data-testid="step-caption"]')).toHaveTextContent('Offered'));
+    expect(g.querySelector('[data-step-oid="s-2"] [data-testid="step-caption"]')).toBeNull();
+    cleanup();
+    vi.spyOn(api.runtimeWorkflows, 'liveStates').mockResolvedValue({
+      ...LIVE,
+      steps: { 's-1': { ...LIVE.steps['s-1']!, assignment: { id: 'a1', status: 'claimed', claimant: { displayName: 'John Adams' }, mine: false } } },
+    });
+    card({ instanceId: 'rw-claimed' });
+    const g2 = await screen.findByRole('img', { name: 'Workflow diagram: Mix' });
+    await waitFor(() => expect(g2.querySelector('[data-step-oid="s-1"] [data-testid="step-caption"]')).toHaveTextContent('John Adams'));
   });
 
   it('tapping a step opens the tooltip; an offered step exposes Assign wired to the callback', async () => {

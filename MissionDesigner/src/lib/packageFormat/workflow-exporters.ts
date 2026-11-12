@@ -38,6 +38,7 @@ import {
   extractResourceCommands,
   extractUIParameters,
   extractYesNoConfig,
+  extractButtonBarFields,
   extractScriptConfig,
   extractGateConfig,
   extractFormDocument,
@@ -104,6 +105,7 @@ function buildNestedChildExport(
         output_parameter_specifications: extractStepOutputParams(nodeType, nodeData),
         ui_parameter_specifications: extractUIParameters(nodeData),
         yes_no_config: extractYesNoConfig(nodeData),
+        ...extractButtonBarFields(nodeType, nodeData),
         script_config: nodeType === 'gateStep' ? undefined : extractScriptConfig(nodeData),
         gate_config:
           nodeType === 'gateStep' ? extractGateConfig(nodeData as unknown as Record<string, unknown>) : undefined,
@@ -500,6 +502,7 @@ export function exportWorkflowSpec(
       output_parameter_specifications: extractStepOutputParams(nodeType, nodeData),
       ui_parameter_specifications: extractUIParameters(nodeData),
       yes_no_config: extractYesNoConfig(nodeData),
+      ...extractButtonBarFields(nodeType, nodeData),
       script_config: nodeType === 'gateStep' ? undefined : extractScriptConfig(nodeData),
       gate_config:
         nodeType === 'gateStep' ? extractGateConfig(nodeData as unknown as Record<string, unknown>) : undefined,
@@ -726,6 +729,7 @@ export function exportWorkflow(
       output_parameter_specifications: extractStepOutputParams(nodeType, data),
       ui_parameter_specifications: extractUIParameters(data),
       yes_no_config: extractYesNoConfig(data),
+      ...extractButtonBarFields(nodeType, data),
       script_config: nodeType === 'gateStep' ? undefined : extractScriptConfig(data),
       gate_config: nodeType === 'gateStep' ? extractGateConfig(data as unknown as Record<string, unknown>) : undefined,
       select1_config: extractSelect1Config(data),

@@ -565,3 +565,12 @@ test('purgeRuntimeHistory removes control events of purged rows only', async () 
     expect(await listControlEvents(db, keep)).toHaveLength(1);
   } finally { await close(); }
 });
+
+test('step_run accepts went_back', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    const id = '99999999-9999-4999-8999-999999999999';
+    await insertStepRun(db, runRow(id, { result: 'went_back' }));
+    expect((await listStepRuns(db, id))[0]!.result).toBe('went_back');
+  } finally { await close(); }
+});

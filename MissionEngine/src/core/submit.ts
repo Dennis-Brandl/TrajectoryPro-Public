@@ -36,6 +36,7 @@ import type { UserAction } from '../spec/types.js';
 import { openContext } from './context.js';
 import { isRunningLike, RUNNING_LIKE_STATUSES } from './operator-cleanup.js';
 import { canonicalStepType, getFormElements, handleUserAction } from './step-handlers.js';
+import { isScreenType } from './back-target.js';
 import { failStep, finishStep, settleIfComplete, drainCascade } from './transition.js';
 import { claimInstanceById } from '../loop.js';
 import { reconcileAndNotify } from './reconcile.js';
@@ -254,6 +255,13 @@ async function submitCore(
     }
 
     const routing = handleUserAction(stepDef, action, stepCtx.props);
+
+    // Fixed button row (spec 2026-11-11): remember a screen's submitted values verbatim (a later
+    // Back to this screen prefills from them); a submit consumes any pending Back prefill.
+    if (isScreenType(stepType)) {
+      stepCtx.state.lastFormValues[target.stepOid] = { ...(action.form_values ?? {}) };
+      delete stepCtx.state.backPrefill[target.stepOid];
+    }
 
     // Snapshot output parameters for this step — reference engine.ts:219-246.
     const snapshot = stepCtx.state.stepSnapshots[target.stepOid];

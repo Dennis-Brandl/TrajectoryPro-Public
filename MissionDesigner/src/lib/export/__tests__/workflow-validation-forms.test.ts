@@ -45,7 +45,7 @@ const uiEdges: Edge[] = [
   { id: 'e2', source: 'u', target: 'e' },
 ]
 
-describe('form button validation', () => {
+describe('form button validation (legacy steps without the fixed bar)', () => {
   it('reports a Yes/No step whose form has only a Yes button', () => {
     const errors = validateWorkflow(
       [node('s', 'start'), node('q', 'yesNoStep', { formDocument: doc('yes') }), node('e', 'end')],
@@ -74,5 +74,13 @@ describe('form button validation', () => {
     expect(run({ formDocument: doc() })).toEqual([])
     expect(run({ formDocument: doc('continue') })).toEqual([])
     expect(run({})).toEqual([])
+  })
+
+  it('skips fixed-bar steps: their buttons live in the bar, not the form', () => {
+    const errors = validateWorkflow(
+      [node('s', 'start'), node('q', 'yesNoStep', { buttonBar: {}, formDocument: doc('yes') }), node('e', 'end')],
+      yesNoEdges,
+    ).filter((e) => e.nodeId === 'q')
+    expect(errors).toEqual([])
   })
 })

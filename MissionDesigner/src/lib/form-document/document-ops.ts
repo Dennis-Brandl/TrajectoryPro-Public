@@ -84,27 +84,6 @@ export function insertBlockIntoDocument(doc: FormDocument, block: Block): FormDo
   return { ...doc, sections: doc.sections.map((s, i) => (i === idx ? { ...s, rows: [...s.rows, row] } : s)) }
 }
 
-/** Append a new full-width row containing `block` to the first footer section (the bottom bar),
- *  creating a footer section at the end when there is none. */
-export function insertBlockIntoBottomBar(doc: FormDocument, block: Block, newId: () => string): FormDocument {
-  const row: Row = { id: newId(), blocks: [block] }
-  const idx = doc.sections.findIndex((s) => s.role === 'footer')
-  if (idx === -1) {
-    return { ...doc, sections: [...doc.sections, { id: newId(), role: 'footer', rows: [row] }] }
-  }
-  return { ...doc, sections: doc.sections.map((s, i) => (i === idx ? { ...s, rows: [...s.rows, row] } : s)) }
-}
-
-/** Id of the display-only bottom-bar placeholder section. It never reaches the store or saved data. */
-export const BOTTOM_BAR_PLACEHOLDER_ID = '__bottom-bar__'
-
-/** For display only: when the doc has no footer section, append an empty placeholder footer so the
- *  author has a bottom bar to drop buttons onto. Returns the same reference when a footer exists. */
-export function withBottomBarPlaceholder(doc: FormDocument): FormDocument {
-  if (doc.sections.some((s) => s.role === 'footer')) return doc
-  return { ...doc, sections: [...doc.sections, { id: BOTTOM_BAR_PLACEHOLDER_ID, role: 'footer', rows: [] }] }
-}
-
 /** Drop footer sections that hold no blocks. Same reference when there is nothing to drop. */
 export function pruneEmptyFooters(doc: FormDocument): FormDocument {
   const keep = doc.sections.filter((s) => s.role !== 'footer' || s.rows.some((r) => r.blocks.length > 0))
@@ -116,13 +95,13 @@ export type DraggedThing =
   | { kind: 'row'; id: string }
   | { kind: 'palette'; type: string }
 
-/** The bottom bar takes buttons only. True when dropping `dragged` into `targetSectionId` is allowed:
- *  any non-footer target, or a footer/placeholder target and only buttons are being dropped. */
+/** An old form's bottom bar (a footer section) keeps buttons only. True when dropping `dragged` into
+ *  `targetSectionId` is allowed: any non-footer target, or a footer and only its buttons are dropped.
+ *  The palette offers no buttons, so a palette drop never lands in a footer. */
 export function isButtonsOnlyDrop(doc: FormDocument, dragged: DraggedThing, targetSectionId: string): boolean {
   const target = doc.sections.find((s) => s.id === targetSectionId)
-  const isFooter = targetSectionId === BOTTOM_BAR_PLACEHOLDER_ID || target?.role === 'footer'
-  if (!isFooter) return true
-  if (dragged.kind === 'palette') return dragged.type === 'button'
+  if (target?.role !== 'footer') return true
+  if (dragged.kind === 'palette') return false
   if (dragged.kind === 'block') return findBlock(doc, dragged.id)?.type === 'button'
   const row = doc.sections.flatMap((s) => s.rows).find((r) => r.id === dragged.id)
   return !!row && row.blocks.every((b) => b.type === 'button')

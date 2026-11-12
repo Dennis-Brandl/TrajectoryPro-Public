@@ -87,7 +87,7 @@ describe('rowIdAtY', () => {
 
 describe('gapStyleTop', () => {
   const section = { rect: { left: 10, top: 200, width: 500, height: 48 } }
-  it('covers the whole band of an empty section, so a drop anywhere on the empty bottom bar lands', () => {
+  it('covers the whole band of an empty section, so a drop anywhere on an empty section lands', () => {
     expect(gapStyleTop(section)).toEqual({ left: 10, width: 500, top: 200, height: 48 })
   })
   it('straddles the first row top when the section has rows', () => {
@@ -163,7 +163,7 @@ describe('StructuralDragLayer handles', () => {
 })
 
 describe('StructuralDragLayer drop zones', () => {
-  it('the bottom bar (footer section) gets a whole-band drop zone; content sections do not', () => {
+  it('no section gets a whole-band bar drop zone (the bottom bar drop zone is gone)', () => {
     const { container } = render(
       <Harness>
         <section data-section-id="c" data-section-role="content">
@@ -178,8 +178,7 @@ describe('StructuralDragLayer drop zones', () => {
         </section>
       </Harness>,
     )
-    expect(container.querySelector('[data-drop-zone="bar:f"]')).not.toBeNull()
-    expect(container.querySelector('[data-drop-zone="bar:c"]')).toBeNull()
+    expect(container.querySelector('[data-drop-zone^="bar:"]')).toBeNull()
   })
   it('renders a gap droppable per row boundary and a slot per block edge', () => {
     const { container } = render(

@@ -30,25 +30,12 @@ export function dropResolver(activeId: string, overId: string | null, doc?: Form
   const over = parseDropId(overId)
   if (!active || !over) return null
   if (doc) {
-    // The bottom bar (a footer section or its placeholder) takes buttons only.
+    // An old form's bottom bar (a footer section) keeps its buttons only.
     const sectionId =
       over.zone === 'slot' ? doc.sections.find((s) => s.rows.some((r) => r.id === over.rowId))?.id : over.sectionId
     if (sectionId && !isButtonsOnlyDrop(doc, active, sectionId)) return null
   }
 
-  if (over.zone === 'bar') {
-    // Beside the last button of the bar's last row (Yes | No side by side); a full row, or an empty
-    // bar (incl. the display-only placeholder, absent from doc), starts a new row instead.
-    if (!doc || active.kind === 'row') return null
-    const rows = doc.sections.find((s) => s.id === over.sectionId)?.rows ?? []
-    const last = rows[rows.length - 1] as (typeof rows)[number] | undefined
-    const target: MoveTarget =
-      last && last.blocks.length < 12
-        ? { kind: 'in-row', rowId: last.id, beforeBlockId: null }
-        : { kind: 'new-row', sectionId: over.sectionId, afterRowId: last?.id ?? null }
-    if (active.kind === 'block') return { op: 'moveBlock', blockId: active.id, target }
-    return { op: 'insertBlockAt', type: active.type, target }
-  }
   if (over.zone === 'gap') {
     const target: MoveTarget = { kind: 'new-row', sectionId: over.sectionId, afterRowId: over.afterRowId }
     if (active.kind === 'block') return { op: 'moveBlock', blockId: active.id, target }

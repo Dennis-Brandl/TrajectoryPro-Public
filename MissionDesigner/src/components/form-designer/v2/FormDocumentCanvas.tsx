@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { useMemo, useRef, useState, type MouseEvent } from 'react'
-import { FormDocumentView } from '@mission/form-renderer'
+import { FormDocumentView, StepButtonBar } from '@mission/form-renderer'
 import '@mission/form-tokens/css/light'
 import '@mission/form-renderer/layout.css'
 import '@mission/form-renderer/controls.css'
@@ -20,7 +20,10 @@ import './form-designer-edit.css'
 import { JOB_DEFAULT_LABEL } from '@mission/form-schema'
 import type { ButtonJobs } from '@mission/form-renderer'
 import { useFormDocumentStore } from '@/stores/formDocumentStore'
-import { findBlock, withBottomBarPlaceholder } from '@/lib/form-document/document-ops'
+import { useFlowStore } from '@/stores/flowStore'
+import { findBlock } from '@/lib/form-document/document-ops'
+import { barStyleFromDraft } from '@/lib/form-document/action-labels'
+import type { StepNodeData } from '@/types/nodes'
 import { useImageResolver } from './useImageResolver'
 import { BreakpointTabs, BREAKPOINT_FRAME_WIDTH } from './BreakpointTabs'
 import { SelectionOverlay, innermostBlockIdAt } from './SelectionOverlay'
@@ -49,7 +52,11 @@ export function FormDocumentCanvas() {
       signed: false,
     }
   }, [actionDraft])
-  const shown = useMemo(() => withBottomBarPlaceholder(document), [document])
+  // A fixed step's buttons are the step's own bar: shown below the form, not editable on the canvas.
+  const openNodeId = useFormDocumentStore((s) => s.openNodeId)
+  const node = useFlowStore((s) => s.nodes.find((n) => n.id === openNodeId))
+  const nodeData = node?.data as StepNodeData | undefined
+  const fixedBar = nodeData?.buttonBar
   const images = useImageResolver()
   const viewportRef = useRef<HTMLDivElement>(null)
   const isEmpty = document.sections.every((sec) => sec.rows.every((r) => r.blocks.length === 0))
@@ -105,7 +112,7 @@ export function FormDocumentCanvas() {
             onDoubleClick={onDoubleClick}
             style={{ position: 'relative' }}
           >
-            <FormDocumentView document={shown} mode="edit" images={images} buttonJobs={buttonJobs} />
+            <FormDocumentView document={document} mode="edit" images={images} buttonJobs={buttonJobs} />
             {isEmpty && (
               <p style={{ padding: 32, textAlign: 'center', fontSize: 13, color: '#64748b' }}>
                 This form is empty. Click an element in the palette on the left to add it, or drag it here.
@@ -114,6 +121,23 @@ export function FormDocumentCanvas() {
             <SelectionOverlay viewportRef={viewportRef} />
             <StructuralDragLayer hostRef={viewportRef} />
           </div>
+          {fixedBar && (
+            <div
+              data-testid="fixed-bar-strip"
+              inert
+              title="The step's buttons. Change their text, size and color in the Buttons panel."
+              style={{ borderTop: '1px dashed #94a3b8' }}
+            >
+              <StepButtonBar
+                kind={node?.type === 'yesNoStep' ? 'yesno' : 'continue'}
+                barStyle={actionDraft ? barStyleFromDraft(actionDraft) : fixedBar}
+                jobs={buttonJobs}
+                onPress={() => {}}
+                back={nodeData?.allowBack ? { onBack: () => {}, disabled: false } : null}
+                stop={nodeData?.allowStop ? { onStop: () => {}, disabled: false } : null}
+              />
+            </div>
+          )}
         </div>
       </div>
       <BlockContextMenu

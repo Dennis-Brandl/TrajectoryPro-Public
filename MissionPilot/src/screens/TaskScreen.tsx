@@ -12,14 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { FormDocumentView } from '@mission/form-renderer'
+import { FormDocumentView, StepButtonBar } from '@mission/form-renderer'
 import type { ButtonJobs } from '@mission/form-renderer'
-import { computeValidation, findESignatureBlock, withStepButtons } from '@mission/form-schema'
-import type { FormDocument, FormEvent, FormValues, SignatureDraft } from '@mission/form-schema'
+import { computeValidation, findESignatureBlock, stripButtonBlocks, withStepButtons } from '@mission/form-schema'
+import type { ButtonBarStyle, FormDocument, FormEvent, FormValues, SignatureDraft } from '@mission/form-schema'
 import { api, ApiError } from '../api/client'
 import type { InboxTask, Me, SubmitBody } from '../api/types'
 import { seedDefaults, EMPTY_TIMERS } from '../host/gate'
 import { ReleaseButton } from '../task/ReleaseButton'
+import { StopConfirm, StopMenu } from '../task/StopMenu'
 import { RuntimeId } from '../frame/RuntimeId'
 import { Sheet } from '../frame/Sheet'
 import { useShortcut } from '../frame/shortcuts'
@@ -69,9 +70,19 @@ interface YesNoLabels {
 const CHANGED_COPY = 'This task changed — refreshing.'
 const GENERIC_ERROR_COPY = 'Something went wrong — try again.'
 const RELEASE_RACE_COPY = 'Could not release'
+// Back/Stop refusals that leave the step open (spec 2026-11-11). NOT_RUNNING is the generic copy,
+// as on submit: the workflow was busy for a moment and the step is still the operator's.
+const BACK_REFUSED_COPY: Record<string, string> = {
+  BACK_NOT_ALLOWED: "Back isn't available on this step any more.",
+}
+const STOP_REFUSED_COPY: Record<string, string> = {
+  STOP_NOT_ALLOWED: "Stop isn't available on this step any more.",
+  RUNTIME_INVALID_STATE: 'This workflow is already stopping or has finished.',
+}
 const PAUSED_COPY = 'Paused — actions are disabled until this step resumes.'
 const YES_NO = 'YES_NO'
 
+const EMPTY_DOC: FormDocument = { version: 2, sections: [] }
 const NO_GATE: Gate = { ok: true, missing: [] }
 
 // Spec 2026-09-06 §6 — client copy for the engine's signature codes; role codes carry the
@@ -137,7 +148,9 @@ export function TaskScreen({
   // renderer event can arrive.
   // Spec §5.7 drafts: typed values come back after a reload, a tab switch or a
   // work-center switch — the seeded defaults first, the operator's own values on top.
-  const [seed, setSeed] = useState<FormValues>(() => (doc ? seedDefaults(doc) : {}))
+  const seedFor = (d: FormDocument | null): FormValues =>
+    d ? { ...seedDefaults(d), ...((task.prefillValues ?? {}) as FormValues) } : {}
+  const [seed, setSeed] = useState<FormValues>(() => seedFor(doc))
   const [values, setValues] = useState<FormValues>(() => ({
     ...seed,
     ...(doc ? (readDraft(task.assignmentId, task.stepInstanceId) ?? {}) : {}),
@@ -148,6 +161,12 @@ export function TaskScreen({
   const [submitting, setSubmitting] = useState(false)
   const where = useWhereYouAre(task.instanceId, task.stepOid, active && !offline)
   const [whereOpen, setWhereOpen] = useState(false)
+  const [stopAsking, setStopAsking] = useState(false)
+  const stopOpener = useRef<HTMLElement | null>(null)
+  const askStop = (opener: HTMLElement | null) => {
+    stopOpener.current = opener
+    setStopAsking(true)
+  }
 
   // A paused step stays open — typed values are kept — but can't be acted on. The
   // work view feeds this component the LIVE task object, so `paused` clearing on
@@ -170,7 +189,7 @@ export function TaskScreen({
   // identity change would silently wipe whatever the operator has already typed.
   const [seenInstance, setSeenInstance] = useState(task.stepInstanceId)
   if (seenInstance !== task.stepInstanceId) {
-    const seeded = doc ? seedDefaults(doc) : {}
+    const seeded = seedFor(doc)
     const restored = { ...seeded, ...(doc ? (readDraft(task.assignmentId, task.stepInstanceId) ?? {}) : {}) }
     setSeenInstance(task.stepInstanceId)
     setSeed(seeded)
@@ -245,6 +264,34 @@ export function TaskScreen({
     onReleased?.()
   }
 
+  // Back and Stop (fixed-bar steps only). Back closes the pane like a submit — the previous screen
+  // arrives as a new claim. A refusal never shows the engine's own text: a lost claim is the same
+  // race as a lost submit, a busy workflow keeps the step open like submit, and the step-specific
+  // refusals get operator copy.
+  const stepAction = async (call: () => Promise<unknown>, refused: Record<string, string>) => {
+    setSubmitting(true)
+    try {
+      await call()
+      clearDraft(task.assignmentId)
+      onDone()
+    } catch (err) {
+      const code = err instanceof ApiError ? err.code : undefined
+      if (code === 'NOT_CLAIMANT' || code === 'STEP_NOT_WAITING') onError(CHANGED_COPY, 'race')
+      else if (code && refused[code]) onError(refused[code], 'other')
+      else {
+        console.error(err)
+        onError(GENERIC_ERROR_COPY, 'other')
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+  const goBack = () => stepAction(() => api.back(task.assignmentId), BACK_REFUSED_COPY)
+  const stopWorkflow = () => {
+    setStopAsking(false)
+    return stepAction(() => api.stop(task.assignmentId), STOP_REFUSED_COPY)
+  }
+
   const decide = (value: 'yes' | 'no') => submit(signed({ kind: 'decision', value, values: doc ? values : undefined }))
   // A step with a form submits its values; a step without one just completes.
   const pressContinue = () => (doc ? submit(signed({ kind: 'submit', values })) : submit({ kind: 'complete' }))
@@ -317,7 +364,15 @@ export function TaskScreen({
   // centered one only where the form has none (form-schema withStepButtons) and draws no button bar,
   // status line or "Missing" list of its own: a button that may not be pressed is disabled.
   const stepKind = isYesNo ? 'yesno' : 'continue'
-  const shownDoc = useMemo(() => withStepButtons(doc, stepKind), [doc, stepKind])
+  // The payload's buttonBar is already camelCased ButtonBarStyle; null/absent = legacy step.
+  const barStyle = (task.buttonBar ?? null) as ButtonBarStyle | null
+  const fixedBar = barStyle !== null
+  const shownDoc = useMemo(
+    () => (fixedBar ? (doc ? stripButtonBlocks(doc) : EMPTY_DOC) : withStepButtons(doc, stepKind)),
+    [doc, stepKind, fixedBar],
+  )
+  const showBack = fixedBar && task.backAvailable === true
+  const showStop = fixedBar && task.allowStop === true
   // The renderer draws the buttons; Pilot decides whether each may be pressed.
   const buttonJobs: ButtonJobs = {
     continue: { enabled: jobEnabled.continue, label: task.continueLabel || 'Continue' },
@@ -339,6 +394,8 @@ export function TaskScreen({
     primaryAction
       ? () => {
           if (rootRef.current?.querySelector('.release-confirm')) return
+          // The Stop question is portaled to document.body, so it is not under rootRef.
+          if (stopAsking) return
           // Workstation: the operator is working in the inbox column — typing in its filter,
           // or answering a Release question there — not on this task. Focus merely left on a
           // row's button (the task was just opened from it) still means this task.
@@ -378,10 +435,16 @@ export function TaskScreen({
       {/* Below 1280 px the side panel is hidden and "Where you are" opens it as a sheet (Ruling 5).
           Release sits at the right of the same line (user ruling 2026-11-10). */}
       <div className="task-topline">
+        {showBack && (
+          <button type="button" className="task-topline-back" disabled={locked} onClick={goBack}>
+            ‹ Back
+          </button>
+        )}
         <button type="button" className="where-toggle" aria-haspopup="dialog" onClick={() => setWhereOpen(true)}>
           Where you are
         </button>
         <ReleaseButton typedCount={typedCount} disabled={submitting || offline} onRelease={release} />
+        {showStop && <StopMenu disabled={locked} onStop={askStop} />}
       </div>
 
       <div className="task-body">
@@ -399,11 +462,35 @@ export function TaskScreen({
             surfaceColor={surfaceColor}
             buttonJobs={buttonJobs}
           />
+          {fixedBar && barStyle && (
+            <StepButtonBar
+              kind={stepKind}
+              barStyle={barStyle}
+              jobs={buttonJobs}
+              onPress={(job) => {
+                if (!jobEnabled[job]) return
+                if (job === 'continue') pressContinue()
+                else decide(job)
+              }}
+              back={showBack ? { onBack: goBack, disabled: locked } : null}
+              stop={showStop ? { onStop: () => askStop(document.activeElement as HTMLElement | null), disabled: locked } : null}
+              surfaceColor={surfaceColor}
+            />
+          )}
         </div>
         <aside className="task-where">
           <WhereYouAre runtimeLabel={task.runtimeLabel} data={where} />
         </aside>
       </div>
+
+      {stopAsking && (
+        <StopConfirm
+          runtimeLabel={task.runtimeLabel}
+          onConfirm={stopWorkflow}
+          onCancel={() => setStopAsking(false)}
+          returnFocusTo={stopOpener.current}
+        />
+      )}
 
       {whereOpen && (
         <Sheet label={`Where you are in ${task.runtimeLabel}`} onClose={() => setWhereOpen(false)}>

@@ -436,13 +436,13 @@ When editing:
 
 ### User Interaction Step
 
-Displays a screen to the operator at runtime and, optionally, captures input. Double-click the step to design its screen in the **form designer** (see [The User Interface Canvas](#the-user-interface-canvas) below). The operator finishes the step with its completion button. To rename the button, use the **Continue button** field in the form designer's **Actions** panel. If you leave it unchanged, the button reads **Continue**, unless the screen itself holds a Continue button (as screens made in older versions can), whose label is used instead. A screen can also draw its own button; see [Button Element](#button-element).
+Displays a screen to the operator at runtime and, optionally, captures input. Double-click the step to design its screen in the **form designer** (see [The User Interface Canvas](#the-user-interface-canvas) below). The operator finishes the step with its completion button. To rename the button, use the **Continue button** field in the form designer's **Buttons** panel. If you leave it unchanged, the button reads **Continue**. The button sits in the step's fixed bottom bar, which can also offer **Back** and **Stop**; see [The Step's Bottom Bar](#the-steps-bottom-bar).
 
 ### Yes/No Step
 
 A User Interaction screen **plus** a built-in two-way branch. It uses the same form designer and the same elements, so a Yes/No step can show any content alongside its decision: text, images, inputs and so on. At runtime the screen ends with a **Yes** button and a **No** button, which route execution down the Yes path or the No path.
 
-- **Button labels** -- rename the two buttons (for example _Approve_ / _Reject_) in the form designer's **Actions** panel. The choice is recorded as `true` for Yes and `false` for No, whatever the labels say. The screen can also draw its own **Yes** and **No** buttons; see [Button Element](#button-element).
+- **Button labels** -- rename the two buttons (for example _Approve_ / _Reject_) in the form designer's **Buttons** panel. The choice is recorded as `true` for Yes and `false` for No, whatever the labels say. The buttons sit in the step's fixed bottom bar; see [The Step's Bottom Bar](#the-steps-bottom-bar).
 - **Default Selection** (Properties Panel) -- pre-select Yes or No, or choose **None** to require an explicit choice.
 
 The node has two outgoing connections, one for the Yes branch and one for the No branch.
@@ -460,7 +460,7 @@ The form designer has four areas:
 - **Toolbar** (top) -- the **Edit** / **Preview** switch, **Undo** / **Redo**, and **Cancel** / **Save**
 - **Elements palette** (left) -- the elements you can add. Collapse it with the button in its header, or drag its edge to resize it.
 - **Canvas** (center) -- the screen shown inside a device frame, with **Desktop**, **Tablet** and **Phone** tabs above it
-- **Inspector** (right) -- the **Actions** panel, then the properties of the selected element. Drag its left edge to resize it.
+- **Inspector** (right) -- the **Buttons** panel, then the properties of the selected element. Drag its left edge to resize it.
 
 Your changes stay in the designer until you click **Save**. Save checks the screen and writes it to the step; if the screen is invalid, an error appears and the designer stays open. **Cancel** (or **Esc**) discards every change made since the designer was opened.
 
@@ -505,12 +505,12 @@ The tabs above the canvas switch the device frame. In the designer the frames ar
 
 - **Per-device settings.** **Span**, **Visible**, **Order**, **Size** and an image's **Scale (%)** (in the Inspector), and resizing within a row, apply to the device tab currently selected.
 - **Image scale per device.** On Tablet and Phone, **Scale (%)** shows _(from Desktop)_ or _(from Tablet)_ with the inherited value until you enter one there. Empty the field or use **Clear override** to return to the inherited scale.
-- **Size per device.** The **Size** control follows the Desktop, Tablet and Phone tabs like **Span**. On Tablet and Phone it shows _(from Desktop)_ or _(from Tablet)_ until you pick a size there, and **Clear override** returns it to the inherited size. It applies to Text, Header, Text Input, Multi Line Text, Checkbox Group, Radio Group, Timer and Button. The workflow PDF prints the Desktop size.
+- **Size per device.** The **Size** control follows the Desktop, Tablet and Phone tabs like **Span**. On Tablet and Phone it shows _(from Desktop)_ or _(from Tablet)_ until you pick a size there, and **Clear override** returns it to the inherited size. It applies to Text, Header, Text Input, Multi Line Text, Checkbox Group, Radio Group and Timer. The workflow PDF prints the Desktop size.
 - **Inheritance.** A change made on the Tablet or Phone tab becomes an override for that device. Anything you have not overridden follows the next larger device: Phone follows Tablet, and Tablet follows Desktop.
 - **Undoing an override.** **Clear tablet override** (or **Clear phone override**) in the Layout section returns the element to the inherited layout.
 - **Shared settings.** Everything else, such as content, data settings, alignment, minimum height and maximum width, is the same on every device.
 
-**Rows per device.** Each device can have its own rows, so an element can sit in a different row, beside different elements, on a tablet or a phone. Tablet starts with Desktop's rows and Phone starts with Tablet's. On the Tablet or Phone tab, drag elements and rows, or use **Columns in this row**, **Move into row above** and **Move to its own row**, and only that device's rows change. The line under the tabs says where that device's rows come from: _Rows: same as Desktop_, _Rows: same as Tablet_ or _Rows: this screen's own_. When the device has its own, **Use Desktop rows** (on Tablet) or **Use Tablet rows** (on Phone; **Use Desktop rows** when Tablet has no rows of its own) goes back to the rows it inherits. Adding or deleting an element, and moving it into or out of the bottom bar, applies on every device: an element added on Tablet or Phone gets a row of its own on Desktop, and **Visible** hides an element on one device only.
+**Rows per device.** Each device can have its own rows, so an element can sit in a different row, beside different elements, on a tablet or a phone. Tablet starts with Desktop's rows and Phone starts with Tablet's. On the Tablet or Phone tab, drag elements and rows, or use **Columns in this row**, **Move into row above** and **Move to its own row**, and only that device's rows change. The line under the tabs says where that device's rows come from: _Rows: same as Desktop_, _Rows: same as Tablet_ or _Rows: this screen's own_. When the device has its own, **Use Desktop rows** (on Tablet) or **Use Tablet rows** (on Phone; **Use Desktop rows** when Tablet has no rows of its own) goes back to the rows it inherits. Adding or deleting an element applies on every device: an element added on Tablet or Phone gets a row of its own on Desktop, and **Visible** hides an element on one device only.
 
 For example, to stack side-by-side elements on a phone, select the **Phone** tab and give each element a **Span** of 12.
 
@@ -519,7 +519,7 @@ For example, to stack side-by-side elements on a phone, select the **Phone** tab
 Click **Preview** to try the screen as an operator would:
 
 - **The screen behaves as at runtime.** Fields accept input, and required fields and any e-signature are enforced.
-- **The step's buttons are gated.** **Continue**, or **Yes** and **No**, stay disabled until the screen is complete. The preview shows exactly the buttons Mission Pilot will: the screen's own, plus a centered one where the screen has none (see [Pilot's buttons](#button-element)).
+- **The step's buttons are gated.** **Continue**, or **Yes** and **No**, stay disabled until the screen is complete. The preview shows the step's bottom bar as Mission Pilot will (see [The Step's Bottom Bar](#the-steps-bottom-bar)).
 - **Nothing is recorded.** Pressing a button shows the value that would be recorded, but nothing is saved and the workflow does not advance.
 - **Other controls.** **Restart** clears the preview, and the device tabs let you check each layout. Editing is unavailable while previewing.
 
@@ -527,15 +527,15 @@ Click **Preview** to try the screen as an operator would:
 
 Every element has a **Layout** section in the Inspector:
 
-| Property                  | Applies to      | Description                                                                                                                                                                |
-| ------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Span**                  | Selected device | How many of the row's 12 columns the element occupies (default 12)                                                                                                         |
-| **Visible on \<device\>** | Selected device | Clear it to hide the element on that device                                                                                                                                |
-| **Order**                 | Selected device | Reorder the element within its row on that device; **Auto** keeps its position in the row                                                                                  |
-| **Align**                 | All devices     | Vertical position within the row: Start, Center or End. On a **Button** or an **Image** it also sets the horizontal position: Start = left, Center = centered, End = right |
-| **Min Height**            | All devices     | A minimum height, from `none` to `xl`                                                                                                                                      |
-| **Max Width**             | All devices     | A maximum width, in `ch` (characters) or `rem`                                                                                                                             |
-| **Aspect Ratio**          | Image and Video | Width to height, for example `16/9` (required for images)                                                                                                                  |
+| Property                  | Applies to      | Description                                                                                                                                                |
+| ------------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Span**                  | Selected device | How many of the row's 12 columns the element occupies (default 12)                                                                                         |
+| **Visible on \<device\>** | Selected device | Clear it to hide the element on that device                                                                                                                |
+| **Order**                 | Selected device | Reorder the element within its row on that device; **Auto** keeps its position in the row                                                                  |
+| **Align**                 | All devices     | Vertical position within the row: Start, Center or End. On an **Image** it also sets the horizontal position: Start = left, Center = centered, End = right |
+| **Min Height**            | All devices     | A minimum height, from `none` to `xl`                                                                                                                      |
+| **Max Width**             | All devices     | A maximum width, in `ch` (characters) or `rem`                                                                                                             |
+| **Aspect Ratio**          | Image and Video | Width to height, for example `16/9` (required for images)                                                                                                  |
 
 Elements that collect data also have:
 
@@ -566,42 +566,20 @@ The **Delete** button at the top of the Inspector removes the selected element.
 > - To show an input parameter inside Text or Header content, choose it from **Insert parameter…** in the content editor, where it appears as a chip. At runtime the chip, stored as `{{ParameterName}}`, is replaced by the parameter's value.
 > - A **List Source** set to an input parameter takes its items from that parameter at runtime. The items shown in the designer are only examples, so leave room for the real list.
 
-#### Button Element
+#### The Step's Bottom Bar
 
-A **Button** element lets the screen draw its own **Continue**, **Yes** or **No** button, in your colour, size and position. Click **Button** in the palette to add it to the bottom bar, or drag it to where you want it.
+The buttons that finish a step are not elements on the screen. Every User Interaction and Yes/No step has a **fixed bottom bar** that stays pinned at the bottom of the screen in Mission Pilot while the rest of the form scrolls. The bar holds **Continue** (or **Yes** and **No**), and can also hold **Back** and **Stop**.
 
-**Options** (in the Inspector):
+**Text, size and colour.** Set them in the form designer's **Buttons** panel (the panel earlier called Actions). Type new text for **Continue**, or for **Yes** and **No** (for example _Approve_ / _Reject_); the choice is still recorded as `true` for Yes and `false` for No, whatever the text says. Pick the button **Size** and **Colour** there too. Choose **Use theme colour** to return to the default. The preview shows the bar as the operator will see it.
 
-| Option       | Description                                                                                                                                                                                                                                                                                                                                                                                           |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Job**      | What the button does: **Continue**, **Yes** or **No**. A new button starts as Continue. On a Yes/No step it starts as whichever of Yes and No the screen still lacks: the first button is Yes and the second is No. You can change it here at any time. It does exactly what Pilot's own button with that job does, including staying disabled until required fields and any e-signature are complete |
-| **Label**    | Leave it empty and the button follows the step's label: the **Continue**, **Yes** or **No** label in the **Actions** panel, or the plain word. Text you type on the button wins                                                                                                                                                                                                                       |
-| **Colour**   | The button's colour                                                                                                                                                                                                                                                                                                                                                                                   |
-| **Emphasis** | **Primary** or **Secondary**                                                                                                                                                                                                                                                                                                                                                                          |
-| **Size**     | The text size, set per device like the other sizes (see [Desktop, Tablet and Phone Layouts](#desktop-tablet-and-phone-layouts))                                                                                                                                                                                                                                                                       |
+**Allow Back and Allow Stop.** Select the step on the canvas and open its **Buttons** section in the Properties panel. It has two switches:
 
-The Layout section (span, order, visible per device, alignment) works as for any element, except that **Align** also moves a button across its space: Start puts it on the left, Center in the middle and End on the right.
+- **Allow Back** -- return to the operator's previous screen. Back does not ask for confirmation, and the answers the operator already gave are filled in again. Back never goes across a parallel split, past a join, or into or out of a sub-workflow. If nothing is before the step that Back could return to, the export warns _Back will never be available here_. If the steps between this one and the previous screen acquire or release a resource, the export warns that going back acquires or releases it again when the operator moves forward.
+- **Allow Stop** -- let the operator stop the whole workflow. Stop always asks the operator to confirm first, and the workflow's cleanup steps run. It also ends work other people are doing on that workflow.
 
-**The bottom bar.** The dashed band at the bottom of the canvas, labelled _Bottom bar — drag buttons here_, is a bar that stays pinned at the bottom of the screen in Mission Pilot while the rest of the form scrolls. Only buttons can go in it. Drop a button anywhere on the bar to put it beside the last button there (so Yes and No sit side by side), or drop it on the line above or below a row of buttons to start a new row. Drag buttons in and out of it and arrange them like any row. An empty bar is removed when you save.
+On a phone, Back sits at the top of the screen and Stop is in the **⋯** menu. On a larger screen both are in the bottom bar.
 
-**Pilot's buttons.** Mission Pilot shows only the screen's own buttons; it has no button bar of its own. On a User Interaction step every button on the screen is the step's **Continue**, and on a Yes/No step a button that sends true is **Yes** and one that sends false is **No**. When the screen has no such button, Pilot adds one, centered on a new row of the bottom bar (**Yes** and **No** side by side on a Yes/No step). When a button is hidden on some device, Pilot adds a centered one that only that device shows, so an operator is never left without a way to finish. A button stays disabled until the screen is complete; Pilot does not list what is missing. **Release** is at the right of the _Where you are_ line.
-
-**Old buttons.** Screens made in older versions can hold buttons with no job. The Inspector shows **None (old button)**. Pilot treats such a button as described above; giving it a job in the Inspector, or using **Convert buttons**, makes that explicit.
-
-**Problems are reported, not blocking.** The **Actions** panel shows a red alert for a screen that could leave the operator stuck, for example _No "No" button is visible on Phone._ or _A Yes button only works on a Yes/No step._ Workflow validation, which runs on export, lists the same problems as **Form buttons: ...**. **Save** is never blocked.
-
-#### Converting Existing Forms
-
-Existing screens are never changed automatically. To move one onto the new buttons:
-
-- **One screen.** Click **Convert buttons** in the **Actions** panel. The whole conversion is a single change you can undo.
-- **Every screen in a workflow.** Right-click the workflow canvas background and choose **Convert buttons in all forms...**. The dialog lists each step's changes and any remaining problems. Click **Apply** to convert, or **Cancel** to change nothing.
-
-Conversion works on workflows you can edit, not on released versions. It follows these rules:
-
-- On a normal step, every old button becomes **Continue**, including any that sent true or false. On a Yes/No step, a button that sent true becomes **Yes** and one that sent false becomes **No**; anything else, including a button that sent continue, is left as it is and listed as **needs a job**. Pick its job in the Inspector.
-- A label that is only _Continue_, _Yes_ or _No_ is cleared, so the button follows the step's label. Any other label is kept, as are colour, emphasis and size.
-- Any button the step still lacks is added to the bottom bar, with an empty label, so the screen reads as it did before but the buttons are now yours to restyle and move.
+**Existing steps convert when opened.** A screen made in an older version, with its own Button elements, is converted the first time you open the step in a workflow you can edit. Its button text, colour and size move to the bottom bar, its Button elements are removed from the form, and a note tells you what changed. Back and Stop start off. Released versions are never converted. If a converted step used to send the workflow down different paths depending on which button was pressed, the step shows a message. Export is blocked while any connection from a User Interaction step with the bottom bar has a condition, since every connection from it is followed: make it a Yes/No step, or add a decision step after it and move the conditions to that step's connections.
 
 #### E-signature Element
 

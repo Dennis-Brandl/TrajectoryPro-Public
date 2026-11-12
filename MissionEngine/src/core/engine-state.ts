@@ -235,6 +235,20 @@ export interface EngineState {
    *  network run, persisted so an engine restart mid-cleanup resumes it. null when no cleanup
    *  has started (always null for an instance whose root spec has no Operator row). */
   operatorCleanup: OperatorCleanup | null;
+  /** Fixed button row (spec 2026-11-11): screen step oid -> the screen a Back press returns to
+   *  (null = none: the screen follows a START, a split, a join or a sub-workflow boundary).
+   *  Written by drainCascade as it routes (core/back-target.ts carriedBackTarget); automated
+   *  steps get an entry too — it is the value they carry on to their successors. Never written
+   *  by activateAndCascade (GOTO/RETRY/CATCH/Back entries keep whatever they had); dropped by
+   *  resetStepIfExists. Step oids are unique across the whole tree, so one flat map serves
+   *  every context. */
+  backFrom: Record<string, string | null>;
+  /** Fixed button row: a screen's latest submitted form values, verbatim (`action.form_values`).
+   *  Kept across resets, so a screen reopened by Back can be prefilled from it. */
+  lastFormValues: Record<string, Record<string, unknown>>;
+  /** Fixed button row: values to prefill a screen reopened by Back, verbatim. Cleared when that
+   *  screen is submitted, and by resetStepIfExists. */
+  backPrefill: Record<string, Record<string, unknown>>;
 }
 
 /** Spec 2026-11-06 §5: one Operator Stop / Operator Abort cleanup run. */
@@ -299,6 +313,9 @@ export function defaultEngineState(): EngineState {
     pollFailingSince: {},
     pollWarned: [],
     operatorCleanup: null,
+    backFrom: {},
+    lastFormValues: {},
+    backPrefill: {},
   };
 }
 
@@ -338,5 +355,8 @@ export function loadEngineState(row: unknown): EngineState {
     pollFailingSince: r.pollFailingSince ?? {},
     pollWarned: r.pollWarned ?? [],
     operatorCleanup: r.operatorCleanup ? { ...r.operatorCleanup, pendingAborts: r.operatorCleanup.pendingAborts ?? [] } : null,
+    backFrom: r.backFrom ?? {},
+    lastFormValues: r.lastFormValues ?? {},
+    backPrefill: r.backPrefill ?? {},
   };
 }

@@ -19,7 +19,7 @@ import { useFormDocumentStore } from '@/stores/formDocumentStore'
 import { resolveBp } from '@/lib/form-document/layout-ops'
 import { useRectMap, type Rect } from './useRectMap'
 import { useSpanDrag, type SpanDragController } from './useSpanDrag'
-import { blockDragId, rowDragId, gapDropId, slotDropId, barDropId } from './dragTypes'
+import { blockDragId, rowDragId, gapDropId, slotDropId } from './dragTypes'
 
 // §14.4 hover-gating: grips + seams are revealed only on hover/focus/active-resize of their row,
 // so the canvas stays visually quiet until the user shows structural intent. Kept as a pure
@@ -216,28 +216,6 @@ function GapZone({ id, style }: { id: string; style: React.CSSProperties }) {
   )
 }
 
-/** The whole bottom-bar band. Overlaps the bar's gaps and slots, which win (preferPreciseZones);
- *  a drop here lands beside the bar's last button. */
-function BarZone({ id, style }: { id: string; style: React.CSSProperties }) {
-  const { setNodeRef, isOver } = useDroppable({ id })
-  return (
-    <div ref={setNodeRef} data-drop-zone={id} style={{ position: 'absolute', pointerEvents: 'none', ...style }}>
-      {isOver && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: 'rgba(37, 99, 235, 0.08)',
-            outline: '2px dashed #2563eb',
-            outlineOffset: -2,
-            borderRadius: 4,
-          }}
-        />
-      )}
-    </div>
-  )
-}
-
 function SlotZone({ id, style }: { id: string; style: React.CSSProperties }) {
   const { setNodeRef, isOver } = useDroppable({ id })
   return (
@@ -346,12 +324,6 @@ export function StructuralDragLayer({ hostRef }: { hostRef: RefObject<HTMLDivEle
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2 }}>
       {map.sections.flatMap((section) => {
         const zones: React.ReactNode[] = []
-        if (section.role === 'footer') {
-          const { left, top, width, height } = section.rect
-          zones.push(
-            <BarZone key={barDropId(section.id)} id={barDropId(section.id)} style={{ left, top, width, height }} />,
-          )
-        }
         // gap above the first row
         zones.push(
           <GapZone
@@ -453,7 +425,7 @@ function rowGripStyle(rect: Rect): React.CSSProperties {
 }
 
 /** An empty section (the bottom-bar placeholder) gets its whole band as the drop target, so a drop
- *  anywhere on "drag buttons here" lands; otherwise a thin gap straddles the first row's top. */
+ *  anywhere on an empty section lands; otherwise a thin gap straddles the first row's top. */
 export function gapStyleTop(section: { rect: Rect }, firstRow?: { rect: Rect }): React.CSSProperties {
   if (!firstRow) {
     const { left, top, width, height } = section.rect

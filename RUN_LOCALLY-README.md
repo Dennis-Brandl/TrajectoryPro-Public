@@ -138,7 +138,7 @@ cd MissionAutopilot && npm run build && cd ..
 
 The form style sheets and Autopilot's packages are generated files, so a fresh checkout doesn't have them. If you skip the Autopilot build, `npm run dev` still opens the console on port 5176, but the server stops with `ERR_MODULE_NOT_FOUND`. Run both builds again after you update the code.
 
-In PowerShell, install each app with `foreach ($app in 'MissionFormKit','MissionDesigner','mission-control-db','MissionCommander','MissionEngine','MissionPilot','MissionAutopilot','MissionAutopilotTester','MissionBroker') { Push-Location $app; npm install; Pop-Location }`, and set the database address with `$env:DATABASE_URL = "postgres://..."` before `npm run db:migrate`.
+In PowerShell, install each app with `foreach ($app in 'MissionFormKit','MissionDesigner','mission-control-db','MissionCommander','MissionEngine','MissionPilot','MissionAutopilot','MissionAutopilotTester','MissionBroker') { Push-Location $app; npm.cmd install; Pop-Location }`, and set the database address with `$env:DATABASE_URL = "postgres://..."` before `npm.cmd run db:migrate`. Windows PowerShell has no `&&`, so run each build as its own statement: `Push-Location MissionFormKit; npm.cmd run build:tokens; Pop-Location`, then the same for `MissionPilot` and `MissionAutopilot` with `npm.cmd run build`. Call `npm.cmd` rather than `npm` throughout, because `npm` resolves to an unsigned `npm.ps1` that an `AllSigned` execution policy refuses to load.
 
 Designer and Autopilot create their own tables when they start. Commander doesn't, so run `npm run db:migrate` again each time you update the code.
 

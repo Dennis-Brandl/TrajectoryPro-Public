@@ -23,8 +23,11 @@ To run with Docker instead, see [`DOCKER-README.md`](DOCKER-README.md).
 | Mission Autopilot | Console `:5176`, server `:3002` | Hosts actions |
 | Mission Autopilot Tester | UI `:5180` | Tests an action server directly |
 | Mission Broker | `:3007` | Distributed Workflow actions |
+| Mission XO | UI `:5277/xo/` | Steward's console for one work center |
 
 Commander uses `:3005` because its default API port, `:3002`, clashes with Mission Autopilot. The Autopilot console always looks for its server on `:3002`.
+
+Mission XO has no API of its own. It is a client for the Commander API on `:3005`, and it is served under the `/xo/` path rather than the site root, so `:5277` on its own redirects to `:5277/xo/`.
 
 ## Part 1: Run on one computer
 
@@ -117,7 +120,7 @@ MISSION_BROKER_TOKEN=<BROKER_TOKEN>
 Run these from the repository root. Install `MissionFormKit` and `MissionDesigner` first, because other apps build from them.
 
 ```bash
-for app in MissionFormKit MissionDesigner mission-control-db MissionCommander MissionEngine MissionPilot MissionAutopilot MissionAutopilotTester MissionBroker; do
+for app in MissionFormKit MissionDesigner mission-control-db MissionCommander MissionXO MissionEngine MissionPilot MissionAutopilot MissionAutopilotTester MissionBroker; do
   (cd "$app" && npm install)
 done
 
@@ -129,6 +132,10 @@ cd ..
 # Build the form style sheets (Mission Pilot's build needs them)
 cd MissionFormKit && npm run build:tokens && cd ..
 
+# Build the shared design tokens (Commander, Designer, Mission XO
+# and the Autopilot console all import them)
+cd MissionDesigner && npm -w @mission/tokens run build && cd ..
+
 # Build Mission Pilot into the Engine
 cd MissionPilot && npm run build && cd ..
 
@@ -136,9 +143,13 @@ cd MissionPilot && npm run build && cd ..
 cd MissionAutopilot && npm run build && cd ..
 ```
 
-The form style sheets and Autopilot's packages are generated files, so a fresh checkout doesn't have them. If you skip the Autopilot build, `npm run dev` still opens the console on port 5176, but the server stops with `ERR_MODULE_NOT_FOUND`. Run both builds again after you update the code.
+The form style sheets, the design tokens and Autopilot's packages are generated files, so a fresh checkout doesn't have them. If you skip the Autopilot build, `npm run dev` still opens the console on port 5176, but the server stops with `ERR_MODULE_NOT_FOUND`. Run these builds again after you update the code.
 
-In PowerShell, install each app with `foreach ($app in 'MissionFormKit','MissionDesigner','mission-control-db','MissionCommander','MissionEngine','MissionPilot','MissionAutopilot','MissionAutopilotTester','MissionBroker') { Push-Location $app; npm.cmd install; Pop-Location }`, and set the database address with `$env:DATABASE_URL = "postgres://..."` before `npm.cmd run db:migrate`. Windows PowerShell has no `&&`, so run each build as its own statement: `Push-Location MissionFormKit; npm.cmd run build:tokens; Pop-Location`, then the same for `MissionPilot` and `MissionAutopilot` with `npm.cmd run build`. Call `npm.cmd` rather than `npm` throughout, because `npm` resolves to an unsigned `npm.ps1` that an `AllSigned` execution policy refuses to load.
+The design tokens are worth their own step because four UIs import `@mission/tokens/dist` — Mission Commander, Mission Designer, Mission XO and the Autopilot console — but only Mission Designer's own `npm run dev` and `npm run build` generate them. Step 5 starts Commander's UI before Designer's, so without this build the first UI you start is the one that can't resolve them.
+
+In PowerShell, install each app with `foreach ($app in 'MissionFormKit','MissionDesigner','mission-control-db','MissionCommander','MissionXO','MissionEngine','MissionPilot','MissionAutopilot','MissionAutopilotTester','MissionBroker') { Push-Location $app; npm.cmd install; Pop-Location }`, and set the database address with `$env:DATABASE_URL = "postgres://..."` before `npm.cmd run db:migrate`. Windows PowerShell has no `&&`, so run each build as its own statement: `Push-Location MissionFormKit; npm.cmd run build:tokens; Pop-Location`, then `Push-Location MissionDesigner; npm.cmd -w @mission/tokens run build; Pop-Location`, then the same for `MissionPilot` and `MissionAutopilot` with `npm.cmd run build`. Call `npm.cmd` rather than `npm` throughout, because `npm` resolves to an unsigned `npm.ps1` that an `AllSigned` execution policy refuses to load. That applies to every `npm` command in this guide, including the start commands in step 5 and in Part 2, which are written with plain `npm` for the shell-neutral form.
+
+Mission XO sits after `MissionCommander` in that list because it needs Commander installed before it will *start*, not just before it installs: XO's `dev` and `build` scripts run a help-page generator that lives in `MissionCommander/scripts`, and that script reads its own `marked` from Commander's `node_modules`. XO also takes `MissionDesigner`'s token and UI packages and `mission-control-db` from the file system, so it needs the design-token build above, and it shares Commander's React and router at runtime — reinstall XO whenever you change Commander's dependencies, to keep a single copy of each.
 
 Designer and Autopilot create their own tables when they start. Commander doesn't, so run `npm run db:migrate` again each time you update the code.
 
@@ -171,7 +182,13 @@ cd MissionAutopilotTester && npm run dev -- --port 5180
 
 # Mission Broker
 cd MissionBroker && npx tsx --env-file=.env src/index.ts
+
+# Mission XO
+cd MissionXO && API_PORT=3005 npm run dev
+# PowerShell: cd MissionXO; $env:API_PORT = 3005; npm run dev
 ```
+
+Mission XO needs `API_PORT=3005` for the same reason Commander's UI does: it calls the Commander API, and its dev server would otherwise look for `:3002`, which is Mission Autopilot. Set the variable for these two commands only. Mission Designer's dev server reads the same variable and would send its own requests to Commander.
 
 To change Mission Pilot's code with live reload, run `cd MissionPilot && npm run dev` and open `http://localhost:5275`. Otherwise, run `npm run build` in `MissionPilot` after each change.
 
@@ -184,8 +201,11 @@ To change Mission Pilot's code with live reload, run `cd MissionPilot && npm run
 | Mission Pilot | `http://127.0.0.1:3006` | Use a Mission Commander account. |
 | Autopilot console | `http://localhost:5176` | Enter `<ACTIONS_KEY>`. |
 | Autopilot Tester | `http://localhost:5180` | Add a connection to `http://localhost:3002`. |
+| Mission XO | `http://localhost:5277/xo/` | Use a Mission Commander account with the Steward or Administrator role. |
 
 `localhost` and `127.0.0.1` keep separate sign-ins in the browser, so use the same one each time.
+
+Mission XO can't create accounts, so make the account in Mission Commander first and give it the Steward or Administrator role. XO keeps its own sign-in even in the same browser, so signing in or out of XO leaves Commander's session alone, and the other way round.
 
 To run actions, bind each work center's environments on the **Env Specs** tab in Mission Commander:
 
@@ -219,8 +239,10 @@ Add or change these lines. Each `ALLOWED_ORIGINS` value must match the browser's
 
 ```ini
 BASE_URL=http://192.168.1.50:5273
-ALLOWED_ORIGINS=http://192.168.1.50:5273
+ALLOWED_ORIGINS=http://192.168.1.50:5273,http://192.168.1.50:5277
 ```
+
+The second address is Mission XO (step 3). XO signs in through the Commander API, which checks the browser's origin against this list, so leaving it out makes XO's sign-in fail with `Invalid origin` even though the password is right.
 
 **`MissionEngine/.env`**
 
@@ -263,7 +285,13 @@ cd MissionAutopilot/apps/console && npm run dev -- --host
 
 # Mission Autopilot Tester UI
 cd MissionAutopilotTester && npm run dev -- --host --port 5180
+
+# Mission XO
+cd MissionXO && API_PORT=3005 npm run dev -- --host --port 5277
+# PowerShell: cd MissionXO; $env:API_PORT = 3005; npm run dev -- --host --port 5277
 ```
+
+`--host` is the only part XO needs beyond its Part 1 command. The `--port 5277` repeats what XO's own Vite config already sets, and is written out so the command reads like the others. `/xo/` comes from that config too, so the address keeps its path on the network as well. `API_PORT=3005` applies for the same reason as in Part 1, and still belongs only to this command and Commander's UI.
 
 Each UI prints a `Network:` line with its address. If the computer has virtual adapters, you may see several, so use the address from step 1.
 
@@ -272,10 +300,10 @@ Each UI prints a `Network:` line with its address. If the computer has virtual a
 Allow only the ports that other devices need. On Windows, run this in an administrator PowerShell window:
 
 ```powershell
-New-NetFirewallRule -DisplayName "Trajectory Pro LAN" -Direction Inbound -Protocol TCP -LocalPort 5273,3006,5176,5174,5180 -Action Allow -Profile Private
+New-NetFirewallRule -DisplayName "Trajectory Pro LAN" -Direction Inbound -Protocol TCP -LocalPort 5273,3006,5176,5174,5180,5277 -Action Allow -Profile Private
 ```
 
-Your network must be set to **Private** in Windows settings. On Linux with `ufw`, run `sudo ufw allow from 192.168.1.0/24 to any port 5273,3006,5176,5174,5180 proto tcp`.
+Your network must be set to **Private** in Windows settings. On Linux with `ufw`, run `sudo ufw allow from 192.168.1.0/24 to any port 5273,3006,5176,5174,5180,5277 proto tcp`.
 
 **Keep the other ports closed.** The Commander (`:3005`), Designer (`:3001`) and Broker (`:3007`) APIs listen on every network interface when run from source, so the firewall is what keeps them private. If Windows asks whether to allow Node.js through the firewall, choose **Cancel** or leave the boxes unticked, because allowing it would open all of these ports.
 
@@ -288,6 +316,7 @@ Your network must be set to **Private** in Windows settings. On Linux with `ufw`
 | Autopilot console | `http://192.168.1.50:5176` |
 | Mission Designer | `http://192.168.1.50:5174` |
 | Autopilot Tester | `http://192.168.1.50:5180` |
+| Mission XO | `http://192.168.1.50:5277/xo/` |
 
 In Mission Commander, keep using `http://127.0.0.1:3002` and `http://127.0.0.1:3007` for action servers. The Engine makes those calls from the host computer, so other devices don't need to reach them.
 
@@ -311,10 +340,13 @@ In the Tester, connect to `http://192.168.1.50:3002`. Requests still need `<ACTI
 
 | What you see | Likely cause | Fix |
 | --- | --- | --- |
-| `Invalid origin` or `FORBIDDEN_ORIGIN` when signing in or saving | The browser's address isn't in the allowed list | Correct `ALLOWED_ORIGINS` or `ACTIONS_ALLOWED_ORIGINS`, then restart that API |
+| `Invalid origin` or `FORBIDDEN_ORIGIN` when signing in or saving | The browser's address isn't in the allowed list | Correct `ALLOWED_ORIGINS` or `ACTIONS_ALLOWED_ORIGINS`, then restart that API. For Mission XO, the address goes in `MissionCommander/.env` and it's the Commander API that restarts |
 | `FORBIDDEN_HOST` from Mission Autopilot | The server was called by an address it doesn't accept | Add the host to `ACTIONS_ALLOWED_HOSTS` |
 | Autopilot says `Refusing to start` | `DATABASE_URL`, or an `ACTIONS_API_KEY` of at least 32 characters, is missing | Check `MissionAutopilot/.env` |
 | The Autopilot console can't reach its server | The server isn't on `:3002` | Set `PORT=3002` in `MissionAutopilot/.env` |
+| Mission XO can't sign in and its `/api` requests return 404 | XO was started without `API_PORT=3005`, so its dev server is calling Mission Autopilot on `:3002` | Restart XO with `API_PORT=3005` |
+| Mission Designer signs in but then reports `Server error 404` | `API_PORT` was set for the whole shell, so Designer's dev server is calling the Commander API | Set `API_PORT` only for Commander's UI and Mission XO |
 | Another device can't connect, but the host can | The firewall, or a missing `--host` | Recheck steps 3 and 4 |
+| A UI won't start and its error names `@mission/tokens/dist` | The shared design tokens haven't been built | Run `npm -w @mission/tokens run build` in `MissionDesigner` (step 4) |
 | Commander shows database errors after an update | New migrations haven't been applied | Run `npm run db:migrate` in `mission-control-db` |
 | Everything stopped working after the network changed | The host's IP address changed | Update the `.env` files and firewall scope, then restart |

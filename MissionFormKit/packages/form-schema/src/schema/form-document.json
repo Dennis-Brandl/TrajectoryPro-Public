@@ -46,9 +46,9 @@
       "required": ["base"],
       "additionalProperties": false,
       "properties": {
-        "base": { "type": "integer", "minimum": 1, "maximum": 12 },
-        "tablet": { "type": "integer", "minimum": 1, "maximum": 12 },
-        "phone": { "type": "integer", "minimum": 1, "maximum": 12 }
+        "base": { "type": "integer", "minimum": 0, "maximum": 12 },
+        "tablet": { "type": "integer", "minimum": 0, "maximum": 12 },
+        "phone": { "type": "integer", "minimum": 0, "maximum": 12 }
       }
     },
     "pbVisible": {

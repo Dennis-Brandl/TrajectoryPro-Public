@@ -28,9 +28,11 @@ let lastRendererProps: FormDocumentViewProps | undefined
 // `key={task.stepInstanceId}` on FormDocumentView: deleting the key would still
 // pass every other test, but would collapse this counter to 1.
 let rendererMountCount = 0
+let lastBarProps: StepButtonBarProps | undefined
 
 vi.mock('@mission/form-renderer', () => ({
   StepButtonBar: (props: StepButtonBarProps) => (
+    (lastBarProps = props),
     <div data-testid="step-bar">
       {props.back && (
         <button type="button" disabled={props.back.disabled} onClick={props.back.onBack}>
@@ -1356,5 +1358,100 @@ describe('TaskScreen — job buttons (spec 2026-10-28 §5.3)', () => {
     pass()
     fireEvent.keyDown(document.body, { key: 'Enter', code: 'Enter', ctrlKey: true })
     await waitFor(() => expect(api.submit).toHaveBeenCalledWith('a1', { kind: 'submit', values: { name: 'Ada' } }))
+  })
+})
+
+describe('user rulings 2026-11-14 (FormKit spec Appendix X)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    lastBarProps = undefined
+  })
+
+  it('X.7: job-less buttons are drawn disabled and an action event never submits', () => {
+    vi.mocked(api.submit).mockResolvedValue(undefined)
+    render(<TaskScreen task={task({ formDocument: REQUIRED_NAME_DOC })} onDone={vi.fn()} onError={vi.fn()} />)
+    expect(lastRendererProps!.buttonJobs?.actionsEnabled).toBe(false)
+    act(() => {
+      lastRendererProps!.onEvent!({ kind: 'fieldChange', fieldName: 'name', value: 'Ada' })
+      lastRendererProps!.onEvent!({ kind: 'validation', ok: true, missing: [] })
+    })
+    act(() => {
+      lastRendererProps!.onEvent!({ kind: 'action', blockId: 'b1', outputValue: 'go' })
+    })
+    expect(api.submit).not.toHaveBeenCalled()
+  })
+
+  it('X.12: after a rejected signature a timer that already ran out still counts as finished', async () => {
+    vi.mocked(api.submit).mockRejectedValue(new ApiError(403, 'SIGNATURE_INVALID_CREDENTIALS', 'Login name or password is incorrect'))
+    const doc: FormDocument = {
+      version: 2,
+      sections: [
+        {
+          id: 's1',
+          role: 'content',
+          rows: [
+            {
+              id: 'r1',
+              blocks: [
+                { id: 't1', type: 'timer', label: 'Cure', fieldName: 'cure', durationSeconds: 5, direction: 'countdown', blockDone: true },
+                ...ESIG_DOC.sections[0]!.rows[0]!.blocks,
+              ],
+            },
+          ],
+        },
+      ],
+    }
+    render(<TaskScreen task={task({ stepType: 'YES_NO', formDocument: doc })} me={ME} onDone={vi.fn()} onError={vi.fn()} />)
+    const no = () => screen.getByRole('button', { name: 'No' }) as HTMLButtonElement
+    act(() => {
+      lastRendererProps!.onEvent!({ kind: 'timerState', fieldName: 'cure', state: 'elapsed', elapsedSeconds: 5 })
+      lastRendererProps!.onEvent!({ kind: 'signature', blockId: 'e1', loginName: 'jane.op', password: 'wrong' })
+      lastRendererProps!.onEvent!({ kind: 'validation', ok: true, missing: [] })
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Sign & Yes' }))
+    await waitFor(() => expect(lastRendererProps!.signatureError).toBe('Login name or password is incorrect'))
+    // Only the signature is missing now, which No may ignore; Yes waits for a new password.
+    expect(no().disabled).toBe(false)
+    expect((screen.getByRole('button', { name: 'Sign & Yes' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  describe('X.11: the topline width decides where Back and Stop go', () => {
+    function withToplineWidth(width: number) {
+      Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+        configurable: true,
+        get() {
+          return (this as HTMLElement).classList.contains('task-topline') ? width : 0
+        },
+      })
+      onTestFinished(() => {
+        // Drop the own stub: clientWidth falls back to jsdom's (always 0) on Element.prototype.
+        delete (HTMLElement.prototype as { clientWidth?: number }).clientWidth
+      })
+    }
+
+    it('a narrow topline tells the bar to leave Back and Stop to the topline', () => {
+      withToplineWidth(560)
+      render(<TaskScreen task={task({ buttonBar: {}, backAvailable: true, allowStop: true })} onDone={vi.fn()} onError={vi.fn()} />)
+      expect(lastBarProps!.compact).toBe(true)
+    })
+
+    it('a wide topline tells the bar to show them, whatever the bar’s own width', () => {
+      withToplineWidth(900)
+      render(<TaskScreen task={task({ buttonBar: {}, backAvailable: true, allowStop: true })} onDone={vi.fn()} onError={vi.fn()} />)
+      expect(lastBarProps!.compact).toBe(false)
+    })
+
+    it('unmeasured (no layout engine): the bar falls back to its own rule', () => {
+      render(<TaskScreen task={task({ buttonBar: {}, backAvailable: true })} onDone={vi.fn()} onError={vi.fn()} />)
+      expect(lastBarProps!.compact).toBeUndefined()
+    })
+  })
+
+  it('X.13: a fixed-row step marks the screen so its footer does not stick', () => {
+    const { container, unmount } = render(<TaskScreen task={task({ buttonBar: {} })} onDone={vi.fn()} onError={vi.fn()} />)
+    expect(container.querySelector('main.task-screen')!.classList.contains('task-screen-fixed-bar')).toBe(true)
+    unmount()
+    const legacy = render(<TaskScreen task={task({ buttonBar: null })} onDone={vi.fn()} onError={vi.fn()} />)
+    expect(legacy.container.querySelector('main.task-screen')!.classList.contains('task-screen-fixed-bar')).toBe(false)
   })
 })

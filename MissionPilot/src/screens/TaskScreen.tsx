@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { FormDocumentView, StepButtonBar } from '@mission/form-renderer'
 import type { ButtonJobs } from '@mission/form-renderer'
 import { computeValidation, findESignatureBlock, stripButtonBlocks, withStepButtons } from '@mission/form-schema'
@@ -95,8 +95,43 @@ const SIGNATURE_COPY: Record<string, string> = {
 }
 const SIGNATURE_FALLBACK_COPY = 'The signature was rejected — try again.'
 
-function gateFor(doc: FormDocument | null, values: FormValues, signature: SignatureDraft): Gate {
-  return doc ? computeValidation(doc, values, EMPTY_TIMERS, signature) : NO_GATE
+// `settled` is the set of timers that have actually run out or been stopped on this screen
+// (from the renderer's timerState events). A freshly entered screen has none.
+function gateFor(
+  doc: FormDocument | null,
+  values: FormValues,
+  signature: SignatureDraft,
+  settled: ReadonlySet<string> = EMPTY_TIMERS,
+): Gate {
+  return doc ? computeValidation(doc, values, settled, signature) : NO_GATE
+}
+
+// Spec §5.6 (X.11 ruling 2026-11-14): below this task-area width Back sits in the topline and
+// Stop in its "⋯" menu; from it up, both sit in the fixed button row. Matches pilot.css.
+const TOPLINE_NARROW_PX = 600
+
+/**
+ * Whether the topline is narrower than TOPLINE_NARROW_PX, measured the same way as pilot.css's
+ * container query (the topline's content box). Undefined until measured, or without a layout
+ * engine — the button row then falls back to its own width rule.
+ */
+function useNarrowTopline(ref: RefObject<HTMLDivElement | null>): boolean | undefined {
+  const [narrow, setNarrow] = useState<boolean | undefined>(undefined)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const apply = (width: number) => {
+      if (width > 0) setNarrow(width < TOPLINE_NARROW_PX)
+    }
+    apply(el.clientWidth)
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) apply(entry.contentRect.width)
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ref])
+  return narrow
 }
 
 // `ApiError.message` is `HTTP <status>` when the server sent no `error` text, so that
@@ -158,6 +193,8 @@ export function TaskScreen({
   const [signature, setSignature] = useState<SignatureDraft>(initialSignature)
   const [signatureError, setSignatureError] = useState<string | null>(null)
   const [gate, setGate] = useState<Gate>(() => gateFor(doc, values, signature))
+  // Timers that have run out or been stopped on this screen; a new step instance starts empty.
+  const settledTimers = useRef<Set<string>>(new Set())
   const [submitting, setSubmitting] = useState(false)
   const where = useWhereYouAre(task.instanceId, task.stepOid, active && !offline)
   const [whereOpen, setWhereOpen] = useState(false)
@@ -196,6 +233,7 @@ export function TaskScreen({
     setValues(restored)
     setSignature(initialSignature())
     setSignatureError(null)
+    settledTimers.current = new Set()
     setGate(gateFor(doc, restored, initialSignature()))
     setSubmitting(false)
   }
@@ -227,7 +265,7 @@ export function TaskScreen({
         const cleared: SignatureDraft = { ...signature, password: '' }
         setSignatureError(signatureCopy(err))
         setSignature(cleared)
-        setGate(gateFor(doc, values, cleared))
+        setGate(gateFor(doc, values, cleared, settledTimers.current))
       } else if (err instanceof ApiError && err.code === 'NOT_RUNNING') {
         // The workflow couldn't take the submit right now (busy for a moment, or stopping):
         // the step is still ours, so it must stay open — treating this as a lost race would
@@ -309,10 +347,9 @@ export function TaskScreen({
         setGate({ ok: e.ok, missing: e.missing })
         break
       case 'action':
-        // V1: an authored button is a submit trigger only when the gate already
-        // passes and no submit is already in flight — same mapping as the Submit
-        // chrome button, which disables itself on `submitting` for the same reason.
-        if (gate.ok && !locked) submit(signed({ kind: 'submit', values }))
+        // User ruling 2026-11-14 (X.7): a button without a job does nothing. Pilot draws it
+        // disabled (buttonJobs.actionsEnabled), and Designer refuses one on a Yes/No step — the
+        // only place one can survive withStepButtons — where a submit would always be refused.
         break
       case 'job':
         // Spec 2026-10-28 §5.3: a job button presses the same action Pilot's own button would,
@@ -323,7 +360,7 @@ export function TaskScreen({
         else decide('no')
         break
       case 'timerState':
-        console.debug(e)
+        if (e.state === 'elapsed' || e.state === 'stopped') settledTimers.current.add(e.fieldName)
         break
       default:
         break // complete/decision never come from the renderer — they are host chrome
@@ -379,11 +416,14 @@ export function TaskScreen({
     yes: { enabled: jobEnabled.yes, label: yesNoConfig?.yes_label ?? 'Yes' },
     no: { enabled: jobEnabled.no, label: yesNoConfig?.no_label ?? 'No' },
     signed: esig !== null,
+    actionsEnabled: false,
   }
 
   const typedCount = doc ? Object.keys(typedValues(values, seed)).length : 0
 
   const rootRef = useRef<HTMLElement>(null)
+  const toplineRef = useRef<HTMLDivElement>(null)
+  const narrow = useNarrowTopline(toplineRef)
 
   // P4-R2: Ctrl+Enter presses the one primary button, only on the pane on screen and only
   // when that button is enabled. Never a Yes/No answer (two choices), never under the
@@ -410,7 +450,7 @@ export function TaskScreen({
   return (
     <main
       ref={rootRef}
-      className="task-screen"
+      className={fixedBar ? 'task-screen task-screen-fixed-bar' : 'task-screen'}
       // Click, not pointer-down: dropping the banner moves everything below it up, and on
       // pointer-down that happened before the pointer came back up — the click then landed
       // on another element and the operator's first Continue/Approve was lost (P1d Task 1).
@@ -434,7 +474,7 @@ export function TaskScreen({
 
       {/* Below 1280 px the side panel is hidden and "Where you are" opens it as a sheet (Ruling 5).
           Release sits at the right of the same line (user ruling 2026-11-10). */}
-      <div className="task-topline">
+      <div className="task-topline" ref={toplineRef}>
         {showBack && (
           <button type="button" className="task-topline-back" disabled={locked} onClick={goBack}>
             ‹ Back
@@ -474,6 +514,7 @@ export function TaskScreen({
               }}
               back={showBack ? { onBack: goBack, disabled: locked } : null}
               stop={showStop ? { onStop: () => askStop(document.activeElement as HTMLElement | null), disabled: locked } : null}
+              compact={narrow}
               surfaceColor={surfaceColor}
             />
           )}

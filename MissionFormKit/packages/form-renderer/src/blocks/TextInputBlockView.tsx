@@ -55,6 +55,7 @@ export function TextInputBlockView({ block }: { block: TextInputBlock }) {
           id={controlId}
           className="tfk-control"
           list={listId}
+          aria-required={block.required || undefined}
           value={value}
           placeholder={block.placeholder}
           onChange={(e) => onValue(e.target.value)}

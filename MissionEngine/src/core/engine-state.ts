@@ -16,6 +16,7 @@ import type { SerializedResources } from './resources.js';
 import type { EnvHold } from './env-resource-bridge.js';
 import type { ScriptOutputs } from './step-handlers.js';
 import type { CleanupKind } from './operator-cleanup.js';
+import type { FormSources } from './form-sources.js';
 
 /** Task 16 (review fix, Critical 1 + controller Ruling A): a failure terminal that reached an
  *  action-backed step while dispatch was frozen (paused/pausing) — deferred rather than resolved
@@ -50,8 +51,14 @@ export interface EngineState {
   activeCatches: Record<string, CatchContext>;
   /** Serialized resource-manager state, or null if this instance declares no resources. */
   resources: SerializedResources | null;
-  /** Per-step input/output parameter snapshots, for CM display and history (Task 17). */
-  stepSnapshots: Record<string, { inputParameters: Record<string, string>; outputParameters?: Record<string, string> }>;
+  /** Per-step input/output parameter snapshots, for CM display and history (Task 17).
+   *  `formSources`: the form's property/input-sourced defaults and placeholders, resolved at
+   *  activation for the inbox to apply (FormKit spec X.3, ruling 2026-11-14). */
+  stepSnapshots: Record<string, {
+    inputParameters: Record<string, string>;
+    outputParameters?: Record<string, string>;
+    formSources?: FormSources;
+  }>;
   /** Active child-workflow spec oid per parent WORKFLOW PROXY step oid (Task 12). Entries are
    *  removed the moment the child completes (completeChildWorkflow), the child is torn down
    *  (tearDownActiveChild), or a stopping drain cancels the proxy row once the child subtree

@@ -49,7 +49,10 @@ export type StepKind = 'continue' | 'yesno'
 export interface BlockLayout {
   /** Grid columns occupied (of 12). Default 12. */
   span?: PerBreakpoint<GridSpan>
-  /** Reflow order override within the row. Default: DOM order. */
+  /**
+   * Reflow order within the row, 0-12. 0 (and no value) is automatic: the block keeps its
+   * place among the other automatic blocks, all of which come BEFORE any block with 1-12.
+   */
   order?: PerBreakpoint<number>
   /** Hide the block at a breakpoint. Default true. */
   visible?: PerBreakpoint<boolean>

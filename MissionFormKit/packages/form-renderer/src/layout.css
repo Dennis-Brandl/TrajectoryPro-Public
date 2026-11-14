@@ -71,6 +71,13 @@
 [data-block-type='image'].tfk-align-center .tfk-fit-contain > img { object-position: center; }
 [data-block-type='image'].tfk-align-end .tfk-fit-contain > img { object-position: right; }
 
+/* A block's own size limits (blockLayoutStyle). They act on the block's content, not on the
+   grid cell, so the cell's display (hide rules) and alignment rules stay untouched. A text area
+   grows to fill a taller block. */
+.tfk-block[data-min-height] > * { min-height: var(--tfk-block-min-h); }
+.tfk-block[data-min-height] .tfk-field > textarea.tfk-control { flex: 1 1 auto; }
+.tfk-block[data-max-width] > * { max-width: var(--tfk-block-max-w); }
+
 /* base (desktop, container >= 1024px) spans — also the default */
 .tfk-span-base-1 { grid-column: span 1; }
 .tfk-span-base-2 { grid-column: span 2; }
@@ -84,7 +91,7 @@
 .tfk-span-base-10 { grid-column: span 10; }
 .tfk-span-base-11 { grid-column: span 11; }
 .tfk-span-base-12 { grid-column: span 12; }
-.tfk-order-base-1 { order: 1; } .tfk-order-base-2 { order: 2; } .tfk-order-base-3 { order: 3; }
+.tfk-order-base-0 { order: 0; } .tfk-order-base-1 { order: 1; } .tfk-order-base-2 { order: 2; } .tfk-order-base-3 { order: 3; }
 .tfk-order-base-4 { order: 4; } .tfk-order-base-5 { order: 5; } .tfk-order-base-6 { order: 6; }
 .tfk-order-base-7 { order: 7; } .tfk-order-base-8 { order: 8; } .tfk-order-base-9 { order: 9; }
 .tfk-order-base-10 { order: 10; } .tfk-order-base-11 { order: 11; } .tfk-order-base-12 { order: 12; }
@@ -104,7 +111,7 @@
   .tfk-span-tablet-10 { grid-column: span 10; }
   .tfk-span-tablet-11 { grid-column: span 11; }
   .tfk-span-tablet-12 { grid-column: span 12; }
-  .tfk-order-tablet-1 { order: 1; } .tfk-order-tablet-2 { order: 2; } .tfk-order-tablet-3 { order: 3; }
+  .tfk-order-tablet-0 { order: 0; } .tfk-order-tablet-1 { order: 1; } .tfk-order-tablet-2 { order: 2; } .tfk-order-tablet-3 { order: 3; }
   .tfk-order-tablet-4 { order: 4; } .tfk-order-tablet-5 { order: 5; } .tfk-order-tablet-6 { order: 6; }
   .tfk-order-tablet-7 { order: 7; } .tfk-order-tablet-8 { order: 8; } .tfk-order-tablet-9 { order: 9; }
   .tfk-order-tablet-10 { order: 10; } .tfk-order-tablet-11 { order: 11; } .tfk-order-tablet-12 { order: 12; }
@@ -126,7 +133,7 @@
   .tfk-span-phone-10 { grid-column: span 10; }
   .tfk-span-phone-11 { grid-column: span 11; }
   .tfk-span-phone-12 { grid-column: span 12; }
-  .tfk-order-phone-1 { order: 1; } .tfk-order-phone-2 { order: 2; } .tfk-order-phone-3 { order: 3; }
+  .tfk-order-phone-0 { order: 0; } .tfk-order-phone-1 { order: 1; } .tfk-order-phone-2 { order: 2; } .tfk-order-phone-3 { order: 3; }
   .tfk-order-phone-4 { order: 4; } .tfk-order-phone-5 { order: 5; } .tfk-order-phone-6 { order: 6; }
   .tfk-order-phone-7 { order: 7; } .tfk-order-phone-8 { order: 8; } .tfk-order-phone-9 { order: 9; }
   .tfk-order-phone-10 { order: 10; } .tfk-order-phone-11 { order: 11; } .tfk-order-phone-12 { order: 12; }
@@ -141,6 +148,9 @@
 .tfk-step-bar {
   container-type: inline-size;
   border-top: 1px solid var(--form-color-border);
+  /* Opaque: a host may keep the bar on screen over a long form (Pilot does), and the form must
+     never show through it. */
+  background: var(--form-color-surface);
 }
 .tfk-step-bar-inner {
   display: grid;
@@ -167,7 +177,9 @@
 .tfk-step-bar-stop { background: transparent; border-color: var(--form-color-text-muted, currentColor); }
 .tfk-step-bar-aux:focus-visible { outline: 2px solid var(--form-color-accent); outline-offset: 1px; }
 .tfk-step-bar-aux:disabled { opacity: 0.55; cursor: default; }
-/* Phones show Back and Stop elsewhere (topline and the menu), so the bar keeps only the buttons. */
+/* Phones show Back and Stop elsewhere (topline and the menu), so the bar keeps only the buttons.
+   Only when the host has not decided itself (the `compact` prop sets data-compact). */
 @container (max-width: 599px) {
-  .tfk-step-bar-left, .tfk-step-bar-right { display: none; }
+  .tfk-step-bar:not([data-compact]) .tfk-step-bar-left,
+  .tfk-step-bar:not([data-compact]) .tfk-step-bar-right { display: none; }
 }

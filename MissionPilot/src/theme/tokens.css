@@ -132,7 +132,7 @@
     --pilot-stripe-w: 4px;
     --pilot-indicator-w: 3px;
     --pilot-icon: 1.25rem;
-    --pilot-form-max: 60rem;                                                                      /* 960px (spec §3) */
+    --pilot-form-max: 68rem;                                                                      /* 1088px: past the 1024px Desktop tier (ruling 2026-11-14) */
     --pilot-login-w: 24rem;
     --pilot-motion: 160ms ease;
     --pilot-z-chrome: 20;

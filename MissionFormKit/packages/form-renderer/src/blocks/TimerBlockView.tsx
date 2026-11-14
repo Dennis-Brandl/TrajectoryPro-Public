@@ -91,6 +91,9 @@ export function TimerBlockView({ block, onSettle }: { block: TimerBlock; onSettl
         elapsedSeconds: block.durationSeconds,
       })
       onSettleRef.current?.(block.fieldName)
+      // The run's length is the field's value: submitted with the form and written to the
+      // timer's output parameter (user ruling 2026-11-14).
+      emitRef.current({ kind: 'fieldChange', fieldName: block.fieldName, value: String(block.durationSeconds) })
     }, 1000)
     return clearTimer
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -108,6 +111,7 @@ export function TimerBlockView({ block, onSettle }: { block: TimerBlock; onSettl
     timerRuns?.set(block.id, { startedAt: startedAtRef.current, settledAt: at })
     emit({ kind: 'timerState', fieldName: block.fieldName, state: 'stopped', elapsedSeconds: at })
     onSettle?.(block.fieldName)
+    emit({ kind: 'fieldChange', fieldName: block.fieldName, value: String(at) })
   }
 
   const shown =

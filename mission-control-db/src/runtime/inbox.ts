@@ -123,9 +123,13 @@ function listFromParam(raw: unknown): Array<{ label: string; value: string }> | 
   try { parsed = JSON.parse(raw); } catch { return null; }
   if (!Array.isArray(parsed)) return null;
   const items: Array<{ label: string; value: string }> = [];
+  const seen = new Set<string>();
   for (const el of parsed) {
     const v = el && typeof el === 'object' ? (el as { value?: unknown }).value : el;
     if (v === null || v === undefined || typeof v === 'object') continue;
+    // Two options with one value would answer as one (ruling 2026-11-14, X.10): keep the first.
+    if (seen.has(String(v))) continue;
+    seen.add(String(v));
     items.push({ label: String(v), value: String(v) });
   }
   return items;
@@ -175,17 +179,41 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+/** The engine's activation-time resolution of a form's property/input-sourced defaults and
+ *  placeholders, by block id (MissionEngine core/form-sources.ts). */
+export interface FormSources {
+  defaults?: Record<string, string>;
+  placeholders?: Record<string, string>;
+}
+
 /** Replace {{ParamName}} tokens in text/header block content with HTML-escaped resolved
  *  input-parameter values (spec 2026-08-11 §4), and fill input-sourced lists (listSource). Exact-name match only; unknown tokens stay
  *  verbatim (visible authoring-error signal); a single replace pass, so values containing
  *  brace syntax are never re-scanned. Walks only shapes it recognizes — anything malformed
  *  returns the input unchanged (same degrade-to-noop stance as the engine's getFormElements).
  *  Never mutates its input: the substituted document is a deep copy. */
-export function substituteFormDocumentParams(doc: unknown, params: Record<string, string>): unknown {
+export function substituteFormDocumentParams(
+  doc: unknown,
+  params: Record<string, string>,
+  sources?: FormSources | null,
+): unknown {
   if (!doc || typeof doc !== 'object' || Array.isArray(doc)) return doc;
   if (!Array.isArray((doc as Record<string, unknown>).sections)) return doc;
   const copy = structuredClone(doc) as Record<string, unknown>;
   for (const block of formBlocks(copy)) {
+    // Property/input-sourced defaults and placeholders the engine resolved at activation
+    // (FormKit spec X.3, ruling 2026-11-14): shipped as a literal default and a plain placeholder,
+    // which is all a host reads. Unresolved (empty) ones stay as authored and show nothing.
+    const id = typeof block.id === 'string' ? block.id : undefined;
+    if (id && sources) {
+      const def = sources.defaults?.[id];
+      if (typeof def === 'string') block.defaultSource = { mode: 'static', value: def };
+      const ph = sources.placeholders?.[id];
+      if (typeof ph === 'string') {
+        block.placeholder = ph;
+        delete block.placeholderSource;
+      }
+    }
     // A dropdown, combo box, checkbox or radio whose list comes from an input parameter gets
     // that parameter's elements; static lists and unresolvable values stay as authored.
     const source = block.listSource as { mode?: unknown; value?: unknown } | undefined;
@@ -214,10 +242,12 @@ export function substituteFormDocumentParams(doc: unknown, params: Record<string
  *  Legacy instances without a snapshot ship the document verbatim. */
 function substituteTaskDocument(doc: unknown, engineState: unknown, stepOid: string): unknown {
   if (doc === null) return null;
-  const snapshots = (engineState as { stepSnapshots?: Record<string, { inputParameters?: Record<string, string> }> } | null)
-    ?.stepSnapshots;
+  const snapshots = (engineState as {
+    stepSnapshots?: Record<string, { inputParameters?: Record<string, string>; formSources?: FormSources }>;
+  } | null)?.stepSnapshots;
   const params = snapshots?.[stepOid]?.inputParameters;
-  return params ? substituteFormDocumentParams(doc, params) : doc;
+  const sources = snapshots?.[stepOid]?.formSources;
+  return params || sources ? substituteFormDocumentParams(doc, params ?? {}, sources) : doc;
 }
 
 /** The single assignment-visibility rule (spec 2026-08-19 §1.1): shared by the inbox

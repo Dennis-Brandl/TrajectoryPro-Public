@@ -91,7 +91,8 @@ export function GroupLabel({
   label: string | undefined
   required: boolean | undefined
 }) {
-  if (!label) return null
+  // An unlabeled required group still announces it: the hidden legend names the group.
+  if (!label) return required ? <legend className="tfk-sr-only">Required</legend> : null
   return (
     <legend className="tfk-label">
       <LabelText label={label} required={required} />

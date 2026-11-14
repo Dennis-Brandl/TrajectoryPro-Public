@@ -22,7 +22,7 @@ import type {
   SignatureDraft,
 } from '@mission/form-schema'
 import { computeValidation, documentHasRowsAt, resolveSectionRows } from '@mission/form-schema'
-import { blockLayoutClasses } from './blockClasses'
+import { blockLayoutClasses, blockLayoutStyle } from './blockClasses'
 import { FormRendererContext, type ButtonJobs, type TimerRun, useFormRenderer } from './context'
 import { renderBlock } from './blocks/index'
 
@@ -240,6 +240,9 @@ function RowView({ row, onTimerSettle }: { row: Row; onTimerSettle: (fieldName: 
         <div
           key={block.id}
           className={blockLayoutClasses(block.layout)}
+          style={blockLayoutStyle(block.layout)}
+          data-min-height={block.layout?.minHeight !== undefined ? '' : undefined}
+          data-max-width={block.layout?.maxWidth !== undefined ? '' : undefined}
           data-block-id={block.id}
           data-block-type={block.type}
           inert={mode === 'edit' ? true : undefined}

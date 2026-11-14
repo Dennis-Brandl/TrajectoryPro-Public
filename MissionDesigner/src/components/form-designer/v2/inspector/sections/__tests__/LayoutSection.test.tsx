@@ -16,6 +16,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { LayoutSection } from '../LayoutSection'
 import { useFormDocumentStore } from '@/stores/formDocumentStore'
 import { createDefaultBlock } from '@/lib/form-document/create-block'
+import { validateFormDocument } from '@mission/form-schema'
 
 beforeEach(() => useFormDocumentStore.getState().setActiveBreakpoint('base'))
 
@@ -45,6 +46,33 @@ describe('LayoutSection', () => {
   })
 
   describe('order', () => {
+    it('N2: a phone order on a block with no desktop order saves as a valid document (base 0 = automatic)', () => {
+      useFormDocumentStore.getState().setActiveBreakpoint('phone')
+      const block = { ...createDefaultBlock('text') }
+      const onUpdate = vi.fn()
+      render(<LayoutSection block={block} onUpdate={onUpdate} />)
+      fireEvent.change(screen.getByLabelText('Order (Phone)'), { target: { value: '2' } })
+      const layout = onUpdate.mock.calls[0][0].layout
+      expect(layout.order).toEqual({ base: 0, phone: 2 })
+      const doc = {
+        version: 2,
+        sections: [{ id: 's', role: 'content', rows: [{ id: 'r', blocks: [{ ...block, layout }] }] }],
+      }
+      expect(validateFormDocument(doc).ok).toBe(true)
+    })
+
+    it('keeps the number within 0-12 and explains the order (X.5)', () => {
+      const block = { ...createDefaultBlock('text') }
+      const onUpdate = vi.fn()
+      render(<LayoutSection block={block} onUpdate={onUpdate} />)
+      fireEvent.change(screen.getByLabelText('Order (Desktop)'), { target: { value: '40' } })
+      expect(onUpdate).toHaveBeenLastCalledWith({ layout: { order: { base: 12 } } })
+      fireEvent.change(screen.getByLabelText('Order (Desktop)'), { target: { value: '-3' } })
+      expect(onUpdate).toHaveBeenLastCalledWith({ layout: { order: { base: 0 } } })
+      expect(screen.getByLabelText('Order (Desktop)').getAttribute('aria-describedby')).toBe('tfk-order-hint')
+      expect(document.getElementById('tfk-order-hint')!.textContent).toMatch(/auto \(or 0\) come first/)
+    })
+
     it('order at base writes order:{base:N}, preserving siblings', () => {
       const block = { ...createDefaultBlock('text'), layout: { align: 'center' as const } }
       const onUpdate = vi.fn()

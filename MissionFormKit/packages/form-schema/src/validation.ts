@@ -18,8 +18,9 @@ import { isSignatureDraftComplete } from './esignature'
 
 const REQUIRABLE_TYPES = new Set(['textInput', 'textarea', 'checkbox', 'radio'])
 
+/** No answer: absent, blank (spaces only count as blank), or an empty selection. */
 function isEmpty(v: FormValues[string] | undefined): boolean {
-  return v === undefined || v === '' || (Array.isArray(v) && v.length === 0)
+  return v === undefined || (typeof v === 'string' && v.trim() === '') || (Array.isArray(v) && v.length === 0)
 }
 
 /** A complete decimal number as an operator types it: optional minus, digits, optional point. */
@@ -35,7 +36,7 @@ export function isPartialNumberText(v: string): boolean {
 /**
  * Pure gating function for the host's Complete/decision affordances:
  * `missing` lists (in document order) required input fieldNames whose value
- * is absent/empty, number-mode text inputs (required or not) holding text that is
+ * is absent/empty (a string of only spaces counts as empty), number-mode text inputs (required or not) holding text that is
  * not a number, blockDone timer fieldNames not yet settled (elapsed or
  * stopped), and the fieldName of an e-signature block whose draft is not yet
  * complete (both fields non-blank after trimming).
@@ -63,7 +64,7 @@ export function computeValidation(
           const b = block as { fieldName: string; required?: boolean }
           const v = values[b.fieldName]
           const notANumber = block.type === 'textInput' && block.inputMode === 'number' &&
-            typeof v === 'string' && v !== '' && !isNumberText(v)
+            typeof v === 'string' && v.trim() !== '' && !isNumberText(v)
           if (((b.required && isEmpty(v)) || notANumber) && !missing.includes(b.fieldName)) {
             missing.push(b.fieldName)
           }

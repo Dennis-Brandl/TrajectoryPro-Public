@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { useMemo, type CSSProperties } from 'react'
-import { checkNeverStuck, type TypeToken } from '@mission/form-schema'
+import { checkJoblessButtons, checkNeverStuck, type TypeToken } from '@mission/form-schema'
 import { useFormDocumentStore } from '@/stores/formDocumentStore'
 import { useFlowStore } from '@/stores/flowStore'
 import { stepKindOfNode } from '@/lib/form-document/step-kind'
@@ -57,7 +57,13 @@ export function ActionsPanel({
   const fixed = !!(node?.data as StepNodeData | undefined)?.buttonBar
   const problems = useMemo(
     // A fixed bar has no button blocks to leave the operator stuck; only legacy forms are checked.
-    () => (fixed ? [] : checkNeverStuck(document, stepKindOfNode(nodeType)).map((p) => p.message)),
+    () =>
+      fixed
+        ? []
+        : [
+            ...checkNeverStuck(document, stepKindOfNode(nodeType)),
+            ...checkJoblessButtons(document, stepKindOfNode(nodeType)),
+          ].map((p) => p.message),
     [document, nodeType, fixed],
   )
   if (!draft) return null

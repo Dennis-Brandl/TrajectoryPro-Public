@@ -163,7 +163,9 @@
     margin-top: var(--pilot-space-3);
   }
 
-  /* Forms are capped at 960 px (spec §3); the "Where you are" panel joins from 1280 px. */
+  /* Forms are capped at 1088 px — past FormKit's 1024 px Desktop threshold, so a wide screen
+     shows a form's Desktop layout (user ruling 2026-11-14) — and the "Where you are" panel joins
+     from 1280 px. */
   .task-body {
     display: grid;
     grid-template-columns: minmax(0, var(--pilot-form-max));
@@ -276,23 +278,57 @@
   /* User ruling 2026-11-10: the form's own button is the step's one button and Pilot draws no
      button bar. The form's bottom bar (where a step's button goes when the form has none) stays
      on screen at the bottom of the task. */
-  .task-screen .tfk-footer {
+  /* On a fixed-row step (user ruling 2026-11-14) the footer keeps whatever non-button content it
+     still holds but does not stick: it flows at the end of the form, above the row. */
+  .task-screen:not(.task-screen-fixed-bar) .tfk-footer {
     position: sticky;
     bottom: 0;
     z-index: 1;
     background: inherit; /* the form's own surface, so scrolled content never shows through */
+    /* A sticky element stops at the scroll pane's padding (.work-panes / .app-scroll keep
+       --pilot-space-4 at the bottom), which left a strip under it where the form scrolled past in
+       view (user 2026-11-14). Paint that strip with the form surface too. */
+    box-shadow: 0 var(--pilot-space-4) 0 0 var(--pilot-surface-raised);
   }
 
-  /* Fixed button bar (spec 2026-11-11): the same sticky bottom rule as the form's own footer. */
+  /* Fixed button bar (spec 2026-11-11): sticks to the bottom like the form's own footer. FormKit
+     paints it with the form surface (layout.css), so the form never shows through it. */
   .task-screen .tfk-step-bar {
     position: sticky;
     bottom: 0;
     z-index: 1;
-    background: inherit;
+    /* Covers the pane's bottom padding below the stuck row, as for the footer above. */
+    box-shadow: 0 var(--pilot-space-4) 0 0 var(--pilot-surface-raised);
   }
 
-  /* Phone (< 600 px of task area): Back moves to the topline and Stop into a "⋯" menu; the bar's
-     own Back/Stop hide themselves under the same width. Wider, the topline copies are hidden. */
+  /* User 2026-11-14: the fixed row is ALWAYS at the bottom of the pane, even under a short form,
+     so the step's buttons sit in one place on every screen. The task screen fills the pane
+     (100cqh = the pane's content height: .work-panes is a size container, and its bottom padding
+     stays below), the form column stretches to the bottom, and the row is pushed down inside it.
+     The column is painted with the form surface, so the form and its row read as one card. A
+     longer form simply grows the column, and the row sticks as before. */
+  .task-screen-fixed-bar {
+    display: flex;
+    flex-direction: column;
+    min-height: 100cqh;
+  }
+  .task-screen-fixed-bar > .task-body {
+    flex: 1 0 auto;
+    /* No gap under the column: a short form's row then ends exactly where a stuck row does. */
+    padding-bottom: 0;
+  }
+  .task-screen-fixed-bar .task-form {
+    display: flex;
+    flex-direction: column;
+    background: var(--pilot-surface-raised);
+  }
+  .task-screen-fixed-bar .task-form > .tfk-step-bar {
+    margin-top: auto;
+  }
+
+  /* Phone (< 600 px of task area): Back moves to the topline and Stop into a "⋯" menu. Wider, the
+     topline copies are hidden. TaskScreen measures this same topline width and tells the bar
+     (StepButtonBar compact), so Back and Stop always show exactly once (ruling 2026-11-14). */
   /* The container is the topline only: size containment makes an element the containing block of
      position:fixed descendants, and the Stop confirm and the Where-you-are sheet must stay
      viewport-sized. The topline spans the task area, so its width is the task-area width. */

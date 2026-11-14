@@ -36,6 +36,12 @@ style={{ aspectRatio: block.aspectRatio }} // ImageBlock, VideoBlock
 If you need a new inline style, ask which side of the line it falls on. Appearance the author chose:
 fine, add it above. Anything that positions or sizes: find the class.
 
+**An authored size number is the one sizing exception**, because no fixed class can hold an arbitrary
+number: the block passes it as a custom property and `layout.css` / `controls.css` still own every
+rule that uses it. Image Scale (`--tfk-scale-*`) and a block's `minHeight` / `maxWidth`
+(`--tfk-block-min-h`, `--tfk-block-max-w`, set by `blockLayoutStyle`; ruling 2026-11-14) work this way.
+Never write the size property itself (`max-width: 60ch`) inline.
+
 ## Rich text has exactly one sink
 
 `dangerouslySetInnerHTML` appears in `sanitize.ts`'s consumer (`TextHtml`) and nowhere else. Rich text

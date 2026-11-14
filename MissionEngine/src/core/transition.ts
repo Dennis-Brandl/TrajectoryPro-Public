@@ -25,6 +25,7 @@ import {
 } from './context.js';
 import { isRunningLike, RUNNING_LIKE_STATUSES, isCleanupActive, useInheritedHold, releasesInheritedHold, forgetInheritedHold, envHoldKey } from './operator-cleanup.js';
 import { afterHaltDrained, endOperatorCleanup, type LiveActionRef } from './operator-cleanup-flow.js';
+import { resolveFormSources } from './form-sources.js';
 import { canonicalStepType, needsUserAction, executeScript, handleSelect1, activateCatchStep, executeGateScript, gateMode, gateUsesBindings, nextGateWake, runRepeatingScript, commitScriptOutputs, nextScriptWake, scriptRepeat } from './step-handlers.js';
 import { carriedBackTarget, isJoinType } from './back-target.js';
 import { notifyWorkCenter } from './reconcile.js';
@@ -2383,6 +2384,8 @@ export async function runStepActivation(
   }
   if (overlay) context.props.applyInputOverlay(overlay); // D3: evaluation-scoped, never the store
   context.state.stepSnapshots[target.stepOid] = { inputParameters: context.props.getInputParameters() };
+  const formSources = resolveFormSources(stepDef, context.props);
+  if (formSources) context.state.stepSnapshots[target.stepOid]!.formSources = formSources;
 
   if (stepType === 'RETURN') {
     // dispatchReturn owns the terminal state entirely (reference engine.ts:1103-1108's own

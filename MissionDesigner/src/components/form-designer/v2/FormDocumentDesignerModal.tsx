@@ -28,7 +28,7 @@ import {
   type DragStartEvent,
   type DragEndEvent,
 } from '@dnd-kit/core'
-import { validateFormDocument } from '@mission/form-schema'
+import { findDuplicateOptionValues, validateFormDocument } from '@mission/form-schema'
 import { useFlowStore } from '@/stores/flowStore'
 import { useFormDocumentStore } from '@/stores/formDocumentStore'
 import { seedDocument, pruneEmptyFooters } from '@/lib/form-document/document-ops'
@@ -117,6 +117,12 @@ export default function FormDocumentDesignerModal() {
     const result = validateFormDocument(document)
     if (!result.ok) {
       toast.error(`Form document is invalid: ${result.errors[0] ?? 'unknown error'}`)
+      return
+    }
+    // Two options with one value would answer as one (user ruling 2026-11-14, X.10).
+    const duplicate = findDuplicateOptionValues(document)[0]
+    if (duplicate) {
+      toast.error(duplicate.message)
       return
     }
     useFlowStore.temporal.getState().resume()

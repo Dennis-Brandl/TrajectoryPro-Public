@@ -28,6 +28,14 @@ of its props.
 When the operator edits a field the renderer emits `fieldChange`; the host is expected to fold that
 into `values` and pass it back down. The renderer also never resolves `defaultSource` /
 `placeholderSource` property references — the host seeds `values` with any defaults before mount.
+A `static` default needs no data; a `property` or `input` source, and every `placeholderSource`,
+needs the workflow's values, so the host's server resolves them and ships the result as a `static`
+default and a plain `placeholder` (Mission Engine does this at step activation:
+`MissionEngine/src/core/form-sources.ts`, applied by the inbox; ruling 2026-11-14).
+
+A **timer** writes its own field: when it runs out or is stopped it emits a `fieldChange` whose value
+is the elapsed whole seconds as a string (`"90"`), so the run length is submitted with the form and
+reaches the timer's `outputParameter` like any other field (ruling 2026-11-14).
 
 ## 2. The host owns the completion gate — the renderer only helps
 
@@ -54,6 +62,14 @@ pure and React-free, so any host (including a non-React one) can call it.
 4. passing its current e-signature draft (the same object it hands to the renderer's `signature` prop) — the draft is host state, never part of `values` (spec 2026-09-06 D3)
 
 and otherwise adopt the `validation` events the renderer emits.
+
+When the host recomputes the gate later in a screen's life (rule 3 — e.g. clearing the password
+after a rejected signature), it MUST pass the timers that have **actually** settled, not an empty
+set: keep your own set from the `timerState` events (`elapsed` or `stopped`) and reset it with the
+screen. An empty set there re-closes the gate of a finished `blockDone` timer (ruling 2026-11-14).
+
+A value of only spaces counts as **empty**: a required field holding one is missing, and a number
+field holding one is blank, not "not a number" (ruling 2026-11-14).
 
 This is a genuine split of authority, and both parties must agree. `useFlowHost` follows it in its
 `gate` initializer (mount), `applyScreen` (advance and back both route through it), and `restart` —
@@ -194,3 +210,22 @@ buttonJobs={{
   stuck.
 - Job-less buttons are unchanged: they emit `action`, never hide your buttons, and do not
   count toward the never-stuck check.
+- **A host with nothing to do for `action`** passes `actionsEnabled: false` in `buttonJobs`:
+  job-less buttons are then drawn disabled and emit nothing. Mission Pilot does this
+  (ruling 2026-11-14); `checkJoblessButtons(doc, 'yesno')` lets an authoring tool refuse the
+  only case `withStepButtons` leaves job-less (a Yes/No-step button that is not `true`/`false`).
+
+## 9. The fixed button row — one width decides where Back and Stop go
+
+`StepButtonBar` draws Back (left), the step's buttons (centre) and Stop (right). Below 600 px a host
+usually shows Back and Stop elsewhere (Pilot: Back in the line above the form, Stop in a `⋯` menu).
+Decide that from **one** width and tell the bar with `compact`:
+
+- `compact={true}`: the bar leaves Back and Stop out; `compact={false}`: it always shows them.
+- Omit it and the bar decides by its own width (< 600 px hides them). That is only safe when your
+  own copies follow the bar's width too — a bar beside a side panel is narrower than the screen, and
+  two different widths can leave Back and Stop shown nowhere (ruling 2026-11-14).
+
+The bar paints `--form-color-surface` itself, so a host may keep it stuck to the bottom of a long
+form without the form showing through. If the form also has a footer section on such a step, don't
+make the footer sticky as well: let it flow above the row.

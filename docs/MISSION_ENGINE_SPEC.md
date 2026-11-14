@@ -5,7 +5,7 @@
 | Reference implementation | `MissionEngine` 1.2.0 (TypeScript / Node.js / Hono / PostgreSQL) |
 | Reference commit | superproject `0dddd834` (2026-11-11) |
 | Database schema level | migration `0051_back_and_stop` |
-| Status | Descriptive specification extracted from the reference implementation; every part independently re-verified against the code (2026-11-12) |
+| Status | Descriptive specification extracted from the reference implementation; every part independently re-verified against the code (2026-11-12). Updated 2026-11-14 for form defaults/placeholders resolved at activation (`MissionEngine` 1.2.2, superproject `32a6da8e`): §A.5.1, §A.7.1, C.6.2, the `stepSnapshots` row, `runStepActivation` step 2, the inbox `formDocument`, Appendix X item 16 |
 
 ## 0. About this document
 
@@ -581,7 +581,7 @@ STRING. Structured values are JSON text: a whole Value Property reads as
 
 The only "value type" enums in the JSON:
 - `value_type` (ParameterSpecification, Select1Option): `"literal"` | `"property"`; absent = literal. [src: MissionEngine/src/spec/types.ts:276,208]
-- `defaultSource.mode` / `placeholderSource.mode` (form blocks): `"static"` | `"property"` | `"parameter"` | `"input"` — opaque to the engine (Pilot applies them). [src: MissionEngine/src/spec/types.ts:33-36; resolveDefault has no production caller]
+- `defaultSource.mode` / `placeholderSource.mode` (form blocks): `"static"` | `"property"` | `"parameter"` | `"input"`. A `static` default is applied by the client; every other default, and every `placeholderSource`, is resolved by the engine at step activation and applied by the inbox (§A.7.1). [src: MissionEngine/src/spec/types.ts:33-36; MissionEngine/src/core/form-sources.ts]
 - `listSource.mode`: `"static"` | `"input"` (applied by the inbox, §A.7.1). [src: MissionEngine/src/spec/types.ts:56-59]
 - `json_schema` (string) on parameters: accepted, never read. Designer "Value Types"
   (`value_type_specifications`) are never read.
@@ -746,11 +746,12 @@ tolerating any malformed level. [src: MissionEngine/src/core/step-handlers.ts:63
 | `type` | engine | `textInput`/`textarea`/`checkbox`/`radio`/`esignature` without `outputParameter` -> `UNBOUND_FORM_INPUT` warning; `esignature` -> signature gate. [src: MissionEngine/src/spec/validator.ts:729-735] |
 | esignature: `fieldName`, `label`, `meaning`, `roleName` (trimmed; blank = none), `requireDifferentUser` (`=== true`), `outputParameter` | engine | First esignature block; on a verified signature the signer's display name is written into `form_values[fieldName]` before capture. [src: MissionEngine/src/core/esignature.ts:36-63; MissionEngine/src/core/submit.ts:184-186] |
 | `text`/`header` `content` (string) | inbox (engine `/api/inbox`) | `{{Name}}` tokens replaced by HTML-escaped step input values (exact name; unknown tokens left as is; one pass). [src: mission-control-db/src/runtime/inbox.ts:170-213] |
-| `listSource: {mode:'input', value}` | inbox | Replaces `listItems` (textInput) or `options` (checkbox/radio) with the elements of the named input's JSON list. [src: mission-control-db/src/runtime/inbox.ts:120-136,189-198] |
+| `listSource: {mode:'input', value}` | inbox | Replaces `listItems` (textInput) or `options` (checkbox/radio) with the elements of the named input's JSON list; a value already listed is skipped (first wins). [src: mission-control-db/src/runtime/inbox.ts:120-136,189-198] |
+| `id`, `defaultSource` (mode `property`/`parameter`/`input`), `placeholderSource` (any mode) | engine at activation, then inbox | At step activation the engine resolves each with `PropertyStore.resolveDefault` (property store incl. the work-center shared tier; the step's resolved inputs, then starting parameters) and stores the non-empty results by block `id` in `stepSnapshots[stepOid].formSources = {defaults, placeholders}` (the key is omitted when nothing resolved). The inbox then ships a resolved default as `defaultSource: {mode:'static', value}` and a resolved placeholder as `placeholder` (deleting `placeholderSource`); unresolved ones stay as authored. [src: MissionEngine/src/core/form-sources.ts; MissionEngine/src/core/transition.ts (runStepActivation); mission-control-db/src/runtime/inbox.ts (substituteFormDocumentParams)] |
 | `button` with `outputValue: 'continue'` and non-blank `label` | inbox | Fallback for `continueLabel`. [src: mission-control-db/src/runtime/inbox.ts:84-99] |
 | `image` `src` | images route | Bare filename served from `workflow_image` by (workflow, filename); `imageOid` not used. [src: MissionEngine/src/api/app.ts:242-263] |
 
-Everything else (layout, sizes, colours, jobs, `defaultSource`, `placeholderSource`, `required`,
+Everything else (layout, sizes, colours, jobs, `static` defaults, `required`,
 `inputMode`, timers, footer sections, `version`) is opaque and passed verbatim (after the
 substitutions above) to Pilot as `formDocument`. [src: mission-control-db/src/runtime/inbox.ts:338]
 
@@ -1624,7 +1625,7 @@ actions; `pendingAborts` is also rewritten by `finalizeOrphanedActions`
 | `waitAll` | `{[stepOid]: {expected: string[], completed: string[]}}` | `{}` | Join tracking. |
 | `activeCatches` | `{[catchStepOid]: CatchContext}` | `{}` | Armed catches. CatchContext = `{catch_oid, trigger_step_oid, trigger_step_name, trigger_reason, error_message, activated_at}`. |
 | `resources` | serialized manager or `null` | `null` | Workflow-tier resource pools. |
-| `stepSnapshots` | `{[stepOid]: {inputParameters, outputParameters?}}` | `{}` | Per-step parameter snapshot (history). |
+| `stepSnapshots` | `{[stepOid]: {inputParameters, outputParameters?, formSources?}}` | `{}` | Per-step parameter snapshot (history); `formSources = {defaults, placeholders}` by block id (§A.7.1). |
 | `childActive` | `{[proxyStepOid]: childSpecOid}` | `{}` | Running children. |
 | `childProperties` | `{[childSpecOid]: {[key]: string}}` | `{}` | Child property stores. |
 | `blockedOnResources` | `{[stepOid]: {stepOid, blockedOn?:{resource_name, command_type}, remainingCommands, completionCommands}}` | `{}` | Steps waiting on a resource. |
@@ -1765,7 +1766,9 @@ cleanup CATCH, and the screen reopened by Back.
 1. Resolve input parameters (C.6.4). If no overlay, the type is not GATE, and the step has
    step-level `action_property_bindings`: set row `WAITING_PROPERTIES`, `started_at=wake_at=now`,
    return (no trace). With an overlay, overlay the fetched values.
-2. `stepSnapshots[t] = {inputParameters}`.
+2. `stepSnapshots[t] = {inputParameters}`; if the step's `form_document` has property/input
+   defaults or any `placeholderSource` that resolve to non-empty values, add
+   `formSources = {defaults, placeholders}` (§A.7.1).
 3. Dispatch by canonical type (C.4). Auto-completing types end with `finishStep` (trace
    `COMPLETED` [with after_action], row `COMPLETED`, `completed_at`, `wake_at=null`) and return
    `completed:true`. finishStep never routes; the caller's queue does.
@@ -2216,8 +2219,8 @@ Keys are `Property.Entry` dotted keys (or bare ids for starting parameters / scr
   the database, the stored JSON's key order (see C.11) [pinned: res-sync-003 — Send of the group
   `TransferData` in the start transaction delivers
   `[{"name":"Name",…},{"name":"Address",…},{"name":"PhoneNumber",…}]`, i.e. declaration order].
-  No fixture pins the empty-string fallback (param-005's `defaultSource` on a form element is a client
-  prefill hint the engine never reads).
+  No fixture pins the empty-string fallback (param-005's `defaultSource` on a form element is resolved
+  only at activation for the inbox, §A.7.1; capture never reads it).
 - `set(key, v)`: writes the SHARED tier iff the property name (text before the first `.`; the whole
   key when there is no `.` or it is at index 0) is not declared by the owning spec, the key is not
   already in the local store, and the shared tier has that exact key; otherwise local
@@ -3033,7 +3036,7 @@ intersects the caller's roles held IN THIS work center); any other status is inv
 | `claimedAt` | ISO string\|null | `instance_assignment.claimed_at` |
 | `suggestedForMe` | boolean | `preferred_user_id === caller` |
 | `paused` | boolean | step state === `PAUSED` |
-| `formDocument` | object\|null | frozen `form_document` with `{{Param}}` tokens in `text`/`header` blocks replaced by HTML-escaped values from `engine_state.stepSnapshots[stepOid].inputParameters` (exact-name; unknown tokens verbatim; single pass) and input-sourced lists filled (`listSource.mode==='input'` ⇒ `textInput.listItems` or `checkbox/radio.options` = `[{label,value}]`). Without a snapshot: verbatim. Never mutated in place (deep copy). |
+| `formDocument` | object\|null | frozen `form_document` with `{{Param}}` tokens in `text`/`header` blocks replaced by HTML-escaped values from `engine_state.stepSnapshots[stepOid].inputParameters` (exact-name; unknown tokens verbatim; single pass) and input-sourced lists filled (`listSource.mode==='input'` ⇒ `textInput.listItems` or `checkbox/radio.options` = `[{label,value}]`, first of each value kept), and the snapshot's `formSources` applied (resolved defaults as `defaultSource: {mode:'static', value}`, resolved placeholders as `placeholder`). Without a snapshot: verbatim. Never mutated in place (deep copy). |
 | `yesNoConfig` | object\|null | frozen `yes_no_config` |
 | `continueLabel` | string\|null | value of the first `ui_parameter_specifications[]` entry with `type==='Button'` if non-blank; else label of the first form `button` block with `outputValue==='continue'` if non-blank; else null |
 | `buttonBar` | object\|null | non-null ONLY when the step's `button_bar.format === 'fixed'`: `{ size?, color?, yesColor?, noColor? }` copied from `button_bar.size/color/yes_color/no_color` when strings |
@@ -5428,8 +5431,9 @@ These are places where the reference implementation behaves surprisingly or wher
 14. **A CATCH without `catch_id`** is not a catch network, so it fails as `ORPHANED_STEP` rather than a
     TRY/CATCH code. [src: MissionEngine/src/spec/catch-network.ts:43; verified]
 15. **`release_on_catch` default is true**, although `types.ts` marks it optional with no stated default. [src: MissionEngine/src/core/transition.ts:2078]
-16. **`resolveDefault` / `resolveDefaultValue` (form `defaultSource`) have no production caller**; the
-    engine never applies form defaults. [src: MissionEngine/src/core/properties.ts:24-36,196-206]
+16. *(Resolved 2026-11-14.)* `PropertyStore.resolveDefault` now has a production caller: form
+    `defaultSource` (non-static) and `placeholderSource` are resolved at step activation
+    (§A.7.1). `resolveDefaultValue` still has none. [src: MissionEngine/src/core/form-sources.ts]
 17. **Last `is_default` option wins** if several SELECT 1 options are marked default. [src: MissionEngine/src/core/step-handlers.ts:114-118]
 18. **Empty `resource_source_oid` is not defaulted.** `""` does not fall back to the owning spec's oid
     (`??`), so the validator rejects it; Designer writes `""` for a resource it could not resolve. [src: MissionEngine/src/spec/validator.ts:603; MissionDesigner/src/lib/packageFormat/workflow-exporters.ts:334]

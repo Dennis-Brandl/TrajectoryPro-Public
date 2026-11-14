@@ -26,7 +26,12 @@ import type {
 } from '@/types/nodes'
 import type { Specification } from '@/types/library'
 import { partitionCatchNetworks, type PartitionStep } from '@/lib/canvas/catch-network-partition'
-import { checkNeverStuck } from '@mission/form-schema'
+import {
+  checkJoblessButtons,
+  checkNeverStuck,
+  findDuplicateOptionValues,
+  findHiddenRequired,
+} from '@mission/form-schema'
 import { stepKindOfNode } from '@/lib/form-document/step-kind'
 import { NODE_TYPE_TO_STEP_TYPE, TRY_CAPABLE_NODE_TYPES } from '@/lib/packageFormat/export-types'
 
@@ -284,12 +289,33 @@ export function validateWorkflow(
     if (node.type !== 'userInteractionStep' && node.type !== 'yesNoStep') continue
     const { formDocument, buttonBar } = node.data as StepNodeData
     if (!formDocument || buttonBar) continue
-    for (const problem of checkNeverStuck(formDocument, stepKindOfNode(node.type))) {
+    const stepKind = stepKindOfNode(node.type)
+    // A button with no job on a Yes/No step answers nothing (user ruling 2026-11-14, X.7).
+    for (const problem of [
+      ...checkNeverStuck(formDocument, stepKind),
+      ...checkJoblessButtons(formDocument, stepKind),
+    ]) {
       errors.push({
         nodeId: node.id,
         nodeName: (node.data as { label?: string })?.label || node.id,
         nodeType: node.type,
         message: `Form buttons: ${problem.message}`,
+      })
+    }
+  }
+
+  // Every UI step's form (user rulings 2026-11-14): something the step cannot complete without
+  // must show on every screen type (X.6), and the options of one list need their own values (X.10).
+  for (const node of nodes) {
+    if (node.type !== 'userInteractionStep' && node.type !== 'yesNoStep') continue
+    const { formDocument } = node.data as StepNodeData
+    if (!formDocument) continue
+    for (const problem of [...findHiddenRequired(formDocument), ...findDuplicateOptionValues(formDocument)]) {
+      errors.push({
+        nodeId: node.id,
+        nodeName: (node.data as { label?: string })?.label || node.id,
+        nodeType: node.type,
+        message: `Form: ${problem.message}`,
       })
     }
   }

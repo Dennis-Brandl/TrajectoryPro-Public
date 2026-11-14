@@ -146,6 +146,10 @@ export function LayoutSection({ block, onUpdate }: { block: Block; onUpdate: (pa
           <input
             id="tfk-order"
             type="number"
+            min={0}
+            max={12}
+            step={1}
+            aria-describedby="tfk-order-hint"
             value={layout.order === undefined ? '' : String(resolveBp(layout.order, bp, 0))}
             placeholder="auto"
             onChange={(e) => {
@@ -153,7 +157,10 @@ export function LayoutSection({ block, onUpdate }: { block: Block; onUpdate: (pa
               if (raw === '') {
                 clearOrder()
               } else {
-                write({ ...layout, order: setBp(layout.order, 0, bp, Number(raw)) })
+                // 0-12 only (the schema's range); 0 is automatic (user ruling 2026-11-14).
+                const n = Math.min(12, Math.max(0, Math.round(Number(raw))))
+                if (Number.isNaN(n)) return
+                write({ ...layout, order: setBp(layout.order, 0, bp, n) })
               }
             }}
             className={inputCls}
@@ -177,6 +184,10 @@ export function LayoutSection({ block, onUpdate }: { block: Block; onUpdate: (pa
             Auto
           </button>
         </div>
+        {/* User ruling 2026-11-14 (X.5): say how numbers place a block, since 1 is not "first". */}
+        <p id="tfk-order-hint" className="text-muted-foreground" style={{ fontSize: 11, margin: '4px 0 0' }}>
+          Blocks on auto (or 0) come first, in their row order. Blocks numbered 1–12 follow, lowest first.
+        </p>
       </div>
 
       {/* Clear override (tablet/phone only) */}

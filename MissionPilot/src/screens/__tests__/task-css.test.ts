@@ -42,13 +42,38 @@ describe('task screen styles (spec §5.4, §5.6, §4)', () => {
   })
 
   it("the form's bottom bar (its button) stays on screen; the toasts sit under the top bar", () => {
-    const bar = rule(pilot, '.task-screen .tfk-footer')
+    const bar = rule(pilot, '.task-screen:not(.task-screen-fixed-bar) .tfk-footer')
     expect(bar).toMatch(/position:\s*sticky/)
     expect(bar).toMatch(/bottom:\s*0/)
     expect(bar).toMatch(/background:/)
+    // A fixed-row step: the row sticks, its footer flows above it (ruling 2026-11-14, X.13), and
+    // the row's opaque surface comes from FormKit, not a transparent inherit (N1).
+    const row = rule(pilot, '.task-screen .tfk-step-bar')
+    expect(row).toMatch(/position:\s*sticky/)
+    expect(row).not.toMatch(/background/)
+    // Both stick at the pane's bottom padding: the strip under them is painted with the form
+    // surface, so nothing scrolls past in view below the buttons (user 2026-11-14).
+    for (const stuck of [bar, row]) {
+      expect(stuck).toMatch(/box-shadow:\s*0 var\(--pilot-space-4\) 0 0 var\(--pilot-surface-raised\)/)
+    }
+    expect(pilot).not.toMatch(/\.task-screen \.tfk-footer \{/)
     const toasts = rule(pilot, '.toast-region')
     expect(toasts).toMatch(/top:/)
     expect(toasts).not.toMatch(/bottom:/)
+  })
+
+  it('the fixed row is always at the bottom of the pane, even under a short form (user 2026-11-14)', () => {
+    const screenRule = rule(pilot, '.task-screen-fixed-bar')
+    expect(screenRule).toMatch(/display:\s*flex/)
+    expect(screenRule).toMatch(/flex-direction:\s*column/)
+    expect(screenRule).toMatch(/min-height:\s*100cqh/)
+    const body = rule(pilot, '.task-screen-fixed-bar > .task-body')
+    expect(body).toMatch(/flex:\s*1 0 auto/)
+    expect(body).toMatch(/padding-bottom:\s*0/)
+    const column = rule(pilot, '.task-screen-fixed-bar .task-form')
+    expect(column).toMatch(/flex-direction:\s*column/)
+    expect(column).toMatch(/background:\s*var\(--pilot-surface-raised\)/)
+    expect(rule(pilot, '.task-screen-fixed-bar .task-form > .tfk-step-bar')).toMatch(/margin-top:\s*auto/)
   })
 
   it('a long "Where you are" list scrolls on its own, not the whole task (user 2026-11-10)', () => {

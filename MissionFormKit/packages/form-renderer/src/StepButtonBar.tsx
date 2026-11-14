@@ -27,6 +27,13 @@ export interface StepButtonBarProps {
   stop?: { onStop(): void; disabled: boolean } | null
   /** Surface the bar sits on; authored colors unreadable on it are dropped. Absent = no guard. */
   surfaceColor?: string
+  /**
+   * The host's own decision whether this is a narrow screen on which it shows Back and Stop
+   * elsewhere: true = the bar leaves them out, false = the bar always shows them. Absent = the
+   * bar decides by its own width (below 600 px it hides them). A host that shows its own copies
+   * should decide here from the same width it uses for those, so they appear exactly once.
+   */
+  compact?: boolean
 }
 
 type Job = 'continue' | 'yes' | 'no'
@@ -42,11 +49,21 @@ export function StepButtonBar({ surfaceColor, ...props }: StepButtonBarProps) {
   )
 }
 
-function StepButtonBarView({ kind, barStyle, jobs, onPress, back, stop }: Omit<StepButtonBarProps, 'surfaceColor'>) {
+function StepButtonBarView({
+  kind,
+  barStyle,
+  jobs,
+  onPress,
+  back: backIn,
+  stop: stopIn,
+  compact,
+}: Omit<StepButtonBarProps, 'surfaceColor'>) {
   const order: Job[] = kind === 'yesno' ? ['yes', 'no'] : ['continue']
   const colorOf = (job: Job) => (job === 'yes' ? barStyle.yesColor : job === 'no' ? barStyle.noColor : barStyle.color)
+  const back = compact ? null : backIn
+  const stop = compact ? null : stopIn
   return (
-    <div className="tfk-step-bar">
+    <div className="tfk-step-bar" data-compact={compact === undefined ? undefined : String(compact)}>
       <div className="tfk-step-bar-inner">
         <div className="tfk-step-bar-left">
           {back && (

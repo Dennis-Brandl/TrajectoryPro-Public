@@ -29,6 +29,11 @@ export interface ButtonJobs {
   no: ButtonJobState
   /** A signature is required for the step: Continue/Yes labels become "Sign & ...". No is exempt. */
   signed: boolean
+  /**
+   * Whether a button with no job may be pressed (it emits `action`). Absent = yes. A host that
+   * has nothing to do for `action` passes false, and such buttons are drawn disabled.
+   */
+  actionsEnabled?: boolean
 }
 
 export interface FormRendererContextValue {

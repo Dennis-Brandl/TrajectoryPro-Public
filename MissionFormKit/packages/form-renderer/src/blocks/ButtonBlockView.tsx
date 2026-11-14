@@ -27,7 +27,7 @@ export function ButtonBlockView({ block }: { block: ButtonBlock }) {
     label = block.label.trim() || state?.label || JOB_DEFAULT_LABEL[job]
     if (buttonJobs?.signed && job !== 'no') label = signedLabel(label)
   }
-  const disabled = job ? state?.enabled === false : false
+  const disabled = job ? state?.enabled === false : buttonJobs?.actionsEnabled === false
   // No size authored means no size class: the button keeps today's look.
   const sized = block.size || block.sizeAt ? ` ${sizeClasses(block.size, block.sizeAt, 'md')}` : ''
   return (

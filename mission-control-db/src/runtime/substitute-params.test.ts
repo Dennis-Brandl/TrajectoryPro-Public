@@ -148,3 +148,30 @@ describe('continueLabelOf', () => {
     expect(continueLabelOf(null)).toBeNull();
   });
 });
+
+describe('FormKit spec rulings 2026-11-14', () => {
+  it('X.3: applies the engine-resolved defaults and placeholders by block id', () => {
+    const input = doc([
+      { id: 'a', type: 'textInput', fieldName: 'lot', defaultSource: { mode: 'property', value: 'Batch.Lot' } },
+      { id: 'b', type: 'textInput', fieldName: 'who', placeholder: 'old', placeholderSource: { mode: 'input', value: 'Op' } },
+      { id: 'c', type: 'textInput', fieldName: 'x', defaultSource: { mode: 'property', value: 'Unset' } },
+    ]);
+    const out = substituteFormDocumentParams(input, {}, { defaults: { a: 'L-7' }, placeholders: { b: 'Ada' } }) as typeof input;
+    const [a, b, c] = out.sections[0].rows[0].blocks;
+    expect(a.defaultSource).toEqual({ mode: 'static', value: 'L-7' });
+    expect(b.placeholder).toBe('Ada');
+    expect(b).not.toHaveProperty('placeholderSource');
+    expect(c.defaultSource).toEqual({ mode: 'property', value: 'Unset' });
+    expect(input.sections[0].rows[0].blocks[0].defaultSource).toEqual({ mode: 'property', value: 'Batch.Lot' });
+  });
+
+  it('X.10: an input-sourced list keeps only the first option of each value', () => {
+    const input = doc([{ id: 'r', type: 'radio', options: [], listSource: { mode: 'input', value: 'L' } }]);
+    const out = substituteFormDocumentParams(input, { L: JSON.stringify(['a', 'b', 'a', { value: 'b' }, 'c']) }) as typeof input;
+    expect(out.sections[0].rows[0].blocks[0].options).toEqual([
+      { label: 'a', value: 'a' },
+      { label: 'b', value: 'b' },
+      { label: 'c', value: 'c' },
+    ]);
+  });
+});

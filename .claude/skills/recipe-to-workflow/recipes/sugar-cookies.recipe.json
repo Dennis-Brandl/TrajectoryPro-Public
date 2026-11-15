@@ -1,0 +1,107 @@
+{
+  "name": "Sugar Cookies",
+  "slug": "sugar-cookies",
+  "course": "dessert",
+  "serves": "About 4 dozen",
+  "summary": "Rolled sugar cookies, after Fannie Farmer's 1896 method. Branches on how you cream the butter.",
+  "source": {
+    "title": "The Boston Cooking-School Cook Book",
+    "author": "Fannie Merritt Farmer",
+    "year": 1896,
+    "publisher": "Little, Brown and Company",
+    "rights": "Public domain (published 1896, United States)"
+  },
+  "ingredients": [
+    "1 cup butter, softened",
+    "1 1/2 cups sugar",
+    "1 egg",
+    "3 tbsp milk",
+    "3 1/2 cups flour",
+    "3 tsp baking powder",
+    "1/2 tsp salt",
+    "1/4 tsp grated nutmeg",
+    "Sugar for sprinkling"
+  ],
+  "equipment": {
+    "prompt": "How are you creaming the butter?",
+    "help": "Creaming is the step that decides the texture, and each tool asks for a different touch.",
+    "noun": "mixer",
+    "property": "MixingMethod",
+    "label": "Method",
+    "options": [
+      { "value": "stand", "label": "Stand mixer" },
+      { "value": "hand", "label": "Hand mixer" },
+      { "value": "spoon", "label": "By hand with a spoon" }
+    ]
+  },
+  "steps": [
+    {
+      "title": "Soften the butter",
+      "body": "Let the butter come to room temperature. Cold butter will not cream.",
+      "art": "measure"
+    },
+    {
+      "title": "Cream in a stand mixer",
+      "body": "Use the paddle on medium for three minutes, scraping the bowl twice. Stop when it is pale and fluffy.",
+      "art": "mixing",
+      "only": ["stand"],
+      "timer": { "label": "Cream", "minutes": 3 }
+    },
+    {
+      "title": "Cream with a hand mixer",
+      "body": "Beat on medium for four or five minutes, moving the beaters around the bowl.",
+      "art": "whisk",
+      "only": ["hand"],
+      "timer": { "label": "Cream", "minutes": 5 }
+    },
+    {
+      "title": "Cream by hand",
+      "body": "Work the butter and sugar against the side of the bowl with a wooden spoon until pale. It takes a good ten minutes.",
+      "art": "bowl",
+      "only": ["spoon"],
+      "timer": { "label": "Cream", "minutes": 10 }
+    },
+    {
+      "title": "Add the egg and milk",
+      "body": "Beat in the egg, then the milk. The mixture may look curdled; the flour will bring it back.",
+      "art": "whisk"
+    },
+    {
+      "title": "Mix the dry ingredients",
+      "body": "Stir the flour, baking powder, salt and nutmeg together in a second bowl.",
+      "art": "bowl"
+    },
+    {
+      "title": "Combine",
+      "body": "Add the dry ingredients to the creamed mixture and stir only until no flour shows.",
+      "art": "mixing"
+    },
+    {
+      "title": "Chill the dough",
+      "body": "Cover and chill until firm enough to roll.",
+      "art": "fridge",
+      "timer": { "label": "Chill", "minutes": 60 }
+    },
+    {
+      "title": "Heat the oven to 375°F",
+      "body": "Line two baking sheets while it heats.",
+      "art": "oven"
+    },
+    {
+      "title": "Roll and cut",
+      "body": "Roll the dough a quarter inch thick on a floured board and cut it into rounds. Sprinkle each with sugar.",
+      "art": "rolling"
+    },
+    {
+      "title": "Bake",
+      "body": "Bake until the edges are just brown. They firm up as they cool.",
+      "art": "timer",
+      "timer": { "label": "Bake", "minutes": 9 }
+    },
+    {
+      "title": "Cool and store",
+      "body": "Lift onto a rack to cool, then keep in a tin.",
+      "art": "cookie"
+    }
+  ]
+}

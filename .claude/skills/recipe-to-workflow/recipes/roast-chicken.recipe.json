@@ -1,0 +1,100 @@
+{
+  "name": "Roast Chicken",
+  "slug": "roast-chicken",
+  "course": "entree",
+  "serves": "4 to 6",
+  "summary": "A plainly roasted chicken, basted often, after Fannie Farmer's 1896 method.",
+  "source": {
+    "title": "The Boston Cooking-School Cook Book",
+    "author": "Fannie Merritt Farmer",
+    "year": 1896,
+    "publisher": "Little, Brown and Company",
+    "rights": "Public domain (published 1896, United States)"
+  },
+  "ingredients": [
+    "1 roasting chicken, 4 to 5 lb, cleaned and trussed",
+    "3 tbsp butter, softened",
+    "2 tbsp flour",
+    "1 tsp salt",
+    "1/4 tsp pepper",
+    "1 cup boiling water, for the pan",
+    "2 tbsp flour and 2 cups stock, for the gravy"
+  ],
+  "equipment": {
+    "prompt": "Which oven are you using?",
+    "help": "The heat and the timing differ, so the steps after this follow the oven you pick.",
+    "noun": "oven",
+    "property": "OvenType",
+    "label": "Oven",
+    "options": [
+      { "value": "gas", "label": "Gas oven" },
+      { "value": "electric", "label": "Electric oven" },
+      { "value": "convection", "label": "Convection oven" }
+    ]
+  },
+  "steps": [
+    {
+      "title": "Wipe the bird",
+      "body": "Wipe the chicken inside and out with a damp cloth. Pat it dry.",
+      "art": "wash"
+    },
+    {
+      "title": "Season and flour",
+      "body": "Rub the bird all over with the softened butter, then sprinkle on the salt, pepper and flour.",
+      "art": "chicken",
+      "note": "The flour is what browns the skin. Farmer called this dredging."
+    },
+    {
+      "title": "Into the pan",
+      "body": "Lay the chicken breast up on a rack in the roasting pan. Pour the boiling water into the pan, not over the bird.",
+      "art": "pan"
+    },
+    {
+      "title": "Heat a gas oven to 400°F",
+      "body": "Gas ovens run hot at the top. Put the rack in the middle.",
+      "art": "oven",
+      "only": ["gas"]
+    },
+    {
+      "title": "Heat an electric oven to 400°F",
+      "body": "Wait for the preheat light before the bird goes in.",
+      "art": "oven",
+      "only": ["electric"]
+    },
+    {
+      "title": "Heat a convection oven to 375°F",
+      "body": "The fan does the work of a hotter oven, so drop the heat 25°F.",
+      "art": "oven",
+      "only": ["convection"]
+    },
+    {
+      "title": "Roast and baste",
+      "body": "Put the pan in the oven. Baste with the pan liquid every fifteen minutes.",
+      "art": "timer",
+      "timer": { "label": "Roast", "minutes": 75 },
+      "note": "Basting is the whole trick. Set the timer again if you need longer."
+    },
+    {
+      "title": "Test it",
+      "body": "The leg joint should move freely and the juice from a deep cut should run clear, not pink.",
+      "art": "thermometer",
+      "note": "A thermometer in the thickest part of the thigh should read 165°F."
+    },
+    {
+      "title": "Rest the bird",
+      "body": "Lift the chicken onto a warm platter and let it stand while you make the gravy.",
+      "art": "plate",
+      "timer": { "label": "Rest", "minutes": 10 }
+    },
+    {
+      "title": "Make the gravy",
+      "body": "Pour off all but two tablespoons of fat. Stir in the flour, let it brown, then add the stock a little at a time and stir until it thickens.",
+      "art": "pot"
+    },
+    {
+      "title": "Carve and serve",
+      "body": "Carve at the table and pass the gravy separately.",
+      "art": "serve"
+    }
+  ]
+}

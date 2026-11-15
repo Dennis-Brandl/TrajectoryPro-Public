@@ -1,0 +1,105 @@
+{
+  "name": "Macaroni and Cheese",
+  "slug": "macaroni-and-cheese",
+  "course": "entree",
+  "serves": "4",
+  "summary": "Boiled macaroni bound in a white sauce with cheese and baked under buttered crumbs.",
+  "source": {
+    "title": "The Boston Cooking-School Cook Book",
+    "author": "Fannie Merritt Farmer",
+    "year": 1896,
+    "publisher": "Little, Brown and Company",
+    "rights": "Public domain (published 1896, United States)"
+  },
+  "ingredients": [
+    "1 cup macaroni, broken in short lengths",
+    "2 tbsp butter, for the sauce",
+    "2 tbsp flour",
+    "2 cups milk",
+    "1 tsp salt",
+    "1/8 tsp pepper",
+    "1 cup grated cheese",
+    "1/2 cup soft bread crumbs",
+    "1 tbsp butter, for the crumbs"
+  ],
+  "equipment": {
+    "prompt": "Which oven are you using?",
+    "help": "The browning at the end is the only part that differs.",
+    "noun": "oven",
+    "property": "OvenType",
+    "label": "Oven",
+    "options": [
+      { "value": "gas", "label": "Gas oven" },
+      { "value": "electric", "label": "Electric oven" },
+      { "value": "convection", "label": "Convection oven" }
+    ]
+  },
+  "steps": [
+    {
+      "title": "Boil the macaroni",
+      "body": "Cook the macaroni in plenty of salted boiling water until just tender.",
+      "art": "pot",
+      "timer": { "label": "Boil the macaroni", "minutes": 12 }
+    },
+    {
+      "title": "Drain it",
+      "body": "Drain and rinse with cold water so it stops cooking.",
+      "art": "wash"
+    },
+    {
+      "title": "Start the white sauce",
+      "body": "Melt the butter, stir in the flour, and cook the paste for a minute without letting it colour.",
+      "art": "pan"
+    },
+    {
+      "title": "Add the milk",
+      "body": "Pour the milk in a little at a time, stirring hard, until the sauce is smooth and thick. Season with the salt and pepper.",
+      "art": "measure",
+      "note": "Adding the milk slowly is what keeps the sauce from going lumpy."
+    },
+    {
+      "title": "Melt in the cheese",
+      "body": "Take the pan off the heat and stir the grated cheese through until it melts.",
+      "art": "bowl"
+    },
+    {
+      "title": "Combine",
+      "body": "Mix the macaroni into the sauce and turn it all into a buttered dish.",
+      "art": "mixing"
+    },
+    {
+      "title": "Butter the crumbs",
+      "body": "Rub the tablespoon of butter through the crumbs and scatter them over the top.",
+      "art": "knife"
+    },
+    {
+      "title": "Heat a gas oven to 400°F",
+      "body": "Use the upper third of a gas oven, where the top heat browns crumbs well.",
+      "art": "oven",
+      "only": ["gas"]
+    },
+    {
+      "title": "Heat an electric oven to 400°F",
+      "body": "If the crumbs are still pale at the end, give it two minutes under the grill.",
+      "art": "oven",
+      "only": ["electric"]
+    },
+    {
+      "title": "Heat a convection oven to 375°F",
+      "body": "The fan browns crumbs quickly, so drop the heat and watch the last few minutes.",
+      "art": "oven",
+      "only": ["convection"]
+    },
+    {
+      "title": "Bake until brown",
+      "body": "Bake until the top is brown and the sauce bubbles at the edges.",
+      "art": "timer",
+      "timer": { "label": "Bake", "minutes": 20 }
+    },
+    {
+      "title": "Serve",
+      "body": "Let it settle for five minutes, then serve from the dish.",
+      "art": "serve"
+    }
+  ]
+}

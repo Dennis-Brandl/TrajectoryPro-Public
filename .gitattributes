@@ -4,6 +4,21 @@
 *.sh text eol=lf
 
 # Mission Designer / Commander packages are ZIP files: never convert line endings.
+# Every ZIP format in docs/JSON_SCHEMA.md §2 is listed here. The bare-JSON formats
+# (.WFmaster, .WFenvir, .WFaction, .WFlib, .WFslib) are deliberately absent: they are
+# text and should keep normal line-ending handling.
+# Without an explicit attribute git falls back to sniffing for NUL bytes, which does
+# catch a ZIP in practice — but that is a heuristic, not a guarantee, and this repo has
+# already been bitten once by autocrlf rewriting a file it should not have (see above).
+*.WFmasterX binary
+*.WFlibX binary
+*.WFstepLibX binary
+*.WFslibX binary
 *.WFenvirX binary
-*.WFactionLibX binary
 *.WFenvirLibX binary
+*.WFenvirBundleX binary
+*.WFactionLibX binary
+*.WFactionCode binary
+*.WFactionCodeX binary
+*.WFcenterX binary
+*.WFsnapshot binary

@@ -4,3 +4,9 @@
 
 # Local deploy configuration (compose env interpolation) — never committed
 .env
+
+# Generated workflow packages from the recipe-to-workflow skill. Built artefacts,
+# and local to whoever built them — the recipe specs under
+# .claude/skills/recipe-to-workflow/recipes/ are the tracked source, and
+# `node lib/build.mjs` reproduces these byte for byte from them.
+/examples/recipes/

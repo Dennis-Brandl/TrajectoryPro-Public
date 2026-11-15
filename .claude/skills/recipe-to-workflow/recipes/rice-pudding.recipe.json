@@ -1,0 +1,92 @@
+{
+  "name": "Rice Pudding",
+  "slug": "rice-pudding",
+  "course": "dessert",
+  "serves": "6",
+  "summary": "Rice baked slowly in milk until creamy, stirred to keep the skin in, after Fannie Farmer.",
+  "source": {
+    "title": "The Boston Cooking-School Cook Book",
+    "author": "Fannie Merritt Farmer",
+    "year": 1896,
+    "publisher": "Little, Brown and Company",
+    "rights": "Public domain (published 1896, United States)"
+  },
+  "ingredients": [
+    "1/3 cup rice, washed",
+    "1 quart milk",
+    "1/3 cup sugar",
+    "1/2 tsp salt",
+    "1/4 tsp grated nutmeg",
+    "2 tbsp butter"
+  ],
+  "equipment": {
+    "prompt": "Which oven are you using?",
+    "help": "This is a long slow bake, so what matters is how steady your oven is down low.",
+    "noun": "oven",
+    "property": "OvenType",
+    "label": "Oven",
+    "options": [
+      { "value": "gas", "label": "Gas oven" },
+      { "value": "electric", "label": "Electric oven" },
+      { "value": "convection", "label": "Convection oven" }
+    ]
+  },
+  "steps": [
+    {
+      "title": "Wash the rice",
+      "body": "Rinse the rice until the water runs clear.",
+      "art": "wash"
+    },
+    {
+      "title": "Mix the pudding",
+      "body": "Stir the rice, milk, sugar and salt together in a buttered baking dish.",
+      "art": "mixing"
+    },
+    {
+      "title": "Grate the nutmeg over",
+      "body": "Scatter the nutmeg across the surface and dot with the butter.",
+      "art": "measure"
+    },
+    {
+      "title": "Heat a gas oven to 300°F",
+      "body": "Gas cycles on and off. Put the dish in the middle, away from the burner.",
+      "art": "oven",
+      "only": ["gas"]
+    },
+    {
+      "title": "Heat an electric oven to 300°F",
+      "body": "Electric ovens hold a low heat well, which suits this pudding.",
+      "art": "oven",
+      "only": ["electric"]
+    },
+    {
+      "title": "Heat a convection oven to 275°F",
+      "body": "Drop the heat for the fan, and expect the skin to form sooner.",
+      "art": "oven",
+      "only": ["convection"]
+    },
+    {
+      "title": "Bake and stir",
+      "body": "Bake slowly, stirring the skin back in three times during the first hour.",
+      "art": "timer",
+      "timer": { "label": "First hour", "minutes": 60 },
+      "note": "Stirring the skin back in is what makes the pudding creamy rather than watery."
+    },
+    {
+      "title": "Let the skin form",
+      "body": "Stop stirring and let the top brown for the last of the baking.",
+      "art": "timer",
+      "timer": { "label": "Brown the top", "minutes": 60 }
+    },
+    {
+      "title": "Test it",
+      "body": "The rice should be soft and the pudding creamy, still a little loose. It thickens as it cools.",
+      "art": "bowl"
+    },
+    {
+      "title": "Serve warm or cold",
+      "body": "Good either way, plain or with cream.",
+      "art": "serve"
+    }
+  ]
+}

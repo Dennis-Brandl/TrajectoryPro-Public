@@ -1,0 +1,111 @@
+{
+  "name": "Apple Pie",
+  "slug": "apple-pie",
+  "course": "dessert",
+  "serves": "One 9 inch pie",
+  "summary": "A two crust apple pie on plain pastry, after Fannie Farmer's 1896 method.",
+  "source": {
+    "title": "The Boston Cooking-School Cook Book",
+    "author": "Fannie Merritt Farmer",
+    "year": 1896,
+    "publisher": "Little, Brown and Company",
+    "rights": "Public domain (published 1896, United States)"
+  },
+  "ingredients": [
+    "2 cups flour, for the pastry",
+    "2/3 cup cold butter or lard",
+    "1/2 tsp salt",
+    "4 to 5 tbsp ice water",
+    "6 sour apples, pared and sliced thin",
+    "1/2 cup sugar",
+    "1/2 tsp cinnamon or grated nutmeg",
+    "1 tbsp lemon juice",
+    "1 tbsp butter, in small pieces"
+  ],
+  "equipment": {
+    "prompt": "Which oven are you using?",
+    "help": "A pie wants a hot start to set the bottom crust, and ovens differ in how they give it.",
+    "noun": "oven",
+    "property": "OvenType",
+    "label": "Oven",
+    "options": [
+      { "value": "gas", "label": "Gas oven" },
+      { "value": "electric", "label": "Electric oven" },
+      { "value": "convection", "label": "Convection oven" }
+    ]
+  },
+  "steps": [
+    {
+      "title": "Rub in the fat",
+      "body": "Cut the cold fat into the flour and salt until the mixture looks like coarse meal.",
+      "art": "bowl"
+    },
+    {
+      "title": "Bring the pastry together",
+      "body": "Sprinkle in the ice water a spoonful at a time, just until it holds. Do not knead it; a shaggy dough makes a tender crust.",
+      "art": "mixing"
+    },
+    {
+      "title": "Rest the pastry",
+      "body": "Wrap it and let it rest cold.",
+      "art": "fridge",
+      "timer": { "label": "Rest the pastry", "minutes": 30 }
+    },
+    {
+      "title": "Roll the bottom crust",
+      "body": "Roll half the pastry thin and line the pie plate, letting it overhang.",
+      "art": "rolling"
+    },
+    {
+      "title": "Slice the apples",
+      "body": "Pare, core and slice the apples thin and even, so they cook through together.",
+      "art": "knife"
+    },
+    {
+      "title": "Fill the pie",
+      "body": "Mix the apples with the sugar, spice and lemon juice. Heap them in the crust and dot with butter.",
+      "art": "pie"
+    },
+    {
+      "title": "Put on the top crust",
+      "body": "Roll the rest of the pastry, lay it over, trim and press the edges, and cut a few slits for steam.",
+      "art": "rolling"
+    },
+    {
+      "title": "Heat a gas oven to 450°F",
+      "body": "Bake low in a gas oven so the bottom crust sets before the top browns.",
+      "art": "oven",
+      "only": ["gas"]
+    },
+    {
+      "title": "Heat an electric oven to 450°F",
+      "body": "A preheated baking sheet on the lower rack helps the bottom crust.",
+      "art": "oven",
+      "only": ["electric"]
+    },
+    {
+      "title": "Heat a convection oven to 425°F",
+      "body": "Drop the heat 25°F for the fan and expect it to brown a little sooner.",
+      "art": "oven",
+      "only": ["convection"]
+    },
+    {
+      "title": "Bake hot, then lower",
+      "body": "Bake hot for fifteen minutes to set the crust, then lower the oven to 350°F for the rest.",
+      "art": "timer",
+      "timer": { "label": "Hot bake", "minutes": 15 }
+    },
+    {
+      "title": "Finish baking",
+      "body": "Bake until the crust is golden and the juice bubbles through the slits.",
+      "art": "timer",
+      "timer": { "label": "Finish baking", "minutes": 35 }
+    },
+    {
+      "title": "Cool before cutting",
+      "body": "Let the pie cool so the filling sets. Cutting it hot makes it run.",
+      "art": "plate",
+      "timer": { "label": "Cool", "minutes": 45 }
+    }
+  ]
+}

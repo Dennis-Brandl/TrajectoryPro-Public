@@ -1,0 +1,101 @@
+{
+  "name": "Beef Stew",
+  "slug": "beef-stew",
+  "course": "entree",
+  "serves": "6",
+  "summary": "Browned beef simmered slowly with root vegetables, after Fannie Farmer's 1896 method.",
+  "source": {
+    "title": "The Boston Cooking-School Cook Book",
+    "author": "Fannie Merritt Farmer",
+    "year": 1896,
+    "publisher": "Little, Brown and Company",
+    "rights": "Public domain (published 1896, United States)"
+  },
+  "ingredients": [
+    "3 lb beef from the lower round, cut in 1 inch cubes",
+    "1/4 cup flour, for dredging",
+    "2 tbsp beef fat or butter",
+    "1 1/2 tsp salt",
+    "1/4 tsp pepper",
+    "4 cups boiling water",
+    "1 onion, sliced",
+    "3 carrots, cut in thick rounds",
+    "1 small turnip, diced",
+    "4 potatoes, quartered"
+  ],
+  "equipment": {
+    "prompt": "What are you cooking on?",
+    "help": "A stew wants a bare simmer, and every hob holds one differently.",
+    "noun": "hob",
+    "property": "HobType",
+    "label": "Hob",
+    "options": [
+      { "value": "gas", "label": "Gas burner" },
+      { "value": "electric", "label": "Electric coil or ceramic" },
+      { "value": "induction", "label": "Induction" }
+    ]
+  },
+  "steps": [
+    {
+      "title": "Cut the beef",
+      "body": "Trim the beef and cut it into cubes about an inch across.",
+      "art": "board"
+    },
+    {
+      "title": "Dredge it",
+      "body": "Toss the cubes in the flour with the salt and pepper until every piece is dusted.",
+      "art": "bowl"
+    },
+    {
+      "title": "Brown the meat",
+      "body": "Heat the fat in a heavy pot and brown the beef a few pieces at a time. A crowded pot steams instead of browning.",
+      "art": "pan",
+      "note": "The brown crust is where the colour and most of the flavour of the stew comes from."
+    },
+    {
+      "title": "Add the water",
+      "body": "Pour in the boiling water and scrape the bottom of the pot clean.",
+      "art": "pot"
+    },
+    {
+      "title": "Set a gas burner to its lowest flame",
+      "body": "Gas responds at once. If it still bubbles hard, rest the pot on a simmer plate.",
+      "art": "stovetop",
+      "only": ["gas"]
+    },
+    {
+      "title": "Set an electric hob to low and wait",
+      "body": "The plate holds heat, so it keeps rising for a minute or two after you turn it down.",
+      "art": "stovetop",
+      "only": ["electric"]
+    },
+    {
+      "title": "Set induction to a low simmer",
+      "body": "Induction changes instantly and can hold a true simmer. Use a low number rather than a boost setting.",
+      "art": "stovetop",
+      "only": ["induction"]
+    },
+    {
+      "title": "Simmer the beef",
+      "body": "Cover and simmer until the beef is tender. Keep it just trembling, never at a rolling boil.",
+      "art": "timer",
+      "timer": { "label": "Simmer the beef", "minutes": 120 }
+    },
+    {
+      "title": "Add the vegetables",
+      "body": "Put in the onion, carrot and turnip. Add the potatoes twenty minutes later so they do not fall apart.",
+      "art": "knife"
+    },
+    {
+      "title": "Finish the stew",
+      "body": "Simmer until everything is tender.",
+      "art": "timer",
+      "timer": { "label": "Finish the stew", "minutes": 40 }
+    },
+    {
+      "title": "Season and serve",
+      "body": "Taste for salt and pepper. Serve very hot in deep plates.",
+      "art": "serve"
+    }
+  ]
+}

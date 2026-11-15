@@ -65,7 +65,13 @@ export interface FileRouteTypes {
   fullPaths: '/' | '/login' | '/setup' | '/admin'
   fileRoutesByTo: FileRoutesByTo
   to: '/login' | '/setup' | '/admin' | '/'
-  id: '__root__' | '/_authenticated' | '/login' | '/setup' | '/_authenticated/admin' | '/_authenticated/'
+  id:
+    | '__root__'
+    | '/_authenticated'
+    | '/login'
+    | '/setup'
+    | '/_authenticated/admin'
+    | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -124,11 +130,15 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
-const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(AuthenticatedRouteChildren)
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LoginRoute: LoginRoute,
   SetupRoute: SetupRoute,
 }
-export const routeTree = rootRouteImport._addFileChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>()
+export const routeTree = rootRouteImport
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()

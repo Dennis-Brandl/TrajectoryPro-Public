@@ -10,3 +10,10 @@
 # .claude/skills/recipe-to-workflow/recipes/ are the tracked source, and
 # `node lib/build.mjs` reproduces these byte for byte from them.
 /examples/recipes/
+
+# Fetched Wikimedia Commons photographs for the recipe-to-workflow examples. 2 MB of
+# third-party images that `node lib/fetch-photos.mjs` re-fetches on demand; the tracked
+# artefact is photos/credits.json, which records each one's title, author, licence and
+# sha256 so the cache can be re-verified with `--check`.
+/.claude/skills/recipe-to-workflow/photos/*
+!/.claude/skills/recipe-to-workflow/photos/credits.json

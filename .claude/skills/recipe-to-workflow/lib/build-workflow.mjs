@@ -2,21 +2,39 @@
 //
 // Graph shape produced here:
 //
-//   START -> [ingredients] -> [equipment question] -> SELECT 1 -+-> [gas steps] --+-> [shared steps] -> END
-//                                                               +-> [electric] ---+
-//                                                               +-> [convection] -+
+//   START -> [ingredients] -> [equipment question] -> SELECT 1 -+-> [gas] ------+
+//                                                               +-> [electric] -+-> WAIT ANY -> [shared] -> END
+//                                                               +-> [convection]+
+//
+// The branches rejoin through a WAIT ANY rather than running several edges into the
+// next shared step. WAIT ANY is the join step type (MissionEngine back-target.ts
+// isJoinType), it auto-completes on the first arrival (transition.ts), and it keeps
+// the diagram honest: one line out of the branch set instead of a step with three
+// inbound edges.
 //
 // A recipe with no `equipment` block is a straight line with no SELECT 1 at all.
 // A recipe may branch more than once: every run of steps carrying `only` opens a
 // fresh SELECT 1 on the same stored answer, so the question is asked once and
 // consulted as often as the method needs.
 
-import { instructionScreen, listScreen, questionScreen, estimatePhoneHeight, oid, ISO, PHONE } from './build-forms.mjs'
+import {
+  instructionScreen,
+  listScreen,
+  questionScreen,
+  questionOutputName,
+  estimatePhoneHeight,
+  oid,
+  ISO,
+  PHONE,
+} from './build-forms.mjs'
+import { autoLayout } from './layout.mjs'
 
 export const SCHEMA_VERSION = '5.0'
 
-const STEP_SPACING_Y = 170
-const BRANCH_SPACING_X = 330
+// Positions are not computed here. Every step is created at the origin and the whole
+// graph is run through Mission Designer's own dagre auto-layout at the end, so an
+// imported recipe sits exactly where pressing Auto Layout in the editor would put it.
+const ORIGIN = { x: 0, y: 0 }
 
 function managed(localId, seed) {
   return { local_id: localId, oid: oid(seed), version: '1.0.0', last_modified_date: ISO }
@@ -37,13 +55,27 @@ function screenStep(node) {
   const step = {
     ...managed(node.localId, node.seed),
     step_type: 'USER_INTERACTION',
-    position: { x: node.x, y: node.y },
+    position: { ...ORIGIN },
     description: node.title,
     form_document: node.doc,
     button_bar: { format: 'fixed' },
     ui_parameter_specifications: [{ oid: oid(node.seed + ':btn'), type: 'Button', value: node.button }],
     allow_back: node.allowBack,
     allow_stop: node.allowStop,
+  }
+  if (node.outputs) {
+    // What this screen writes into the property store. A form block's
+    // `outputParameter` is only a reference: without the matching declaration here
+    // the step has no outputs, so Designer's Output Parameter dropdown is empty and
+    // the step never appears in the SELECT 1 source picker, which lists the outputs
+    // of every other step (hooks/useSourcePickerExtraGroups.ts). The answer is then
+    // invisible to the branch even though the form collected it.
+    step.output_parameter_specifications = node.outputs
+  }
+  if (node.images && node.images.length > 0) {
+    // Maps each image block's imageOid to its filename in the package's images/
+    // folder, which is how the runtime resolves the bytes.
+    step.form_element_images = node.images.map((i) => ({ image_oid: i.imageOid, filename: i.filename }))
   }
   return step
 }
@@ -52,10 +84,10 @@ function select1Step(node, question) {
   return {
     ...managed(node.localId, node.seed),
     step_type: 'SELECT 1',
-    position: { x: node.x, y: node.y },
+    position: { ...ORIGIN },
     description: 'Which ' + question.noun + '?',
     select1_config: {
-      input_name: question.property + '.Value',
+      input_name: questionOutputName(question),
       input_value_type: 'property',
       options: question.options.map((o, i) => ({
         id: oid(node.seed + ':opt:' + o.value),
@@ -103,20 +135,33 @@ function splitList(seed, title, lines, intro) {
  * Returns { spec, report } — the report carries the phone measurements so the
  * caller can print them and fail the build on an overflowing screen.
  */
-export function buildWorkflow(recipe) {
+export function buildWorkflow(recipe, photos = {}) {
   const slug = recipe.slug
   const seed = (s) => slug + ':' + s
   const steps = []
   const connections = []
-  const report = { slug, name: recipe.name, screens: [], overflow: [] }
+  const report = { slug, name: recipe.name, screens: [], overflow: [], images: [] }
 
-  let y = 0
-  const nextY = () => {
-    y += STEP_SPACING_Y
-    return y
+  // Step names. Designer labels a canvas node with the step's local_id
+  // (lib/import/workflow-importers.ts: nodeData.label = step.local_id), and that same
+  // label heads the step's group in the SELECT 1 source picker. A generated key like
+  // `step-4` is no use to a reader there, so every step is named after the header
+  // shown inside it — or, for the steps that have no form, after its description.
+  //
+  // local_id is free text in the schema (MissionEngine/src/spec/workflow-schema.json:
+  // ManagedElement.local_id is a plain string) and the workflow's own local_id is
+  // already the recipe name, so prose is fine here. Identity still comes from the
+  // oid, which is seeded from the stable plan key, so renaming a step does not
+  // renumber anything.
+  const usedLabels = new Map()
+  const label = (text) => {
+    const base = String(text ?? '').replace(/\s+/g, ' ').trim() || 'Step'
+    const n = (usedLabels.get(base) ?? 0) + 1
+    usedLabels.set(base, n)
+    return n === 1 ? base : base + ' (' + n + ')'
   }
 
-  const startStep = { ...managed('start', seed('start')), step_type: 'START', position: { x: 0, y: 0 } }
+  const startStep = { ...managed(label('Start'), seed('start')), step_type: 'START', position: { ...ORIGIN } }
   steps.push(startStep)
 
   // --- the linear plan of screens -----------------------------------------
@@ -143,9 +188,11 @@ export function buildWorkflow(recipe) {
     const key = item.key
     const s = seed(key)
     let doc
+    const stepImages = []
     if (item.kind === 'list') doc = listScreen(s, item.title, item.lines, item.intro)
     else if (item.kind === 'question') doc = questionScreen(s, recipe.equipment)
-    else doc = instructionScreen(s, item.step)
+    else doc = instructionScreen(s, item.step, photos, stepImages)
+    for (const img of stepImages) report.images.push(img)
 
     const height = estimatePhoneHeight(doc)
     report.screens.push({ key, title: item.title, phoneHeight: height })
@@ -153,19 +200,29 @@ export function buildWorkflow(recipe) {
 
     const override = item.kind === 'step' ? item.step : {}
     return {
-      localId: key,
+      localId: label(item.title),
       seed: s,
+      outputs:
+        item.kind === 'question'
+          ? [
+              {
+                id: questionOutputName(recipe.equipment),
+                oid: oid(s + ':out'),
+                description: 'The ' + recipe.equipment.noun + ' chosen on this screen.',
+                // Kept identical to the id. See questionOutputName.
+                target: questionOutputName(recipe.equipment),
+              },
+            ]
+          : undefined,
       title: item.title,
       doc,
+      images: stepImages,
       only: item.only,
-      x: 0,
-      y: 0,
       button: override.button || (isLast ? 'Done' : 'Next'),
-      // Back needs somewhere to go back to, so the first screen never offers it
-      // (MissionDesigner/src/lib/export/fixed-bar-checks.ts warns about exactly
-      // this). Stop is offered everywhere except the last screen, where the run
-      // is finishing anyway.
-      allowBack: override.allowBack !== undefined ? override.allowBack : i > 0,
+      // Back is resolved while wiring, because whether it works depends on what
+      // lies upstream in the finished graph, not on the step's position in the
+      // spec. Stop is offered everywhere except the last screen.
+      allowBackOverride: override.allowBack,
       allowStop: override.allowStop !== undefined ? override.allowStop : !isLast,
     }
   })
@@ -185,17 +242,26 @@ export function buildWorkflow(recipe) {
     }
   }
 
+  // Back walks upstream for another screen, stopping at a barrier. START and the
+  // join types are barriers (fixed-bar-checks.ts BARRIER_TYPES), so a screen placed
+  // straight after one cannot offer Back.
+  let backAvailable = false
+  const setBack = (node) => {
+    node.allowBack = node.allowBackOverride !== undefined ? node.allowBackOverride : backAvailable
+  }
+
   let i = 0
   let branchRound = 0
   while (i < nodes.length) {
     const node = nodes[i]
 
     if (!node.only) {
-      node.y = nextY()
+      setBack(node)
       const step = screenStep(node)
       steps.push(step)
       connect(step.oid)
       pending = [{ oid: step.oid, handle: null }]
+      backAvailable = true
       i++
       continue
     }
@@ -209,10 +275,8 @@ export function buildWorkflow(recipe) {
     }
 
     const sel = {
-      localId: 'select-' + branchRound,
+      localId: label('Which ' + recipe.equipment.noun + '?'),
       seed: seed('select-' + branchRound),
-      x: 0,
-      y: nextY(),
     }
     const selStep = select1Step(sel, recipe.equipment)
     steps.push(selStep)
@@ -220,20 +284,21 @@ export function buildWorkflow(recipe) {
 
     const options = recipe.equipment.options
     const nextPending = []
-    const branchTopY = y
-    options.forEach((opt, oi) => {
+    options.forEach((opt) => {
       const handle = oid(sel.seed + ':opt:' + opt.value)
       const mine = region.filter((n) => n.only.includes(opt.value))
-      const x = Math.round((oi - (options.length - 1) / 2) * BRANCH_SPACING_X)
       if (mine.length === 0) {
         // Nothing special for this equipment: fall straight through to the join.
         nextPending.push({ oid: selStep.oid, handle })
         return
       }
+      // Each branch starts from the same upstream state: a SELECT 1 is not a
+      // barrier, so the question screen before it is still a valid Back target.
+      let branchBack = backAvailable
       let prev = { oid: selStep.oid, handle }
-      mine.forEach((n, k) => {
-        n.x = x
-        n.y = branchTopY + (k + 1) * STEP_SPACING_Y
+      mine.forEach((n) => {
+        n.allowBack = n.allowBackOverride !== undefined ? n.allowBackOverride : branchBack
+        branchBack = true
         const step = screenStep(n)
         steps.push(step)
         const c = { from_step_id: prev.oid, to_step_id: step.oid }
@@ -247,14 +312,35 @@ export function buildWorkflow(recipe) {
       nextPending.push(prev)
     })
 
-    const deepest = Math.max(...options.map((o) => region.filter((n) => n.only.includes(o.value)).length))
-    y = branchTopY + deepest * STEP_SPACING_Y
-    pending = nextPending
+    // Rejoin through a WAIT ANY. Without it the next shared step takes one inbound
+    // edge per branch, which runs but reads badly on the canvas and gives Back an
+    // ambiguous target.
+    const join = {
+      ...managed(label('Branches rejoin'), seed('join-' + branchRound)),
+      step_type: 'WAIT ANY',
+      position: { ...ORIGIN },
+      description: 'Branches rejoin',
+    }
+    steps.push(join)
+    for (const p of nextPending) {
+      const c = { from_step_id: p.oid, to_step_id: join.oid }
+      if (p.handle) {
+        c.connection_id = p.handle
+        c.source_handle_id = p.handle
+      }
+      connections.push(c)
+    }
+    pending = [{ oid: join.oid, handle: null }]
+    // A join is a barrier for Back, so the next screen must not offer it.
+    backAvailable = false
   }
 
-  const endStep = { ...managed('end', seed('end')), step_type: 'END', position: { x: 0, y: nextY() } }
+  const endStep = { ...managed(label('End'), seed('end')), step_type: 'END', position: { ...ORIGIN } }
   steps.push(endStep)
   connect(endStep.oid)
+
+  // Now that the graph is complete, let Designer's layout place every step.
+  autoLayout(steps, connections)
 
   const spec = {
     ...managed(recipe.name, seed('workflow')),

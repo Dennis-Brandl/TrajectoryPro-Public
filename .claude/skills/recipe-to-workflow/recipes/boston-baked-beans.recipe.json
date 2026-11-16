@@ -1,0 +1,111 @@
+{
+  "name": "Boston Baked Beans",
+  "slug": "boston-baked-beans",
+  "course": "entree",
+  "serves": "6 to 8",
+  "summary": "Pea beans baked all day with salt pork, molasses and mustard, after Fannie Farmer.",
+  "source": {
+    "title": "The Boston Cooking-School Cook Book",
+    "author": "Fannie Merritt Farmer",
+    "year": 1896,
+    "publisher": "Little, Brown and Company",
+    "rights": "Public domain (published 1896, United States)"
+  },
+  "ingredients": [
+    "4 cups pea beans or navy beans",
+    "1/2 lb fat salt pork",
+    "1/3 cup molasses",
+    "1 tbsp salt",
+    "1 tsp dry mustard",
+    "1 tbsp sugar",
+    "Boiling water, to cover"
+  ],
+  "equipment": {
+    "prompt": "Which oven are you using?",
+    "help": "This is six to eight hours at a low heat, so what matters is how steadily your oven holds it.",
+    "noun": "oven",
+    "property": "OvenType",
+    "label": "Oven",
+    "options": [
+      { "value": "gas", "label": "Gas oven" },
+      { "value": "electric", "label": "Electric oven" },
+      { "value": "convection", "label": "Convection oven" }
+    ]
+  },
+  "steps": [
+    {
+      "title": "Soak the beans overnight",
+      "body": "Pick the beans over, cover them well with cold water and leave them overnight.",
+      "art": "bowl",
+      "note": "They swell to more than twice their size, so use a bigger bowl than looks necessary."
+    },
+    {
+      "title": "Parboil them",
+      "body": "Drain, cover with fresh water, and heat slowly until the skins burst when you blow on a spoonful.",
+      "art": "pot",
+      "timer": { "label": "Parboil", "minutes": 45 },
+      "note": "Farmer's test is exact: blow on a few beans in a spoon, and the skins split."
+    },
+    {
+      "title": "Scald the pork",
+      "body": "Scald the salt pork, scrape the rind, and cut a half inch slice from it.",
+      "art": "knife"
+    },
+    {
+      "title": "Pack the pot",
+      "body": "Put the slice of pork in the bottom of the bean pot. Fill with drained beans and bury the rest of the pork, leaving the rind just showing.",
+      "art": "pot"
+    },
+    {
+      "title": "Measure the molasses",
+      "body": "Molasses is what makes these beans dark and sweet rather than merely cooked.",
+      "photo": "File:Bottle of Molasses.jpg"
+    },
+    {
+      "title": "Mix the sauce",
+      "body": "Stir the molasses, salt, mustard and sugar into a cup of boiling water and pour it over the beans.",
+      "art": "measure"
+    },
+    {
+      "title": "Top up with water",
+      "body": "Add boiling water until the beans are just covered.",
+      "art": "measure"
+    },
+    {
+      "title": "Heat a gas oven to 250°F",
+      "body": "Gas cycles its burner. Set the pot in the middle and check the water every hour or two.",
+      "art": "oven",
+      "only": ["gas"]
+    },
+    {
+      "title": "Heat an electric oven to 250°F",
+      "body": "Electric holds a low heat steadily, which suits a long bake like this one.",
+      "art": "oven",
+      "only": ["electric"]
+    },
+    {
+      "title": "Heat a convection oven to 225°F",
+      "body": "Drop the heat for the fan, and keep the lid on: moving air dries the top out fast.",
+      "art": "oven",
+      "only": ["convection"]
+    },
+    {
+      "title": "Bake covered",
+      "body": "Bake with the lid on, adding boiling water whenever the beans look dry.",
+      "art": "timer",
+      "timer": { "label": "Covered bake", "minutes": 360 },
+      "note": "Six hours is the point of this dish. The beans go from mealy to creamy near the end."
+    },
+    {
+      "title": "Uncover to brown",
+      "body": "Take the lid off for the last half hour so the pork rind crisps and the top browns.",
+      "art": "timer",
+      "timer": { "label": "Uncovered", "minutes": 30 }
+    },
+    {
+      "title": "Serve hot",
+      "body": "Serve from the pot, with brown bread if you have it.",
+      "photo": "File:Baked beans with molasses (4974247795).jpg"
+    }
+  ]
+}

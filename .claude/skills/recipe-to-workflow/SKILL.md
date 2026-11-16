@@ -81,7 +81,15 @@ act on it. Do not invent quantities, temperatures or times that the source does 
 **Equipment branching.** When the method genuinely differs by equipment — oven type, hob
 type, mixing method — add an `equipment` block and tag the differing steps with `only`.
 The question is asked once, early, and stored; every `only` run after that becomes its own
-`SELECT 1`. Do not branch on things that do not change the steps.
+`SELECT 1`, and the branches rejoin through a `WAIT ANY`. Do not branch on things that do
+not change the steps.
+
+The builder handles the wiring, which is worth knowing about because it is the part that
+fails quietly: the question screen declares an output parameter, the radio binds to it, and
+the `SELECT 1` reads the same key. Leave the declaration out and the recipe still *runs* —
+but the binding shows as empty in Designer and the question step never appears in the
+SELECT 1's source picker, so the branch cannot be edited. `reference/workflow-format.md`
+has the three-way table and the proof.
 
 **Every option needs a path.** An option with no `only` steps falls straight through to
 the next shared step. That is fine and intended.
@@ -98,9 +106,12 @@ the phone — the authoring check rejects a required block hidden at any breakpo
 
 | Thing | Rule |
 | --- | --- |
-| Back | On every screen except the first. The first has nothing behind it, and Designer warns about exactly that. |
+| Back | Wherever a screen actually lies upstream. Resolved on the finished graph, not from the step's place in the spec: `SELECT 1` is transparent, so a branch's first screen goes back to the question, but `START` and `WAIT ANY` are barriers, so the first screen and the first screen after a rejoin have no Back. |
 | Stop | On every screen except the last, where the run is ending anyway. |
 | Button label | `Next`, or `Done` on the last screen. Override per step with `"button"`. |
+| Step names | The header shown inside the step, because `local_id` is what Designer puts on the canvas node and in the SELECT 1 source picker. De-duplicated with a ` (2)` suffix. |
+| Branch wiring | The question's output parameter, the radio's binding and the `SELECT 1`'s `input_name` are all the same key; branches rejoin through a `WAIT ANY`. |
+| Layout | Every step is created at the origin, then the whole graph goes through Mission Designer's own dagre settings, so an imported recipe sits where pressing Auto Layout would put it. |
 | Drawing on phone | Kept beside the text while the body is short; hidden on the phone past ~110 characters, because two columns at 360px shred the text. |
 | Ingredients | Split across as many screens as the phone budget needs. |
 | OIDs | Derived from the recipe slug, so a rebuild is byte-identical. |
@@ -125,9 +136,19 @@ and dark themes, and they need no network and raise no licensing question.
 Name one with `"art": "<name>"`. Run `node -e "import('./lib/line-art.mjs').then(m=>console.log(m.ART_NAMES.join(', ')))"`
 to list them. Omit `art` for a screen that needs no picture.
 
-For photographs instead, read `reference/images.md`. It is a different trade: real public
-domain photos are 50–300 KB each, must be licence-checked one by one, and belong in the
-package's `images/` folder rather than inline.
+For photographs, name one with `"photo": "File:<Commons file name>"` and fetch it first:
+
+```bash
+node lib/fetch-photos.mjs            # resolve, licence-check and cache every photo named
+node lib/fetch-photos.mjs --check    # re-verify the cached files against photos/credits.json
+```
+
+Only Public domain, CC0 and CC BY are accepted — anything carrying SA, NC or ND is refused
+rather than quietly downgraded — and every photo renders with its credit line beneath it,
+because CC BY requires attribution. It is a different trade from line art: real photos are
+50–300 KB each and travel in the package's `images/` folder rather than inline. The fetched
+files are local only; `photos/credits.json` is what is tracked. `reference/images.md` has
+the detail.
 
 ## Sources
 

@@ -41,7 +41,15 @@ Every step is a managed element: `local_id`, `oid`, `version`, `last_modified_da
 required. So is the library envelope itself, if you ever emit a `.WFlibX` — leaving them
 off fails with four "must have required property" errors that name no file.
 
-Recipes use `START`, `USER_INTERACTION`, `SELECT 1` and `END`.
+Recipes use `START`, `USER_INTERACTION`, `SELECT 1`, `WAIT ANY` and `END`.
+
+**`local_id` is the step's name on screen.** Designer labels a canvas node with it
+(`workflow-importers.ts`: `nodeData.label = step.local_id`), and the same label heads the
+step's group in the SELECT 1 source picker. It is free text in the schema
+(`ManagedElement.local_id` is a plain `string`), so it should read as a name, not a key:
+the builder uses the header shown inside the step, de-duplicating with a ` (2)` suffix.
+`step-4` imports perfectly well and tells a reader nothing. Identity lives in the `oid`,
+which is seeded from a stable key, so naming a step does not renumber anything.
 
 ## Screens and the fixed button bar
 
@@ -63,8 +71,19 @@ they validate.
 
 **Back needs somewhere to go.** Designer warns `"<step>: Back will never be available
 here"` for a screen with `allow_back` whose upstream holds no other screen
-(`src/lib/export/fixed-bar-checks.ts`). The builder therefore never sets Back on the first
-screen. It traverses *through* a `SELECT 1`, so the first screen of a branch may offer Back.
+(`src/lib/export/fixed-bar-checks.ts`). Back walks upstream until it hits a barrier, and
+`BARRIER_TYPES` covers `START`, `PARALLEL`, `WAIT ALL`, `WAIT ANY` and `WORKFLOW PROXY`.
+
+So whether a screen may offer Back is a property of the finished graph, not of the step's
+place in the recipe. Two consequences the builder depends on:
+
+- a `SELECT 1` is **not** a barrier, so the first screen of each branch may offer Back, and
+  it lands on the question — which is what a cook wants when they pick the wrong oven;
+- a `WAIT ANY` **is** a barrier, so the first shared screen after the branches rejoin must
+  not offer Back.
+
+Get this wrong and the step still imports: Back is simply dead on arrival. The validator
+runs Designer's own `collectFixedBarWarnings` over the imported graph rather than guessing.
 
 ## Branching
 
@@ -84,17 +103,60 @@ Each outgoing edge carries the option id in **both** `connection_id` and
 (`workflow-importers.ts:461`); the Engine's fixtures use `connection_id`. Setting both
 satisfies each without having to know which consumer sees the file.
 
-The answer reaches the property through the radio block's `outputParameter`. The engine
-matches it against `output_parameter_specifications[].id` and falls back to using the
-string itself as the property key when nothing matches
-(`MissionEngine/src/core/properties.ts:222`). The builder uses the dotted form
-(`OvenType.Value`) directly, so there is no id pair to keep in step.
+### Getting the answer to the branch
 
-The workflow declares the property in `value_property_specifications`:
+This is the easiest part of the format to get half-right, because half-right still runs.
+
+A `SELECT 1` reads **one key out of the property store** (`step-handlers.ts` `handleSelect1`).
+Three things have to name that key, and all three have to agree:
+
+| Where | Field | Value |
+| --- | --- | --- |
+| the radio block | `outputParameter` | `OvenType.Value` |
+| the question step | `output_parameter_specifications[].id` / `.target` | `OvenType.Value` |
+| the `SELECT 1` | `input_name` (with `input_value_type: "property"`) | `OvenType.Value` |
+
+The step's declaration is the part that is easy to skip, **and skipping it still works at
+runtime**. `captureFormOutputs` resolves a block's `outputParameter` against the step's
+`output_parameter_specifications` and, finding nothing, falls back to treating the string
+itself as the property key (`MissionEngine/src/core/properties.ts`). The recipe runs; the
+branch routes. What breaks is authoring:
+
+- Designer's Parameter Binding inspector fills its **Output Parameter** dropdown from the
+  step's `outputs` (`form-designer/v2/inspector/sections/ParameterBindingSection.tsx`). With
+  nothing declared the dropdown is empty and the binding looks unset.
+- The **SELECT 1 source picker** lists the output parameters of every *other* step
+  (`hooks/useSourcePickerExtraGroups.ts`) and skips any step whose `outputs` are empty. The
+  question step does not appear at all, so the value the branch depends on is invisible at
+  the one place you choose it.
+
+So declare it. `id` and `target` are kept **identical** on purpose: the engine writes
+`target`, while the source picker offers the output by `name` (which exports as `id`), and
+if the two differ the pickers suggest a string the engine never writes. A dotted name is
+fine and intended — `properties.ts` says as much ("which may already be dotted").
+
+```json
+"output_parameter_specifications": [
+  { "id": "OvenType.Value", "oid": "…", "target": "OvenType.Value",
+    "description": "The oven chosen on this screen." }
+]
+```
+
+The workflow also declares the property in `value_property_specifications`, which is what
+puts `OvenType` / `OvenType.Value` in the picker's **Value Properties** group and what makes
+the write stay local (`declaredLocally`, `properties.ts`):
 
 ```json
 [{ "name": "OvenType", "oid": "…", "entries": [{ "name": "Value", "value": "" }] }]
 ```
+
+### Rejoining
+
+Branches rejoin through a **`WAIT ANY`**, never by running one edge per branch into the next
+shared step. `WAIT ANY` is the join type: it auto-completes on the first arrival, so with
+exactly one branch live it costs nothing. Several edges into an ordinary step also run, but
+the canvas then shows a step with three inbound arrows and Back has no single target. The
+validator rejects a fan-in on any step that is not `WAIT ANY` or `WAIT ALL`.
 
 ## Three screen sizes
 
@@ -121,14 +183,28 @@ drawings are ever hidden.
 
 ## Validation
 
-Four gates, all run by `lib/validate.ts`, none re-implemented:
+All run by `lib/validate.ts`. The product's own validators are called, never
+re-implemented, so a package that passes is one Designer accepts rather than one that
+matches this skill's reading of the schema:
 
 | Gate | Source |
 | --- | --- |
 | Workflow JSON schema | `validateWorkflowSpecification` (`src/lib/import/schema-validator.ts`) |
 | Form Document v2 | `validateFormDocument` (`@mission/form-schema`) — the result field is **`ok`**, not `valid` |
 | Authoring checks | `findHiddenRequired`, `findDuplicateOptionValues`, `checkJoblessButtons`, `checkNeverStuck` |
+| Back and Stop | `collectFixedBarWarnings` (`src/lib/export/fixed-bar-checks.ts`), run on the graph `importWorkflow` produces |
 | The real importer | `importWorkflow` (`src/lib/import/workflow-importers.ts`) |
+
+On top of those, four graph rules this builder has broken at least once each, every one of
+which imports cleanly and so needs checking separately:
+
+- every `SELECT 1` option has an outgoing edge;
+- nothing is stranded — every step but `END` leads somewhere, every step but `START` is reachable;
+- no fan-in except on a join (`WAIT ANY`, `WAIT ALL`);
+- **every form binding names an output parameter its own step declares, and every `SELECT 1`
+  reads a key that some step able to reach it actually writes.** This is the one that matters
+  most, because a branch reading an unwritten key runs happily and silently takes its default
+  option on every execution.
 
 `checkNeverStuck` only applies to a form that owns its buttons. These screens use the
 fixed bar, so the bar is the way out and the form legitimately has none; the validator

@@ -9,6 +9,7 @@
 // regenerating a recipe shows a clean diff.
 
 import { artDataUri } from './line-art.mjs'
+import { creditLine } from './photos.mjs'
 
 // ---------------------------------------------------------------------------
 // Identity
@@ -179,10 +180,62 @@ export function fieldName(label) {
  */
 const PHONE_PAIR_BUDGET = 110
 
-/** An instruction screen: title, optional drawing, body, optional note, optional timer. */
-export function instructionScreen(seed, step) {
+/**
+ * An instruction screen: title, optional picture, body, optional note, optional timer.
+ *
+ * A step takes either `art` (a line drawing, inline) or `photo` (a Commons title,
+ * packaged under images/). A photograph is given its own full-width row rather than
+ * being set beside the text: it carries detail worth seeing, and it needs a credit
+ * line directly beneath it.
+ *
+ * `images` collects {imageOid, filename} for the caller, which turns them into the
+ * step's form_element_images and the package's images/ entries.
+ */
+export function instructionScreen(seed, step, photos = {}, images = []) {
   const id = (suffix) => oid(seed + ':' + suffix)
   const rows = [{ id: id('row-title'), blocks: [headerBlock(id('title'), step.title)] }]
+
+  if (step.photo) {
+    const entry = photos[step.photo]
+    if (!entry) {
+      throw new Error(
+        'step "' + step.title + '" references ' + step.photo +
+          ' but it is not in photos/credits.json — run `node lib/fetch-photos.mjs` first',
+      )
+    }
+    const imageOid = id('photo-oid')
+    images.push({ imageOid, filename: entry.filename })
+    rows.push({
+      id: id('row-photo'),
+      blocks: [
+        {
+          id: id('photo'),
+          type: 'image',
+          // A bare filename, not a data URI: Commander resolves it against the
+          // package's images/ folder, falling back to {imageOid}-{filename}.
+          src: entry.filename,
+          imageOid,
+          objectFit: 'cover',
+          scalePercentAt: { tablet: 85, phone: 70 },
+          layout: {
+            span: { base: 8, tablet: 10, phone: 12 },
+            aspectRatio: '4/3',
+            align: 'center',
+          },
+        },
+      ],
+    })
+    rows.push({
+      id: id('row-credit'),
+      blocks: [
+        textBlock(id('credit'), creditLine(entry), {
+          size: 'xs',
+          sizeAt: { phone: 'xs' },
+          layout: { span: { base: 12 }, align: 'center' },
+        }),
+      ],
+    })
+  }
 
   const bodyBlocks = []
   const pairOnPhone = Boolean(step.art) && step.body.length <= PHONE_PAIR_BUDGET
@@ -269,6 +322,28 @@ export function listScreen(seed, title, lines, intro) {
 }
 
 /** The equipment question: a required radio whose answer drives every SELECT 1. */
+/**
+ * The one name that ties the question screen to its branch.
+ *
+ * It is used in four places and they must all agree:
+ *   - the radio block's `outputParameter`               (what the user answered)
+ *   - the step's output_parameter_specifications `id`   (what the step declares)
+ *   - that specification's `target`                     (where the engine stores it)
+ *   - the SELECT 1's `input_name`                       (what the branch reads)
+ *
+ * It is deliberately dotted. `id` and `target` are kept identical so the string is
+ * the same on every surface: the engine resolves the block's outputParameter to the
+ * matching spec and writes `target` (MissionEngine/src/core/properties.ts
+ * captureFormOutputs), Designer's SELECT 1 source picker offers a step's output
+ * parameters by name (hooks/useSourcePickerExtraGroups.ts), and the dotted form is
+ * also offered under Value Properties because the workflow declares the property
+ * with a `Value` entry. Name it `OvenType` and target it `OvenType.Value` and the
+ * two pickers disagree about what to type into the branch.
+ */
+export function questionOutputName(question) {
+  return question.property + '.Value'
+}
+
 export function questionScreen(seed, question) {
   const id = (suffix) => oid(seed + ':' + suffix)
   const rows = [{ id: id('row-title'), blocks: [headerBlock(id('title'), question.prompt)] }]
@@ -288,10 +363,12 @@ export function questionScreen(seed, question) {
         label: question.label || 'Choose one',
         required: true,
         options: question.options.map((o) => ({ label: o.label, value: o.value })),
-        // Dotted form: the engine uses a block's outputParameter as the property key
-        // directly when no output_parameter_specifications entry matches it
-        // (MissionEngine/src/core/properties.ts). One less id to keep in step.
-        outputParameter: question.property + '.Value',
+        // The step's own output parameter, by name. Designer's Parameter Binding
+        // inspector lists the step's `outputs` and stores the chosen one's NAME in
+        // block.outputParameter (form-designer/v2/inspector/sections/
+        // ParameterBindingSection.tsx), so this must match an entry in the step's
+        // output_parameter_specifications or the dropdown shows nothing selected.
+        outputParameter: questionOutputName(question),
         layout: { span: { base: 12 } },
       },
     ],

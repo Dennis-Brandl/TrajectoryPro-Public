@@ -1,0 +1,109 @@
+{
+  "name": "Fish Chowder",
+  "slug": "fish-chowder",
+  "course": "entree",
+  "serves": "6",
+  "summary": "Haddock or cod simmered with salt pork, onion and potato, finished with scalded milk.",
+  "source": {
+    "title": "The Boston Cooking-School Cook Book",
+    "author": "Fannie Merritt Farmer",
+    "year": 1896,
+    "publisher": "Little, Brown and Company",
+    "rights": "Public domain (published 1896, United States)"
+  },
+  "ingredients": [
+    "4 lb haddock or cod, whole or filleted",
+    "A 1 1/2 inch cube of fat salt pork, diced",
+    "1 onion, sliced thin",
+    "4 cups potatoes, sliced",
+    "1 tbsp salt",
+    "1/8 tsp pepper",
+    "4 tbsp butter",
+    "4 cups milk, scalded",
+    "8 common crackers, split"
+  ],
+  "equipment": {
+    "prompt": "What are you cooking on?",
+    "help": "Scalded milk catches at the bottom of the pot if the heat is wrong, and every hob holds a low heat differently.",
+    "noun": "hob",
+    "property": "HobType",
+    "label": "Hob",
+    "options": [
+      { "value": "gas", "label": "Gas burner" },
+      { "value": "electric", "label": "Electric coil or ceramic" },
+      { "value": "induction", "label": "Induction" }
+    ]
+  },
+  "steps": [
+    {
+      "title": "Look at the fish",
+      "body": "Use haddock or cod. Keep the head and bones if the fish is whole, because they make the stock.",
+      "photo": "File:Fortune - 1930.02 - 120 - Fillets of Haddock.png"
+    },
+    {
+      "title": "Skin and bone it",
+      "body": "Cut the fish in 2 inch pieces. Put the head, tail and backbone in a pan with 2 cups cold water.",
+      "art": "knife"
+    },
+    {
+      "title": "Simmer the bones",
+      "body": "Bring the trimmings slowly to the boil and let them simmer, then strain and keep the liquid.",
+      "art": "pot",
+      "timer": { "label": "Simmer the trimmings", "minutes": 20 }
+    },
+    {
+      "title": "Slice the onion",
+      "body": "A thin slice cooks down into the pork fat and all but disappears into the chowder.",
+      "photo": "File:ARS red onion.jpg"
+    },
+    {
+      "title": "Try out the pork",
+      "body": "Cook the diced salt pork in the pot until the fat runs and the scraps are crisp. Lift the scraps out.",
+      "art": "pan"
+    },
+    {
+      "title": "Cook the onion",
+      "body": "Cook the onion in the pork fat until it is soft and pale, not brown.",
+      "art": "pan"
+    },
+    {
+      "title": "Set a gas burner low",
+      "body": "Gas answers at once, so turn it down the moment the milk goes in.",
+      "art": "stovetop",
+      "only": ["gas"]
+    },
+    {
+      "title": "Set an electric hob low and wait",
+      "body": "The plate keeps giving off heat after you turn it down. Move the pot off for a minute if it runs away.",
+      "art": "stovetop",
+      "only": ["electric"]
+    },
+    {
+      "title": "Set induction to a low number",
+      "body": "Induction holds a steady low heat well, which is exactly what scalded milk wants.",
+      "art": "stovetop",
+      "only": ["induction"]
+    },
+    {
+      "title": "Layer the pot",
+      "body": "Put in the potatoes, then the fish, then the salt and pepper. Pour the strained fish stock over.",
+      "art": "pot"
+    },
+    {
+      "title": "Simmer until tender",
+      "body": "Cook gently until the potatoes are soft. Do not stir hard; it breaks the fish up.",
+      "art": "timer",
+      "timer": { "label": "Simmer", "minutes": 30 }
+    },
+    {
+      "title": "Add the milk and butter",
+      "body": "Pour in the scalded milk, add the butter, and heat through without letting it boil.",
+      "art": "measure"
+    },
+    {
+      "title": "Serve with crackers",
+      "body": "Scatter the pork scraps over and serve with split crackers.",
+      "photo": "File:Fishchowder.jpg"
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+{
+  "name": "Apple Dumplings",
+  "slug": "apple-dumplings",
+  "course": "dessert",
+  "serves": "6",
+  "summary": "Whole pared apples wrapped in pastry and baked, served with a hard sauce.",
+  "source": {
+    "title": "The Boston Cooking-School Cook Book",
+    "author": "Fannie Merritt Farmer",
+    "year": 1896,
+    "publisher": "Little, Brown and Company",
+    "rights": "Public domain (published 1896, United States)"
+  },
+  "ingredients": [
+    "6 sour apples, small and even in size",
+    "2 cups flour, for the pastry",
+    "2/3 cup cold butter or lard",
+    "1/2 tsp salt",
+    "4 to 5 tbsp ice water",
+    "6 tsp sugar",
+    "1/2 tsp cinnamon or grated nutmeg",
+    "1 tbsp butter, in six pieces",
+    "Hard sauce or cream, to serve"
+  ],
+  "equipment": {
+    "prompt": "Which oven are you using?",
+    "help": "The pastry must set before the apples collapse, and that start differs by oven.",
+    "noun": "oven",
+    "property": "OvenType",
+    "label": "Oven",
+    "options": [
+      { "value": "gas", "label": "Gas oven" },
+      { "value": "electric", "label": "Electric oven" },
+      { "value": "convection", "label": "Convection oven" }
+    ]
+  },
+  "steps": [
+    {
+      "title": "Choose the apples",
+      "body": "Pick six small sour apples of the same size, so they finish together.",
+      "photo": "File:Apples in basket 2018 G1.jpg"
+    },
+    {
+      "title": "Make the pastry",
+      "body": "Cut the cold fat into the flour and salt until it looks like coarse meal, then bring it together with ice water.",
+      "art": "bowl"
+    },
+    {
+      "title": "Rest the pastry",
+      "body": "Wrap and chill it until firm.",
+      "art": "fridge",
+      "timer": { "label": "Rest the pastry", "minutes": 30 }
+    },
+    {
+      "title": "Pare and core",
+      "body": "Pare the apples and take the cores out whole, leaving the apple in one piece.",
+      "art": "knife",
+      "note": "A corer is worth having here. A knife works, but it is easy to split the apple."
+    },
+    {
+      "title": "Roll and cut",
+      "body": "Roll the pastry thin and cut six squares, each big enough to wrap an apple.",
+      "art": "rolling"
+    },
+    {
+      "title": "Fill and wrap",
+      "body": "Stand an apple on each square. Put a teaspoon of sugar, a pinch of spice and a piece of butter in the hollow, then draw the pastry up and pinch it closed.",
+      "art": "pie"
+    },
+    {
+      "title": "Heat a gas oven to 425°F",
+      "body": "Start hot so the pastry sets, and keep the dumplings off the floor of a gas oven.",
+      "art": "oven",
+      "only": ["gas"]
+    },
+    {
+      "title": "Heat an electric oven to 425°F",
+      "body": "A preheated sheet under the dish helps the bottoms cook through.",
+      "art": "oven",
+      "only": ["electric"]
+    },
+    {
+      "title": "Heat a convection oven to 400°F",
+      "body": "Drop the heat for the fan. The tops brown fast, so check early.",
+      "art": "oven",
+      "only": ["convection"]
+    },
+    {
+      "title": "Bake hot, then lower",
+      "body": "Bake hot for ten minutes to set the pastry, then lower the oven to 350°F.",
+      "art": "timer",
+      "timer": { "label": "Hot start", "minutes": 10 }
+    },
+    {
+      "title": "Finish baking",
+      "body": "Bake until the apples are tender when a skewer goes in easily and the pastry is golden.",
+      "art": "timer",
+      "timer": { "label": "Finish baking", "minutes": 35 }
+    },
+    {
+      "title": "Serve warm",
+      "body": "Serve warm with hard sauce or cream.",
+      "photo": "File:AppleDumpling.jpg"
+    }
+  ]
+}

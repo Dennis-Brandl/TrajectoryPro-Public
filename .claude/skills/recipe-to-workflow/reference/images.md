@@ -70,11 +70,37 @@ bare filename first, then `{imageOid}-{filename}`, then any entry ending `-{file
 against 40 KB today. Resize to the largest size any breakpoint actually renders (a
 desktop row at 3/12 of ~1100px is ~275px wide; 600px covers retina) before encoding.
 
-**Record the provenance.** Add a `photos` array to the recipe spec — source URL, author,
-licence, and the date checked — so a licence claim can be re-checked later rather than
-trusted.
+**Record the provenance.** `photos/credits.json` holds one record per photo — Commons file
+title, author, licence, source URL, byte size and sha256 — so a licence claim can be
+re-checked later rather than trusted. It is the tracked artefact; the image files themselves
+stay local.
 
-This path is documented but not yet implemented: `lib/build-forms.mjs` always calls
-`artDataUri`. Adding it means an image-source switch there, an `images/` entry list
-returned from `buildWorkflow`, and those entries written in `lib/build.mjs` alongside the
-`.WFmaster`. The ZIP writer already takes arbitrary binary entries.
+### Using it
+
+Name the Commons file on the step:
+
+```json
+{ "title": "Serve warm", "body": "…", "photo": "File:AppleDumpling.jpg" }
+```
+
+then fetch before building:
+
+```bash
+node lib/fetch-photos.mjs          # resolve every photo named in recipes/, licence-check, cache
+node lib/fetch-photos.mjs --check  # re-verify cached bytes against credits.json's sha256
+```
+
+`lib/photos.mjs` is the gate. It queries Commons for each exact title, reads the licence
+short name, and accepts only `Public domain`, `CC0` and `CC BY` 2.0/2.5/3.0/4.0; anything
+matching SA, NC or ND is **refused**, not downgraded. A title that cannot be resolved is
+refused too, rather than silently falling back to a drawing. Every accepted photo renders
+with `creditLine()` beneath it — `Photo: <author>, <licence>, via Wikimedia Commons` —
+because CC BY requires attribution and the credit must survive into the package.
+
+The request sends a generic `User-Agent` (`TrajectoryPro-recipe-skill/1.0`). Commons asks
+automated clients for contact details; do **not** put the operator's name or address there.
+
+`lib/build-forms.mjs` switches on `photo` before `art`, returns the image entries it used,
+and `lib/build.mjs` writes them into the package as `images/{imageOid}-{filename}` with a
+matching `form_element_images` list on the step. A photo screen costs more vertical space
+than a drawing, so it is measured against the same phone budget as everything else.

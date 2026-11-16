@@ -25,6 +25,7 @@ import { fileURLToPath } from 'node:url'
 import { buildWorkflow } from './build-workflow.mjs'
 import { PHONE } from './build-forms.mjs'
 import { zipSync, sanitizeName, withVersionSuffix } from './zip.mjs'
+import { loadCredits, photoBytes } from './photos.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const root = path.resolve(here, '..')
@@ -57,12 +58,13 @@ if (files.length === 0) {
 
 mkdirSync(outDir, { recursive: true })
 
+const credits = loadCredits()
 let overflowing = 0
 
 for (const file of files) {
   const recipe = JSON.parse(readFileSync(path.join(recipeDir, file), 'utf8'))
   recipe.slug = recipe.slug || file.replace('.recipe.json', '')
-  const { spec, report } = buildWorkflow(recipe)
+  const { spec, report } = buildWorkflow(recipe, credits)
 
   const safeName = sanitizeName(recipe.name)
   const masterEntry = safeName + '.WFmaster'
@@ -79,8 +81,22 @@ for (const file of files) {
     files: [{ path: masterEntry, type: 'workflow' }],
   }
 
+  // images/{imageOid}-{filename}, the shape Designer's packager writes and both
+  // importers resolve. The same photo used on two steps gets one entry per block,
+  // because each block's imageOid is its own key.
+  const imageEntries = []
+  for (const img of report.images) {
+    const zipPath = 'images/' + img.imageOid + '-' + img.filename
+    if (imageEntries.some((e) => e.name === zipPath)) continue
+    const entry = Object.values(credits).find((c) => c.filename === img.filename)
+    if (!entry) throw new Error('no cached photo for ' + img.filename + ' — run lib/fetch-photos.mjs')
+    imageEntries.push({ name: zipPath, data: photoBytes(entry) })
+  }
+  manifest.files.push(...imageEntries.map((e) => ({ path: e.name, type: 'image' })))
+
   const zip = zipSync([
     { name: masterEntry, data: masterJson },
+    ...imageEntries,
     { name: 'manifest.json', data: JSON.stringify(manifest, null, 2) },
   ])
 
@@ -98,7 +114,8 @@ for (const file of files) {
       String(report.connectionCount).padStart(2) + ' edges',
       branches + ' branch' + (branches === 1 ? ' ' : 'es'),
       'phone ' + String(tallest.phoneHeight).padStart(3) + '/' + PHONE.usableHeight,
-      String(Math.round(zip.length / 1024)).padStart(3) + ' KB',
+      String(report.images.length).padStart(2) + ' photo' + (report.images.length === 1 ? ' ' : 's'),
+      String(Math.round(zip.length / 1024)).padStart(4) + ' KB',
       packageName,
     ].join('  '),
   )

@@ -1,0 +1,100 @@
+{
+  "name": "Gingerbread",
+  "slug": "gingerbread",
+  "course": "dessert",
+  "serves": "One 8 inch square",
+  "summary": "A soft molasses gingerbread, mixed with hot water and baked in a square tin.",
+  "source": {
+    "title": "The Boston Cooking-School Cook Book",
+    "author": "Fannie Merritt Farmer",
+    "year": 1896,
+    "publisher": "Little, Brown and Company",
+    "rights": "Public domain (published 1896, United States)"
+  },
+  "ingredients": [
+    "1 cup molasses",
+    "1/2 cup butter",
+    "1/2 cup sour milk or buttermilk",
+    "2 1/2 cups flour",
+    "1 1/2 tsp baking soda",
+    "1 1/2 tsp ground ginger",
+    "1/2 tsp cinnamon",
+    "1/2 tsp salt",
+    "1 egg, beaten"
+  ],
+  "equipment": {
+    "prompt": "Which oven are you using?",
+    "help": "Gingerbread burns at the edges before the middle sets if the heat is wrong for the oven.",
+    "noun": "oven",
+    "property": "OvenType",
+    "label": "Oven",
+    "options": [
+      { "value": "gas", "label": "Gas oven" },
+      { "value": "electric", "label": "Electric oven" },
+      { "value": "convection", "label": "Convection oven" }
+    ]
+  },
+  "steps": [
+    {
+      "title": "Grate the ginger",
+      "body": "Ground ginger is what the 1896 recipe calls for, but a little grated fresh ginger alongside it lifts the whole cake.",
+      "photo": "File:Fresh Ginger.JPG"
+    },
+    {
+      "title": "Warm the molasses",
+      "body": "Heat the molasses and butter together until the butter melts. Do not let it boil.",
+      "photo": "File:Bottle of Molasses.jpg"
+    },
+    {
+      "title": "Mix the dry ingredients",
+      "body": "Sift the flour, soda, ginger, cinnamon and salt together.",
+      "art": "bowl"
+    },
+    {
+      "title": "Combine wet and dry",
+      "body": "Stir the sour milk and beaten egg into the warm molasses, then beat in the dry ingredients until smooth.",
+      "art": "mixing",
+      "note": "The batter is thin, nearer a pancake batter than a cake batter. That is right."
+    },
+    {
+      "title": "Butter the tin",
+      "body": "Butter an 8 inch square tin and line the bottom with paper.",
+      "art": "pan"
+    },
+    {
+      "title": "Heat a gas oven to 350°F",
+      "body": "Bake in the middle of a gas oven. The top heat will darken the crust quickly.",
+      "art": "oven",
+      "only": ["gas"]
+    },
+    {
+      "title": "Heat an electric oven to 350°F",
+      "body": "Wait for the preheat light. Gingerbread put into a cool oven sinks in the middle.",
+      "art": "oven",
+      "only": ["electric"]
+    },
+    {
+      "title": "Heat a convection oven to 325°F",
+      "body": "Drop the heat 25°F for the fan and start checking five minutes early.",
+      "art": "oven",
+      "only": ["convection"]
+    },
+    {
+      "title": "Bake",
+      "body": "Bake until a straw pushed into the middle comes out clean and the cake springs back.",
+      "art": "timer",
+      "timer": { "label": "Bake", "minutes": 35 }
+    },
+    {
+      "title": "Cool in the tin",
+      "body": "Let it stand ten minutes before turning it out, or it will break across the middle.",
+      "art": "timer",
+      "timer": { "label": "Stand", "minutes": 10 }
+    },
+    {
+      "title": "Cut and serve",
+      "body": "Cut in squares and serve warm, plain or with whipped cream.",
+      "photo": "File:Emily's Gingerbread Loaf (6527308297).jpg"
+    }
+  ]
+}

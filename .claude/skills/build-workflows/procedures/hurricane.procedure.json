@@ -1,0 +1,112 @@
+{
+  "name": "Hurricane (Example)",
+  "slug": "hurricane",
+  "kind": "emergency",
+  "library": "Facility Emergency Examples",
+  "summary": "EXAMPLE ONLY. A sample workflow for demonstrating work centers and schedules — not a real storm procedure.",
+  "checklist": {
+    "title": "Before you start",
+    "intro": "Example workflow only. It is here to show branching, parallel tracks and scheduling. It is not a storm procedure and must not be used in a real emergency.",
+    "items": [
+      "Forecast track and the local landfall window",
+      "Generator fuel level and transfer switch",
+      "Window and door shutter inventory",
+      "Staff roster with who rides out and who leaves",
+      "Water, food and first aid for the ride-out team"
+    ]
+  },
+  "question": {
+    "prompt": "How much time is on the forecast?",
+    "help": "A hurricane gives notice, so the real question is how much of the preparation you can still finish.",
+    "noun": "lead time",
+    "property": "LeadTime",
+    "label": "Lead time",
+    "selectLabel": "How long until it hits?",
+    "options": [
+      { "value": "days", "label": "More than 24 hours" },
+      { "value": "hours", "label": "Under 24 hours" },
+      { "value": "imminent", "label": "Conditions already here" }
+    ]
+  },
+  "steps": [
+    {
+      "title": "Check the forecast track",
+      "body": "Note the expected landfall window, the category and whether the site is in the surge zone.",
+      "art": "wind"
+    },
+    {
+      "title": "More than 24 hours",
+      "body": "Work the full list: shutters, fuel, supplies, and a decision on who stays. There is time to do it properly.",
+      "art": "clipboard",
+      "only": ["days"]
+    },
+    {
+      "title": "Under 24 hours",
+      "body": "Shutters, generator and people only. Skip anything that is not protection or safety.",
+      "art": "shelter",
+      "only": ["hours"]
+    },
+    {
+      "title": "Conditions already here",
+      "body": "Stop outdoor work now. Nobody goes on the roof or up a ladder in this wind. Move to shelter.",
+      "art": "wind",
+      "only": ["imminent"]
+    },
+    {
+      "title": "Fit the shutters",
+      "body": "Shutter or board the exposed glass, starting on the side the wind is forecast to come from.",
+      "art": "shelter",
+      "track": "Secure the building"
+    },
+    {
+      "title": "Clear the yard",
+      "body": "Anything loose becomes a missile. Bins, pallets, signs and furniture go inside or get tied down.",
+      "art": "wind",
+      "track": "Secure the building"
+    },
+    {
+      "title": "Test the generator",
+      "body": "Run it on load, check the fuel level and confirm the transfer switch works. Do this before the wind arrives.",
+      "art": "power",
+      "track": "Power and water"
+    },
+    {
+      "title": "Fill the water tanks",
+      "body": "Top up stored water and fill the sanitary tanks. Mains water often goes with the power.",
+      "art": "water",
+      "track": "Power and water"
+    },
+    {
+      "title": "Confirm the ride-out team",
+      "body": "Name who stays and who goes, and the time everyone else must be off site.",
+      "art": "clipboard",
+      "track": "People"
+    },
+    {
+      "title": "Brief and stock the shelter",
+      "body": "Walk the ride-out team through the shelter area, the radio schedule and where the supplies are.",
+      "art": "firstaid",
+      "track": "People"
+    },
+    {
+      "title": "Final sweep and lock down",
+      "body": "Last walk of the site. Everyone not riding it out is gone, the doors are secured, the cameras are recording.",
+      "art": "camera"
+    },
+    {
+      "title": "Ride it out on radio check",
+      "body": "Stay in the shelter area. Radio check on the hour. Do not go outside during the eye.",
+      "art": "radio"
+    },
+    {
+      "title": "Damage survey after the all-clear",
+      "body": "Wait for the official all-clear. Then survey in pairs, watching for downed lines and standing water.",
+      "art": "firstaid"
+    },
+    {
+      "title": "Log it and report",
+      "body": "Record the timeline, the damage found and the supplies used, then report to management.",
+      "art": "clipboard"
+    }
+  ]
+}

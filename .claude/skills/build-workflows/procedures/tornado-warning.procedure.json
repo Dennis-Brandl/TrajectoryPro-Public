@@ -1,0 +1,99 @@
+{
+  "name": "Tornado Warning (Example)",
+  "slug": "tornado-warning",
+  "kind": "emergency",
+  "library": "Facility Emergency Examples",
+  "summary": "EXAMPLE ONLY. A sample workflow for demonstrating work centers and schedules — not a real severe weather procedure.",
+  "checklist": {
+    "title": "Before you start",
+    "intro": "Example workflow only. It is here to show branching, parallel tracks and scheduling. It is not a severe weather procedure and must not be used in a real emergency.",
+    "items": [
+      "Weather radio or alert feed",
+      "Shelter locations and capacity",
+      "PA system and site radio",
+      "Staff roster and visitor log",
+      "Torches and the first aid kit"
+    ]
+  },
+  "question": {
+    "prompt": "What has been issued?",
+    "help": "A watch means conditions are possible. A warning means one has been seen or picked up on radar — move people now.",
+    "noun": "alert",
+    "property": "AlertLevel",
+    "label": "Alert",
+    "selectLabel": "Watch or warning?",
+    "options": [
+      { "value": "warning", "label": "Warning — take shelter now" },
+      { "value": "watch", "label": "Watch — conditions possible" }
+    ]
+  },
+  "steps": [
+    {
+      "title": "Confirm the alert",
+      "body": "Check the weather feed and note the counties named and the time the alert expires.",
+      "art": "radio"
+    },
+    {
+      "title": "Warning — move now",
+      "body": "There is no waiting and no checking the sky first. Everyone goes to shelter.",
+      "art": "wind",
+      "only": ["warning"]
+    },
+    {
+      "title": "Watch — get ready",
+      "body": "Brief the wardens, clear the outdoor areas and keep the radio on. Do not move people to shelter yet.",
+      "art": "clipboard",
+      "only": ["watch"]
+    },
+    {
+      "title": "Sound the shelter alarm",
+      "body": "Use the severe weather tone, not the fire tone. They mean opposite things — one sends people in, the other out.",
+      "art": "alarm",
+      "track": "Alarm"
+    },
+    {
+      "title": "Announce the shelter areas",
+      "body": "Name the shelter areas and the quickest route to each. Repeat it twice.",
+      "art": "announce",
+      "track": "Alarm"
+    },
+    {
+      "title": "Clear the outdoor areas",
+      "body": "Radio the yard, the dock and the roof. Everyone comes inside, away from windows.",
+      "art": "radio",
+      "track": "Bring people in"
+    },
+    {
+      "title": "Move visitors and contractors",
+      "body": "Walk the visitor log. People who do not know the building will not know where the shelter is.",
+      "art": "clipboard",
+      "track": "Bring people in"
+    },
+    {
+      "title": "Shut the doors and dampers",
+      "body": "Close exterior doors and loading dock doors. Leave the lights on.",
+      "art": "exit",
+      "track": "Secure"
+    },
+    {
+      "title": "Take the shelter roll call",
+      "body": "Count heads in each shelter area against the roster and the visitor log. Report gaps on the radio.",
+      "art": "clipboard"
+    },
+    {
+      "title": "Hold until the all-clear",
+      "body": "Stay in shelter until the warning expires or is cancelled. A gap in the wind is not the all-clear.",
+      "art": "shelter"
+    },
+    {
+      "title": "Check for damage and injuries",
+      "body": "Send the wardens out in pairs. Report injuries, gas smells, downed lines and blocked exits straight away.",
+      "art": "firstaid"
+    },
+    {
+      "title": "Log it and stand down",
+      "body": "Record the alert times, who sheltered where, and anything found damaged.",
+      "art": "clipboard"
+    }
+  ]
+}

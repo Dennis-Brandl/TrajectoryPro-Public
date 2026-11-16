@@ -1,14 +1,15 @@
 ---
-name: recipe-to-workflow
-description: Turn a recipe — pasted text, a scan, a photo of a page, or a URL — into an importable Trajectory Pro .WFmasterX workflow package with desktop, tablet and phone layouts, equipment branching, and Back/Stop on every screen. Use when asked to make a workflow from a recipe, convert recipes into Mission Pilot or Mission XO procedures, or add a recipe to the examples.
+name: build-workflows
+description: Turn a step-by-step procedure — a recipe, a facility emergency plan, any sequence a person follows — into an importable Trajectory Pro .WFmasterX workflow package with desktop, tablet and phone layouts, branching on an answer, parallel tracks, and Back/Stop on every screen. Use when asked to build or author a Trajectory Pro workflow, make a workflow from a recipe or a written procedure, create emergency or facility workflow examples, convert something into Mission Pilot or Mission XO procedures, or add a workflow to the examples.
 ---
 
-# Recipe to workflow
+# Build Workflows
 
-Turns a recipe into a `.WFmasterX` package that Mission Commander loads and Mission
+Turns a step-by-step procedure — a recipe, a facility emergency plan, any sequence a
+person follows — into a `.WFmasterX` package that Mission Commander loads and Mission
 Pilot and Mission XO run.
 
-You do **not** hand-write the workflow JSON. You write a short *recipe spec* and the
+You do **not** hand-write the workflow JSON. You write a short *workflow spec* and the
 builder produces the package, because the parts that are easy to get wrong — OIDs,
 graph wiring, per-breakpoint layout, the phone height budget, the ZIP shape — are
 computed rather than typed.
@@ -16,26 +17,30 @@ computed rather than typed.
 ## The loop
 
 ```bash
-cd .claude/skills/recipe-to-workflow
+cd .claude/skills/build-workflows
 
-# 1. write recipes/<slug>.recipe.json   (see reference/recipe-spec.md)
+# 1. write the spec (see reference/spec.md)
+#      recipes/<slug>.recipe.json       -> examples/recipes/
+#      procedures/<slug>.procedure.json -> examples/procedures/
 # 2. build
 node lib/build.mjs <slug>
 
 # 3. validate against Mission Designer's own validators
 cd ../../../MissionDesigner
 NODE_PATH=./node_modules npx tsx \
-  ../.claude/skills/recipe-to-workflow/lib/validate.ts
+  ../.claude/skills/build-workflows/lib/validate.ts
 ```
 
-Build every recipe with a bare `node lib/build.mjs`. Both commands exit non-zero on a
-problem, so a failure is a failure, not a line of output to scan past.
+Build everything with a bare `node lib/build.mjs`, or one source set with
+`--set procedures`. Both commands exit non-zero on a problem, so a failure is a failure,
+not a line of output to scan past. The validator takes a directory, so point it at the
+set you built.
 
-Packages are written to **`examples/recipes/` at the repository root** — outside the
-skill, gitignored, and an easy folder to reach from Designer's and Commander's file
-dialogs. They are build artefacts: `recipes/*.recipe.json` is the tracked source and a
-rebuild reproduces them byte for byte, so they are rebuilt rather than committed. Send
-them elsewhere with `--out <dir>`.
+Packages are written under **`examples/` at the repository root** — outside the skill,
+gitignored, and an easy folder to reach from Designer's and Commander's file dialogs.
+They are build artefacts: the spec is the tracked source and a rebuild reproduces them
+byte for byte, so they are rebuilt rather than committed. Send them elsewhere with
+`--out <dir>`.
 
 **Always run the validator before saying a recipe is done.** It calls the real
 `validateWorkflowSpecification`, `validateFormDocument`, the `@mission/form-schema`
@@ -44,7 +49,7 @@ accepts; your reading of the schema is not evidence.
 
 ## Writing the spec
 
-Read `reference/recipe-spec.md` for every field. The shape:
+Read `reference/spec.md` for every field. The shape:
 
 ```json
 {
@@ -94,6 +99,12 @@ has the three-way table and the proof.
 **Every option needs a path.** An option with no `only` steps falls straight through to
 the next shared step. That is fine and intended.
 
+**Parallel tracks.** `only` chooses one path; `track` runs several at once, through a
+`PARALLEL` that fans out and a `WAIT ALL` that holds until every track is done. Use it
+where the actions are genuinely simultaneous and independent — sounding an alarm while
+someone else calls the fire service — and not merely because two steps sit next to each
+other in a list. A sequence that must happen in order is a sequence.
+
 **No environment actions.** Recipes are instructions a person follows. No `ACTION PROXY`
 steps, no environments, no action libraries. This is why a recipe package contains only
 the `.WFmaster` and `manifest.json`.
@@ -111,6 +122,7 @@ the phone — the authoring check rejects a required block hidden at any breakpo
 | Button label | `Next`, or `Done` on the last screen. Override per step with `"button"`. |
 | Step names | The header shown inside the step, because `local_id` is what Designer puts on the canvas node and in the SELECT 1 source picker. De-duplicated with a ` (2)` suffix. |
 | Branch wiring | The question's output parameter, the radio's binding and the `SELECT 1`'s `input_name` are all the same key; branches rejoin through a `WAIT ANY`. |
+| Fork wiring | Consecutive `track` steps become a `PARALLEL` fan-out and a `WAIT ALL` join, one branch per track name, in first-appearance order. |
 | Layout | Every step is created at the origin, then the whole graph goes through Mission Designer's own dagre settings, so an imported recipe sits where pressing Auto Layout would put it. |
 | Drawing on phone | Kept beside the text while the body is short; hidden on the phone past ~110 characters, because two columns at 360px shred the text. |
 | Ingredients | Split across as many screens as the phone budget needs. |
@@ -162,15 +174,20 @@ method in your own words rather than transcribing a modern author's.
 
 ## Beyond recipes
 
-The same builder handles any step-by-step procedure with no machine actions. For plain
-workflow text, the work is the same: write the spec, build, validate. For a *picture* of
-a workflow, read the diagram into the same spec shape first — boxes become steps,
-diamonds become the `equipment` question plus `only` tags — and say what you could not
-read rather than inventing it.
+The same builder handles any step-by-step procedure with no machine actions —
+`procedures/` holds facility emergency examples built from the identical spec shape. For
+plain workflow text, the work is the same: write the spec, build, validate. For a
+*picture* of a workflow, read the diagram into the same spec shape first — boxes become
+steps, diamonds become the `question` plus `only` tags, a fork with a bar across it
+becomes `track` — and say what you could not read rather than inventing it.
+
+**Say what a workflow is for.** An example that imitates a real safety procedure should
+say so on its own first screen and in its `summary`, not only in the filename. Somebody
+will open it out of context.
 
 ## Reference
 
-- `reference/recipe-spec.md` — every field of the recipe spec
+- `reference/spec.md` — every field of the workflow spec
 - `reference/workflow-format.md` — the Trajectory format facts this relies on, with file
   and line citations, so a future schema change can be checked against it
 - `reference/images.md` — line art and the public domain photo path

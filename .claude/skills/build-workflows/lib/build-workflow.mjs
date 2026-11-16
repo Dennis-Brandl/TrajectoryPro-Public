@@ -12,10 +12,22 @@
 // the diagram honest: one line out of the branch set instead of a step with three
 // inbound edges.
 //
-// A recipe with no `equipment` block is a straight line with no SELECT 1 at all.
-// A recipe may branch more than once: every run of steps carrying `only` opens a
+// A spec with no `equipment`/`question` block is a straight line with no SELECT 1 at
+// all. A spec may branch more than once: every run of steps carrying `only` opens a
 // fresh SELECT 1 on the same stored answer, so the question is asked once and
 // consulted as often as the method needs.
+//
+// Steps carrying `track` fork instead of choosing:
+//
+//   ... -> PARALLEL -+-> [track A steps] -+
+//                    +-> [track B steps] -+-> WAIT ALL -> [shared] -> ...
+//                    +-> [track C steps] -+
+//
+// Every track runs at once and WAIT ALL holds the procedure until all of them finish
+// — the difference that matters for an emergency, where sounding the alarm must not
+// wait on the phone call to dispatch. A run of consecutive steps carrying `track`
+// forms one region; each distinct track name becomes one branch, in first-appearance
+// order.
 
 import {
   instructionScreen,
@@ -165,21 +177,47 @@ export function buildWorkflow(recipe, photos = {}) {
   steps.push(startStep)
 
   // --- the linear plan of screens -----------------------------------------
+  //
+  // Two field names for the same two ideas, because a recipe and a facility procedure
+  // are the same graph with different vocabulary. A recipe says `ingredients` and
+  // `equipment`; anything else says `checklist` and `question`. Neither is required.
+  const checklist = recipe.checklist ?? {
+    title: 'What you need',
+    items: recipe.ingredients ?? [],
+    intro: recipe.serves ? 'Makes ' + recipe.serves + '.' : undefined,
+  }
+  const question = recipe.question ?? recipe.equipment ?? null
+
   const plan = []
   const pages = splitList(
     seed('ingredients'),
-    'What you need',
-    recipe.ingredients,
-    recipe.serves ? 'Makes ' + recipe.serves + '.' : undefined,
+    checklist.title || 'What you need',
+    checklist.items ?? [],
+    checklist.intro,
   )
   pages.forEach((p, i) => {
-    plan.push({ kind: 'list', key: 'ingredients-' + (i + 1), title: p.title, lines: p.lines, intro: p.intro, only: null })
+    plan.push({
+      kind: 'list',
+      key: 'ingredients-' + (i + 1),
+      title: p.title,
+      lines: p.lines,
+      intro: p.intro,
+      only: null,
+      track: null,
+    })
   })
-  if (recipe.equipment) {
-    plan.push({ kind: 'question', key: 'equipment', title: recipe.equipment.prompt, only: null })
+  if (question) {
+    plan.push({ kind: 'question', key: 'equipment', title: question.prompt, only: null, track: null })
   }
   recipe.steps.forEach((s, i) => {
-    plan.push({ kind: 'step', key: 'step-' + (i + 1), step: s, title: s.title, only: s.only || null })
+    plan.push({
+      kind: 'step',
+      key: 'step-' + (i + 1),
+      step: s,
+      title: s.title,
+      only: s.only || null,
+      track: s.track || null,
+    })
   })
 
   // --- build the screen nodes ---------------------------------------------
@@ -190,7 +228,7 @@ export function buildWorkflow(recipe, photos = {}) {
     let doc
     const stepImages = []
     if (item.kind === 'list') doc = listScreen(s, item.title, item.lines, item.intro)
-    else if (item.kind === 'question') doc = questionScreen(s, recipe.equipment)
+    else if (item.kind === 'question') doc = questionScreen(s, question)
     else doc = instructionScreen(s, item.step, photos, stepImages)
     for (const img of stepImages) report.images.push(img)
 
@@ -206,11 +244,11 @@ export function buildWorkflow(recipe, photos = {}) {
         item.kind === 'question'
           ? [
               {
-                id: questionOutputName(recipe.equipment),
+                id: questionOutputName(question),
                 oid: oid(s + ':out'),
-                description: 'The ' + recipe.equipment.noun + ' chosen on this screen.',
+                description: 'The ' + question.noun + ' chosen on this screen.',
                 // Kept identical to the id. See questionOutputName.
-                target: questionOutputName(recipe.equipment),
+                target: questionOutputName(question),
               },
             ]
           : undefined,
@@ -218,6 +256,7 @@ export function buildWorkflow(recipe, photos = {}) {
       doc,
       images: stepImages,
       only: item.only,
+      track: item.track,
       button: override.button || (isLast ? 'Done' : 'Next'),
       // Back is resolved while wiring, because whether it works depends on what
       // lies upstream in the finished graph, not on the step's position in the
@@ -250,10 +289,75 @@ export function buildWorkflow(recipe, photos = {}) {
     node.allowBack = node.allowBackOverride !== undefined ? node.allowBackOverride : backAvailable
   }
 
+  /** Chain one run of screens, returning the open end. */
+  const chainFrom = (start, list, startBack) => {
+    let back = startBack
+    let prev = start
+    for (const n of list) {
+      n.allowBack = n.allowBackOverride !== undefined ? n.allowBackOverride : back
+      back = true
+      const step = screenStep(n)
+      steps.push(step)
+      const c = { from_step_id: prev.oid, to_step_id: step.oid }
+      if (prev.handle) {
+        c.connection_id = prev.handle
+        c.source_handle_id = prev.handle
+      }
+      connections.push(c)
+      prev = { oid: step.oid, handle: null }
+    }
+    return prev
+  }
+
   let i = 0
   let branchRound = 0
+  let forkRound = 0
   while (i < nodes.length) {
     const node = nodes[i]
+
+    // ---- a parallel region: consecutive steps that name a track ---------------
+    if (node.track) {
+      forkRound++
+      const region = []
+      while (i < nodes.length && nodes[i].track) {
+        region.push(nodes[i])
+        i++
+      }
+
+      // Tracks in first-appearance order, so the canvas reads in the order written.
+      const trackNames = []
+      for (const n of region) if (!trackNames.includes(n.track)) trackNames.push(n.track)
+
+      const fork = {
+        ...managed(label('Do these at the same time'), seed('fork-' + forkRound)),
+        step_type: 'PARALLEL',
+        position: { ...ORIGIN },
+        description: trackNames.join(' / '),
+      }
+      steps.push(fork)
+      connect(fork.oid)
+
+      const join = {
+        ...managed(label('All tracks complete'), seed('waitall-' + forkRound)),
+        step_type: 'WAIT ALL',
+        position: { ...ORIGIN },
+        description: 'Hold until every track has finished',
+      }
+
+      const ends = trackNames.map((t) =>
+        // PARALLEL is a barrier for Back (fixed-bar-checks.ts BARRIER_TYPES), so the
+        // first screen of each track cannot offer it; later screens in the same track
+        // go back within their own track, which is the only coherent target.
+        chainFrom({ oid: fork.oid, handle: null }, region.filter((n) => n.track === t), false),
+      )
+
+      steps.push(join)
+      for (const e of ends) connections.push({ from_step_id: e.oid, to_step_id: join.oid })
+      pending = [{ oid: join.oid, handle: null }]
+      // WAIT ALL is a barrier too.
+      backAvailable = false
+      continue
+    }
 
     if (!node.only) {
       setBack(node)
@@ -275,14 +379,14 @@ export function buildWorkflow(recipe, photos = {}) {
     }
 
     const sel = {
-      localId: label('Which ' + recipe.equipment.noun + '?'),
+      localId: label(question.selectLabel || 'Which ' + question.noun + '?'),
       seed: seed('select-' + branchRound),
     }
-    const selStep = select1Step(sel, recipe.equipment)
+    const selStep = select1Step(sel, question)
     steps.push(selStep)
     connect(selStep.oid)
 
-    const options = recipe.equipment.options
+    const options = question.options
     const nextPending = []
     options.forEach((opt) => {
       const handle = oid(sel.seed + ':opt:' + opt.value)
@@ -294,22 +398,7 @@ export function buildWorkflow(recipe, photos = {}) {
       }
       // Each branch starts from the same upstream state: a SELECT 1 is not a
       // barrier, so the question screen before it is still a valid Back target.
-      let branchBack = backAvailable
-      let prev = { oid: selStep.oid, handle }
-      mine.forEach((n) => {
-        n.allowBack = n.allowBackOverride !== undefined ? n.allowBackOverride : branchBack
-        branchBack = true
-        const step = screenStep(n)
-        steps.push(step)
-        const c = { from_step_id: prev.oid, to_step_id: step.oid }
-        if (prev.handle) {
-          c.connection_id = prev.handle
-          c.source_handle_id = prev.handle
-        }
-        connections.push(c)
-        prev = { oid: step.oid, handle: null }
-      })
-      nextPending.push(prev)
+      nextPending.push(chainFrom({ oid: selStep.oid, handle }, mine, backAvailable))
     })
 
     // Rejoin through a WAIT ANY. Without it the next shared step takes one inbound
@@ -353,11 +442,11 @@ export function buildWorkflow(recipe, photos = {}) {
     connections,
     viewport: { x: 0, y: 0, zoom: 1 },
   }
-  if (recipe.equipment) {
+  if (question) {
     spec.value_property_specifications = [
       {
-        name: recipe.equipment.property,
-        oid: oid(seed('prop:' + recipe.equipment.property)),
+        name: question.property,
+        oid: oid(seed('prop:' + question.property)),
         entries: [{ name: 'Value', value: '' }],
       },
     ]

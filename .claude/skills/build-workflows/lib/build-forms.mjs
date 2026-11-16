@@ -1,6 +1,6 @@
 // Recipe spec -> form documents, plus the phone height budget.
 //
-// The skill's job is to turn prose into a *recipe spec* (reference/recipe-spec.md).
+// The skill's job is to turn prose into a *workflow spec* (reference/spec.md).
 // This module turns one step of that spec into a Trajectory Form Document v2, so the
 // fiddly parts — OIDs, breakpoint spans, the phone height budget — are computed once
 // here instead of being retyped per recipe.

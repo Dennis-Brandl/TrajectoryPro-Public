@@ -8,7 +8,7 @@
 //   2. the finished positions, against dagre driven with Designer's own settings
 //
 // Run from MissionDesigner:
-//   NODE_PATH=./node_modules npx tsx ../.claude/skills/recipe-to-workflow/lib/check-layout-parity.ts
+//   NODE_PATH=./node_modules npx tsx ../.claude/skills/build-workflows/lib/check-layout-parity.ts
 
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'

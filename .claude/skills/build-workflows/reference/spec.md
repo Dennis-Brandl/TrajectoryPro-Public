@@ -1,7 +1,16 @@
-# The recipe spec
+# The workflow spec
 
-One JSON file per recipe in `recipes/<slug>.recipe.json`. This is the only file you
-write by hand.
+One JSON file per workflow. This is the only file you write by hand. Two source sets,
+one spec shape, one builder:
+
+| Source set | File | Built to |
+| --- | --- | --- |
+| `recipes/` | `<slug>.recipe.json` | `examples/recipes/` |
+| `procedures/` | `<slug>.procedure.json` | `examples/procedures/` |
+
+They differ only in vocabulary. A recipe says `ingredients` and `equipment`; anything
+else says `checklist` and `question`. Both names work in either set — use the one that
+reads naturally for the subject.
 
 ## Top level
 
@@ -9,14 +18,29 @@ write by hand.
 | --- | --- | --- |
 | `name` | yes | The workflow name. Becomes the package name and the `.WFmaster` entry name (non-alphanumerics become `_`). |
 | `slug` | no | File-safe id. Defaults to the filename. **Seeds every OID**, so changing it renumbers the whole workflow. |
-| `course` | no | `entree` or `dessert`. Documentation only. |
-| `serves` | no | Free text. Shown on the ingredients screen as "Makes …". |
 | `summary` | no | One line. Becomes the workflow `description`. |
-| `source` | yes | Where the recipe comes from, and its rights. See below. |
-| `ingredients` | yes | Array of strings. Split across screens automatically. |
-| `equipment` | no | The branching question. Omit for a straight-line recipe. |
 | `steps` | yes | The method, in order. |
+| `checklist` | no | The opening "what you need" screen. See below. |
+| `question` | no | The branching question. Omit for a straight line. |
 | `library` | no | Library name for the `.WFlibX` path. Unused by the `.WFmasterX` build. |
+| `kind` / `course` | no | Free text. Documentation only. |
+| `source` | recipes | Where the recipe comes from, and its rights. See below. |
+| `ingredients` | no | Recipe spelling of `checklist.items`. |
+| `serves` | no | Recipe only. Shown on the first screen as "Makes …". |
+| `equipment` | no | Recipe spelling of `question`. |
+
+### `checklist`
+
+```json
+{
+  "title": "Before you start",
+  "intro": "One line above the list. Optional.",
+  "items": ["Alarm panel key", "Site address and gate code"]
+}
+```
+
+Split across as many screens as the phone budget needs. Omit the whole block for a
+workflow that opens straight into its first step.
 
 ### `source`
 
@@ -33,7 +57,7 @@ write by hand.
 Carried for provenance. State the rights basis explicitly — "public domain" with a year
 and country, not just the word.
 
-### `equipment`
+### `question` (`equipment`)
 
 ```json
 {
@@ -71,10 +95,44 @@ still routes somewhere instead of dead-ending.
 | `art` | no | A drawing name from `lib/line-art.mjs`. |
 | `note` | no | Smaller text under the body — the "why", a tip, a warning. |
 | `timer` | no | `{ "label": "Roast", "minutes": 75 }`. Also takes `seconds` and `blockDone`. |
-| `only` | no | Array of `equipment` option values. The step appears only on those branches. |
+| `only` | no | Array of `question` option values. The step appears only on those branches. |
+| `track` | no | Track name. Consecutive tracked steps run concurrently. See below. |
+| `photo` | no | `File:<name>` on Wikimedia Commons. See `images.md`. |
 | `button` | no | Override the button label. |
 | `allowBack` | no | Override the Back default. |
 | `allowStop` | no | Override the Stop default. |
+
+## How `track` becomes a parallel fork
+
+`only` picks one path. `track` runs several at once.
+
+A run of consecutive steps carrying `track` forms one region. Each distinct track name
+becomes one concurrent branch, in first-appearance order:
+
+```json
+{ "title": "Sound the alarm",    "track": "Alarm" },
+{ "title": "Release the doors",  "track": "Alarm" },
+{ "title": "Call the fire service", "track": "Call 911" },
+{ "title": "Announce the evacuation", "track": "Evacuate" }
+```
+
+becomes
+
+```
+... -> PARALLEL -+-> Sound the alarm -> Release the doors -+
+                 +-> Call the fire service ---------------+-> WAIT ALL -> ...
+                 +-> Announce the evacuation -------------+
+```
+
+`WAIT ALL` holds the workflow until every track has finished, which is the point: the
+alarm must not wait on the phone call. Use it when the actions are genuinely independent
+and genuinely simultaneous — not merely adjacent in a list.
+
+Both `PARALLEL` and `WAIT ALL` are Back barriers, so the first screen of each track and
+the first screen after the join carry no Back. That is the graph, not a choice.
+
+A step may carry both `only` and `track`, but a region is one or the other: a run of
+tracked steps ends where the tracking stops.
 
 ## How `only` becomes a branch
 

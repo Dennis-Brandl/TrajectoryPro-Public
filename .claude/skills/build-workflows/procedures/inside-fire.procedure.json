@@ -1,0 +1,107 @@
+{
+  "name": "Fire Inside the Building (Example)",
+  "slug": "inside-fire",
+  "kind": "emergency",
+  "library": "Facility Emergency Examples",
+  "summary": "EXAMPLE ONLY. A sample workflow for demonstrating work centers and schedules — not a real fire procedure.",
+  "checklist": {
+    "title": "Before you start",
+    "intro": "Example workflow only. It is here to show branching, parallel tracks and scheduling. It is not a fire procedure and must not be used in a real emergency.",
+    "items": [
+      "Fire alarm panel and its reset key",
+      "Site address and nearest cross street, written down",
+      "Radio on the site channel",
+      "Assembly point list and staff roster",
+      "Door release / access control console"
+    ]
+  },
+  "question": {
+    "prompt": "What do the cameras and the panel show?",
+    "help": "This only changes whether anyone goes near the fire. Everything else happens either way.",
+    "noun": "situation",
+    "property": "FireSituation",
+    "label": "Situation",
+    "selectLabel": "How bad is it?",
+    "options": [
+      { "value": "contained", "label": "Small and contained" },
+      { "value": "spreading", "label": "Spreading" },
+      { "value": "unclear", "label": "Cannot tell" }
+    ]
+  },
+  "steps": [
+    {
+      "title": "Confirm the alarm",
+      "body": "Check the panel for the zone, then pull up the cameras covering it. Note the zone and floor before you do anything else.",
+      "art": "camera"
+    },
+    {
+      "title": "Small and contained",
+      "body": "A trained staff member may use the nearest extinguisher, with a clear way out behind them. Nobody goes in alone.",
+      "art": "extinguisher",
+      "only": ["contained"]
+    },
+    {
+      "title": "Spreading — nobody approaches",
+      "body": "No one attempts to fight it. Keep people away from the zone and leave it to the fire service.",
+      "art": "flame",
+      "only": ["spreading"]
+    },
+    {
+      "title": "Cannot tell — treat it as spreading",
+      "body": "If the cameras are smoked out or the zone is out of view, assume the worst. Nobody approaches.",
+      "art": "flame",
+      "only": ["unclear"]
+    },
+    {
+      "title": "Sound the building alarm",
+      "body": "Set the alarm to full evacuate. Do not silence it, even if the panel lets you.",
+      "art": "alarm",
+      "track": "Alarm"
+    },
+    {
+      "title": "Release the doors",
+      "body": "Drop access control on the escape routes so no door holds anyone up.",
+      "art": "exit",
+      "track": "Alarm"
+    },
+    {
+      "title": "Call emergency services",
+      "body": "Give the address, the cross street, the zone and floor, and whether anyone is unaccounted for.",
+      "art": "phone",
+      "track": "Call 911"
+    },
+    {
+      "title": "Stay on the line",
+      "body": "Do not hang up first. Dispatch will ask for the gate code and the best approach.",
+      "art": "phone",
+      "track": "Call 911"
+    },
+    {
+      "title": "Announce the evacuation",
+      "body": "Make the PA announcement: which zone, which exits to use, and the assembly point.",
+      "art": "announce",
+      "track": "Evacuate"
+    },
+    {
+      "title": "Send the floor wardens",
+      "body": "Call the wardens on the radio and send them to sweep their own floors on the way out.",
+      "art": "radio",
+      "track": "Evacuate"
+    },
+    {
+      "title": "Take the roll call",
+      "body": "Collect warden reports at the assembly point and mark the roster. Flag anyone not accounted for.",
+      "art": "clipboard"
+    },
+    {
+      "title": "Meet the fire service",
+      "body": "Hand over the panel zone, the roster, and the names of anyone missing. They take command from here.",
+      "art": "firstaid"
+    },
+    {
+      "title": "Log it and stand by",
+      "body": "Record times, zone and who was notified. Nobody re-enters until the fire service gives the all-clear.",
+      "art": "clipboard"
+    }
+  ]
+}

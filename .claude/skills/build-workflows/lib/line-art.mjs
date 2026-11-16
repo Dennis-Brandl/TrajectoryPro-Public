@@ -126,6 +126,73 @@ export const DRAWINGS = {
     <path d="M50 36 v-10 a8 8 0 0 1 16 0" ${THIN}/>
     <line x1="42" y1="56" x2="42" y2="66" ${THIN}/>
     <line x1="58" y1="56" x2="58" y2="66" ${THIN}/>`,
+
+  // --- facility / emergency ------------------------------------------------
+  alarm: `
+    <path d="M30 62 v-7 a20 20 0 0 1 40 0 v7" ${S}/>
+    <line x1="23" y1="62" x2="77" y2="62" ${S}/>
+    <path d="M43 68 a7 7 0 0 0 14 0" ${THIN}/>
+    <line x1="50" y1="35" x2="50" y2="28" ${THIN}/>
+    <path d="M16 56 a15 15 0 0 1 5 -17" ${THIN}/>
+    <path d="M84 56 a15 15 0 0 0 -5 -17" ${THIN}/>`,
+  phone: `
+    <path d="M32 20 c-11 7 -13 22 -6 34 c8 16 22 30 38 38 c12 6 26 3 32 -8 l-13 -13 c-4 -4 -10 -1 -13 3 c-9 -6 -17 -14 -23 -23 c4 -3 7 -9 3 -13 z" ${S}/>`,
+  exit: `
+    <rect x="18" y="18" width="36" height="64" rx="4" ${S}/>
+    <circle cx="46" cy="52" r="3" ${THIN}/>
+    <line x1="62" y1="50" x2="86" y2="50" ${S}/>
+    <polyline points="76,40 86,50 76,60" ${S}/>`,
+  extinguisher: `
+    <rect x="36" y="34" width="28" height="48" rx="8" ${S}/>
+    <path d="M44 34 v-8 h12 v8" ${S}/>
+    <line x1="40" y1="24" x2="66" y2="19" ${S}/>
+    <path d="M64 32 q14 5 10 19 q-2 7 -9 8" ${THIN}/>
+    <line x1="43" y1="52" x2="57" y2="52" ${THIN}/>
+    <line x1="43" y1="61" x2="57" y2="61" ${THIN}/>`,
+  flame: `
+    <path d="M50 86 c-16 0 -27 -12 -27 -25 c0 -17 15 -23 19 -42 c10 10 14 17 14 25 c4 -4 6 -9 6 -15 c10 11 15 21 15 32 c0 13 -11 25 -27 25 z" ${S}/>
+    <path d="M50 76 c-7 0 -13 -6 -13 -13 c0 -8 8 -12 11 -21 c6 7 15 13 15 21 c0 7 -6 13 -13 13 z" ${THIN}/>`,
+  water: `
+    <path d="M14 42 q9 -9 18 0 t18 0 t18 0 t18 0" ${S}/>
+    <path d="M14 60 q9 -9 18 0 t18 0 t18 0 t18 0" ${S}/>
+    <path d="M14 78 q9 -9 18 0 t18 0 t18 0 t18 0" ${S}/>`,
+  wind: `
+    <path d="M14 36 h40 a9 9 0 1 0 -9 -9" ${S}/>
+    <path d="M14 54 h54 a10 10 0 1 1 -10 10" ${S}/>
+    <path d="M14 72 h30 a8 8 0 1 0 -8 8" ${S}/>`,
+  firstaid: `
+    <rect x="18" y="28" width="64" height="50" rx="8" ${S}/>
+    <path d="M42 28 v-7 h16 v7" ${THIN}/>
+    <line x1="50" y1="41" x2="50" y2="65" ${S}/>
+    <line x1="38" y1="53" x2="62" y2="53" ${S}/>`,
+  shelter: `
+    <path d="M18 52 l32 -27 l32 27" ${S}/>
+    <path d="M27 52 v31 h46 v-31" ${S}/>
+    <rect x="42" y="63" width="16" height="20" ${THIN}/>`,
+  clipboard: `
+    <rect x="26" y="22" width="48" height="62" rx="5" ${S}/>
+    <rect x="40" y="15" width="20" height="13" rx="4" ${S}/>
+    <line x1="36" y1="46" x2="64" y2="46" ${THIN}/>
+    <line x1="36" y1="58" x2="64" y2="58" ${THIN}/>
+    <line x1="36" y1="70" x2="56" y2="70" ${THIN}/>`,
+  radio: `
+    <rect x="34" y="30" width="32" height="54" rx="5" ${S}/>
+    <line x1="59" y1="30" x2="65" y2="14" ${S}/>
+    <line x1="41" y1="42" x2="59" y2="42" ${THIN}/>
+    <line x1="41" y1="50" x2="59" y2="50" ${THIN}/>
+    <circle cx="50" cy="67" r="6" ${THIN}/>`,
+  power: `
+    <path d="M32 32 a26 26 0 1 0 36 0" ${S}/>
+    <line x1="50" y1="16" x2="50" y2="48" ${S}/>`,
+  camera: `
+    <rect x="20" y="40" width="44" height="21" rx="4" ${S}/>
+    <path d="M64 44 l14 -7 v27 l-14 -7 z" ${S}/>
+    <line x1="42" y1="40" x2="42" y2="26" ${S}/>
+    <line x1="30" y1="26" x2="54" y2="26" ${S}/>`,
+  announce: `
+    <path d="M30 42 h14 l24 -17 v50 l-24 -17 h-14 a7 7 0 0 1 -7 -7 v-2 a7 7 0 0 1 7 -7 z" ${S}/>
+    <path d="M76 38 a16 16 0 0 1 0 24" ${THIN}/>
+    <path d="M85 31 a27 27 0 0 1 0 38" ${THIN}/>`,
 }
 
 export const ART_NAMES = Object.keys(DRAWINGS)

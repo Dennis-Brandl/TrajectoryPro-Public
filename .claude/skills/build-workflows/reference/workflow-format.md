@@ -41,7 +41,8 @@ Every step is a managed element: `local_id`, `oid`, `version`, `last_modified_da
 required. So is the library envelope itself, if you ever emit a `.WFlibX` — leaving them
 off fails with four "must have required property" errors that name no file.
 
-Recipes use `START`, `USER_INTERACTION`, `SELECT 1`, `WAIT ANY` and `END`.
+The builder emits `START`, `USER_INTERACTION`, `SELECT 1`, `WAIT ANY`, `PARALLEL`,
+`WAIT ALL` and `END`.
 
 **`local_id` is the step's name on screen.** Designer labels a canvas node with it
 (`workflow-importers.ts`: `nodeData.label = step.local_id`), and the same label heads the
@@ -157,6 +158,26 @@ shared step. `WAIT ANY` is the join type: it auto-completes on the first arrival
 exactly one branch live it costs nothing. Several edges into an ordinary step also run, but
 the canvas then shows a step with three inbound arrows and Back has no single target. The
 validator rejects a fan-in on any step that is not `WAIT ANY` or `WAIT ALL`.
+
+### Forking
+
+A `SELECT 1` picks one branch. A **`PARALLEL`** starts all of them, and a **`WAIT ALL`**
+waits for all of them:
+
+```
+... -> PARALLEL -+-> [track A] -+
+                 +-> [track B] -+-> WAIT ALL -> ...
+                 +-> [track C] -+
+```
+
+Neither carries any config — the shape *is* the configuration, exactly as in the engine's
+own `exec-parallel-005` fixture. The edges out of a `PARALLEL` are unconditional, so they
+carry no `connection_id`, unlike a `SELECT 1`'s.
+
+`WAIT ALL` tracks arrivals against its inbound edge set (`transition.ts` `waitAllArrival`),
+so every track must actually reach it or the workflow parks there forever. Both types are
+also `BARRIER_TYPES` members, which is why the first screen of each track and the first
+screen after the join carry no Back.
 
 ## Three screen sizes
 

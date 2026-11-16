@@ -4,6 +4,12 @@ Two sources, one default.
 
 ## Line art (default)
 
+Two families in one set: kitchen subjects for recipes (`oven`, `pot`, `knife`, …) and
+facility subjects for procedures (`alarm`, `phone`, `exit`, `extinguisher`, `flame`,
+`water`, `wind`, `firstaid`, `shelter`, `clipboard`, `radio`, `power`, `camera`,
+`announce`). `ART_NAMES` is the list; nothing stops a procedure using a kitchen drawing
+if it genuinely fits.
+
 `lib/line-art.mjs` holds 20 original kitchen drawings: `oven`, `stovetop`, `pot`, `pan`,
 `bowl`, `whisk`, `knife`, `board`, `mixing`, `rolling`, `pie`, `cookie`, `chicken`,
 `timer`, `fridge`, `plate`, `measure`, `thermometer`, `serve`, `wash`.
@@ -34,7 +40,7 @@ passed every check and still read as a blob with an arrow. Render a contact shee
 ```bash
 # from MissionDesigner, which has playwright; uses the installed Edge, no browser download
 node --input-type=module -e "
-import { ART_NAMES, artDataUri } from '../.claude/skills/recipe-to-workflow/lib/line-art.mjs'
+import { ART_NAMES, artDataUri } from '../.claude/skills/build-workflows/lib/line-art.mjs'
 import { writeFileSync, mkdirSync } from 'node:fs'
 mkdirSync('/tmp/art', { recursive: true })
 for (const n of ART_NAMES) writeFileSync('/tmp/art/' + n + '.svg',

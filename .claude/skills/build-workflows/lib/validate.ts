@@ -22,7 +22,7 @@
 // this file lives outside that package:
 //
 //   cd MissionDesigner
-//   NODE_PATH=./node_modules npx tsx ../.claude/skills/recipe-to-workflow/lib/validate.ts
+//   NODE_PATH=./node_modules npx tsx ../.claude/skills/build-workflows/lib/validate.ts
 //
 // With no argument it reads the build's default output directory, examples/recipes/ at
 // the repository root. Pass a directory to check packages built somewhere else.

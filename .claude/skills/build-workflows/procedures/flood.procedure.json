@@ -1,0 +1,102 @@
+{
+  "name": "Flooding (Example)",
+  "slug": "flood",
+  "kind": "emergency",
+  "library": "Facility Emergency Examples",
+  "summary": "EXAMPLE ONLY. A sample workflow for demonstrating work centers and schedules — not a real flood procedure.",
+  "checklist": {
+    "title": "Before you start",
+    "intro": "Example workflow only. It is here to show branching, parallel tracks and scheduling. It is not a flood procedure and must not be used in a real emergency.",
+    "items": [
+      "Site drainage plan and sump locations",
+      "Electrical panel schedule for the lower levels",
+      "Water shut-off valve locations",
+      "Utility and facilities emergency numbers",
+      "Pumps, hose and sandbag store"
+    ]
+  },
+  "question": {
+    "prompt": "Where is the water coming from?",
+    "help": "A burst pipe is shut off at the valve. Rising ground water is not — it has to be kept out and waited out.",
+    "noun": "source",
+    "property": "WaterSource",
+    "label": "Source",
+    "selectLabel": "Inside or outside?",
+    "options": [
+      { "value": "internal", "label": "Inside — pipe, tank or sprinkler" },
+      { "value": "external", "label": "Outside — rising ground water" },
+      { "value": "unknown", "label": "Not yet known" }
+    ]
+  },
+  "steps": [
+    {
+      "title": "Find the water",
+      "body": "Check the cameras and the leak alarms. Note which level it is on and how fast it is rising.",
+      "art": "water"
+    },
+    {
+      "title": "Inside — shut the valve",
+      "body": "Close the isolation valve for that line and open the nearest drain. The leak stops before anything else matters.",
+      "art": "power",
+      "only": ["internal"]
+    },
+    {
+      "title": "Outside — keep it out",
+      "body": "Sandbag the low doorways and vents on the flood side. You cannot stop it, only slow it.",
+      "art": "shelter",
+      "only": ["external"]
+    },
+    {
+      "title": "Not known — do both",
+      "body": "Isolate the most likely line and sandbag the low openings. Sort out which it was afterwards.",
+      "art": "water",
+      "only": ["unknown"]
+    },
+    {
+      "title": "Cut power to the wet area",
+      "body": "Open the breakers for the affected level before anyone walks into standing water. Confirm it is dead.",
+      "art": "power",
+      "track": "Make it safe"
+    },
+    {
+      "title": "Close off the area",
+      "body": "Lock the stairwell and lift to that level so nobody wanders in. Put someone on the door if you can.",
+      "art": "exit",
+      "track": "Make it safe"
+    },
+    {
+      "title": "Call facilities and the utility",
+      "body": "Report the level, the source if you know it, and whether power has been cut. Ask for an arrival time.",
+      "art": "phone",
+      "track": "Notify"
+    },
+    {
+      "title": "Tell the building",
+      "body": "Announce which level is closed and which stairs to use. People will try the flooded route otherwise.",
+      "art": "announce",
+      "track": "Notify"
+    },
+    {
+      "title": "Lift what you can",
+      "body": "Get records, servers and stock off the floor. Only in areas that are dry and powered down.",
+      "art": "clipboard",
+      "track": "Protect"
+    },
+    {
+      "title": "Start the pumps",
+      "body": "Run the sumps and portable pumps, discharging away from the building. Check the sump alarms are clear.",
+      "art": "water",
+      "track": "Protect"
+    },
+    {
+      "title": "Account for everyone",
+      "body": "Radio each floor warden and confirm nobody is on the affected level, including contractors.",
+      "art": "radio"
+    },
+    {
+      "title": "Log it and monitor",
+      "body": "Record the level, the time, the source and what was isolated. Keep watching until the water drops.",
+      "art": "clipboard"
+    }
+  ]
+}

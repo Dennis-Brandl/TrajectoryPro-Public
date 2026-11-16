@@ -1,10 +1,19 @@
 #!/usr/bin/env node
-// Build recipe specs into .WFmasterX runtime packages.
+// Build workflow specs into .WFmasterX runtime packages.
 //
-//   node lib/build.mjs                       # every recipes/*.recipe.json
+//   node lib/build.mjs                       # every spec in every source set
 //   node lib/build.mjs roast-chicken         # one, by slug
+//   node lib/build.mjs --set procedures      # only one source set
 //   node lib/build.mjs --out ../elsewhere    # choose the output directory
 //   node lib/build.mjs --json                # also write the bare .WFmaster JSON
+//
+// Two source sets, same builder and same spec shape:
+//
+//   recipes/*.recipe.json       -> examples/recipes/
+//   procedures/*.procedure.json -> examples/procedures/
+//
+// A procedure is a recipe that says `checklist` instead of `ingredients` and
+// `question` instead of `equipment`, and may fork steps into concurrent `track`s.
 //
 // A .WFmasterX is the format Mission Commander loads (docs/JSON_SCHEMA.md §2.2):
 // a ZIP holding exactly one root-level .WFmaster — the bare
@@ -29,41 +38,60 @@ import { loadCredits, photoBytes } from './photos.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const root = path.resolve(here, '..')
-// .claude/skills/recipe-to-workflow/lib -> up four is the repository root.
+// .claude/skills/build-workflows/lib -> up four is the repository root.
 const repoRoot = path.resolve(root, '..', '..', '..')
 
+// Packages land outside the skill, in gitignored folders that are easy to reach from
+// Designer's and Commander's file pickers. They are build artefacts: the tracked
+// source is the spec, and a rebuild reproduces them exactly.
+const SETS = [
+  { name: 'recipes', dir: 'recipes', suffix: '.recipe.json', out: ['examples', 'recipes'] },
+  { name: 'procedures', dir: 'procedures', suffix: '.procedure.json', out: ['examples', 'procedures'] },
+]
+
 const args = process.argv.slice(2)
-// Packages land outside the skill, in a gitignored folder that is easy to reach
-// from Designer's and Commander's file pickers. They are build artefacts: the
-// tracked source is recipes/*.recipe.json, and a rebuild reproduces them exactly.
-let outDir = path.join(repoRoot, 'examples', 'recipes')
+let outOverride = null
 let alsoJson = false
+let setFilter = null
 const wanted = []
 for (let i = 0; i < args.length; i++) {
-  if (args[i] === '--out') outDir = path.resolve(args[++i])
+  if (args[i] === '--out') outOverride = path.resolve(args[++i])
+  else if (args[i] === '--set') setFilter = args[++i]
   else if (args[i] === '--json') alsoJson = true
   else wanted.push(args[i])
 }
 
-const recipeDir = path.join(root, 'recipes')
-const files = readdirSync(recipeDir)
-  .filter((f) => f.endsWith('.recipe.json'))
-  .filter((f) => wanted.length === 0 || wanted.includes(f.replace('.recipe.json', '')))
-  .sort()
+const jobs = []
+for (const set of SETS) {
+  if (setFilter && set.name !== setFilter) continue
+  const dir = path.join(root, set.dir)
+  let entries
+  try {
+    entries = readdirSync(dir)
+  } catch {
+    continue // a source set that does not exist yet is not an error
+  }
+  for (const file of entries.filter((f) => f.endsWith(set.suffix)).sort()) {
+    const slug = file.replace(set.suffix, '')
+    if (wanted.length > 0 && !wanted.includes(slug)) continue
+    jobs.push({ set, file, slug, dir, outDir: outOverride ?? path.join(repoRoot, ...set.out) })
+  }
+}
 
-if (files.length === 0) {
-  console.error('no recipe specs matched' + (wanted.length ? ': ' + wanted.join(', ') : ''))
+if (jobs.length === 0) {
+  console.error('no specs matched' + (wanted.length ? ': ' + wanted.join(', ') : ''))
   process.exit(1)
 }
 
-mkdirSync(outDir, { recursive: true })
+for (const d of new Set(jobs.map((j) => j.outDir))) mkdirSync(d, { recursive: true })
 
 const credits = loadCredits()
 let overflowing = 0
 
-for (const file of files) {
+for (const job of jobs) {
+  const { file, dir: recipeDir, outDir } = job
   const recipe = JSON.parse(readFileSync(path.join(recipeDir, file), 'utf8'))
-  recipe.slug = recipe.slug || file.replace('.recipe.json', '')
+  recipe.slug = recipe.slug || job.slug
   const { spec, report } = buildWorkflow(recipe, credits)
 
   const safeName = sanitizeName(recipe.name)
@@ -106,6 +134,7 @@ for (const file of files) {
 
   const tallest = report.screens.reduce((a, b) => (b.phoneHeight > a.phoneHeight ? b : a), report.screens[0])
   const branches = spec.steps.filter((s) => s.step_type === 'SELECT 1').length
+  const forks = spec.steps.filter((s) => s.step_type === 'PARALLEL').length
   console.log(
     [
       recipe.slug.padEnd(20),
@@ -113,6 +142,7 @@ for (const file of files) {
       String(report.stepCount).padStart(2) + ' steps',
       String(report.connectionCount).padStart(2) + ' edges',
       branches + ' branch' + (branches === 1 ? ' ' : 'es'),
+      forks + ' fork' + (forks === 1 ? ' ' : 's'),
       'phone ' + String(tallest.phoneHeight).padStart(3) + '/' + PHONE.usableHeight,
       String(report.images.length).padStart(2) + ' photo' + (report.images.length === 1 ? ' ' : 's'),
       String(Math.round(zip.length / 1024)).padStart(4) + ' KB',
@@ -129,7 +159,9 @@ for (const file of files) {
 }
 
 console.log('')
-console.log('wrote ' + files.length + ' package(s) to ' + outDir)
+for (const d of [...new Set(jobs.map((j) => j.outDir))].sort()) {
+  console.log('wrote ' + jobs.filter((j) => j.outDir === d).length + ' package(s) to ' + d)
+}
 
 if (overflowing > 0) {
   console.error('')

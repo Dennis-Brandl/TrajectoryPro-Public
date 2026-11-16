@@ -1,0 +1,101 @@
+{
+  "name": "Fire Outside the Building (Example)",
+  "slug": "outside-fire",
+  "kind": "emergency",
+  "library": "Facility Emergency Examples",
+  "summary": "EXAMPLE ONLY. A sample workflow for demonstrating work centers and schedules — not a real fire procedure.",
+  "checklist": {
+    "title": "Before you start",
+    "intro": "Example workflow only. It is here to show branching, parallel tracks and scheduling. It is not a fire procedure and must not be used in a real emergency.",
+    "items": [
+      "Site plan showing yard, tanks and vehicle parking",
+      "Site address and gate code",
+      "Outside air intake and damper controls",
+      "Radio on the site channel",
+      "Current wind direction"
+    ]
+  },
+  "question": {
+    "prompt": "Which way is the wind pushing the fire?",
+    "help": "Smoke reaching the building is what decides whether people shelter inside or leave.",
+    "noun": "wind",
+    "property": "WindDirection",
+    "label": "Wind",
+    "selectLabel": "Where is the smoke going?",
+    "options": [
+      { "value": "toward", "label": "Toward the building" },
+      { "value": "away", "label": "Away from the building" },
+      { "value": "shifting", "label": "Shifting or calm" }
+    ]
+  },
+  "steps": [
+    {
+      "title": "Find it on the cameras",
+      "body": "Locate the fire on the yard cameras. Note what is burning and how close it is to the building, tanks or parked vehicles.",
+      "art": "camera"
+    },
+    {
+      "title": "Check the wind",
+      "body": "Look at the flag, the smoke plume or the weather feed. Wind direction drives the rest of this procedure.",
+      "art": "wind"
+    },
+    {
+      "title": "Smoke toward the building",
+      "body": "Shut the outside air intake and close the dampers. Keep everyone inside with the windows shut.",
+      "art": "power",
+      "only": ["toward"]
+    },
+    {
+      "title": "Smoke away from the building",
+      "body": "Normal ventilation can stay on. Keep watching — this is the condition most likely to change.",
+      "art": "wind",
+      "only": ["away"]
+    },
+    {
+      "title": "Shifting or calm",
+      "body": "Treat it as if the smoke is coming your way. Shut the intake now rather than waiting to be sure.",
+      "art": "power",
+      "only": ["shifting"]
+    },
+    {
+      "title": "Call emergency services",
+      "body": "Give the address, the gate code, what is burning and the nearest hydrant or water point.",
+      "art": "phone",
+      "track": "Call 911"
+    },
+    {
+      "title": "Open the gate for them",
+      "body": "Unlock the approach the fire service will use and keep that lane clear.",
+      "art": "exit",
+      "track": "Call 911"
+    },
+    {
+      "title": "Clear the yard",
+      "body": "Get people away from the fire side of the site and move them indoors or to the far assembly point.",
+      "art": "announce",
+      "track": "Clear the yard"
+    },
+    {
+      "title": "Move what will burn",
+      "body": "If it is safe and quick, move vehicles and pallets away from the fire. If it is not, leave them.",
+      "art": "clipboard",
+      "track": "Clear the yard"
+    },
+    {
+      "title": "Account for outside staff",
+      "body": "Radio anyone working outdoors — yard, roof, loading dock — and confirm each one is clear.",
+      "art": "radio",
+      "track": "Account for people"
+    },
+    {
+      "title": "Watch for spread",
+      "body": "Keep the cameras on the fire and tell the fire service at once if it reaches a structure, a tank or a vehicle.",
+      "art": "camera"
+    },
+    {
+      "title": "Log it and stand by",
+      "body": "Record the time, what was burning, the wind, and who was notified. Stand by for the all-clear.",
+      "art": "clipboard"
+    }
+  ]
+}

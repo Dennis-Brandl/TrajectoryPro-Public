@@ -27,9 +27,11 @@ export const Route = createFileRoute('/login')({
   beforeLoad: async () => {
     // Only null the status on a failed call; throw the redirect OUTSIDE the try so a
     // "not yet bootstrapped" bounce to /setup is never swallowed by the catch.
-    let s: { setupComplete: boolean } | null = null;
+    // Only the no-administrator case bounces: once the administrator exists, the rest of
+    // setup needs them signed in, and /setup sends a signed-out visitor here to do that.
+    let s: { setupComplete: boolean; hasAdmin?: boolean } | null = null;
     try { s = await getSetupStatus(); } catch { /* server unreachable — render the page */ }
-    if (s && !s.setupComplete) throw redirect({ to: '/setup' });
+    if (s && !s.setupComplete && !s.hasAdmin) throw redirect({ to: '/setup' });
   },
   component: LoginPage,
 });

@@ -13,7 +13,7 @@
 // limitations under the License.
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { db } from '../lib/db';
-import { appUser } from 'mission-control-db/src/db/schema/index';
+import { appUser, role } from 'mission-control-db/src/db/schema/index';
 import { migrateTestDb, resetDb } from '../test/fixture';
 import { app } from '../app';
 
@@ -24,10 +24,15 @@ describe('GET /api/setup-status', () => {
   it('setupComplete=false when no administrator exists', async () => {
     const res = await app.request('/api/setup-status');
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ setupComplete: false });
+    expect(await res.json()).toEqual({ setupComplete: false, hasAdmin: false });
   });
-  it('setupComplete=true once an administrator exists', async () => {
+  it('setupComplete=false while an administrator exists but no role does', async () => {
     await db.insert(appUser).values({ email: 'a@x.io', displayName: 'A', accessLevel: 'administrator' });
-    expect(await (await app.request('/api/setup-status')).json()).toEqual({ setupComplete: true });
+    expect(await (await app.request('/api/setup-status')).json()).toEqual({ setupComplete: false, hasAdmin: true });
+  });
+  it('setupComplete=true once an administrator and a role exist', async () => {
+    await db.insert(appUser).values({ email: 'a@x.io', displayName: 'A', accessLevel: 'administrator' });
+    await db.insert(role).values({ name: 'Entry Clerk' });
+    expect(await (await app.request('/api/setup-status')).json()).toEqual({ setupComplete: true, hasAdmin: true });
   });
 });

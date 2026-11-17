@@ -12,4 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import { get } from '@/lib/api/client';
-export const getSetupStatus = () => get('/api/setup-status') as Promise<{ setupComplete: boolean }>;
+// setupComplete = an administrator and at least one role exist; hasAdmin = the first screen is done.
+export type SetupStatus = { setupComplete: boolean; hasAdmin: boolean };
+export const getSetupStatus = () => get('/api/setup-status') as Promise<SetupStatus>;

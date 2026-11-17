@@ -16,7 +16,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { eq } from 'drizzle-orm';
 import { db } from './lib/db';
-import { appUser } from 'mission-control-db/src/db/schema/index';
+import { appUser, role } from 'mission-control-db/src/db/schema/index';
 import { auth, xoAuth, XO_AUTH_BASE_PATH } from './lib/auth';
 import { APP_HEADER } from '../lib/app-header';
 import { clientIpMiddleware, parseTrustedProxies } from './lib/client-ip';
@@ -122,7 +122,10 @@ app.get('/api/setup-status', async (c) => {
     .from(appUser)
     .where(eq(appUser.accessLevel, 'administrator'))
     .limit(1);
-  return c.json({ setupComplete: !!admin });
+  // First run needs an administrator AND at least one role: the setup screens ask for both,
+  // and a reload or sign-out part way through comes back to the screen still missing.
+  const [anyRole] = await db.select({ id: role.id }).from(role).limit(1);
+  return c.json({ setupComplete: !!admin && !!anyRole, hasAdmin: !!admin });
 });
 
 app.notFound((c) => c.json({ error: { code: 'not_found', message: 'Not found' } }, 404));

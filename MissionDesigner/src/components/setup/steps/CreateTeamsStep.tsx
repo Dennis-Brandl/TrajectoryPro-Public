@@ -15,6 +15,7 @@
 import { useState } from 'react'
 import { Button, Input, Label } from '@mission/ui'
 import { createTeam, adminErrorMessage, type Team } from '@/lib/admin/adminClient'
+import { splitNames } from '@/lib/split-names'
 
 const EXAMPLES = ['Engineering', 'Operations', 'Quality', 'Maintenance'] as const
 
@@ -33,18 +34,31 @@ export function CreateTeamsStep({
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  // An example chip adds its team in one click; the typed name is cleared only when it was the one added.
-  const add = async (raw: string) => {
-    const trimmed = raw.trim()
-    if (!trimmed) return
+  // The box takes one name or a comma-separated list. Names already created are skipped,
+  // ignoring case, and the rest are created one at a time in the order typed. On a failure
+  // the teams already made stay made, and the failed name and those after it stay in the box
+  // to fix and retry. An example chip adds its team in one click and leaves the box alone.
+  const add = async (raw: string, fromBox: boolean) => {
+    const has = (list: Team[], n: string) => list.some((t) => t.name.toLowerCase() === n.toLowerCase())
+    const wanted = splitNames(raw).filter((n) => !has(teams, n))
     setError(null)
+    if (wanted.length === 0) {
+      if (fromBox) setName('')
+      return
+    }
     setBusy(true)
+    let made = teams
+    let i = 0
     try {
-      const team = await createTeam({ name: trimmed })
-      onTeamsChange([...teams, team])
-      if (raw === name) setName('')
+      for (; i < wanted.length; i++) {
+        const team = await createTeam({ name: wanted[i] })
+        made = [...made, team]
+        onTeamsChange(made)
+      }
+      if (fromBox) setName('')
     } catch (err) {
-      setError(adminErrorMessage(err, 'Could not create the team'))
+      setError(`Could not create "${wanted[i]}": ${adminErrorMessage(err, 'the server refused it')}`)
+      if (fromBox) setName(wanted.slice(i).join(', '))
     } finally {
       setBusy(false)
     }
@@ -54,11 +68,17 @@ export function CreateTeamsStep({
     <div className="space-y-4">
       <h2 className="text-lg font-semibold text-foreground">Create your team(s)</h2>
       <p className="text-sm text-muted-foreground">
-        Teams own libraries and scope who can see and edit them. Create at least one.
+        Teams own libraries and scope who can see and edit them. Create at least one; several can be added at once.
       </p>
       <div className="space-y-2">
         <Label htmlFor="team-name">Team name</Label>
-        <Input id="team-name" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input
+          id="team-name"
+          value={name}
+          placeholder="e.g. Engineering, Operations, Quality"
+          onChange={(e) => setName(e.target.value)}
+        />
+        <p className="text-xs text-muted-foreground">Enter one name, or several separated by commas.</p>
       </div>
       <div className="flex flex-wrap gap-2">
         <span className="text-xs text-muted-foreground self-center">Examples:</span>
@@ -67,7 +87,7 @@ export function CreateTeamsStep({
             key={ex}
             type="button"
             className="rounded-full border px-3 py-0.5 text-xs hover:bg-accent disabled:opacity-50"
-            onClick={() => add(ex)}
+            onClick={() => add(ex, false)}
             disabled={busy}
           >
             + {ex}
@@ -75,7 +95,12 @@ export function CreateTeamsStep({
         ))}
       </div>
       {error && <p className="text-sm text-red-500">{error}</p>}
-      <Button type="button" variant="outline" onClick={() => add(name)} disabled={busy || !name.trim()}>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => add(name, true)}
+        disabled={busy || splitNames(name).length === 0}
+      >
         + Add team
       </Button>
       <ul className="space-y-1">

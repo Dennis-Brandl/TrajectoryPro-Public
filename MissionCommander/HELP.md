@@ -35,6 +35,13 @@ Mission Commander is where Trajectory Pro Mission Control workflows are put to w
 
 When Mission Commander starts with no administrator account, it opens on **Create the first administrator**. Enter a name, an email address and a password (at least 8 characters), then click **Create administrator**. Once that account exists, public sign-up closes: every further account is created by an administrator from the **Users** area.
 
+Two more screens follow:
+
+- **Starting work centers**: type one work center name, or several separated by commas (for example `Line 1, Line 2, Warehouse`), and click **Add**. Each one is created as a top-level work center. This screen is optional; click **Skip** to add work centers later.
+- **Starting roles**: type one role name, or several separated by commas (for example `Time Sheet Approver, Entry Clerk, Line 2 Operator, Warehouse Supervisor`), and click **Add**, or click an example to add it. At least one role is required; **Finish** opens Mission Commander once one exists.
+
+If setup is left part way through, signing in again as the administrator returns to these screens.
+
 ### Signing In
 
 1. Open Mission Commander in your browser.

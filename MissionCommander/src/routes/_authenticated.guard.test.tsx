@@ -42,7 +42,7 @@ describe('_authenticated beforeLoad guard chain', () => {
 
   it('gate 2 — redirects to /setup when authenticated but the module is not bootstrapped', async () => {
     vi.mocked(authClient.getSession).mockResolvedValue(session as never);
-    vi.mocked(getSetupStatus).mockResolvedValue({ setupComplete: false });
+    vi.mocked(getSetupStatus).mockResolvedValue({ setupComplete: false, hasAdmin: false });
     const err = await thrownBy(beforeLoad);
     expect(isRedirect(err)).toBe(true);
     expect((err as { options: { to: string } }).options.to).toBe('/setup');
@@ -50,7 +50,7 @@ describe('_authenticated beforeLoad guard chain', () => {
 
   it('gate 3 — redirects to /login when boot (/me) fails', async () => {
     vi.mocked(authClient.getSession).mockResolvedValue(session as never);
-    vi.mocked(getSetupStatus).mockResolvedValue({ setupComplete: true });
+    vi.mocked(getSetupStatus).mockResolvedValue({ setupComplete: true, hasAdmin: true });
     vi.mocked(runBoot).mockResolvedValue({ ok: false, error: 'me' });
     const err = await thrownBy(beforeLoad);
     expect(isRedirect(err)).toBe(true);
@@ -59,7 +59,7 @@ describe('_authenticated beforeLoad guard chain', () => {
 
   it('passes through (returns the user) when session, setup, and boot all succeed', async () => {
     vi.mocked(authClient.getSession).mockResolvedValue(session as never);
-    vi.mocked(getSetupStatus).mockResolvedValue({ setupComplete: true });
+    vi.mocked(getSetupStatus).mockResolvedValue({ setupComplete: true, hasAdmin: true });
     vi.mocked(runBoot).mockResolvedValue({ ok: true });
     await expect(beforeLoad()).resolves.toEqual({ user: session.data.user });
   });

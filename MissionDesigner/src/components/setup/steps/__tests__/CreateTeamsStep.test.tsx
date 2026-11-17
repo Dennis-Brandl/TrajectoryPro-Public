@@ -54,6 +54,43 @@ describe('CreateTeamsStep', () => {
     expect((screen.getByLabelText(/team name/i) as HTMLInputElement).value).toBe('Half typed')
   })
 
+  it('creates every team in a comma-separated list, in order, skipping ones that exist', async () => {
+    const onTeamsChange = vi.fn()
+    const existing = { id: 't1', name: 'Quality', description: null, createdAt: 0, updatedAt: 0 }
+    render(<CreateTeamsStep teams={[existing]} onTeamsChange={onTeamsChange} onNext={vi.fn()} onBack={vi.fn()} />)
+    fireEvent.change(screen.getByLabelText(/team name/i), {
+      target: { value: 'Engineering, quality,, Line 2 ,Engineering' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /add team/i }))
+    await waitFor(() =>
+      expect(onTeamsChange).toHaveBeenLastCalledWith([
+        existing,
+        expect.objectContaining({ name: 'Engineering' }),
+        expect.objectContaining({ name: 'Line 2' }),
+      ]),
+    )
+    expect(vi.mocked(adminClient.createTeam).mock.calls.map((c) => c[0])).toEqual([
+      { name: 'Engineering' },
+      { name: 'Line 2' },
+    ])
+    expect((screen.getByLabelText(/team name/i) as HTMLInputElement).value).toBe('')
+  })
+
+  it('on a failure keeps the teams made and leaves the failed name and the rest in the box', async () => {
+    vi.mocked(adminClient.createTeam)
+      .mockResolvedValueOnce({ id: 'a', name: 'A', description: null, createdAt: 0, updatedAt: 0 })
+      .mockRejectedValueOnce(new Error('boom'))
+    const onTeamsChange = vi.fn()
+    render(<CreateTeamsStep teams={[]} onTeamsChange={onTeamsChange} onNext={vi.fn()} onBack={vi.fn()} />)
+    fireEvent.change(screen.getByLabelText(/team name/i), { target: { value: 'A, B, C' } })
+    fireEvent.click(screen.getByRole('button', { name: /add team/i }))
+    expect(await screen.findByText(/Could not create "B"/)).toBeTruthy()
+    expect(onTeamsChange).toHaveBeenCalledTimes(1)
+    expect(onTeamsChange).toHaveBeenCalledWith([expect.objectContaining({ name: 'A' })])
+    expect((screen.getByLabelText(/team name/i) as HTMLInputElement).value).toBe('B, C')
+    expect(adminClient.createTeam).toHaveBeenCalledTimes(2)
+  })
+
   it('hides the chip for a team that already exists', () => {
     const existing = { id: 't1', name: 'quality', description: null, createdAt: 0, updatedAt: 0 }
     render(<CreateTeamsStep teams={[existing]} onTeamsChange={vi.fn()} onNext={vi.fn()} onBack={vi.fn()} />)

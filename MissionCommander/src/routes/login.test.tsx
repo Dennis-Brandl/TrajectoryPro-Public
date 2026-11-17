@@ -91,11 +91,18 @@ describe('LoginPage', () => {
 describe('login route beforeLoad', () => {
   // Regression guard for the plan's swallow-the-redirect bug: the redirect must
   // propagate out of beforeLoad, not be eaten by the setup-status try/catch.
-  it('redirects to /setup when the server reports setup is incomplete', async () => {
-    vi.mocked(getSetupStatus).mockResolvedValue({ setupComplete: false });
+  it('redirects to /setup when no administrator exists yet', async () => {
+    vi.mocked(getSetupStatus).mockResolvedValue({ setupComplete: false, hasAdmin: false });
     const err = await thrownBy(beforeLoad);
     expect(isRedirect(err)).toBe(true);
     expect((err as { options: { to: string } }).options.to).toBe('/setup');
+  });
+
+  // The administrator exists but has not added a role: they must sign in here to finish
+  // setup, so bouncing to /setup (which sends a signed-out visitor back here) would loop.
+  it('renders the page when the administrator exists but setup is unfinished', async () => {
+    vi.mocked(getSetupStatus).mockResolvedValue({ setupComplete: false, hasAdmin: true });
+    expect(await thrownBy(beforeLoad)).toBeUndefined();
   });
 
   it('renders the page (no redirect) when the setup-status call fails', async () => {

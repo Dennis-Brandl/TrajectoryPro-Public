@@ -23,7 +23,7 @@ const frame = strip(readFileSync(join(process.cwd(), 'src/frame/frame.css'), 'ut
 // Every class the task screen renders. A rename in TSX without the CSS (or the other way
 // round) fails here instead of shipping an unstyled control.
 const CLASSES = [
-  'task-heading', 'task-arrival', 'task-topline', 'where-toggle', 'task-body', 'task-form', 'task-where',
+  'task-heading', 'task-topline', 'where-toggle', 'task-body', 'task-form', 'task-where',
   'release-btn', 'release-confirm',
   'where', 'where-title', 'where-note', 'where-list', 'where-step', 'where-icon', 'where-name', 'where-state',
   'where-done', 'where-current', 'where-active', 'where-problem', 'where-todo',

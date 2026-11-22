@@ -156,10 +156,13 @@ export async function ingestWorkflowPackage(db: Db, buf: Buffer, meta: IngestMet
     const nodeCount = entry.nodeCount, uiStepCount = entry.uiStepCount;
 
     // 3. extract embedded environments (inline env specs + environments/*.WFenvir libraries).
-    // Same no-op rule, scoped to the work center: an environment already present is reused
-    // and linked, never duplicated (spec §4.5) — and a fresh workflow load never rewrites it.
+    // An environment already present in the work center is reused and linked, never duplicated
+    // (spec §4.5). Same rule as a reload: a changed copy in an editable state (Draft / In Test /
+    // In Review) replaces the stored row in place; a released one is never rewritten. Until
+    // 2026-11-21 a fresh load kept the old row while materializing the registry from the NEW
+    // copy, so the Environment pane's Value Properties tab hid what had just been registered.
     const warnings: string[] = [...signatureRoles.warnings];
-    const envs = await linkEnvironments(tx, wf.id, collectEnvSpecs(root, entries), meta, warnings, findOrInsertEnvironmentSpec);
+    const envs = await linkEnvironments(tx, wf.id, collectEnvSpecs(root, entries), meta, warnings, upsertEnvironmentSpec);
 
     const carriedOver = await carryOverConfig(tx, {
       workCenterId: meta.workCenterId, oid: root.oid, newWorkflowId: wf.id,
@@ -211,35 +214,6 @@ async function linkEnvironments(
     ids.push(env.id);
   }
   return { ids, anyReplaced };
-}
-
-// The fresh-load resolver (today's behaviour): find the row by its entry key or insert it;
-// never rewrites an existing row.
-async function findOrInsertEnvironmentSpec(tx: Db, es: any, meta: EnvUpsertMeta) {
-  const envVersion = es.version ?? '1.0.0';
-  const envState = es.state ?? 'Draft';
-  const where = and(
-    eq(environmentSpec.workCenterId, meta.workCenterId), eq(environmentSpec.oid, es.oid),
-    eq(environmentSpec.version, envVersion), eq(environmentSpec.state, envState),
-  );
-  const cols = { id: environmentSpec.id, downloadedAt: environmentSpec.downloadedAt };
-  const [found] = await tx.select(cols).from(environmentSpec).where(where).limit(1);
-  if (found) return { ...found, status: 'already_present' as const };
-  // ON CONFLICT DO NOTHING keeps the transaction healthy on a lost race (a caught statement
-  // error would abort it with 25P02) and yields an empty returning() instead.
-  const [inserted] = await tx.insert(environmentSpec).values({
-    oid: es.oid, name: es.local_id, workCenterId: meta.workCenterId,
-    version: envVersion, state: envState,
-    sourceLibraryName: es.library_name ?? null, sourceLibraryOid: es.library_oid ?? null,
-    schemaVersion: es.schemaVersion, specJsonb: es,
-    sourceFilename: meta.sourceFilename, downloadedBy: meta.downloadedBy,
-  }).onConflictDoNothing({
-    target: [environmentSpec.workCenterId, environmentSpec.oid, environmentSpec.version, environmentSpec.state],
-  }).returning(cols);
-  if (inserted) return { ...inserted, status: 'loaded' as const };
-  const [raced] = await tx.select(cols).from(environmentSpec).where(where).limit(1);
-  if (!raced) throw new DaoError('INGEST_FAILED', `environment spec ${es.oid} vanished after insert/relookup`);
-  return { ...raced, status: 'already_present' as const };
 }
 
 // Env specs come from the workflow's inline environment_specifications[] and/or environments/*.WFenvir libraries.

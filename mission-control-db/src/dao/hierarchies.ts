@@ -179,6 +179,9 @@ export type EnvSpecView = {
   actions: EnvSpecAction[];
   /** spec_jsonb.action_server_specifications[] (blank strings are legal). */
   actionServers: { name: string; uri: string }[];
+  /** spec_jsonb.action_property_specifications[]: the properties the environment hands its
+   *  actions, as declared (read-only here). */
+  actionProperties: EnvSpecActionProperty[];
   /** This work center's binding for the environment; null when none is set. */
   binding: { serverUri: string; allowlisted: boolean } | null;
 };
@@ -187,6 +190,8 @@ export type EnvSpecAction = {
   name: string; library: string | null; version: string | null; description: string | null;
   visibility: string | null; inputs: string[]; outputs: string[];
 };
+
+export type EnvSpecActionProperty = { name: string; entries: { name: string; value: string }[] };
 
 const str = (v: unknown): string | null => (typeof v === 'string' ? v : null);
 const paramIds = (v: unknown): string[] =>
@@ -228,6 +233,15 @@ export async function envSpecView(db: Db, environmentSpecId: string): Promise<En
   const actionServers = (Array.isArray(spec.action_server_specifications) ? spec.action_server_specifications : [])
     .filter((a: any) => a && typeof a === 'object')
     .map((a: any) => ({ name: str(a.name) ?? '', uri: str(a.uri) ?? '' }));
+  // Untrusted jsonb: a malformed declaration or entry is skipped, never thrown on.
+  const actionProperties: EnvSpecActionProperty[] = (Array.isArray(spec.action_property_specifications) ? spec.action_property_specifications : [])
+    .filter((p: any) => p && typeof p === 'object' && typeof p.name === 'string')
+    .map((p: any) => ({
+      name: p.name,
+      entries: (Array.isArray(p.entries) ? p.entries : [])
+        .filter((e: any) => e && typeof e === 'object' && typeof e.name === 'string')
+        .map((e: any) => ({ name: e.name, value: e.value == null ? '' : String(e.value) })),
+    }));
 
   let binding: EnvSpecView['binding'] = null;
   const serverUri = await getEnvironmentBinding(db, wc.id, es.oid);
@@ -238,7 +252,7 @@ export async function envSpecView(db: Db, environmentSpecId: string): Promise<En
     binding = { serverUri, allowlisted: policy.trust === 'loose' || (origin !== null && policy.allowlist.includes(origin)) };
   }
 
-  return { environmentSpec: es, workCenter: wc, workflows, actions, actionServers, binding };
+  return { environmentSpec: es, workCenter: wc, workflows, actions, actionServers, actionProperties, binding };
 }
 
 /**

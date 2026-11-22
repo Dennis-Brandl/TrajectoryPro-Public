@@ -66,7 +66,7 @@ The editor has these main areas:
 ```
 
 - **Top bar** -- the app icon (click it to open About), the name **Mission Designer** and its version. The workflow tools (notation switcher, navigation, undo/redo, auto-layout) sit next to them. On the right, in this order: **Help**, the theme toggle, **Settings** (the gear, which opens Administration and shows only for administrators), the user name, and **Sign out**.
-- **Icon rail** (far left) -- **Workflows**, **Step Libraries**, **Environments** and **Actions**. Click the active rail item again to hide or show its tree.
+- **Icon rail** (far left) -- **Workflows**, **Step Libraries**, **Environments** and **Actions**. Click the active rail item again to hide or show its tree. Administrators also see **Teams** and **Account**, which open those tabs of Administration.
 - **Library Sidebar** -- Browse and manage libraries and specifications for the selected rail item
 - **Step Palette** (left of canvas) -- Drag step types onto the canvas
 - **Canvas** (center) -- Visual workflow editor with drag-and-drop nodes and connections
@@ -90,6 +90,15 @@ Four items on the icon rail at the left switch between library types:
 | **Step Libraries** | Gear      | Reusable step library templates              |
 | **Environments**   | Server    | Environment definitions with action bindings |
 | **Actions**        | Lightning | Action specifications with inputs/outputs    |
+
+Click the highlighted item again to hide or show the Library Sidebar. Hover over any item to see its name.
+
+Administrators see two more items below these. They open the Administration page on a tab, without changing the library you were working in. Click **Back** on that page to return.
+
+| Rail item   | Icon        | Opens                                                                          |
+| ----------- | ----------- | ------------------------------------------------------------------------------ |
+| **Teams**   | Two people  | **Administration → Teams**: create teams and edit their members and roles      |
+| **Account** | Person+gear | **Administration → Accounts**: add accounts and edit their roles and passwords |
 
 ### Searching
 
@@ -1157,7 +1166,7 @@ Every action also returns **Completion.Code** (0 no error, 1 other error, 2 not 
 3. For actions: define inputs, outputs, properties, and visibility (opaque/observable).
 4. For environments: the detail view uses a tabbed layout with six tabs:
    - **Included Actions** -- actions available in this environment, referenced by library name and action name
-   - **Property Values** -- named value properties scoped to the environment
+   - **Value Properties** -- named value properties scoped to the environment
    - **Action Properties** -- value properties specific to action execution
    - **Value Types** -- entry templates used when adding a Value Property
    - **Resources** -- shared resources (Single Use, Shared Use, Count Limited, Named, Sync) that steps can acquire/release
@@ -1499,10 +1508,11 @@ Each user has a set of author roles that control which library types they can cr
 - If your team has a library with the same name as a GLOBAL library, your team's library is the one used.
 - Importing a workflow package links to a GLOBAL library of the same name instead of making a copy in your team.
 - Administrators can move an existing library to or from GLOBAL from **Administration → Libraries → Move library**.
+- Administrators create teams and edit them in **Administration → Teams**: click **Teams** on the icon rail.
 
 ### Account Management
 
-Administrators can manage user accounts by clicking the gear (**Settings**) in the top bar. From the Account Management dialog, administrators can:
+Administrators can manage user accounts from **Administration → Accounts**: click **Account** on the icon rail, or the gear (**Settings**) in the top bar. There, administrators can:
 
 - View all registered users
 - Assign or remove author roles

@@ -18,7 +18,7 @@
 // runtime ID. At 1920×1080, 1024×768 and 768×1024, with the work area scrolled to Submit,
 // the work center and runtime ID stay on screen (the workflow too at desktop width) and
 // every visible control is at least 44×44. Then Submit on one batch moves to the other with
-// the toast, the "Now on" banner and focus on its heading (R9), and the Workflows tab draws
+// the toast and focus on its heading (R9; the "Now on" banner was dropped 2026-11-21), and the Workflows tab draws
 // names inside the nodes at no less than natural size. The theme bullets of §18 are P2/P3.
 //
 // The setup helpers live in helpers/pilot.ts, shared with pilot-options.spec.ts (Pilot P4).
@@ -109,15 +109,15 @@ test('the Pilot frame keeps the three facts on screen at every size, and Submit 
     expect(await smallControls(pilot), `task at ${size.label}`).toEqual([]);
   }
 
-  // R9 (§5.6): Submit on RW-1 moves to the other open claim, with the banner and
-  // focus on its heading — never inside its form.
+  // R9 (§5.6): Submit on RW-1 moves to the other open claim, with focus on its heading —
+  // never inside its form. No "Now on" banner (dropped 2026-11-21: it shifted the screen).
   await pilot.setViewportSize({ width: 1920, height: 1080 });
   await tab1.click();
   await pane.getByLabel('Reason').fill('frame check');
   await pilot.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(tab1).toHaveCount(0, { timeout: 30_000 });
-  await expect(pane.locator('.task-arrival')).toContainText('Now on: Fill Details');
-  await expect(pane.locator('.task-arrival')).toContainText('RW-2');
+  await expect(pane.getByRole('heading', { name: 'Fill Details' })).toBeVisible();
+  await expect(pane.locator('.task-arrival')).toHaveCount(0);
   await expect(pilot.locator(':focus')).toHaveClass(/task-heading/);
 
   // §5.7: names inside the nodes, drawn at no less than natural size (labels ≥ 11 px).

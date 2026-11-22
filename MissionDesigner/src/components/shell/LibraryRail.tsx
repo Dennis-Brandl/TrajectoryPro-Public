@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Workflow, Cog, Server, Zap } from 'lucide-react'
+import { Workflow, Cog, Server, Zap, Users, UserCog } from 'lucide-react'
 import { ActivityRail, type RailItem } from '@mission/ui'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { useFlowStore } from '@/stores/flowStore'
+import { usePrincipalStore } from '@/stores/principalStore'
 import type { EntityType } from '@/types/library'
 
 const ITEMS: RailItem[] = [
@@ -25,18 +26,34 @@ const ITEMS: RailItem[] = [
   { id: 'action', label: 'Actions', icon: Zap },
 ]
 
-/** The four library kinds as a rail. Clicking the current one shows or hides the sidebar. */
-export function LibraryRail() {
+/** Administrator-only shortcuts: each opens that tab of the Administration page. */
+export type AdminRailTab = 'teams' | 'accounts'
+const ADMIN_ITEMS: (RailItem & { id: AdminRailTab })[] = [
+  { id: 'teams', label: 'Teams', icon: Users },
+  { id: 'accounts', label: 'Account', icon: UserCog },
+]
+
+/**
+ * The four library kinds as a rail. Clicking the current one shows or hides the sidebar.
+ * Administrators also get Teams and Account, which open the Administration page.
+ */
+export function LibraryRail({ onOpenAdmin }: { onOpenAdmin?: (tab: AdminRailTab) => void }) {
   const activeEntityType = useLibraryStore((s) => s.activeEntityType)
   const setActiveEntityType = useLibraryStore((s) => s.setActiveEntityType)
   const collapsed = useFlowStore((s) => s.librarySidebarCollapsed)
   const setCollapsed = useFlowStore((s) => s.setLibrarySidebarCollapsed)
+  const isAdmin = usePrincipalStore((s) => s.principal?.isAdministrator === true)
+  const showAdmin = isAdmin && onOpenAdmin !== undefined
 
   return (
     <ActivityRail
-      items={ITEMS}
+      items={showAdmin ? [...ITEMS, ...ADMIN_ITEMS] : ITEMS}
       activeId={activeEntityType}
       onSelect={(id) => {
+        if (id === 'teams' || id === 'accounts') {
+          onOpenAdmin?.(id)
+          return
+        }
         if (id === activeEntityType) {
           setCollapsed(!collapsed)
           return

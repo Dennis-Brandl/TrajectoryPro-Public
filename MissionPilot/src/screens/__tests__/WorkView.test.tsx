@@ -287,9 +287,10 @@ describe('WorkView', () => {
     expect(props.refresh).toHaveBeenCalled()
     // No pop-up on a finished step: it covered too much of a phone screen.
     expect(screen.queryByText(/^Submitted /)).toBeNull()
-    // Spec §5.6: focus goes to the next pane's heading, never into its form, with a cue.
+    // Spec §5.6: focus goes to the next pane's heading, never into its form. The cue is the
+    // context-bar flash only: the "Now on" line was dropped 2026-11-21 (it shifted the screen).
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Torque check' })))
-    expect(document.querySelector('#panel-a-b .task-arrival')!.textContent).toBe('Now on: Torque check · MIX-20261007-004')
+    expect(screen.queryByText('Now on:', { exact: false })).toBeNull()
     expect(document.querySelector('.context-bar')!.classList.contains('context-bar-arrived')).toBe(true)
   })
 
@@ -723,22 +724,21 @@ describe('WorkView', () => {
     expect(screen.getByText('Released Fit bracket · MIX-20261007-003')).toBeTruthy()
   })
 
-  it('the "Now on" cue ends at the first click or key in that pane — never on pointer-down', async () => {
+  it('the arrival cue ends at the first click or key in that pane — never on pointer-down', async () => {
     vi.mocked(api.submit).mockResolvedValue(undefined)
     renderWork({ snapshot: snap([claimA, claimB]) })
     fireEvent.click(screen.getByRole('tab', { name: /Fit bracket/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
-    await screen.findByText('Now on:', { exact: false })
+    await waitFor(() =>
+      expect(document.querySelector('.context-bar')!.classList.contains('context-bar-arrived')).toBe(true),
+    )
 
-    // P1d Task 1 (e2e baseline): removing the banner on pointer-down moved everything below
-    // it up before the pointer came back up, so the click landed on another element and the
-    // operator's first Continue/Approve on an arrived pane was silently lost.
+    // P1d Task 1 (e2e baseline): ending the cue on pointer-down lost the operator's first click.
     fireEvent.pointerDown(screen.getByRole('heading', { name: 'Torque check' }))
-    expect(document.querySelector('.task-arrival')).not.toBeNull()
+    expect(document.querySelector('.context-bar')!.classList.contains('context-bar-arrived')).toBe(true)
 
     fireEvent.click(screen.getByRole('heading', { name: 'Torque check' }))
 
-    expect(document.querySelector('.task-arrival')).toBeNull()
     expect(document.querySelector('.context-bar')!.classList.contains('context-bar-arrived')).toBe(false)
   })
 
@@ -761,7 +761,7 @@ describe('WorkView', () => {
     update({ snapshot: snap([b, next]) })
 
     await waitFor(() => expect(selectedTab()).toContain('Seal lid'))
-    expect(document.querySelector('#panel-a-c .task-arrival')!.textContent).toBe('Now on: Seal lid · MIX-20261007-003')
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Seal lid' })))
   })
 
   it('a new claim from another runtime does not take focus from the next tab', async () => {

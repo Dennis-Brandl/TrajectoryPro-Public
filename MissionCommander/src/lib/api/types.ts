@@ -104,10 +104,12 @@ export type EnvSpecAction = {
   name: string; library: string | null; version: string | null; description: string | null;
   visibility: string | null; inputs: string[]; outputs: string[];
 };
+export type EnvSpecActionProperty = { name: string; entries: { name: string; value: string }[] };
 export type EnvSpecView = {
   environmentSpec: EnvironmentSpec; workCenter: WorkCenter; workflows: Workflow[];
   actions: EnvSpecAction[];
   actionServers: { name: string; uri: string }[];
+  actionProperties: EnvSpecActionProperty[];
   binding: { serverUri: string; allowlisted: boolean } | null;
 };
 export type PackageScope = 'all' | 'effective';

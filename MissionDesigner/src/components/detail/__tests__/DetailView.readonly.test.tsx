@@ -114,7 +114,7 @@ describe('detail views read-only', () => {
     const names = screen.getAllByRole('tab').map((t) => t.textContent?.replace(/\d+$/, ''))
     expect(names).toEqual([
       'Included Actions',
-      'Property Values',
+      'Value Properties',
       'Action Properties',
       'Value Types',
       'Resources',

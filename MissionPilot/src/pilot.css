@@ -147,14 +147,6 @@
     white-space: nowrap;
   }
 
-  .task-arrival {
-    margin: var(--pilot-space-3) 0 0;
-    padding: var(--pilot-space-2) var(--pilot-space-3);
-    border-left: var(--pilot-stripe-w) solid var(--pilot-accent);
-    background: var(--pilot-accent-subtle);
-    color: var(--pilot-text);
-  }
-
   .task-topline {
     display: flex;
     flex-wrap: wrap;

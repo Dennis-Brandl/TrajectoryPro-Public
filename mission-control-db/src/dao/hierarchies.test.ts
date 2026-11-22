@@ -148,6 +148,28 @@ test('envSpecView surfaces the spec, its owning work center, and the workflows t
   } finally { await close(); }
 });
 
+test('envSpecView lists the declared action properties and skips malformed ones', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    const wc = await createWorkCenter(db, { name: 'Line 1' });
+    const [env] = await db.insert(environmentSpec).values({
+      oid: 'env-ap', name: 'Kitchen', workCenterId: wc.id, specJsonb: {
+        action_property_specifications: [
+          { oid: 'p1', name: 'OvenTemp', entries: [{ name: 'Value', value: '425' }, { name: 'Description', value: 'Degrees F' }, { bad: true }] },
+          { oid: 'p2', name: 'NoEntries' },
+          { oid: 'p3' },
+          'garbage',
+        ],
+      },
+    }).returning();
+    const view = await envSpecView(db, env.id);
+    expect(view?.actionProperties).toEqual([
+      { name: 'OvenTemp', entries: [{ name: 'Value', value: '425' }, { name: 'Description', value: 'Degrees F' }] },
+      { name: 'NoEntries', entries: [] },
+    ]);
+  } finally { await close(); }
+});
+
 test('roleView surfaces users holding the role and the workflows that use it via allowed-role, omitting specJsonb', async () => {
   const { db, close } = await makeTestDb();
   try {

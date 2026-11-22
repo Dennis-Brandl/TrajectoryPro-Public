@@ -62,13 +62,39 @@ test('the environment view keeps every entry of a declared property and lists un
     const { wc, env, value } = await seed(db);
     await value({ propertyName: 'Batch', entryName: 'Size', value: '5' });
     await value({ propertyName: 'Batch', entryName: 'Colour', value: 'red' }); // added by another spec: same flat namespace, still shown
-    await value({ propertyName: 'Other', entryName: 'X', value: '1' });        // not declared here
+    await value({ propertyName: 'Other', entryName: 'X', value: '1', definedByEnvSpecId: null }); // not declared here, not registered by this spec
     const view = (await listEnvironmentValueProperties(db, env.id))!;
     expect(view.workCenterId).toBe(wc.id);
     expect(view.values.map((v) => v.entryName)).toEqual(['Colour', 'Size']);
     expect(view.unregistered).toEqual([{ propertyName: 'Batch', entryName: 'Missing' }]);
     await db.delete(environmentSpec).where(eq(environmentSpec.id, env.id));
     expect(await listEnvironmentValueProperties(db, env.id)).toBeUndefined();
+  } finally { await close(); }
+});
+
+test('the environment view also lists rows this spec registered but its stored copy no longer declares', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    const { env, value } = await seed(db);
+    await value({ propertyName: 'Batch', entryName: 'Size', value: '5' });
+    await value({ propertyName: 'PreservedValue', entryName: 'Name', value: 'James' });                      // registered by this spec
+    await value({ propertyName: 'Elsewhere', entryName: 'Y', value: '2', definedByEnvSpecId: null });       // neither declared nor registered here
+    const view = (await listEnvironmentValueProperties(db, env.id))!;
+    expect(view.values.map((v) => `${v.propertyName}.${v.entryName}`)).toEqual(['Batch.Size', 'PreservedValue.Name']);
+  } finally { await close(); }
+});
+
+test('an environment that declares nothing still lists what it registered', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    const { wc } = await seed(db);
+    const [bare] = await db.insert(environmentSpec).values({
+      oid: 'env-bare', name: 'Sync', workCenterId: wc.id, version: '1.0.0', state: 'Draft', specJsonb: {},
+    }).returning();
+    await db.insert(wcValueProperty).values({ workCenterId: wc.id, definedByEnvSpecId: bare.id, propertyName: 'PreservedValue', entryName: 'Name', value: 'James' });
+    const view = (await listEnvironmentValueProperties(db, bare.id))!;
+    expect(view.values.map((v) => `${v.propertyName}.${v.entryName}`)).toEqual(['PreservedValue.Name']);
+    expect(view.unregistered).toEqual([]);
   } finally { await close(); }
 });
 

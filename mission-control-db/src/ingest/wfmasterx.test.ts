@@ -17,7 +17,7 @@ import { and, eq } from 'drizzle-orm';
 import { makeTestDb } from '../../test/helpers/db.js';
 import { buildWfmasterx } from '../seed/sample-bundle.js';
 import { ingestWorkflowPackage } from './wfmasterx.js';
-import { workflow, workflowNode, workflowUiStep, workflowEnvironment, environmentSpec, workCenter, workflowAllowedRole, role, workflowImage, wcResource, workflowSignatureRole } from '../db/schema/index.js';
+import { workflow, workflowNode, workflowUiStep, workflowEnvironment, environmentSpec, workCenter, workflowAllowedRole, role, workflowImage, wcResource, workflowSignatureRole, wcValueProperty } from '../db/schema/index.js';
 import { pgErrorCode } from '../dao/errors.js';
 import { MAX_NAME_LENGTH } from '../dao/names.js';
 import AdmZip from 'adm-zip';
@@ -201,6 +201,34 @@ test('an embedded environment lands in the same work center and dedupes across w
       { workCenterId: wc.id });
     expect(await db.select().from(environmentSpec)).toHaveLength(1);
     expect(await db.select().from(workflowEnvironment)).toHaveLength(2);
+  } finally { await close(); }
+});
+
+test('a fresh workflow load updates a changed Draft environment in place, never a released one', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    const [wc] = await db.insert(workCenter).values({ name: 'Line 1' }).returning();
+    const preserved = [{ name: 'PreservedValue', entries: [{ name: 'Name', value: 'Bob' }] }];
+    for (const state of ['Draft', 'Effective']) {
+      const env = { oid: `env-${state}`, local_id: 'Sync', version: '1.0.0', state };
+      await ingestWorkflowPackage(db,
+        buildWfmasterx({ oid: `wf-a-${state}`, local_id: 'A', version: '1.0.0', state: 'Draft', environment_specifications: [env] }),
+        { workCenterId: wc.id });
+      // A DIFFERENT workflow (fresh key) carrying the same env key, now with a value property.
+      await ingestWorkflowPackage(db,
+        buildWfmasterx({ oid: `wf-b-${state}`, local_id: 'B', version: '1.0.0', state: 'Draft',
+          environment_specifications: [{ ...env, value_property_specifications: preserved }] }),
+        { workCenterId: wc.id });
+      const rows = await db.select().from(environmentSpec).where(eq(environmentSpec.oid, env.oid));
+      expect(rows).toHaveLength(1);
+      const stored = (rows[0].specJsonb as { value_property_specifications?: unknown }).value_property_specifications;
+      if (state === 'Draft') expect(stored).toEqual(preserved);
+      else expect(stored).toBeUndefined();
+      expect(await db.select().from(workflowEnvironment).where(eq(workflowEnvironment.environmentSpecId, rows[0].id))).toHaveLength(2);
+    }
+    // The registry follows the package either way (unchanged behaviour); its namespace is flat
+    // per work center, so both environments share the one PreservedValue.Name row.
+    expect((await db.select().from(wcValueProperty)).map((v) => `${v.propertyName}.${v.entryName}`)).toEqual(['PreservedValue.Name']);
   } finally { await close(); }
 });
 

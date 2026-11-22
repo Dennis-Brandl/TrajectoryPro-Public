@@ -67,6 +67,7 @@ export function EnvironmentDetail() {
           <TabsTrigger value="workflows">Workflows</TabsTrigger>
           <TabsTrigger value="resources">Resources</TabsTrigger>
           <TabsTrigger value="value-properties">Value Properties</TabsTrigger>
+          <TabsTrigger value="action-properties">Action Properties</TabsTrigger>
         </TabsList>
         <TabsContent value="overview">
           <dl className="grid grid-cols-[8rem_1fr] gap-y-1 text-sm">
@@ -169,6 +170,21 @@ export function EnvironmentDetail() {
         </TabsContent>
         <TabsContent value="value-properties">
           <EnvironmentValuePropertiesTab envId={view.environmentSpec.id} />
+        </TabsContent>
+        {/* As declared in the loaded spec: action properties are handed to the actions, not
+            shared work-center state, so there is nothing live to poll. */}
+        <TabsContent value="action-properties">
+          {(view.actionProperties ?? []).length === 0 ? <p className="text-sm text-muted-foreground">This environment declares no action properties</p> : (
+            <Table><TableHeader><TableRow><TableHead>Property</TableHead><TableHead>Entry</TableHead><TableHead>Value</TableHead></TableRow></TableHeader>
+              <TableBody>{view.actionProperties.flatMap((p, i) => (p.entries.length === 0
+                ? [<TableRow key={`${i}`}><TableCell>{p.name}</TableCell><TableCell className="text-muted-foreground">—</TableCell><TableCell /></TableRow>]
+                : p.entries.map((e, j) => (
+                  <TableRow key={`${i}:${j}`}>
+                    <TableCell>{j === 0 ? p.name : ''}</TableCell>
+                    <TableCell>{e.name}</TableCell>
+                    <TableCell className="break-all">{e.value === '' ? <span className="text-muted-foreground">(blank)</span> : e.value}</TableCell>
+                  </TableRow>))))}</TableBody></Table>
+          )}
         </TabsContent>
       </Tabs>
     </div>

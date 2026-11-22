@@ -53,7 +53,7 @@ type TabKey = 'actions' | 'values' | 'actionProps' | 'valueTypes' | 'resources' 
 
 const TAB_LABELS: Record<TabKey, string> = {
   actions: 'Included Actions',
-  values: 'Property Values',
+  values: 'Value Properties',
   actionProps: 'Action Properties',
   valueTypes: 'Value Types',
   resources: 'Resources',

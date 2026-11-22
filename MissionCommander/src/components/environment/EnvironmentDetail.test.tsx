@@ -36,6 +36,7 @@ const VIEW = {
     { name: 'Legacy', library: null, version: null, description: null, visibility: null, inputs: [], outputs: [] },
   ],
   actionServers: [{ name: 'Main', uri: 'http://srv:8080' }, { name: '', uri: '' }],
+  actionProperties: [{ name: 'OvenTemp', entries: [{ name: 'Value', value: '425' }, { name: 'Description', value: '' }] }],
   binding: { serverUri: 'http://srv:8080', allowlisted: true } as { serverUri: string; allowlisted: boolean } | null,
 };
 
@@ -226,5 +227,22 @@ describe('EnvironmentDetail', () => {
     render(<EnvironmentDetail />);
     expect(await screen.findByText('Not on the action-server allowlist — add it under Settings → Action server trust.')).toBeInTheDocument();
     expect(screen.getByText('http://other:1')).toBeInTheDocument();
+  });
+
+  it('the Action Properties tab lists each declared property and its entries', async () => {
+    asSteward();
+    vi.mocked(environments.get).mockResolvedValue(VIEW);
+    render(<EnvironmentDetail />);
+    await userEvent.click(await screen.findByRole('tab', { name: 'Action Properties' }));
+    const rows = screen.getAllByRole('row').slice(1).map((r) => r.textContent);
+    expect(rows).toEqual(['OvenTempValue425', 'Description(blank)']);
+  });
+
+  it('the Action Properties tab says when there are none', async () => {
+    asSteward();
+    vi.mocked(environments.get).mockResolvedValue({ ...VIEW, actionProperties: [] });
+    render(<EnvironmentDetail />);
+    await userEvent.click(await screen.findByRole('tab', { name: 'Action Properties' }));
+    expect(screen.getByText('This environment declares no action properties')).toBeInTheDocument();
   });
 });

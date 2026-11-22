@@ -27,7 +27,7 @@ export interface PropertyValuesSectionProps {
 }
 
 /**
- * Renders the "Property Values" and "Action Properties" sections of the
+ * Renders the "Value Properties" and "Action Properties" sections of the
  * Environment detail form, each backed by a ValuesEditor.
  */
 export function PropertyValuesSection({
@@ -47,7 +47,7 @@ export function PropertyValuesSection({
     <>
       {showValues && (
         <div className={hideHeaders ? '' : 'border-t border-border pt-3'}>
-          {!hideHeaders && <h3 className="text-sm font-medium text-foreground mb-2">Property Values</h3>}
+          {!hideHeaders && <h3 className="text-sm font-medium text-foreground mb-2">Value Properties</h3>}
           <ValuesEditor values={values} onChange={onValuesChange} availableValueTypes={availableValueTypes} />
         </div>
       )}

@@ -21,7 +21,6 @@ import type { InboxTask, Me, SubmitBody } from '../api/types'
 import { seedDefaults, EMPTY_TIMERS } from '../host/gate'
 import { ReleaseButton } from '../task/ReleaseButton'
 import { StopConfirm, StopMenu } from '../task/StopMenu'
-import { RuntimeId } from '../frame/RuntimeId'
 import { Sheet } from '../frame/Sheet'
 import { useShortcut } from '../frame/shortcuts'
 import { useWhereYouAre } from '../task/useWhereYouAre'
@@ -47,7 +46,9 @@ export interface TaskScreenProps {
   me?: Pick<Me, 'loginName' | 'displayName'> | null
   /** Release succeeded (spec §5.4): the work view closes this pane and moves on. */
   onReleased?(): void
-  /** Focus just moved here after a Submit/Release: show the "Now on" cue (spec §5.6 item 2). */
+  /** Focus just moved here after a Submit/Release (spec §5.6 item 2). No visible cue: the
+   *  "Now on" line was dropped 2026-11-21 (it vanished on the first click and shifted the
+   *  screen up a line). Focus still lands on the heading, and the flag still gates auto-follow. */
   arrived?: boolean
   /** The operator touched or typed in this pane — the cue has done its job. */
   onArrivalSeen?(): void
@@ -463,12 +464,6 @@ export function TaskScreen({
       <h2 className="task-heading" id={`task-heading-${task.assignmentId}`} tabIndex={-1}>
         {task.stepName ?? task.stepOid}
       </h2>
-
-      {arrived && (
-        <p className="task-arrival" role="status">
-          Now on: <strong>{task.stepName ?? task.stepOid}</strong> · <RuntimeId label={task.runtimeLabel} />
-        </p>
-      )}
 
       {task.paused && <p role="status">{PAUSED_COPY}</p>}
 

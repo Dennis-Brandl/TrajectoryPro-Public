@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import React, { useEffect, useRef, useState } from 'react'
 import { ReactFlowProvider, type Edge, type Viewport } from '@xyflow/react'
 import type { WorkflowNode, ParameterSpec, ValueSpec, ResourceSpec, TrySpec } from '@/types/nodes'
@@ -62,6 +62,7 @@ function WorkflowEditor() {
  */
 function WorkflowEditorInner() {
   useBeforeUnload()
+  const navigate = useNavigate()
   const setNodes = useFlowStore((state) => state.setNodes)
   const setEdges = useFlowStore((state) => state.setEdges)
   const setWorkflowInputs = useFlowStore((state) => state.setWorkflowInputs)
@@ -518,7 +519,7 @@ function WorkflowEditorInner() {
       {/* Main content area */}
       <div className="flex-1 flex overflow-hidden">
         {/* Far left - rail, then the Library Sidebar (resizable) */}
-        <LibraryRail />
+        <LibraryRail onOpenAdmin={(tab) => navigate({ to: '/admin', search: { tab } })} />
         <LibrarySidebar width={localSidebarWidth} collapsed={librarySidebarCollapsed} />
 
         {/* Drag handle on the right edge of the sidebar */}

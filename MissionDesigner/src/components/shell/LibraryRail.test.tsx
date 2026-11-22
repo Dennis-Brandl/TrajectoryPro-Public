@@ -14,17 +14,23 @@
 
 // @vitest-environment jsdom
 
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { LibraryRail } from './LibraryRail'
 import { LibrarySidebar } from '@/components/library/LibrarySidebar'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { useFlowStore } from '@/stores/flowStore'
+import { usePrincipalStore } from '@/stores/principalStore'
+import type { MePrincipal } from '@/stores/specificationStore/apiClient'
 
 beforeEach(() => {
   useLibraryStore.setState({ activeEntityType: 'workflow' })
   useFlowStore.setState({ librarySidebarCollapsed: false, librarySidebarWidth: 256 })
+  usePrincipalStore.setState({ principal: null })
 })
+
+const asAdmin = (isAdministrator: boolean) =>
+  usePrincipalStore.setState({ principal: { isAdministrator } as unknown as MePrincipal })
 
 describe('LibraryRail', () => {
   it('lists the four library kinds', () => {
@@ -48,6 +54,23 @@ describe('LibraryRail', () => {
     expect(useFlowStore.getState().librarySidebarCollapsed).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: 'Workflows' }))
     expect(useFlowStore.getState().librarySidebarCollapsed).toBe(false)
+  })
+
+  it('administrators get Teams and Account, which open that Administration tab', () => {
+    asAdmin(true)
+    const onOpenAdmin = vi.fn()
+    render(<LibraryRail onOpenAdmin={onOpenAdmin} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Teams' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }))
+    expect(onOpenAdmin.mock.calls).toEqual([['teams'], ['accounts']])
+    expect(useLibraryStore.getState().activeEntityType).toBe('workflow')
+  })
+
+  it('non-administrators do not see Teams or Account', () => {
+    asAdmin(false)
+    render(<LibraryRail onOpenAdmin={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: 'Teams' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Account' })).toBeNull()
   })
 
   it('a stored sidebar width of 450 renders as 400', () => {

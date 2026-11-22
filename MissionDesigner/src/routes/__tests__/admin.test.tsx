@@ -14,12 +14,17 @@
 
 // @vitest-environment jsdom
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+
+const search: { tab?: string } = {}
 
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (opts: unknown) => ({ options: opts }),
-  getRouteApi: () => ({ useRouteContext: () => ({ user: { id: 'u1', isAdministrator: true } }) }),
+  getRouteApi: () => ({
+    useRouteContext: () => ({ user: { id: 'u1', isAdministrator: true } }),
+    useSearch: () => search,
+  }),
   useNavigate: () => vi.fn(),
 }))
 vi.mock('@/components/shell/HeaderTools', () => ({ HeaderTools: () => null }))
@@ -34,6 +39,16 @@ vi.mock('@/components/admin/CleanupTab', () => ({ CleanupTab: () => <div /> }))
 import { AdminPage } from '@/routes/_authenticated/admin'
 
 describe('AdminPage tab bar', () => {
+  beforeEach(() => {
+    delete search.tab
+  })
+
+  it('opens the tab named in ?tab= (the rail Teams icon)', () => {
+    search.tab = 'teams'
+    render(<AdminPage />)
+    expect(screen.getByText('teams-content')).toBeTruthy()
+  })
+
   it('keeps the tab names and switches content', () => {
     render(<AdminPage />)
     expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual([

@@ -26,6 +26,7 @@ import { ESignatureRolesTab } from '@/components/admin/ESignatureRolesTab'
 import { HeaderTools } from '@/components/shell/HeaderTools'
 
 const authenticatedRoute = getRouteApi('/_authenticated')
+const adminRoute = getRouteApi('/_authenticated/admin')
 
 const TABS = [
   { key: 'accounts', label: 'Accounts' },
@@ -46,7 +47,16 @@ export function AdminPage() {
   const navigate = useNavigate()
   const { user } = authenticatedRoute.useRouteContext()
   const isAdmin = (user as { isAdministrator?: boolean })?.isAdministrator === true
-  const [activeTab, setActiveTab] = useState<TabKey>('accounts')
+  const { tab: requestedTab } = adminRoute.useSearch()
+  const [activeTab, setActiveTab] = useState<TabKey>(requestedTab ?? 'accounts')
+
+  // The rail's Teams / Account icons can land here while this page is already open:
+  // follow a changed ?tab= (adjust-state-during-render, not an effect).
+  const [seenTab, setSeenTab] = useState(requestedTab)
+  if (requestedTab !== seenTab) {
+    setSeenTab(requestedTab)
+    if (requestedTab) setActiveTab(requestedTab)
+  }
 
   // Redirect non-admin users
   useEffect(() => {
@@ -101,6 +111,11 @@ export function AdminPage() {
   )
 }
 
+const TAB_KEYS: readonly string[] = TABS.map((t) => t.key)
+
 export const Route = createFileRoute('/_authenticated/admin')({
+  // ?tab=teams opens that tab (the rail's Teams and Account icons use it).
+  validateSearch: (search: Record<string, unknown>): { tab?: TabKey } =>
+    typeof search.tab === 'string' && TAB_KEYS.includes(search.tab) ? { tab: search.tab as TabKey } : {},
   component: AdminPage,
 })

@@ -311,6 +311,7 @@ For an environment package, every environment spec inside it is listed with its 
 - A re-load replaces only when the OID, version **and** state all match; a different state is a separate entry. Re-loading an identical package stays _already present_ with _No changes since the last load._
 - Re-loading a workflow updates only that workflow's own copy of its environments (and the work center's environment row), never other workflows. Load the environment package itself to update every linked workflow.
 - Re-loading an older Draft workflow package also puts its embedded environment copy back into the work center's environment row.
+- Loading a **new** workflow does the same for its embedded environments: a Draft, In Test or In Review environment already in the work center at the same version is updated to the workflow's copy. Released environments are never changed. Other workflows that use that environment see the updated copy in the Environments area, but their own embedded copies change only when they are re-loaded.
 - Released versions (Approved, Effective, Superseded, Obsolete) cannot be replaced; a duplicate shows _Version … is already loaded; raise the version to load changes._ Give the package a new version number in Mission Designer to load changes.
 
 ### Load Warnings
@@ -479,13 +480,14 @@ A workflow's ISA 88 type (Procedure, Operation, Phase and so on) is set in Missi
 
 Select **Environments** on the icon rail to list every loaded environment spec, grouped by work center.
 
-The environment detail panel has a **Delete** button, which is blocked while runtime workflows or schedules depend on the spec. It also has five tabs:
+The environment detail panel has a **Delete** button, which is blocked while runtime workflows or schedules depend on the spec. It also has six tabs:
 
 - **Overview** -- version, state, owning work center, OID, and Mission Designer provenance
 - **Actions** -- the actions this environment provides, with library, version, inputs and outputs
 - **Workflows** -- the workflows that use this environment spec
 - **Resources** -- live state of the shared resources this environment declares
-- **Value Properties** -- live values of the shared value properties this environment declares
+- **Value Properties** -- live values of the shared value properties this environment declares, plus any it registered in the work center. Commanders can edit a value here
+- **Action Properties** -- the action properties this environment hands its actions: one row per entry, with its value. These come from the loaded spec and are read-only; change them in Mission Designer and load the environment again
 
 The Overview also has an **Action server** section. It shows the server the environment declares in Mission Designer next to this work center's binding, which is the server calls actually use. It warns when no server is bound, or when the bound address is not on the action-server allowlist.
 
@@ -674,6 +676,7 @@ Once loaded, these are the work center's **shared state**: every runtime workflo
 | ---------------------------------------------------- | ------------------------------------------------------------------ |
 | Work center → **Env Resources** tab                  | All of the work center's shared resources and value properties     |
 | Environment → **Resources** / **Value Properties**   | The shared resources and value properties that environment declares |
+| Environment → **Action Properties**                  | The action properties that environment hands its actions (read-only) |
 | **Runtime** area → a run                             | The run's own resources and values, plus the shared ones           |
 
 ### The Resource Table

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { and, asc, eq, getTableColumns, inArray } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns, inArray, or } from 'drizzle-orm';
 import type { PgDatabase } from 'drizzle-orm/pg-core';
 import {
   wcResource, wcResourceHolder, wcResourceWaiter, wcValueProperty, workflowInstance, workCenter, environmentSpec, appUser,
@@ -274,7 +274,7 @@ export type EnvironmentValuePropertiesView = {
 
 export async function listWorkCenterValueProperties(db: Db, workCenterId: string): Promise<SharedValuePropertyView[] | undefined> {
   if (!(await workCenterExists(db, workCenterId))) return undefined;
-  return loadValueViews(db, workCenterId, null);
+  return loadValueViews(db, workCenterId, null, null);
 }
 
 export async function listEnvironmentValueProperties(db: Db, envSpecId: string): Promise<EnvironmentValuePropertiesView | undefined> {
@@ -284,8 +284,10 @@ export async function listEnvironmentValueProperties(db: Db, envSpecId: string):
   const declared = readRegistrySource(spec.specJsonb).valueProperties;
   const names = [...new Set(declared.map((p) => p.name))];
   // Filtered by PROPERTY name: the namespace is flat (U2), so every entry under a property this
-  // spec declares belongs in its pane, whichever spec added the entry.
-  const values = names.length === 0 ? [] : await loadValueViews(db, spec.workCenterId, names);
+  // spec declares belongs in its pane, whichever spec added the entry. Plus every row this spec
+  // registered (2026-11-21 safety net): before then a fresh workflow load could register a newer
+  // copy's properties while the stored spec kept the old declarations, and the pane hid them.
+  const values = await loadValueViews(db, spec.workCenterId, names, envSpecId);
   const present = new Set(values.map((v) => JSON.stringify([v.propertyName, v.entryName])));
   // readRegistrySource's value-property gate (valuePropertyShapeProblem) checks only that
   // `name` is a string — `entries` and an entry's `name` are still untrusted jsonb here, same
@@ -300,10 +302,19 @@ export async function listEnvironmentValueProperties(db: Db, envSpecId: string):
   return { workCenterId: spec.workCenterId, values, unregistered };
 }
 
-async function loadValueViews(db: Db, workCenterId: string, propertyNames: string[] | null): Promise<SharedValuePropertyView[]> {
-  const scope = propertyNames === null
+/** propertyNames null + definedBy null = every row in the work center. Otherwise the rows under
+ *  those property names OR registered by that env spec. */
+async function loadValueViews(
+  db: Db, workCenterId: string, propertyNames: string[] | null, definedBy: string | null,
+): Promise<SharedValuePropertyView[]> {
+  const filters = [
+    propertyNames && propertyNames.length > 0 ? inArray(wcValueProperty.propertyName, propertyNames) : undefined,
+    definedBy ? eq(wcValueProperty.definedByEnvSpecId, definedBy) : undefined,
+  ].filter((f) => f !== undefined);
+  if (propertyNames !== null && filters.length === 0) return [];
+  const scope = filters.length === 0
     ? eq(wcValueProperty.workCenterId, workCenterId)
-    : and(eq(wcValueProperty.workCenterId, workCenterId), inArray(wcValueProperty.propertyName, propertyNames));
+    : and(eq(wcValueProperty.workCenterId, workCenterId), or(...filters));
   const rows = await db.select({
     workCenterId: wcValueProperty.workCenterId, propertyName: wcValueProperty.propertyName, entryName: wcValueProperty.entryName,
     value: wcValueProperty.value, definedByEnvSpecId: wcValueProperty.definedByEnvSpecId,
@@ -443,7 +454,7 @@ export async function listInstanceValueProperties(db: Db, instanceId: string): P
   const children = Object.entries(childProps).map(([childOid, values]) => ({
     childOid, childName: childNameFromSpec(inst.specJsonb, childOid), values: asFlatMap(values),
   }));
-  const shared = await loadValueViews(db, inst.workCenterId, null);
+  const shared = await loadValueViews(db, inst.workCenterId, null, null);
   return { instanceId: inst.id, root, children, shared };
 }
 

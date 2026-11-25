@@ -26,7 +26,9 @@ import { enableMasterSchedule, previewEnable, previewRunOnce, runMasterScheduleO
 import { listScheduleWorkflowOptions } from 'mission-control-db/src/scheduling/workflow-options';
 import {
   listRuntimeSchedules, getRuntimeSchedule, listOccurrences, listRuntimeScheduleEvents, effectiveTimeZone, scheduleClock,
+  listLiveRuntimeSchedules,
 } from 'mission-control-db/src/scheduling/runtime-dao';
+import { listRootWorkCenters, subtree } from 'mission-control-db/src/dao/work-centers';
 import {
   getResumePreview, pauseRuntimeSchedule, resumeRuntimeSchedule, cancelRuntimeSchedule, removeRuntimeSchedule,
   setRuntimeItemDisabled, acknowledgeRuntimeItems,
@@ -205,10 +207,15 @@ scheduleRoutes.get('/master-schedules/:id/enable-preview', requireUuidParams('id
   catch (err) { return sendError(c, err, 'Previewing Enable failed'); }
 });
 
-// A 422 carries the problems in `details`; a Master already on is 409.
+const enableBody = z.object({ replace: z.boolean().optional(), reason: z.string().max(2000).optional() }).strict();
+
+// A 422 carries the problems in `details`; a Master already on is 409 unless `replace` asks to cancel
+// that copy (in the same transaction, so a refusal leaves it on).
 scheduleRoutes.post('/master-schedules/:id/enable', requireUuidParams('id'), commanderOfMaster, async (c) => {
+  const parsed = enableBody.safeParse(await c.req.json().catch(() => ({})));
+  if (!parsed.success) return httpError(c, 400, 'validation', 'Body must be { replace?: boolean, reason?: string }');
   try {
-    return c.json(await enableMasterSchedule(db, c.req.param('id'), await actorOf(c), new Date()), 201);
+    return c.json(await enableMasterSchedule(db, c.req.param('id'), await actorOf(c), new Date(), parsed.data), 201);
   } catch (err) { return sendError(c, err, 'Enable failed'); }
 });
 
@@ -238,6 +245,14 @@ scheduleRoutes.get('/work-centers/:id/runtime-schedules', requireUuidParams('id'
   const id = c.req.param('id');
   if (!(await workCenterExists(db, id))) return httpError(c, 404, 'not_found', 'Work center not found');
   return c.json(await listRuntimeSchedules(db, id, parsed.data.status));
+});
+
+// Commander's Schedules pane: the whole work-center forest and every schedule that is on, in one
+// poll (like /runtime-workflows/active). Registered before /runtime-schedules/:id.
+scheduleRoutes.get('/runtime-schedules/live', requirePermission('work_center:read'), async (c) => {
+  const roots = await listRootWorkCenters(db);
+  const nodeArrays = await Promise.all(roots.map((r) => subtree(db, r.id)));
+  return c.json({ nodes: nodeArrays.flat(), runtimeSchedules: await listLiveRuntimeSchedules(db) });
 });
 
 scheduleRoutes.get('/runtime-schedules/:id', requireUuidParams('id'), readGate, async (c) => {

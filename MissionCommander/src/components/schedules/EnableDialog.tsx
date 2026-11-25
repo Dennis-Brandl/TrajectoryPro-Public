@@ -23,8 +23,10 @@ const SHOWN = 3;
 
 /** Enable confirmation (spec 2026-11-08 §5.3, §10): the first fire times and any warnings, from the
  *  same preview the server runs, then Enable. A refusal lists every problem and leaves the dialog open. */
-export function EnableDialog({ master, onClose, onEnabled, onError = defaultOnError }: {
+export function EnableDialog({ master, reason, onClose, onEnabled, onError = defaultOnError }: {
   master: MasterScheduleView;
+  /** The change reason from Save and Enable, recorded with the cancel when a copy that is on is replaced. */
+  reason?: string;
   onClose: () => void;
   onEnabled: (result: { runtime: RuntimeScheduleView; warnings: string[] }) => void;
   onError?: OnError;
@@ -45,10 +47,12 @@ export function EnableDialog({ master, onClose, onEnabled, onError = defaultOnEr
 
   const problems = [...(preview?.problems ?? []), ...refused.filter((r) => !preview?.problems.some((p) => p.path === r.path && p.message === r.message))];
 
+  // A copy already on is cancelled and replaced in the same step (spec 2026-11-25).
+  const live = preview?.live ?? null;
   const enable = async () => {
     setBusy(true);
     setRefused([]);
-    try { onEnabled(await schedules.enable(master.id)); }
+    try { onEnabled(await (live ? schedules.enable(master.id, { replace: true, reason }) : schedules.enable(master.id))); }
     catch (err) {
       const found = problemsOf(err);
       if (found.length > 0) setRefused(found);
@@ -60,7 +64,7 @@ export function EnableDialog({ master, onClose, onEnabled, onError = defaultOnEr
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Enable recurrence for &quot;{master.name}&quot;?</DialogTitle>
+          <DialogTitle>Enable schedule &quot;{master.name}&quot;?</DialogTitle>
           <DialogDescription>
             This turns the Master Schedule into a Runtime Schedule that starts its workflows at the times below.
           </DialogDescription>
@@ -82,6 +86,11 @@ export function EnableDialog({ master, onClose, onEnabled, onError = defaultOnEr
             <ul className="list-disc pl-5">{preview.warnings.map((w) => <li key={w}>{w}</li>)}</ul>
           </div>
         )}
+        {live && (
+          <p className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+            {`${live.label} is on. Enabling cancels it and turns on version ${master.revision}. Workflows it already started keep running.`}
+          </p>
+        )}
         {problems.length > 0 && (
           <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm">
             <p className="font-medium">This Master Schedule cannot be enabled yet:</p>
@@ -91,7 +100,7 @@ export function EnableDialog({ master, onClose, onEnabled, onError = defaultOnEr
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="button" disabled={busy || preview === null || (preview.problems.length > 0)} onClick={enable}>Enable Recurrence</Button>
+          <Button type="button" disabled={busy || preview === null || (preview.problems.length > 0)} onClick={enable}>{live ? `Cancel ${live.label} and Enable` : 'Enable Schedule'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -40,9 +40,10 @@ describe('EnableDialog', () => {
   it('shows the first three fire times and enables', async () => {
     renderDialog();
     const list = await screen.findByRole('list', { name: 'First fire times' });
+    expect(screen.getByText('Enable schedule "Day Production"?')).toBeInTheDocument();
     expect(within(list).getAllByRole('listitem')).toHaveLength(3);
     expect(within(list).getAllByRole('listitem')[0]).toHaveTextContent('Mon Nov 9, 12:00');
-    await userEvent.click(screen.getByRole('button', { name: 'Enable Recurrence' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Enable Schedule' }));
     await waitFor(() => expect(onEnabled).toHaveBeenCalledWith(expect.objectContaining({ runtime: expect.objectContaining({ label: 'RS-3' }) })));
     expect(schedules.enable).toHaveBeenCalledWith('m1');
   });
@@ -51,7 +52,7 @@ describe('EnableDialog', () => {
     vi.mocked(schedules.previewEnable).mockResolvedValue({ problems: [], warnings: ['"Pack" version 1.0.0 is Draft, not Effective'], nextFireTimes: TIMES });
     renderDialog();
     expect(await screen.findByText('"Pack" version 1.0.0 is Draft, not Effective')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Enable Recurrence' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Enable Schedule' })).toBeEnabled();
   });
 
   it('problems found by the preview are listed and Enable is not offered', async () => {
@@ -60,7 +61,7 @@ describe('EnableDialog', () => {
     });
     renderDialog();
     expect(await screen.findByText(/No workflow named "Gone"/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Enable Recurrence' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Enable Schedule' })).toBeDisabled();
   });
 
   it('a 422 lists every problem and keeps the dialog open', async () => {
@@ -71,11 +72,29 @@ describe('EnableDialog', () => {
       ] },
     }));
     renderDialog();
-    await userEvent.click(await screen.findByRole('button', { name: 'Enable Recurrence' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Enable Schedule' }));
     const alert = await screen.findByRole('alert');
     expect(within(alert).getByText(/No workflow named "Gone"/)).toBeInTheDocument();
     expect(within(alert).getByText(/Pack has no parameter Lot/)).toBeInTheDocument();
     expect(onEnabled).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('when a copy is on, it says so and offers to replace it, sending the change reason', async () => {
+    vi.mocked(schedules.previewEnable).mockResolvedValue({ problems: [], warnings: [], nextFireTimes: TIMES, timeZone: 'UTC', live: { id: 'r0', label: 'RS-3' } });
+    render(<EnableDialog master={{ ...master, revision: 4 }} reason="why" onClose={onClose} onEnabled={onEnabled} />);
+    expect(await screen.findByText('RS-3 is on. Enabling cancels it and turns on version 4. Workflows it already started keep running.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Enable Schedule' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel RS-3 and Enable' }));
+    await waitFor(() => expect(onEnabled).toHaveBeenCalled());
+    expect(schedules.enable).toHaveBeenCalledWith('m1', { replace: true, reason: 'why' });
+  });
+
+  it('with nothing on, Enable sends no replace', async () => {
+    vi.mocked(schedules.previewEnable).mockResolvedValue({ problems: [], warnings: [], nextFireTimes: TIMES, timeZone: 'UTC', live: null });
+    renderDialog();
+    await userEvent.click(await screen.findByRole('button', { name: 'Enable Schedule' }));
+    await waitFor(() => expect(onEnabled).toHaveBeenCalled());
+    expect(schedules.enable).toHaveBeenCalledWith('m1');
   });
 });

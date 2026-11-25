@@ -20,6 +20,7 @@ import * as workflowsApi from '@/lib/api/workflows';
 import * as environmentsApi from '@/lib/api/environments';
 import * as runtimeHistoryApi from '@/lib/api/runtime-history';
 import * as runtimeWorkflowsApi from '@/lib/api/runtime-workflows';
+import * as schedulesApi from '@/lib/api/schedules';
 import * as workCentersApi from '@/lib/api/work-centers';
 import * as systemSettingsApi from '@/lib/api/system-settings';
 import { HierarchyPane } from './HierarchyPane';
@@ -68,6 +69,17 @@ describe('shell wiring for the artifact hierarchies', () => {
     useSelectionStore.setState({ activeHierarchy: 'runtime' });
     render(<HierarchyPane />);
     expect(await screen.findByText('Runtime')).toBeInTheDocument();
+  });
+  it('mounts the Schedules pane when the schedule hierarchy is active', async () => {
+    vi.spyOn(schedulesApi.schedules, 'liveTree').mockResolvedValue({ nodes: [], runtimeSchedules: [] });
+    useSelectionStore.setState({ activeHierarchy: 'schedule' });
+    render(<HierarchyPane />);
+    expect(await screen.findByText('Schedules')).toBeInTheDocument();
+  });
+  it('the detail panel prompts for a schedule selection', () => {
+    useSelectionStore.setState({ activeHierarchy: 'schedule', selectedRuntimeSchedule: null });
+    render(<DetailPanel />);
+    expect(screen.getByText('Select a schedule')).toBeInTheDocument();
   });
   it('the detail panel prompts for a runtime selection', () => {
     useSelectionStore.setState({ activeHierarchy: 'runtime', selectedRuntimeWorkflowId: null });

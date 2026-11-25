@@ -25,7 +25,7 @@ export type MasterAction = ((master: MasterScheduleView) => void) | 'disabled';
 
 const SOURCE_LABEL: Record<MasterScheduleView['source'], string> = { commander: 'Commander', api: 'API' };
 
-/** Master Schedules of one work center. Run Once, Enable Recurrence and Edit are supplied by the caller
+/** Master Schedules of one work center. Run Once, Enable Schedule and Edit are supplied by the caller
  *  (the editor and the dialogs live elsewhere); an absent prop hides its button. Delete works here. */
 export function MasterScheduleList({ workCenterId, canControl, onError = defaultOnError, onEdit, onEnable, onRunOnce, onExportPdf, variant = 'table', canDelete = true }: {
   workCenterId: string;
@@ -70,7 +70,7 @@ export function MasterScheduleList({ workCenterId, canControl, onError = default
   const actions = (m: MasterScheduleView) => (canControl || onExportPdf) && (
     <div className="flex flex-wrap gap-2">
       {canControl && action(onRunOnce, 'Run Once', m)}
-      {canControl && action(onEnable, 'Enable Recurrence', m, m.recurrence.type === 'manual' ? 'A Manual schedule has no recurrence. Use Run Once.' : undefined)}
+      {canControl && action(onEnable, 'Enable Schedule', m, m.recurrence.type === 'manual' ? 'A Manual schedule has no recurrence. Use Run Once.' : undefined)}
       {canControl && action(onEdit, 'Edit', m)}
       {action(onExportPdf, 'Export PDF', m)}
       {canControl && canDelete && (

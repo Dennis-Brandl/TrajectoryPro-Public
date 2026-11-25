@@ -33,6 +33,8 @@ See the YouTube video https://youtu.be/Yu8GHqvUZCY that provides information on 
 
 See the YouTube video https://youtu.be/IW4e7IzWFlI that provides information on the User Interaction screen element types.
 
+See the YouTube video https://youtu.be/l5dMXPfCxM4 that provides information on using Input and Output Parameters mapping, and Value Properties for using informtion across steps and workflows. 
+
 ## Cloning
 
 ```sh

@@ -319,11 +319,15 @@ import type {
   RuntimeScheduleDetail as DbRuntimeScheduleDetail, RuntimeItemView as DbRuntimeItemView,
   OccurrencePage as DbOccurrencePage, ResumePreview as DbResumePreview,
   RuntimeScheduleEventPage as DbRuntimeScheduleEventPage, OccurrenceRunView as DbOccurrenceRunView,
+  LiveRuntimeScheduleLeaf as DbLiveRuntimeScheduleLeaf,
 } from 'mission-control-db';
 import type { DefinitionProblem } from 'mission-control-db';
 export type { ScheduleDefinition, ScheduleItemInput, DefinitionProblem, Recurrence, NeedsAttention, ResumeChoice } from 'mission-control-db';
 export type MasterScheduleView = Serialized<DbMasterScheduleView>;
 export type RuntimeScheduleView = Serialized<DbRuntimeScheduleView>;
+/** A schedule that is on, with its work center: a leaf of the Schedules pane. */
+export type LiveRuntimeScheduleLeaf = Serialized<DbLiveRuntimeScheduleLeaf>;
+export type ScheduleLiveTree = { nodes: WcNode[]; runtimeSchedules: LiveRuntimeScheduleLeaf[] };
 export type RuntimeScheduleDetail = Serialized<DbRuntimeScheduleDetail>;
 export type RuntimeScheduleItemView = Serialized<DbRuntimeItemView>;
 export type OccurrencePage = Serialized<DbOccurrencePage>;
@@ -332,7 +336,7 @@ export type RuntimeScheduleEventPage = Serialized<DbRuntimeScheduleEventPage>;
 export type RuntimeScheduleEvent = RuntimeScheduleEventPage['rows'][number];
 export type ResumePreview = Serialized<DbResumePreview>;
 export type RuntimeScheduleStatus = RuntimeScheduleView['status'];
-export type EnablePreview = { problems: DefinitionProblem[]; warnings: string[]; nextFireTimes: string[]; timeZone?: string };
+export type EnablePreview = { problems: DefinitionProblem[]; warnings: string[]; nextFireTimes: string[]; timeZone?: string; live?: { id: string; label: string } | null };
 export type RunOncePreview = { problems: DefinitionProblem[]; warnings: string[]; timeZone: string };
 export type ScheduleClock = { timeZone: string; workCenterZoneSet: boolean };
 export type MasterScheduleChange = Serialized<DbMasterScheduleChange>;

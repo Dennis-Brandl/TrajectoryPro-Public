@@ -101,6 +101,7 @@ When nothing is selected, the Detail Panel shows this diagram of how Mission Com
 | ---------------- | ----------------------------------------------------------------------- |
 | **Work Centers** | The work-center tree                                                    |
 | **Runtime**      | The work-center tree with each work center's active runtime workflows   |
+| **Schedules**    | The work-center tree with each work center's schedules that are on      |
 | **Users**        | Every user account                                                      |
 | **Workflows**    | Every loaded workflow, grouped by work center                           |
 | **Environments** | Every loaded environment spec, grouped by work center                   |
@@ -869,7 +870,7 @@ Schedules belong to a work center and use that work center's time zone. You work
 There are two kinds of schedule, and the difference matters.
 
 - A **Master Schedule** is the definition. It says when to start and which workflows to start. You write it and edit it as often as you like, and nothing starts from a Master Schedule on its own.
-- A **Runtime Schedule** is a working copy of a Master Schedule, made when you click **Enable Recurrence** or **Run Once**. It is the one that starts workflows. It keeps its own frozen copy, so editing the Master afterwards does not change a Runtime Schedule that is already going. Each Runtime Schedule has a label such as `RS-12`.
+- A **Runtime Schedule** is a working copy of a Master Schedule, made when you click **Enable Schedule** or **Run Once**. It is the one that starts workflows. It keeps its own frozen copy, so editing the Master afterwards does not change a Runtime Schedule that is already going. Each Runtime Schedule has a label such as `RS-12`.
 
 A Master Schedule can have only one recurring Runtime Schedule that is **Active** or **Paused** at a time. To enable it again, cancel or finish the current one first. **Run Once** is not limited this way.
 
@@ -952,9 +953,15 @@ The starting values are the ones in the Master Schedule, because Run Once does n
 
 ### Enabling a Master Schedule
 
-Click **Enable Recurrence** on a Master Schedule. A Manual schedule has no recurrence, so its button is turned off. A dialog lists the first three start times and any warning, such as a workflow that is still a draft, before you confirm. If something would stop it working (a workflow that no longer exists, a value that cannot be filled), **Enable Recurrence** is not offered and the dialog lists each problem. Saving a Master Schedule only warns about these. Enable is where they are enforced.
+Click **Enable Schedule** on a Master Schedule. A Manual schedule has no recurrence, so its button is turned off. A dialog lists the first three start times and any warning, such as a workflow that is still a draft, before you confirm. If something would stop it working (a workflow that no longer exists, a value that cannot be filled), **Enable Schedule** is not offered and the dialog lists each problem. Saving a Master Schedule only warns about these. Enable is where they are enforced.
 
-If a Master Schedule is edited after it was enabled, its Runtime Schedule says **Master changed since Enable**. It carries on with the old copy. To use the change, **Cancel** the Runtime Schedule and click **Enable Recurrence** on the Master again, which makes a new Runtime Schedule.
+**Save and Enable**, next to **Save** in the editor, saves and enables in one click, so a schedule is not left saved but off. It asks for the reason for the change like **Save** does (with no edits there is nothing to save, so it goes straight to Enable). If the schedule cannot be enabled, for example because its start time has passed, it is still saved and the Enable dialog opens to list the problem.
+
+If a Master Schedule is edited after it was enabled, its Runtime Schedule says **Master changed since Enable**. It carries on with the old copy. To use the change, click **Save and Enable**, or **Enable Schedule** on the Master. When a copy of it is already on, the dialog says so (for example "RS-12 is on. Enabling cancels it and turns on version 3.") and its button reads **Cancel RS-12 and Enable**. That cancels the old Runtime Schedule and makes a new one in one step; if the new version is refused, the old one stays on. The cancel is in the old one's event log as **Replaced by version 3**, followed by the reason for the change when there is one. Workflows the old copy already started keep running.
+
+### The Schedules Pane
+
+The **Schedules** button on the icon rail shows every work center with the Runtime Schedules that are on (running or paused) under it, for example `RS-4 · Test Single Step schedule`. Each one shows its next start time, in the schedule's time zone, or **Paused**. A work center with none shows a dash. The list refreshes every five seconds. Click a schedule to open it with the same **Pause**, **Resume** and **Cancel** controls as the work center's **Schedules** tab.
 
 ### Pause, Resume and Cancel
 
@@ -1033,7 +1040,7 @@ The interface is described in `docs/external-api.md` in the MissionCommander fol
 
 ### Mission XO and Schedules
 
-Mission XO's **Schedules** view lists the work center's Runtime Schedules first, then a compact list of its Master Schedules. It has the same **Run Once**, **Enable Recurrence**, **Pause**, **Resume**, **Cancel**, **Disable**, **Dismiss** and Resume dialog, under the same rules about who may use them. It has no editor: writing and changing Master Schedules is done in Mission Commander. See [Mission XO](#17-mission-xo).
+Mission XO's **Schedules** view lists the work center's Runtime Schedules first, then a compact list of its Master Schedules. It has the same **Run Once**, **Enable Schedule**, **Pause**, **Resume**, **Cancel**, **Disable**, **Dismiss** and Resume dialog, under the same rules about who may use them. It has no editor: writing and changing Master Schedules is done in Mission Commander. See [Mission XO](#17-mission-xo).
 
 ---
 

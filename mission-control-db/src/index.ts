@@ -114,7 +114,7 @@ export { ACCOUNT_DISABLED_MESSAGE, isUserDisabled } from './dao/account-status.j
 // Workflow scheduling wire types (spec 2026-11-08): Commander's schedule routes and screens.
 export type { MasterScheduleView, MasterScheduleChange } from './scheduling/master-dao.js';
 export type {
-  RuntimeScheduleView, RuntimeScheduleDetail, RuntimeItemView, NeedsAttention,
+  RuntimeScheduleView, RuntimeScheduleDetail, RuntimeItemView, NeedsAttention, LiveRuntimeScheduleLeaf,
   OccurrenceView, OccurrenceRunView, OccurrencePage, RuntimeScheduleEventView, RuntimeScheduleEventPage,
 } from './scheduling/runtime-dao.js';
 export type { ResumePreview, ResumeChoice, HeldChainView } from './scheduling/controls.js';

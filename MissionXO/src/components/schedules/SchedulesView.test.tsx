@@ -81,7 +81,7 @@ describe('SchedulesView', () => {
     render(<SchedulesView wcId="wc1" />);
     const headings = (await screen.findAllByRole('heading')).map((h) => h.textContent);
     expect(headings).toEqual(['Runtime Schedules', 'Master Schedules']);
-    expect(await screen.findByRole('button', { name: 'Enable Recurrence Weekday batches' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Enable Schedule Weekday batches' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Edit / })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Delete / })).toBeNull();
     expect(screen.queryByRole('button', { name: 'New Master Schedule' })).toBeNull();
@@ -98,11 +98,11 @@ describe('SchedulesView', () => {
     api.previewEnable.mockResolvedValue({ problems: [], warnings: [], nextFireTimes: ['2026-11-09T12:00:00Z'], timeZone: 'UTC' });
     api.enable.mockResolvedValue({ runtime: view({ label: 'RS-13' }), warnings: [] });
     render(<SchedulesView wcId="wc1" />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Enable Recurrence Weekday batches' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Enable Schedule Weekday batches' }));
     const dialog = await screen.findByRole('dialog');
     expect(await within(dialog).findByRole('list', { name: 'First fire times' })).toBeInTheDocument();
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Enable Recurrence' }));
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Recurrence enabled as RS-13'));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Enable Schedule' }));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Schedule enabled as RS-13'));
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 

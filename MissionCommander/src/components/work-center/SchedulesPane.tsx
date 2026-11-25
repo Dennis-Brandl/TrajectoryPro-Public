@@ -14,7 +14,8 @@
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useMissionSystemCommander, usePrincipalStore } from '@/stores/principalStore';
-import { apiErrorMessage } from '@/lib/api/client';
+import { ApiError, apiErrorMessage } from '@/lib/api/client';
+import { schedules } from '@/lib/api/schedules';
 import type { CreatedRuntimeTarget, MasterScheduleView } from '@/lib/api/types';
 import { RuntimeDialogStack } from '@/components/runtime/RuntimeDialogStack';
 import { SchedulesTab } from '@/components/schedules/SchedulesTab';
@@ -33,6 +34,8 @@ export function SchedulesPane({ workCenterId }: { workCenterId: string }) {
   // 'new' or the Master Schedule being edited; while set, the editor takes the pane's place.
   const [editing, setEditing] = useState<MasterScheduleView | 'new' | null>(null);
   const [enabling, setEnabling] = useState<MasterScheduleView | null>(null);
+  // The change reason Save and Enable hands the Enable dialog when it has to open it.
+  const [enableReason, setEnableReason] = useState<string | undefined>(undefined);
   const [runningOnce, setRunningOnce] = useState<MasterScheduleView | null>(null);
   const onError = (err: unknown, fallback: string) => toast.error(apiErrorMessage(err, fallback));
   const loginName = usePrincipalStore((s) => s.principal?.loginName ?? 'unknown');
@@ -44,11 +47,29 @@ export function SchedulesPane({ workCenterId }: { workCenterId: string }) {
     catch (err) { onError(err, 'Could not create the PDF'); }
     finally { exporting.current = false; }
   };
+  // Save and Enable: enable straight away; a refusal (422) or a copy already on (409) opens the
+  // Enable dialog, which shows the problems or offers to replace the copy that is on.
+  const saveAndEnable = async (saved: MasterScheduleView, reason: string, didSave: boolean) => {
+    try {
+      const { runtime, warnings } = await schedules.enable(saved.id);
+      toast.success(`${didSave ? 'Saved and enabled' : 'Enabled'} as ${runtime.label}`);
+      if (warnings.length > 0) toast.warning(warnings.join(' '));
+    } catch (err) {
+      if (err instanceof ApiError && (err.status === 409 || err.status === 422)) {
+        setEnableReason(reason);
+        setEnabling(saved);
+      } else onError(err, didSave ? 'Saved, but Enable failed' : 'Enable failed');
+    }
+  };
   if (editing) {
     return (
       <MasterScheduleEditor workCenterId={workCenterId} master={editing === 'new' ? null : editing} onError={onError}
         onClose={() => setEditing(null)}
-        onSaved={(saved) => { setEditing(null); toast.success(`Saved "${saved.name}"`); }} />
+        onSaved={(saved, then) => {
+          setEditing(null);
+          if (then?.enable) void saveAndEnable(saved, then.reason, then.saved);
+          else toast.success(`Saved "${saved.name}"`);
+        }} />
     );
   }
   return (
@@ -71,10 +92,12 @@ export function SchedulesPane({ workCenterId }: { workCenterId: string }) {
       )}
       {target && <RuntimeDialogStack initial={target} onClose={() => setTarget(null)} />}
       {enabling && (
-        <EnableDialog master={enabling} onError={onError} onClose={() => setEnabling(null)}
+        <EnableDialog master={enabling} reason={enableReason} onError={onError}
+          onClose={() => { setEnabling(null); setEnableReason(undefined); }}
           onEnabled={({ runtime, warnings }) => {
             setEnabling(null);
-            toast.success(`Recurrence enabled as ${runtime.label}`);
+            setEnableReason(undefined);
+            toast.success(`Schedule enabled as ${runtime.label}`);
             if (warnings.length > 0) toast.warning(warnings.join(' '));
           }} />
       )}

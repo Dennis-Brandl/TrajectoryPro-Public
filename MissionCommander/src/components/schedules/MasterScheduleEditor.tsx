@@ -34,7 +34,9 @@ export function MasterScheduleEditor({ workCenterId, master, onClose, onSaved, o
   /** The Master Schedule to edit; null starts a new one. */
   master: MasterScheduleView | null;
   onClose: () => void;
-  onSaved: (saved: MasterScheduleView) => void;
+  /** `then` is set by Save and Enable: the caller enables `saved` next, with the change reason.
+   *  `saved` is false when nothing had changed, so nothing was sent. */
+  onSaved: (saved: MasterScheduleView, then?: { enable: true; reason: string; saved: boolean }) => void;
   onError?: OnError;
 }) {
   const [state, setState] = useState<EditorState>(() => fromDefinition(master));
@@ -44,6 +46,8 @@ export function MasterScheduleEditor({ workCenterId, master, onClose, onSaved, o
   const [saving, setSaving] = useState(false);
   // Save asks why first; the reason goes to the Master's change history.
   const [askingReason, setAskingReason] = useState(false);
+  // Set by Save and Enable, so the save that follows the reason also enables.
+  const [enableAfter, setEnableAfter] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -93,7 +97,8 @@ export function MasterScheduleEditor({ workCenterId, master, onClose, onSaved, o
       if (warnings.length > 0) {
         toast.warning(`Saved with ${warnings.length} warning${warnings.length === 1 ? '' : 's'}. Enable will refuse what they describe.`);
       }
-      onSaved(saved);
+      if (enableAfter) onSaved(saved, { enable: true, reason, saved: true });
+      else onSaved(saved);
     } catch (err) {
       setAskingReason(false);
       const found = problemsOf(err);
@@ -102,9 +107,16 @@ export function MasterScheduleEditor({ workCenterId, master, onClose, onSaved, o
     } finally { setSaving(false); }
   };
 
+  // Unchanged: nothing to save, so enable what is there; otherwise ask why, save, then enable.
+  const saveAndEnable = () => {
+    if (nothingToSave && master) { onSaved(master, { enable: true, reason: '', saved: false }); return; }
+    setEnableAfter(true);
+    setAskingReason(true);
+  };
+
   return (
     <ItemContext.Provider value={ctx}>
-      <form className="mx-auto max-w-4xl space-y-6" onSubmit={(e) => { e.preventDefault(); if (!nothingToSave) setAskingReason(true); }}>
+      <form className="mx-auto max-w-4xl space-y-6" onSubmit={(e) => { e.preventDefault(); if (!nothingToSave) { setEnableAfter(false); setAskingReason(true); } }}>
         <h3 className="text-lg font-semibold">{master ? `Edit Master Schedule: ${master.name}` : 'New Master Schedule'}</h3>
         {master && <p className="text-sm text-muted-foreground">Version {master.revision}. Saving a change makes version {master.revision + 1}.</p>}
 
@@ -158,7 +170,8 @@ export function MasterScheduleEditor({ workCenterId, master, onClose, onSaved, o
 
         <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
           <Button type="button" variant="outline" onClick={close}>Cancel</Button>
-          <Button type="submit" disabled={saving || nothingToSave}>Save</Button>
+          <Button type="submit" variant="outline" disabled={saving || nothingToSave}>Save</Button>
+          <Button type="button" disabled={saving} onClick={saveAndEnable}>Save and Enable</Button>
         </div>
       </form>
       {askingReason && (

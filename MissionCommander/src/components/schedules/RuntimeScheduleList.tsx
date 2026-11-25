@@ -40,7 +40,7 @@ export function RuntimeScheduleList({ workCenterId, canControl, onError, onOpen,
   );
   useEffect(() => { if (view) onLoaded?.(view); }, [view]); // eslint-disable-line react-hooks/exhaustive-deps -- once per fresh list
   if (!view) return <p className="text-sm text-muted-foreground">{loading ? 'Loading…' : 'Runtime Schedules unavailable'}</p>;
-  if (view.length === 0) return <p className="text-sm text-muted-foreground">No Runtime Schedules. Use Run Once or Enable Recurrence on a Master Schedule to start one.</p>;
+  if (view.length === 0) return <p className="text-sm text-muted-foreground">No Runtime Schedules. Use Run Once or Enable Schedule on a Master Schedule to start one.</p>;
   const zone = view[0].timeZone;
   const nextStart = (r: RuntimeScheduleView) => r.nextFireAt && (r.status === 'active' || r.status === 'paused')
     ? <>{formatInZone(r.nextFireAt, r.timeZone)}{r.timeZone !== zone && <span className="text-muted-foreground"> {r.timeZone}</span>}</>

@@ -24,7 +24,7 @@ import { reportControlError } from '~/components/running/controls';
 import { useWorkCenter } from '~/components/shell/WorkCenterShell';
 import { useScheduleAttentionStore } from '~/stores/scheduleAttentionStore';
 
-/** The Schedules view: Runtime Schedules first, then a compact Masters list with Run Once and Enable Recurrence. XO has no
+/** The Schedules view: Runtime Schedules first, then a compact Masters list with Run Once and Enable Schedule. XO has no
  *  Master Schedule editor, so Edit, Delete and New are absent. Layout is one column of cards. */
 export function SchedulesView({ wcId }: { wcId: string }) {
   const wc = useWorkCenter();
@@ -58,7 +58,7 @@ export function SchedulesView({ wcId }: { wcId: string }) {
         <EnableDialog master={enabling} onError={reportControlError} onClose={() => setEnabling(null)}
           onEnabled={({ runtime, warnings }) => {
             setEnabling(null);
-            toast.success(`Recurrence enabled as ${runtime.label}`);
+            toast.success(`Schedule enabled as ${runtime.label}`);
             if (warnings.length > 0) toast.warning(warnings.join(' '));
           }} />
       )}

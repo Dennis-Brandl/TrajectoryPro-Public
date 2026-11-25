@@ -30,6 +30,7 @@ import { definitionHash, definitionOf, getMasterSchedule, type MasterScheduleVie
 import { describeInstant, localToInstant, nextOccurrence, type Recurrence, type Slot } from './recurrence.js';
 import { effectiveTimeZone, loadRuntimeScheduleView, type RuntimeScheduleView } from './runtime-dao.js';
 import type { ValueSource } from './values.js';
+import { cancelRuntimeScheduleInTx } from './controls.js';
 
 type Db = PgDatabase<any, Schema>;
 
@@ -211,7 +212,7 @@ function freezeParams(
 
 export async function previewEnable(
   db: Db, masterId: string, now: Date,
-): Promise<{ problems: DefinitionProblem[]; warnings: string[]; nextFireTimes: Date[]; timeZone: string }> {
+): Promise<{ problems: DefinitionProblem[]; warnings: string[]; nextFireTimes: Date[]; timeZone: string; live: { id: string; label: string } | null }> {
   const master = await getMasterSchedule(db, masterId);
   if (!master) throw new DaoError('MASTER_SCHEDULE_NOT_FOUND');
   const p = await plan(db, master, now, false);
@@ -223,7 +224,8 @@ export async function previewEnable(
     nextFireTimes.push(slot.at);
     after = slot.at;
   }
-  return { problems: p.problems, warnings: p.warnings, nextFireTimes, timeZone: p.zone };
+  const [live] = await liveCopies(db, master);
+  return { problems: p.problems, warnings: p.warnings, nextFireTimes, timeZone: p.zone, live: live ?? null };
 }
 
 export async function previewRunOnce(
@@ -331,8 +333,32 @@ async function startRunOnce(
   });
 }
 
+/** Options for Enable. `replace` cancels a copy already on, in the same transaction, so a refusal leaves it on. */
+export type EnableOptions = { replace?: boolean; reason?: string };
+
+/** The cancel reason a replace records: "Replaced by version N" plus the change reason when one is given. */
+export function replaceReason(revision: number, reason?: string): string {
+  const why = reason?.trim();
+  return why ? `Replaced by version ${revision}: ${why}` : `Replaced by version ${revision}`;
+}
+
+/** The Runtime Schedules an Enable of this Master would collide with: on (active or paused), not Run Once. */
+async function liveCopies(db: Db, master: MasterScheduleView): Promise<{ id: string; label: string }[]> {
+  return db.select({ id: runtimeSchedule.id, label: runtimeSchedule.label }).from(runtimeSchedule)
+    .where(and(
+      // A Master deleted and sent again by key is a new row, and its old Runtime may still be on.
+      or(
+        eq(runtimeSchedule.masterScheduleId, master.id),
+        master.externalKey === null ? undefined
+          : and(eq(runtimeSchedule.workCenterId, master.workCenterId), eq(runtimeSchedule.externalKey, master.externalKey)),
+      ),
+      inArray(runtimeSchedule.status, ['active', 'paused']),
+      eq(runtimeSchedule.runOnce, false),
+    ));
+}
+
 export async function enableMasterSchedule(
-  db: Db, masterId: string, actor: ScheduleActor, now: Date,
+  db: Db, masterId: string, actor: ScheduleActor, now: Date, opts: EnableOptions = {},
 ): Promise<{ runtime: RuntimeScheduleView; warnings: string[]; master: MasterScheduleView }> {
   let warnings: string[] = [];
   try {
@@ -344,18 +370,12 @@ export async function enableMasterSchedule(
       if (!locked) throw new DaoError('MASTER_SCHEDULE_NOT_FOUND');
       const master = await getMasterSchedule(tx, masterId);
       if (!master) throw new DaoError('MASTER_SCHEDULE_NOT_FOUND');
-      const [live] = await tx.select({ label: runtimeSchedule.label }).from(runtimeSchedule)
-        .where(and(
-          // A Master deleted and sent again by key is a new row, and its old Runtime may still be on.
-          or(
-            eq(runtimeSchedule.masterScheduleId, masterId),
-            master.externalKey === null ? undefined
-              : and(eq(runtimeSchedule.workCenterId, master.workCenterId), eq(runtimeSchedule.externalKey, master.externalKey)),
-          ),
-          inArray(runtimeSchedule.status, ['active', 'paused']),
-          eq(runtimeSchedule.runOnce, false),
-        ));
-      if (live) throw new DaoError('RUNTIME_ACTIVE', `${live.label} is already on for this Master Schedule; cancel it first`);
+      const live = await liveCopies(tx, master);
+      if (live.length > 0 && !opts.replace) {
+        throw new DaoError('RUNTIME_ACTIVE', `${live[0]!.label} is already on for this Master Schedule; cancel it first`);
+      }
+      // Cancelled before the new copy is frozen (the one-live-per-Master index); a refusal below rolls it back.
+      for (const l of live) await cancelRuntimeScheduleInTx(tx, l.id, replaceReason(master.revision, opts.reason), actor, now);
 
       // Lock order matches the run creators: workflow rows FOR SHARE (inside plan), then the work_center row.
       const p = await plan(tx, master, now, true);

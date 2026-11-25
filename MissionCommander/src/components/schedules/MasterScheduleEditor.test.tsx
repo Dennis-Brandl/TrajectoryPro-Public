@@ -277,4 +277,36 @@ describe('MasterScheduleEditor change reasons', () => {
     expect(screen.queryByLabelText('Reason for the change')).toBeNull();
     expect(schedules.replaceMaster).not.toHaveBeenCalled();
   });
+
+  it('Save and Enable on an unchanged Master skips the save and asks nothing', async () => {
+    const m = master();
+    renderEditor(m);
+    const btn = await screen.findByRole('button', { name: 'Save and Enable' });
+    expect(btn).toBeEnabled();
+    await userEvent.click(btn);
+    expect(onSaved).toHaveBeenCalledWith(m, { enable: true, reason: '', saved: false });
+    expect(schedules.replaceMaster).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText('Reason for the change')).toBeNull();
+  });
+
+  it('Save and Enable on an edit asks why, saves, then hands the reason on', async () => {
+    const saved = master({ revision: 2 });
+    vi.mocked(schedules.replaceMaster).mockResolvedValue(saved);
+    renderEditor(master());
+    await userEvent.type(screen.getByLabelText('Name'), ' 2');
+    await userEvent.click(screen.getByRole('button', { name: 'Save and Enable' }));
+    await userEvent.type(await screen.findByLabelText('Reason for the change'), 'New time');
+    await userEvent.click(screen.getByRole('button', { name: /^Save version \d+$/ }));
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(saved, { enable: true, reason: 'New time', saved: true }));
+    expect(vi.mocked(schedules.replaceMaster).mock.calls[0]![2]).toBe('New time');
+  });
+
+  it('plain Save hands back no enable', async () => {
+    const saved = master({ revision: 2 });
+    vi.mocked(schedules.replaceMaster).mockResolvedValue(saved);
+    renderEditor(master());
+    await userEvent.type(screen.getByLabelText('Name'), ' 2');
+    await saveWithReason();
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(saved));
+  });
 });

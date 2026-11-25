@@ -22,6 +22,7 @@ import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { PilotBrandingEditor } from '@/components/settings/pilot-branding/PilotBrandingEditor';
 import { ApiClientsPanel } from '@/components/settings/ApiClientsPanel';
 import { RuntimeWorkflowDetail } from '@/components/runtime/RuntimeWorkflowDetail';
+import { ScheduleRailDetail } from '@/components/schedules/ScheduleRailDetail';
 import { EmptyDetail } from './EmptyDetail';
 
 // Switches the central detail on the active hierarchy + its selection. Each detail
@@ -34,6 +35,7 @@ export function DetailPanel() {
   const selectedWorkflowId = useSelectionStore((s) => s.selectedWorkflowId);
   const selectedEnvironmentId = useSelectionStore((s) => s.selectedEnvironmentId);
   const selectedRuntimeWorkflowId = useSelectionStore((s) => s.selectedRuntimeWorkflowId);
+  const selectedRuntimeSchedule = useSelectionStore((s) => s.selectedRuntimeSchedule);
 
   if (activeHierarchy === 'user') return selectedUserId ? <UserDetail /> : <EmptyDetail message="Select a user" />;
   if (activeHierarchy === 'role') return selectedRoleId ? <RoleDetail /> : <EmptyDetail message="Select a role" />;
@@ -43,6 +45,7 @@ export function DetailPanel() {
   // Runtime (spec 2026-08-27 §4.2/§4.3): RuntimeWorkflowDetail is store-driven (reads
   // selectedRuntimeWorkflowId itself) — this just gates on whether anything is selected.
   if (activeHierarchy === 'runtime') return selectedRuntimeWorkflowId ? <RuntimeWorkflowDetail /> : <EmptyDetail message="Select a runtime workflow" />;
+  if (activeHierarchy === 'schedule') return selectedRuntimeSchedule ? <ScheduleRailDetail /> : <EmptyDetail message="Select a schedule" />;
   // History (Task 8) has no per-row selection to gate on — the page renders unconditionally,
   // owning its own filter/scope/pagination state (mirrors HistoryTab's per-work-center idiom).
   if (activeHierarchy === 'history') return <HistoryPage />;

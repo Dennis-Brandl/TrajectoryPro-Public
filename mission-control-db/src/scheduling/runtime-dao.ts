@@ -15,7 +15,7 @@
 // Runtime Schedule reads (spec 2026-11-08 §5.4-5.5). Nothing here returns spec_jsonb: the
 // frozen specs stay in the table and are read by the engine tick and Enable only.
 
-import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import type { PgDatabase } from 'drizzle-orm/pg-core';
 import type { Schema } from '../db/client.js';
 import {
@@ -177,6 +177,18 @@ export async function listRuntimeSchedules(
     .where(and(eq(runtimeSchedule.workCenterId, workCenterId), isNull(runtimeSchedule.removedAt), status ? eq(runtimeSchedule.status, status) : undefined))
     .orderBy(desc(runtimeSchedule.runtimeNumber));
   return toViews(db, rows);
+}
+
+/** A Runtime Schedule that is on, with the work center it belongs to: a leaf of Commander's Schedules pane. */
+export type LiveRuntimeScheduleLeaf = RuntimeScheduleView & { workCenterId: string };
+
+/** Every Runtime Schedule that is on (active or paused) in every work center, newest first within each. */
+export async function listLiveRuntimeSchedules(db: Db): Promise<LiveRuntimeScheduleLeaf[]> {
+  const rows = await db.select().from(runtimeSchedule)
+    .where(and(inArray(runtimeSchedule.status, ['active', 'paused']), isNull(runtimeSchedule.removedAt), isNotNull(runtimeSchedule.workCenterId)))
+    .orderBy(asc(runtimeSchedule.workCenterId), desc(runtimeSchedule.runtimeNumber));
+  const views = await toViews(db, rows);
+  return views.map((v, i) => ({ ...v, workCenterId: rows[i]!.workCenterId! }));
 }
 
 export async function getRuntimeSchedule(db: Db, id: string): Promise<RuntimeScheduleDetail | undefined> {

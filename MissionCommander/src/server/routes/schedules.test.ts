@@ -245,6 +245,13 @@ describe('master schedule routes', () => {
     expect((await json(en)).runtime.label).toBe('RS-1');
     expect((await req(app, 'POST', `/api/master-schedules/${m}/enable`)).status).toBe(409);
 
+    // The preview names the copy that is on; replace cancels it and enables the new copy.
+    expect((await json(await req(app, 'GET', `/api/master-schedules/${m}/enable-preview`))).live.label).toBe('RS-1');
+    expect((await req(app, 'POST', `/api/master-schedules/${m}/enable`, { json: { replace: 'yes' } })).status).toBe(400);
+    const re = await req(app, 'POST', `/api/master-schedules/${m}/enable`, { json: { replace: true, reason: 'x' } });
+    expect(re.status).toBe(201);
+    expect((await json(re)).runtime.label).toBe('RS-2');
+
     // A Master naming a workflow its work center does not hold cannot be enabled.
     const other = await createWorkCenter(db, { name: 'Line 2' });
     const bad = await req(app, 'POST', `/api/work-centers/${other.id}/master-schedules`, { json: definition({ name: 'Missing' }) });
@@ -256,6 +263,20 @@ describe('master schedule routes', () => {
 });
 
 describe('runtime schedule routes', () => {
+  it('GET /runtime-schedules/live lists the work-center forest and the schedules that are on; 401 signed out', async () => {
+    const w = await world();
+    await enable(w);
+    mockSessionAs(w.viewer);
+    const r = await req(app, 'GET', '/api/runtime-schedules/live');
+    expect(r.status).toBe(200);
+    const body = await json(r);
+    expect(body.nodes.map((n: { id: string }) => n.id)).toContain(w.wc);
+    expect(body.runtimeSchedules).toHaveLength(1);
+    expect(body.runtimeSchedules[0]).toMatchObject({ label: 'RS-1', workCenterId: w.wc, status: 'active' });
+    mockSessionAs(null);
+    expect((await req(app, 'GET', '/api/runtime-schedules/live')).status).toBe(401);
+  });
+
   it('lists, filters by status, reads detail, occurrences and resume-preview for every tier', async () => {
     const w = await world();
     const { runtime } = await enable(w);

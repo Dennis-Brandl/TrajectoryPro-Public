@@ -30,10 +30,10 @@ import { buildWfmasterx } from '../seed/sample-bundle.js';
 import { resolveStepAllowedRoles } from '../runtime/assignments.js';
 import { createMasterSchedule, replaceMasterSchedule } from './master-dao.js';
 import type { ScheduleActor } from './events.js';
-import { enableMasterSchedule, previewEnable } from './enable.js';
+import { enableMasterSchedule, previewEnable, runMasterScheduleOnce } from './enable.js';
 import {
   listRuntimeSchedules, getRuntimeSchedule, listOccurrences, listRuntimeScheduleEvents,
-  liveRuntimeScheduleForWorkflow, effectiveTimeZone,
+  liveRuntimeScheduleForWorkflow, effectiveTimeZone, listLiveRuntimeSchedules,
 } from './runtime-dao.js';
 
 const NOW = new Date('2026-11-08T12:00:00Z');
@@ -526,5 +526,93 @@ test('listOccurrences tells each run where to open: live instance, else history 
     expect(byItem.get(items[1]!.id)).toEqual({ kind: 'history', id: hist!.id });
     expect(byItem.get(items[2]!.id)).toBeNull();
     expect(runs.find((r) => r.itemId === items[0]!.id)!.itemName).toBe(items[0]!.masterName);
+  } finally { await close(); }
+});
+
+const statusOf = async (db: any, id: string) =>
+  (await db.select({ s: runtimeSchedule.status }).from(runtimeSchedule).where(eq(runtimeSchedule.id, id)))[0]!.s;
+const cancelEventsOf = async (db: any, id: string) =>
+  (await db.select().from(runtimeScheduleEvent).where(eq(runtimeScheduleEvent.runtimeScheduleId, id)))
+    .filter((e: { action: string }) => e.action === 'cancelled');
+
+test('Enable with replace cancels the live copy and enables the new version in one go', async () => {
+  const { db, close, wc, wf } = await setup();
+  try {
+    await seedFlows(wf);
+    const m = await master(db, wc.id);
+    const first = await enableMasterSchedule(db, m.id, actor, NOW);
+    await replaceMasterSchedule(db, m.id, { name: 'Nightly', description: 'v2', recurrence: FUTURE, items: [{ workflow: { name: 'Inspect' } }] }, actor);
+    const r = await enableMasterSchedule(db, m.id, actor, NOW, { replace: true, reason: '  New time ' });
+    expect(r.runtime.label).toBe('RS-2');
+    expect(r.runtime.status).toBe('active');
+    expect(await statusOf(db, first.runtime.id)).toBe('cancelled');
+    const ev = await cancelEventsOf(db, first.runtime.id);
+    expect(ev).toHaveLength(1);
+    expect(ev[0].detail.reason).toBe('Replaced by version 2: New time');
+  } finally { await close(); }
+});
+
+test('replace with no reason records "Replaced by version N"', async () => {
+  const { db, close, wc, wf } = await setup();
+  try {
+    await seedFlows(wf);
+    const m = await master(db, wc.id);
+    const first = await enableMasterSchedule(db, m.id, actor, NOW);
+    await enableMasterSchedule(db, m.id, actor, NOW, { replace: true });
+    expect((await cancelEventsOf(db, first.runtime.id))[0].detail.reason).toBe('Replaced by version 1');
+  } finally { await close(); }
+});
+
+test('replace refused: the old copy stays on', async () => {
+  const { db, close, wc, wf } = await setup();
+  try {
+    await seedFlows(wf);
+    const m = await master(db, wc.id);
+    const first = await enableMasterSchedule(db, m.id, actor, NOW);
+    await replaceMasterSchedule(db, m.id, { name: 'Nightly', recurrence: { type: 'once', at: '2026-11-01T06:00' }, items: [{ workflow: { name: 'Inspect' } }] }, actor);
+    expect((await errOf(enableMasterSchedule(db, m.id, actor, NOW, { replace: true })))?.code).toBe('ENABLE_INVALID');
+    expect(await statusOf(db, first.runtime.id)).toBe('active');
+    expect(await cancelEventsOf(db, first.runtime.id)).toHaveLength(0);
+  } finally { await close(); }
+});
+
+test('replace ignores a waiting Run Once', async () => {
+  const { db, close, wc, wf } = await setup();
+  try {
+    await seedFlows(wf);
+    const m = await master(db, wc.id);
+    const once = await runMasterScheduleOnce(db, m.id, actor, NOW, '2026-11-09T09:50');
+    const r = await enableMasterSchedule(db, m.id, actor, NOW, { replace: true });
+    expect(r.runtime.status).toBe('active');
+    expect(await statusOf(db, once.runtime.id)).toBe('active');
+  } finally { await close(); }
+});
+
+test('previewEnable reports the live copy Enable would replace', async () => {
+  const { db, close, wc, wf } = await setup();
+  try {
+    await seedFlows(wf);
+    const m = await master(db, wc.id);
+    expect((await previewEnable(db, m.id, NOW)).live).toBeNull();
+    const first = await enableMasterSchedule(db, m.id, actor, NOW);
+    expect((await previewEnable(db, m.id, NOW)).live).toEqual({ id: first.runtime.id, label: 'RS-1' });
+  } finally { await close(); }
+});
+
+test('listLiveRuntimeSchedules lists active and paused, not ended or removed, with workCenterId', async () => {
+  const { db, close, wc, wf } = await setup();
+  try {
+    await seedFlows(wf);
+    const a = await enableMasterSchedule(db, (await master(db, wc.id, { name: 'A' })).id, actor, NOW);
+    const b = await enableMasterSchedule(db, (await master(db, wc.id, { name: 'B' })).id, actor, NOW);
+    const c = await enableMasterSchedule(db, (await master(db, wc.id, { name: 'C' })).id, actor, NOW);
+    const d = await enableMasterSchedule(db, (await master(db, wc.id, { name: 'D' })).id, actor, NOW);
+    await db.update(runtimeSchedule).set({ status: 'paused' }).where(eq(runtimeSchedule.id, b.runtime.id));
+    await db.update(runtimeSchedule).set({ status: 'finished', endedAt: NOW }).where(eq(runtimeSchedule.id, c.runtime.id));
+    await db.update(runtimeSchedule).set({ status: 'cancelled', endedAt: NOW, removedAt: NOW }).where(eq(runtimeSchedule.id, d.runtime.id));
+    const live = await listLiveRuntimeSchedules(db);
+    expect(live.map((r) => [r.label, r.status, r.workCenterId])).toEqual([
+      [b.runtime.label, 'paused', wc.id], [a.runtime.label, 'active', wc.id],
+    ]);
   } finally { await close(); }
 });

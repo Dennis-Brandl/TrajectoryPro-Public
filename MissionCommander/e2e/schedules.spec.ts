@@ -101,14 +101,16 @@ test('a Master Schedule fires, chains, pauses, resumes, skips a disabled item an
   await move.getByLabel('Source for BatchId').selectOption({ label: 'From triggering run' });
   await move.getByLabel('Triggering run value for BatchId').selectOption('trigger.input:BatchId');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
+  // A new Master's reason comes filled in as "Initial version".
+  await page.getByRole('dialog').getByRole('button', { name: 'Save version 1' }).click();
   await expect(page.getByText(`Saved "${MASTER_NAME}"`)).toBeVisible();
 
   // 2. Enable it.
-  await page.getByRole('button', { name: `Enable Recurrence ${MASTER_NAME}` }).click();
+  await page.getByRole('button', { name: `Enable Schedule ${MASTER_NAME}` }).click();
   const enable = page.getByRole('dialog');
   await expect(enable.getByRole('list', { name: 'First fire times' })).toBeVisible();
-  await enable.getByRole('button', { name: 'Enable Recurrence', exact: true }).click();
-  await expect(page.getByText('Recurrence enabled as RS-1')).toBeVisible();
+  await enable.getByRole('button', { name: 'Enable Schedule', exact: true }).click();
+  await expect(page.getByText('Schedule enabled as RS-1')).toBeVisible();
   await page.getByRole('button', { name: 'RS-1', exact: true }).click();
   await expect(page.getByRole('heading', { name: `RS-1 "${MASTER_NAME}"` })).toBeVisible();
 
@@ -185,8 +187,10 @@ test('a Master Schedule fires, chains, pauses, resumes, skips a disabled item an
   await alarmBlend.getByLabel('Source for BatchId').first().selectOption({ label: 'Template' });
   await alarmBlend.getByLabel('Template for BatchId').fill('ALARM');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
+  // A new Master's reason comes filled in as "Initial version".
+  await page.getByRole('dialog').getByRole('button', { name: 'Save version 1' }).click();
   await expect(page.getByText('Saved "Fire alarm"')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Enable Recurrence Fire alarm' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Enable Schedule Fire alarm' })).toBeDisabled();
   await page.getByRole('button', { name: 'Run Once Fire alarm' }).click();
   const runOnce = page.getByRole('dialog');
   await expect(runOnce.getByRole('list', { name: 'Workflows that start' })).toContainText('Blend');

@@ -15,13 +15,14 @@ import { get, post, put, del } from './client';
 import type {
   ScheduleDefinition, Recurrence, MasterScheduleView, RuntimeScheduleView, RuntimeScheduleDetail,
   RuntimeScheduleStatus, OccurrencePage, ResumePreview, ResumeChoice, ResumeResult, EnablePreview,
-  RecurrencePreview, RuntimeScheduleEventPage, ScheduleWorkflowOption, RunOncePreview, ScheduleClock, MasterScheduleRecord,
+  RecurrencePreview, RuntimeScheduleEventPage, ScheduleWorkflowOption, RunOncePreview, ScheduleClock, MasterScheduleRecord, ScheduleLiveTree,
 } from './types';
 
 export type {
   ScheduleWorkflowOption,
   MasterScheduleView, RuntimeScheduleView, RuntimeScheduleDetail, ResumePreview, ResumeChoice, ResumeResult,
   EnablePreview, RecurrencePreview, OccurrencePage, RuntimeScheduleStatus, RuntimeScheduleEventPage,
+  ScheduleLiveTree, LiveRuntimeScheduleLeaf,
 } from './types';
 
 // Spec 2026-11-08 §7. Reads need work_center:read; every write needs Administrator or the Mission
@@ -45,8 +46,9 @@ export const schedules = {
     get(`/api/work-centers/${workCenterId}/schedule-workflows`) as Promise<ScheduleWorkflowOption[]>,
   previewEnable: (masterId: string) =>
     get(`/api/master-schedules/${masterId}/enable-preview`) as Promise<EnablePreview>,
-  enable: (masterId: string) =>
-    post(`/api/master-schedules/${masterId}/enable`) as Promise<{ runtime: RuntimeScheduleView; warnings: string[] }>,
+  enable: (masterId: string, opts?: { replace?: boolean; reason?: string }) =>
+    post(`/api/master-schedules/${masterId}/enable`, opts) as Promise<{ runtime: RuntimeScheduleView; warnings: string[] }>,
+  liveTree: () => get('/api/runtime-schedules/live') as Promise<ScheduleLiveTree>,
 
   previewRunOnce: (masterId: string) =>
     get(`/api/master-schedules/${masterId}/run-once-preview`) as Promise<RunOncePreview>,

@@ -22,6 +22,7 @@ import { RoleDialog } from '@/components/role/RoleDialog';
 import { WorkflowTree } from '@/components/workflow/WorkflowTree';
 import { EnvironmentTree } from '@/components/environment/EnvironmentTree';
 import { RuntimeWorkflowTree } from '@/components/runtime/RuntimeWorkflowTree';
+import { ScheduleRailTree } from '@/components/schedules/ScheduleRailTree';
 
 // Owns the create dialogs for each hierarchy's tree "＋" affordance. WC create dialog
 // (M1) plus the new user/role create dialogs (Tasks 5/8): on create, refresh the tree
@@ -60,6 +61,8 @@ export function HierarchyPane() {
   if (activeHierarchy === 'environment') return <EnvironmentTree />;
   // Runtime (spec 2026-08-27 §4.2): a true WC tree with active runtime-workflow leaves.
   if (activeHierarchy === 'runtime') return <RuntimeWorkflowTree />;
+  // Schedules (spec 2026-11-25): the same WC tree with the schedules that are on as leaves.
+  if (activeHierarchy === 'schedule') return <ScheduleRailTree />;
   // History and Settings are full-width pages with no tree; AppShell mounts no pane for them.
   if (activeHierarchy !== 'work_center') return null;
 

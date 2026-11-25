@@ -24,10 +24,10 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('ActivityRail', () => {
-  it('shows exactly seven hierarchies and no Settings or Help', () => {
+  it('shows exactly eight hierarchies and no Settings or Help', () => {
     render(<ActivityRail />);
     const labels = screen.getAllByRole('button').map((b) => b.getAttribute('aria-label'));
-    expect(labels).toEqual(['Work Centers', 'Runtime', 'Users', 'Workflows', 'Environments', 'Roles', 'History']);
+    expect(labels).toEqual(['Work Centers', 'Runtime', 'Schedules', 'Users', 'Workflows', 'Environments', 'Roles', 'History']);
     expect(screen.queryByLabelText('Settings')).toBeNull();
     expect(screen.queryByRole('link', { name: 'Help' })).toBeNull();
   });

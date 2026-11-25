@@ -44,7 +44,7 @@ describe('MasterScheduleList', () => {
   it('Enable and Edit call back, and are not shown when the prop is absent', async () => {
     const onEnable = vi.fn(); const onEdit = vi.fn();
     const { rerender } = render(<MasterScheduleList workCenterId="w1" canControl onEnable={onEnable} onEdit={onEdit} />);
-    await userEvent.click(await screen.findByRole('button', { name: 'Enable Recurrence Day Production' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Enable Schedule Day Production' }));
     expect(onEnable).toHaveBeenCalledWith(expect.objectContaining({ id: 'm1' }));
     await userEvent.click(screen.getByRole('button', { name: 'Edit Day Production' }));
     expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ id: 'm1' }));
@@ -52,12 +52,12 @@ describe('MasterScheduleList', () => {
     expect(screen.queryByRole('button', { name: /^(Enable|Edit)/ })).toBeNull();
   });
 
-  it('Run Once comes first and calls back; a Manual schedule cannot Enable Recurrence and says why', async () => {
+  it('Run Once comes first and calls back; a Manual schedule cannot Enable Schedule and says why', async () => {
     const onRunOnce = vi.fn(); const onEnable = vi.fn();
     vi.mocked(schedules.listMasters).mockResolvedValue([master({ recurrence: { type: 'manual' } })] as never);
     render(<MasterScheduleList workCenterId="w1" canControl onRunOnce={onRunOnce} onEnable={onEnable} />);
     const run = await screen.findByRole('button', { name: 'Run Once Day Production' });
-    const enable = screen.getByRole('button', { name: 'Enable Recurrence Day Production' });
+    const enable = screen.getByRole('button', { name: 'Enable Schedule Day Production' });
     expect(run.compareDocumentPosition(enable) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(enable).toBeDisabled();
     expect(enable).toHaveAttribute('title', 'A Manual schedule has no recurrence. Use Run Once.');
@@ -67,7 +67,7 @@ describe('MasterScheduleList', () => {
 
   it("'disabled' renders a disabled button", async () => {
     render(<MasterScheduleList workCenterId="w1" canControl onEnable="disabled" onEdit="disabled" />);
-    expect(await screen.findByRole('button', { name: 'Enable Recurrence Day Production' })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: 'Enable Schedule Day Production' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Edit Day Production' })).toBeDisabled();
   });
 

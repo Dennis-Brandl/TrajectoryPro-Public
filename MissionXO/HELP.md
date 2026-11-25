@@ -85,7 +85,7 @@ Use force complete sparingly. It moves the workflow on without the work being do
 The **Schedules** tab shows workflows that start by themselves at set times, and the chains that start when a run ends. Two kinds of schedule are listed:
 
 - **Runtime Schedules** come first. Each is a working copy that is actually starting workflows, with its label (for example `RS-12`), its status (Active, Paused, Cancelled or Finished), and the next start time in the work center's time zone. A **Needs attention** marker means a workflow failed to start, a run was lost, or start times were missed during an outage. Select one to see its workflows as a tree, what each run did, and a log of who did what.
-- **Master Schedules** are the definitions, in a compact list. Click **Enable Recurrence** on one to make a Runtime Schedule that follows its timetable. A dialog shows the first start times and any warning before you confirm. **Run Once** starts the schedule one time, now or at a date and time you choose, and can overlap anything already running. A **Manual** schedule, such as an incident response, has no timetable and starts only this way.
+- **Master Schedules** are the definitions, in a compact list. Click **Enable Schedule** on one to make a Runtime Schedule that follows its timetable. A dialog shows the first start times and any warning before you confirm. **Run Once** starts the schedule one time, now or at a date and time you choose, and can overlap anything already running. A **Manual** schedule, such as an incident response, has no timetable and starts only this way.
 
 On a Runtime Schedule you can:
 

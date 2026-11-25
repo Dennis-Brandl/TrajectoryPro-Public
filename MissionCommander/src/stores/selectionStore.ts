@@ -23,7 +23,10 @@ import { create } from 'zustand';
 // adds 'runtime' as an eighth member: a true work-center tree (like work_center) whose leaves
 // are active runtime workflows, so it DOES need its own companion selected-id field. The union
 // is what HierarchyPane and DetailPanel switch over.
-export type Hierarchy = 'work_center' | 'user' | 'workflow' | 'role' | 'environment' | 'runtime' | 'history' | 'settings';
+// 'schedule' (spec 2026-11-25) is the Schedules pane: a work-center tree whose leaves are the
+// Runtime Schedules that are on; its selection carries the work center for the control check.
+export type Hierarchy = 'work_center' | 'user' | 'workflow' | 'role' | 'environment' | 'runtime' | 'schedule' | 'history' | 'settings';
+export type ScheduleSelection = { id: string; workCenterId: string };
 type State = {
   activeHierarchy: Hierarchy;
   selectedWorkCenterId: string | null;
@@ -32,6 +35,7 @@ type State = {
   selectedWorkflowId: string | null;
   selectedEnvironmentId: string | null;
   selectedRuntimeWorkflowId: string | null;
+  selectedRuntimeSchedule: ScheduleSelection | null;
   setHierarchy: (h: Hierarchy) => void;
   selectWorkCenter: (id: string | null) => void;
   selectUser: (id: string | null) => void;
@@ -39,6 +43,7 @@ type State = {
   selectWorkflow: (id: string | null) => void;
   selectEnvironment: (id: string | null) => void;
   selectRuntimeWorkflow: (id: string | null) => void;
+  selectRuntimeSchedule: (sel: ScheduleSelection | null) => void;
 };
 export const useSelectionStore = create<State>((set) => ({
   activeHierarchy: 'work_center',
@@ -48,6 +53,7 @@ export const useSelectionStore = create<State>((set) => ({
   selectedWorkflowId: null,
   selectedEnvironmentId: null,
   selectedRuntimeWorkflowId: null,
+  selectedRuntimeSchedule: null,
   setHierarchy: (activeHierarchy) => set({ activeHierarchy }),
   selectWorkCenter: (selectedWorkCenterId) => set({ selectedWorkCenterId }),
   selectUser: (selectedUserId) => set({ selectedUserId }),
@@ -55,4 +61,5 @@ export const useSelectionStore = create<State>((set) => ({
   selectWorkflow: (selectedWorkflowId) => set({ selectedWorkflowId }),
   selectEnvironment: (selectedEnvironmentId) => set({ selectedEnvironmentId }),
   selectRuntimeWorkflow: (selectedRuntimeWorkflowId) => set({ selectedRuntimeWorkflowId }),
+  selectRuntimeSchedule: (selectedRuntimeSchedule) => set({ selectedRuntimeSchedule }),
 }));

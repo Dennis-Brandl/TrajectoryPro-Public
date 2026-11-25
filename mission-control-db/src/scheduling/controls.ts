@@ -323,10 +323,16 @@ export async function resumeRuntimeSchedule(
 export async function cancelRuntimeSchedule(
   db: Db, id: string, reason: string, actor: ScheduleActor, now: Date,
 ): Promise<void> {
+  await db.transaction(async (t) => cancelRuntimeScheduleInTx(t as unknown as Db, id, reason, actor, now));
+}
+
+/** Cancel inside a transaction the caller holds (Enable's replace cancels and enables in one go). */
+export async function cancelRuntimeScheduleInTx(
+  tx: Db, id: string, reason: string, actor: ScheduleActor, now: Date,
+): Promise<void> {
   const why = reason.trim();
   if (!why) throw new DaoError('CONFIRMATION_REQUIRED', 'Cancel needs a reason');
-  await db.transaction(async (t) => {
-    const tx = t as unknown as Db;
+  {
     const row = await lockRuntime(tx, id);
     if (row.status !== 'active' && row.status !== 'paused') throw wrongState(row, 'Cancel');
 
@@ -342,7 +348,7 @@ export async function cancelRuntimeSchedule(
     await appendScheduleEvent(tx, {
       runtimeScheduleId: id, action: 'cancelled', actor, detail: { reason: why, cancelledChains: waiting.length },
     });
-  });
+  }
 }
 
 /**

@@ -11,16 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import { Factory, Users, Workflow as WorkflowIcon, Shield, Boxes, History, Activity } from 'lucide-react';
+import { Factory, Users, Workflow as WorkflowIcon, Shield, Boxes, History, Activity, CalendarClock } from 'lucide-react';
 import { ActivityRail as SuiteRail, type RailItem } from '@mission/ui';
 import { useSelectionStore, type Hierarchy } from '@/stores/selectionStore';
 
-// Settings and Help live in the header now, so the rail holds only the seven hierarchies.
+// Settings and Help live in the header now, so the rail holds only the eight hierarchies.
 // The cast bridges two copies of lucide-react's icon types (this app's and @mission/ui's); the
 // icons are the same components.
 const ITEMS = [
   { id: 'work_center', label: 'Work Centers', icon: Factory },
   { id: 'runtime', label: 'Runtime', icon: Activity },
+  { id: 'schedule', label: 'Schedules', icon: CalendarClock },
   { id: 'user', label: 'Users', icon: Users },
   { id: 'workflow', label: 'Workflows', icon: WorkflowIcon },
   { id: 'environment', label: 'Environments', icon: Boxes },

@@ -139,7 +139,7 @@ test('a Steward who commands the work center sees Schedules, pauses and resumes,
   await expect(headings.nth(1)).toHaveText('Master Schedules');
   const pause = page.getByRole('button', { name: /^Pause RS-\d+$/ }).first();
   await expect(pause).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByRole('button', { name: `Enable Recurrence ${n.spareMaster}` })).toBeVisible();
+  await expect(page.getByRole('button', { name: `Enable Schedule ${n.spareMaster}` })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Edit / })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^Delete / })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'New Master Schedule' })).toHaveCount(0);
@@ -168,7 +168,7 @@ test('a Steward who commands the work center sees Schedules, pauses and resumes,
   await expect(cancel).toBeHidden();
 
   // The Enable dialog fits the screen; it is closed without enabling so the run can repeat.
-  await page.getByRole('button', { name: `Enable Recurrence ${n.spareMaster}` }).click();
+  await page.getByRole('button', { name: `Enable Schedule ${n.spareMaster}` }).click();
   const enable = page.getByRole('dialog');
   await expect(enable.getByRole('list', { name: 'First fire times' })).toBeVisible();
   await fitsScreen(page, enable);

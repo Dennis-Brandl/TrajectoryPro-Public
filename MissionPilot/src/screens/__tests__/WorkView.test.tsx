@@ -13,7 +13,7 @@
 // limitations under the License.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup, fireEvent, waitFor, within, act } from '@testing-library/react'
-import type { FormDocumentViewProps } from '@mission/form-renderer'
+import type { FormDocumentViewProps, StepButtonBarProps } from '@mission/form-renderer'
 import type { ButtonBlock, FormDocument } from '@mission/form-schema'
 import { WorkView, type WorkViewProps } from '../WorkView'
 import { api, ApiError } from '../../api/client'
@@ -32,6 +32,21 @@ vi.mock('../../session', () => ({ useSession: vi.fn() }))
 const rendererProps = new Map<string, FormDocumentViewProps>()
 
 vi.mock('@mission/form-renderer', () => ({
+  // Like the real bar, `compact` drops Back (drawn in the phone app bar instead).
+  StepButtonBar: (props: StepButtonBarProps) => (
+    <div className="tfk-step-bar">
+      {props.back && !props.compact && (
+        <button type="button" disabled={props.back.disabled} onClick={props.back.onBack}>
+          Back
+        </button>
+      )}
+      {(props.kind === 'yesno' ? (['yes', 'no'] as const) : (['continue'] as const)).map((job) => (
+        <button key={job} type="button" disabled={!props.jobs[job].enabled} onClick={() => props.onPress(job)}>
+          {props.jobs[job].label}
+        </button>
+      ))}
+    </div>
+  ),
   FormDocumentView: (props: FormDocumentViewProps) => {
     const d = props.document as FormDocument
     const block = d.sections[0]?.rows?.[0]?.blocks?.[0] as { fieldName?: string } | undefined
@@ -1049,6 +1064,211 @@ describe('WorkView', () => {
       update({ snapshot: snap([]) })
       update({ snapshot: snap([claimA]) })
       expect(within(rail()).queryByRole('group', { name: 'Confirm release' })).toBeNull()
+    })
+  })
+
+  describe('Phone layout', () => {
+    // On a phone there is no claim tab: a task opens from its inbox row.
+    const openFromInbox = (step: string) =>
+      fireEvent.click(within(document.getElementById('panel-inbox')!).getByRole('button', { name: new RegExp(step) }))
+    const bottomNav = () => screen.queryByRole('navigation', { name: 'Pilot' })
+
+    it('reports whether a task is open', () => {
+      const onTaskOpenChange = vi.fn()
+      renderWork({ phone: true, onTaskOpenChange, snapshot: snap([claimA]) })
+
+      openFromInbox('Fit bracket')
+      expect(onTaskOpenChange).toHaveBeenLastCalledWith(true)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Inbox' }))
+      expect(onTaskOpenChange).toHaveBeenLastCalledWith(false)
+    })
+
+    it('home: a bottom nav instead of the tab strip; a task hides it and Inbox brings it back', () => {
+      renderWork({ phone: true, snapshot: snap([claimA], [task({ assignmentId: 'o1', claimedAt: null })]) })
+
+      const nav = bottomNav()!
+      expect(within(nav).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Inbox (1)', 'Workflows'])
+      expect(screen.queryByRole('button', { name: 'Previous tab' })).toBeNull()
+      expect(screen.queryByRole('button', { name: /open$/ })).toBeNull()
+
+      openFromInbox('Fit bracket')
+      expect(bottomNav()).toBeNull()
+      expect(screen.getByRole('heading', { name: 'Fit bracket' })).toBeTruthy()
+      expect(screen.getByRole('tabpanel', { name: 'Fit bracket · MIX-20261007-003 · Master' })).toBeTruthy()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Inbox' }))
+      expect(bottomNav()).toBeTruthy()
+      expect(screen.getByRole('heading', { name: 'My tasks' })).toBeTruthy()
+    })
+
+    it('the Workflows tab keeps the bottom nav', () => {
+      renderWork({ phone: true, snapshot: snap([claimA]) })
+      fireEvent.click(within(bottomNav()!).getByRole('tab', { name: 'Workflows' }))
+      expect(within(bottomNav()!).getByRole('tab', { selected: true }).textContent).toBe('Workflows')
+    })
+
+    it('no context bar on a phone', () => {
+      renderWork({ phone: true, snapshot: snap([claimA]) })
+      openFromInbox('Fit bracket')
+      expect(document.querySelector('.context-bar')).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Copy runtime ID' })).toBeNull()
+    })
+
+    it('two claims: the switcher shows the position and Next opens the other task', () => {
+      renderWork({ phone: true, snapshot: snap([claimA, claimB]) })
+      openFromInbox('Fit bracket')
+      expect(screen.getByRole('button', { name: /^Open tasks:/ }).textContent).toBe('Fit bracket · 1 of 2')
+
+      fireEvent.click(screen.getByRole('button', { name: 'Next task' }))
+      expect(screen.getByRole('heading', { name: 'Torque check' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: /^Open tasks:/ }).textContent).toBe('Torque check · 2 of 2')
+    })
+
+    // The pressed control sits in the pane that is hidden next, so focus must be moved on.
+    it('phone: ⌂ moves focus to the inbox heading', () => {
+      renderWork({ phone: true, snapshot: snap([claimA]) })
+      openFromInbox('Fit bracket')
+      const home = screen.getByRole('button', { name: 'Inbox' })
+      home.focus()
+      fireEvent.click(home)
+      expect(document.activeElement?.id).toBe('inbox-heading')
+    })
+
+    it('phone: the switcher’s ‹/› move focus to the new task’s heading', () => {
+      renderWork({ phone: true, snapshot: snap([claimA, claimB]) })
+      openFromInbox('Fit bracket')
+      const next = screen.getByRole('button', { name: 'Next task' })
+      next.focus()
+      fireEvent.click(next)
+      expect(document.activeElement?.id).toBe('task-heading-a-b')
+      const prev = screen.getByRole('button', { name: 'Previous task' })
+      prev.focus()
+      fireEvent.click(prev)
+      expect(document.activeElement?.id).toBe('task-heading-a-a')
+    })
+
+    it('phone: a pick in the switcher’s sheet moves focus to that task’s heading', () => {
+      renderWork({ phone: true, snapshot: snap([claimA, claimB]) })
+      openFromInbox('Fit bracket')
+      const opener = screen.getByRole('button', { name: /^Open tasks:/ })
+      opener.focus()
+      fireEvent.click(opener)
+      const sheet = screen.getByRole('dialog', { name: 'Open tasks' })
+      fireEvent.click(within(sheet).getByRole('button', { name: /Torque check/ }))
+      expect(screen.queryByRole('dialog', { name: 'Open tasks' })).toBeNull()
+      expect(document.activeElement?.id).toBe('task-heading-a-b')
+    })
+
+    it('phone: Home and switcher keep a typed draft', () => {
+      const formA = { ...claimA, formDocument: doc('serial') }
+      const formB = { ...claimB, formDocument: doc('torque') }
+      renderWork({ phone: true, snapshot: snap([formA, formB]) })
+
+      openFromInbox('Fit bracket')
+      act(() => {
+        rendererProps.get('serial')!.onEvent!({ kind: 'fieldChange', fieldName: 'serial', value: 'SN-042' })
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'Next task' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Inbox' }))
+      openFromInbox('Fit bracket')
+
+      expect(screen.getByRole('heading', { name: 'Fit bracket' })).toBeTruthy()
+      expect(rendererProps.get('serial')!.values).toMatchObject({ serial: 'SN-042' })
+    })
+
+    it('phone: closing the last task brings back the top bar and bottom nav', async () => {
+      vi.mocked(api.submit).mockResolvedValue(undefined)
+      const onTaskOpenChange = vi.fn()
+      renderWork({ phone: true, onTaskOpenChange, snapshot: snap([claimA]) })
+
+      openFromInbox('Fit bracket')
+      expect(bottomNav()).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+
+      await waitFor(() => expect(bottomNav()).toBeTruthy())
+      expect(onTaskOpenChange).toHaveBeenLastCalledWith(false)
+    })
+
+    it('crossing the phone query keeps the open task and Back once', () => {
+      const fixed = { ...claimA, buttonBar: {}, backAvailable: true }
+      const { update } = renderWork({ phone: true, snapshot: snap([fixed]) })
+      openFromInbox('Fit bracket')
+      const check = () => {
+        expect(screen.getByRole('heading', { name: 'Fit bracket' })).toBeTruthy()
+        expect(screen.getAllByRole('button', { name: 'Back' })).toHaveLength(1)
+      }
+      check()
+      update({ phone: false })
+      check()
+      update({ phone: true })
+      check()
+    })
+
+    const swipeLeft = () => {
+      const panes = document.querySelector('.work-panes')!
+      fireEvent.touchStart(panes, { touches: [{ clientX: 300, clientY: 100 }] })
+      fireEvent.touchEnd(panes, { changedTouches: [{ clientX: 100, clientY: 100 }] })
+    }
+
+    it('swipe left on a task moves to the next task; on the last task wraps to the first (user 2026-11-25)', () => {
+      renderWork({ phone: true, snapshot: snap([claimA, claimB]) })
+      openFromInbox('Fit bracket')
+
+      swipeLeft()
+      expect(screen.getByRole('heading', { name: 'Torque check' })).toBeTruthy()
+      swipeLeft()
+      expect(screen.getByRole('heading', { name: 'Fit bracket' })).toBeTruthy()
+      expect(bottomNav()).toBeNull()
+    })
+
+    it('a swipe that starts on the diagram or the runtime chips pans them, never switches screens', () => {
+      renderWork({ phone: true, snapshot: snap([claimA]) })
+      fireEvent.click(within(bottomNav()!).getByRole('tab', { name: /Workflows/ }))
+      const panel = document.getElementById('panel-workflows')!
+      for (const cls of ['wf-graph-wrap', 'wf-picker']) {
+        const el = document.createElement('div')
+        el.className = cls
+        panel.appendChild(el)
+        fireEvent.touchStart(el, { touches: [{ clientX: 100, clientY: 100 }] })
+        fireEvent.touchEnd(el, { changedTouches: [{ clientX: 300, clientY: 100 }] })
+        expect(within(bottomNav()!).getByRole('tab', { selected: true }).textContent).toBe('Workflows')
+      }
+    })
+
+    it('⋮ → Diagram opens Workflows with Back to the step; Back returns to the task (user 2026-11-25)', () => {
+      renderWork({ phone: true, snapshot: snap([claimA, claimB]) })
+      openFromInbox('Fit bracket')
+      fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Diagram' }))
+
+      expect(document.getElementById('panel-workflows')!.hidden).toBe(false)
+      expect(within(bottomNav()!).getByRole('tab', { selected: true }).textContent).toBe('Workflows')
+      const back = screen.getByRole('button', { name: '‹ Back to Fit bracket' })
+      expect(document.activeElement).toBe(back)
+
+      fireEvent.click(back)
+      expect(screen.getByRole('heading', { name: 'Fit bracket' })).toBeTruthy()
+      expect(bottomNav()).toBeNull()
+      expect(document.activeElement?.id).toBe('task-heading-a-a')
+    })
+
+    it('Back to the task goes away once the operator leaves the diagram', () => {
+      renderWork({ phone: true, snapshot: snap([claimA]) })
+      openFromInbox('Fit bracket')
+      fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Diagram' }))
+      fireEvent.click(within(bottomNav()!).getByRole('tab', { name: /Inbox/ }))
+      fireEvent.click(within(bottomNav()!).getByRole('tab', { name: /Workflows/ }))
+      expect(screen.queryByRole('button', { name: /^‹ Back to/ })).toBeNull()
+    })
+
+    it('swipe on Inbox/Workflows toggles between those two only', () => {
+      renderWork({ phone: true, snapshot: snap([claimA]) })
+      swipeLeft()
+      expect(within(bottomNav()!).getByRole('tab', { selected: true }).textContent).toBe('Workflows')
+      swipeLeft()
+      expect(within(bottomNav()!).getByRole('tab', { selected: true }).textContent).toBe('Inbox')
     })
   })
 })

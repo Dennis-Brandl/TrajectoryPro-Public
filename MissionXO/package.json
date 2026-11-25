@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "npm run build:help && vite",
     "build": "npm run build:help && vite build",
-    "build:help": "node ../MissionCommander/scripts/build-help.mjs --root . --product \"Mission XO\" --icon /xo/xo-icon-192.png",
+    "build:help": "node ../MissionCommander/scripts/build-help.mjs --root . --product \"Mission XO\" --icon /xo/ic_launcher_round.png",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

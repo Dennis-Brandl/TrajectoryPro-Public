@@ -16,6 +16,7 @@ import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
 import { App } from '../App'
 import { useInbox, clearSnapshotCache, type UseInboxResult } from '../inbox-data'
 import { TaskScreen } from '../screens/TaskScreen'
+import { PHONE_QUERY } from '../frame/phone'
 import { api, ApiError } from '../api/client'
 import type { Me, WorkCenter, InboxSnapshot, InboxTask } from '../api/types'
 
@@ -363,5 +364,36 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Back to inbox' }))
 
     expect(await screen.findByRole('heading', { name: 'My tasks' })).toBeTruthy()
+  })
+
+  describe('on a phone', () => {
+    beforeEach(() => {
+      // Only the phone query answers true, so nothing else (Workstation) turns on by accident.
+      window.matchMedia = vi.fn((query: string) => ({
+        matches: query === PHONE_QUERY,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })) as unknown as typeof window.matchMedia
+    })
+    afterEach(() => {
+      delete (window as { matchMedia?: unknown }).matchMedia
+    })
+
+    it('the shell is a phone shell; the top bar shows on the Inbox, hides under a task, and comes back on Inbox', async () => {
+      mockAuthenticated()
+      mockInbox({ snapshot: { workCenterId: 'wc1', myClaims: [claimedTask], offers: [] } })
+
+      await renderAtInbox()
+      expect(document.querySelector('.app-shell')!.classList.contains('phone')).toBe(true)
+      expect(document.querySelector('header.top-bar')).toBeTruthy()
+
+      fireEvent.click(screen.getByRole('button', { name: /Fill form/ }))
+      expect(await screen.findByRole('button', { name: 'Continue' })).toBeTruthy()
+      expect(document.querySelector('header.top-bar')).toBeNull()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Inbox' }))
+      expect(await screen.findByRole('heading', { name: 'My tasks' })).toBeTruthy()
+      expect(document.querySelector('header.top-bar')).toBeTruthy()
+    })
   })
 })

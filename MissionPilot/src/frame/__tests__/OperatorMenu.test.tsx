@@ -42,6 +42,12 @@ describe('OperatorMenu (spec §5.1)', () => {
     expect(screen.getByRole('button', { name: 'John Adams Away' })).toBeTruthy()
   })
 
+  it('shows initials for the phone bar without changing the accessible name', () => {
+    renderMenu()
+    expect(screen.getByText('JA').getAttribute('aria-hidden')).toBe('true')
+    expect(screen.getByRole('button', { name: 'John Adams' })).toBeTruthy()
+  })
+
   it('an operator who never chose sees Light at 100%', () => {
     renderMenu()
     openMenu()

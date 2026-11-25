@@ -281,6 +281,11 @@
     white-space: nowrap;
   }
 
+  /* Initials are for the phone bar only. */
+  .op-initials {
+    display: none;
+  }
+
   .op-away {
     padding: 0 var(--pilot-space-2);
     border-radius: var(--pilot-radius-pill);
@@ -450,6 +455,9 @@
   .elide-head {
     min-width: 1ch;
     overflow: hidden;
+    /* Keep the head's trailing space: "Prepare › " + "Weighing" read "Prepare ›Weighing"
+       when nowrap trimmed it at the end of the flex item. */
+    white-space: pre;
     text-overflow: ellipsis;
   }
 
@@ -602,6 +610,210 @@
     .ctx-runtime {
       order: -1;
     }
+  }
+
+  /* ---------- Phone (spec §5.1-5.3) ---------- */
+  .app-shell.phone .wc-switch-label,
+  .app-shell.phone .op-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .app-shell.phone .top-bar .op-btn {
+    flex-shrink: 0;
+    gap: var(--pilot-space-1);
+  }
+
+  .app-shell.phone .top-bar .op-btn::after {
+    content: none;
+  }
+
+  .app-shell.phone .op-initials {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--pilot-touch-min);
+    height: var(--pilot-touch-min);
+    border: var(--pilot-border-w) solid var(--pilot-header-divider);
+    border-radius: var(--pilot-radius-pill);
+    background: var(--pilot-header-hover);
+    color: var(--pilot-header-fg);
+    font-weight: var(--pilot-weight-medium);
+  }
+
+  /* Sticky, full-bleed header. JS sets the inline transform; the pane's own padding is cancelled. */
+  .app-shell.phone .task-phone-header {
+    position: sticky;
+    top: 0;
+    z-index: var(--pilot-z-chrome);
+    margin-inline: calc(-1 * var(--pilot-space-4));
+    padding-inline: var(--pilot-space-4);
+    background: var(--pilot-header-bg);
+    color: var(--pilot-header-fg);
+    will-change: transform;
+    transition: transform 150ms;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .app-shell.phone .task-phone-header {
+      transition: none;
+    }
+  }
+
+  .app-shell.phone .task-app-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--pilot-space-1);
+    min-height: var(--pilot-header-h);
+  }
+
+  .app-shell.phone .task-app-back,
+  .app-shell.phone .task-app-home,
+  .app-shell.phone .task-menu-btn {
+    flex-shrink: 0;
+    min-width: var(--pilot-touch-min);
+    min-height: var(--pilot-touch-min);
+    background: transparent;
+    border-color: transparent;
+    color: var(--pilot-header-fg);
+    font-size: var(--pilot-text-lg);
+  }
+
+  .app-shell.phone .task-app-title {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .app-shell.phone .task-app-line1,
+  .app-shell.phone .task-app-line2 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* One flex line: the runtime ID stays whole, the workflow name gives way first. */
+  .app-shell.phone .task-app-line1 {
+    display: flex;
+    align-items: baseline;
+    min-width: 0;
+    font-weight: var(--pilot-weight-medium);
+  }
+
+  .app-shell.phone .task-app-line1 > .rid,
+  .app-shell.phone .task-app-line1 > .sep {
+    flex-shrink: 0;
+  }
+
+  .app-shell.phone .task-app-line1 > .elide {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .app-shell.phone .task-app-line2 {
+    font-size: var(--pilot-text-sm);
+    color: var(--pilot-header-fg-muted);
+  }
+
+  .app-shell.phone .task-switcher {
+    display: flex;
+    align-items: center;
+    gap: var(--pilot-space-1);
+    padding-left: var(--pilot-space-2);
+    border-top: var(--pilot-border-w) solid var(--pilot-header-divider);
+    box-shadow: inset var(--pilot-stripe-w) 0 0 var(--tab-stripe, var(--pilot-instance-6));
+    color: var(--pilot-header-fg);
+  }
+
+  .app-shell.phone .task-switcher button {
+    min-height: var(--pilot-touch-min);
+    min-width: var(--pilot-touch-min);
+    background: transparent;
+    border-color: transparent;
+    color: inherit;
+  }
+
+  .app-shell.phone .task-switcher button:nth-child(2) {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--pilot-text-sm);
+  }
+
+  /* ⋮ → Diagram: the way back to the task, above the diagram (user 2026-11-25). */
+  .app-shell.phone .wf-back-to-task {
+    display: block;
+    width: 100%;
+    min-height: var(--pilot-touch-min);
+    padding: 0 var(--pilot-space-3);
+    border: 0;
+    border-bottom: var(--pilot-border-w) solid var(--pilot-border);
+    border-radius: 0;
+    background: transparent;
+    text-align: start;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-shell.phone .bottom-nav {
+    border-top: var(--pilot-border-w) solid var(--pilot-border);
+    background: var(--pilot-surface-raised);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .app-shell.phone .bottom-nav [role='tablist'] {
+    display: flex;
+  }
+
+  .app-shell.phone .bottom-nav [role='tab'] {
+    flex: 1 1 0;
+    min-height: var(--pilot-touch-min);
+    border: 0;
+    border-top: var(--pilot-indicator-w) solid transparent;
+    border-radius: 0;
+    background: transparent;
+    color: var(--pilot-text-muted);
+  }
+
+  .app-shell.phone .bottom-nav [role='tab'][aria-selected='true'] {
+    border-top-color: var(--pilot-tab-active-indicator);
+    color: var(--pilot-text);
+    font-weight: var(--pilot-weight-medium);
+  }
+
+  /* Portalled to document.body, outside .app-shell: unscoped on purpose (they exist only on a phone). */
+  .task-menu-list {
+    z-index: var(--pilot-z-sheet);
+    display: flex;
+    flex-direction: column;
+    min-width: 12rem;
+    max-width: calc(100vw - var(--pilot-space-4));
+    background: var(--pilot-surface-raised);
+    color: var(--pilot-text);
+    border: var(--pilot-border-w) solid var(--pilot-border);
+    border-radius: var(--pilot-radius-panel);
+    box-shadow: var(--pilot-shadow-2);
+    padding: var(--pilot-space-1) 0;
+  }
+
+  .task-menu-item {
+    min-height: var(--pilot-touch-min);
+    padding: 0 var(--pilot-space-4);
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+  }
+
+  .task-menu-item:disabled {
+    color: var(--pilot-text-muted);
   }
 
   /* ---------- Keyboard shortcuts sheet (§15) ---------- */

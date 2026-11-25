@@ -16,6 +16,7 @@ import { SessionProvider, useSession } from './session'
 import { usePresence } from './presence'
 import { Toasts } from './toast'
 import { TopBar } from './frame/TopBar'
+import { usePhone } from './frame/phone'
 import { LoginScreen } from './screens/LoginScreen'
 import { WorkCenterPicker } from './screens/WorkCenterPicker'
 import { WorkView } from './screens/WorkView'
@@ -68,6 +69,14 @@ function AuthedApp() {
     if (theme) applyThemeColor(theme)
   }, [theme, prefs, defaultMode])
   const online = useOnline()
+  const phone = usePhone()
+  // A claim pane is in front (reported by WorkView); the phone shell drops its top bar then.
+  const [taskOpen, setTaskOpen] = useState(false)
+  // WorkView is keyed by work center, so a fresh one starts with no task open.
+  const wcId = selectedWc ? selectedWc.id : null
+  useEffect(() => {
+    setTaskOpen(false)
+  }, [wcId])
   const presence = usePresence(selectedWc ? selectedWc.id : null)
   // Lifted to app level (auto-claim spec §6): SSE/poll stay live while the operator
   // works inside panes, so chained and force-released claims reach the work view
@@ -106,7 +115,7 @@ function AuthedApp() {
     content = (
       // Spec §1/§4: the chrome sits outside the one scrolling region, so work center,
       // workflow and runtime ID stay on screen however far the form scrolls.
-      <div className="app-shell">
+      <div className={phone ? 'app-shell phone' : 'app-shell'}>
         {!online && <p className="banner banner-warn">{OFFLINE_BANNER_COPY}</p>}
 
         {!selectedWc ? (
@@ -115,6 +124,7 @@ function AuthedApp() {
           </div>
         ) : (
           <>
+            {!(phone && taskOpen) && (
             <TopBar
               wc={liveWcName ? { ...selectedWc, name: liveWcName } : selectedWc}
               onSwitchWorkCenter={setSelectedWc}
@@ -131,6 +141,7 @@ function AuthedApp() {
               onPrefsChange={setPrefs}
               defaultMode={defaultMode}
             />
+            )}
 
             {presence.error && (
               <p role="alert" className="banner banner-alarm">
@@ -149,6 +160,10 @@ function AuthedApp() {
               refresh={inbox.refresh}
               wcName={liveWcName ?? selectedWc.name}
               layout={prefs.layout}
+              phone={phone}
+              onTaskOpenChange={setTaskOpen}
+              // The same connection state the top bar shows, for the phone task app bar.
+              connection={{ online, stale: inbox.stale, unreachable: inbox.unreachable, syncedAt: inbox.syncedAt }}
             />
           </>
         )}

@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import { Component, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type TouchEvent } from 'react'
+import { Component, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type TouchEvent } from 'react'
 import { InboxScreen } from './InboxScreen'
 import { TaskScreen } from './TaskScreen'
 import { WorkflowsScreen } from './workflows/WorkflowsScreen'
@@ -21,6 +21,8 @@ import { taskLabel } from '../task-label'
 import { useAppTitle } from '../frame/app-title'
 import { ClaimTabContent, claimTabName } from '../frame/ClaimTabContent'
 import { OpenClaimsSheet } from '../frame/OpenClaimsSheet'
+import { TaskSwitcher } from '../frame/TaskSwitcher'
+import { BottomNav } from '../frame/BottomNav'
 import { ContextBar } from '../frame/ContextBar'
 import { instanceStripe } from '../frame/runtime-id'
 import { clearDraft } from '../task/drafts'
@@ -59,6 +61,12 @@ export interface WorkViewProps {
   refresh(): Promise<void>
   /** Spec §16 per-device layout; Workstation splits at ≥ 1280 px. */
   layout?: PilotLayout
+  /** Compact phone layout (spec §3); App owns the media query. */
+  phone?: boolean
+  /** true when a claim pane is in front, false for Inbox/Workflows; called only on change. */
+  onTaskOpenChange?(open: boolean): void
+  /** Phone: what the top bar shows about the connection, for the task app bar (spec §5.2). */
+  connection?: { online: boolean; stale: boolean; unreachable: boolean; syncedAt: Date | null }
 }
 
 // Stable tab order: the server already sorts myClaims by claimedAt ascending, but
@@ -121,7 +129,7 @@ class TaskErrorBoundary extends Component<TaskErrorBoundaryProps, TaskErrorBound
 // refreshes. Each pane's task object comes from the LIVE snapshot (keyed by
 // assignmentId) — the old screen model froze the task at claim time, so a pause,
 // a force-release, or fresher step data never reached an open task.
-export function WorkView({ wcId, wcName, snapshot: incoming, stale, inboxOffline, offline, refresh, layout = 'standard' }: WorkViewProps) {
+export function WorkView({ wcId, wcName, snapshot: incoming, stale, inboxOffline, offline, refresh, layout = 'standard', phone = false, onTaskOpenChange, connection }: WorkViewProps) {
   // On a work-center switch this view remounts while useInbox still holds the previous
   // work center's (fresh) snapshot for a render. Using it would baseline the diff on the
   // wrong claims, so the first real snapshot would read every one of them as taken away —
@@ -195,6 +203,33 @@ export function WorkView({ wcId, wcName, snapshot: incoming, stale, inboxOffline
     document.getElementById(arrival.id ? `task-heading-${arrival.id}` : 'inbox-heading')?.focus()
   }, [arrival])
 
+  // Phone: ⌂, the switcher's ‹/› and a pick in its sheet are pressed inside the pane that is
+  // about to be hidden, so focus would drop to <body>. Send it where the operator lands instead.
+  // Runs after the sheet's own unmount cleanup (which returns focus to its now-hidden opener).
+  const [phoneFocus, setPhoneFocus] = useState<{ id: string | null } | null>(null)
+  useEffect(() => {
+    if (!phoneFocus) return
+    document.getElementById(phoneFocus.id ? `task-heading-${phoneFocus.id}` : 'inbox-heading')?.focus()
+  }, [phoneFocus])
+  const phoneGo = (id: string | null) => {
+    setFocusedId(id)
+    setPhoneFocus({ id })
+  }
+
+  // Phone ⋮ → Diagram (user 2026-11-25): the Workflows diagram for that task's runtime (it follows
+  // lastPaneId), with "Back to <step>" above it. Cleared as soon as the operator goes anywhere else.
+  const [diagramFrom, setDiagramFrom] = useState<string | null>(null)
+  if (diagramFrom !== null && focusedId !== WORKFLOWS_TAB_ID) setDiagramFrom(null)
+  // A task that ends while its diagram is up takes the Back button with it.
+  const diagramPane = panes.find((p) => p.assignmentId === diagramFrom) ?? null
+  const openDiagram = (id: string) => {
+    setFocusedId(WORKFLOWS_TAB_ID)
+    setDiagramFrom(id)
+  }
+  useEffect(() => {
+    if (diagramFrom) document.getElementById('wf-back-to-task')?.focus()
+  }, [diagramFrom])
+
   // Spec P0: two Pilot windows (two monitors, a kiosk plus a laptop) must be
   // tellable apart in the taskbar, so the title names the task in front.
   const focusedPane = panes.find((p) => p.assignmentId === focused)
@@ -205,6 +240,17 @@ export function WorkView({ wcId, wcName, snapshot: incoming, stale, inboxOffline
   useEffect(() => {
     document.title = title
   }, [title])
+  // Tell App whether a task is in front (the phone shell hides its top bar then).
+  const taskOpen = focused !== null && focused !== WORKFLOWS_TAB_ID
+  const reportedOpen = useRef(false)
+  const onTaskOpenChangeRef = useRef(onTaskOpenChange)
+  onTaskOpenChangeRef.current = onTaskOpenChange
+  // Layout effect: App hides its top bar before the browser paints the task (no one-frame flash).
+  useLayoutEffect(() => {
+    if (reportedOpen.current === taskOpen) return
+    reportedOpen.current = taskOpen
+    onTaskOpenChangeRef.current?.(taskOpen)
+  }, [taskOpen])
   // A ref, so the unmount reset uses the title current at unmount, not the first render's.
   const appTitleRef = useRef(appTitle)
   appTitleRef.current = appTitle
@@ -244,7 +290,10 @@ export function WorkView({ wcId, wcName, snapshot: incoming, stale, inboxOffline
   const touchRef = useRef<{ x: number; y: number } | null>(null)
   const onTouchStart = (e: TouchEvent) => {
     const t = e.touches[0]
-    touchRef.current = t ? { x: t.clientX, y: t.clientY } : null
+    // The diagram pans and the runtime chips scroll sideways: a drag there is theirs, never a
+    // tab switch (user 2026-11-25: panning the diagram left jumped to the Inbox).
+    const own = e.target instanceof Element && e.target.closest('.wf-graph-wrap, .wf-picker')
+    touchRef.current = t && !own ? { x: t.clientX, y: t.clientY } : null
   }
   const onTouchEnd = (e: TouchEvent) => {
     const start = touchRef.current
@@ -254,7 +303,15 @@ export function WorkView({ wcId, wcName, snapshot: incoming, stale, inboxOffline
     const dx = t.clientX - start.x
     const dy = t.clientY - start.y
     if (Math.abs(dx) < 48 || Math.abs(dx) < 2 * Math.abs(dy)) return
-    go(pos + (dx < 0 ? 1 : -1)) // swipe left = next tab (carousel direction)
+    const step = dx < 0 ? 1 : -1 // swipe left = next tab (carousel direction)
+    if (!phone) go(pos + step)
+    else if (taskOpen) {
+      // Phone: among the open tasks only, wrapping like the switcher's ‹/› (user 2026-11-25) —
+      // the Inbox is the ⌂ button's job.
+      const i = panes.findIndex((p) => p.assignmentId === focused)
+      const next = i < 0 || panes.length < 2 ? undefined : panes[(i + step + panes.length) % panes.length]
+      if (next) setFocusedId(next.assignmentId)
+    } else setFocusedId(focused === null ? WORKFLOWS_TAB_ID : null)
   }
   const onTablistKeyDown = (e: KeyboardEvent) => {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
@@ -406,80 +463,83 @@ export function WorkView({ wcId, wcName, snapshot: incoming, stale, inboxOffline
         </aside>
       )}
       <div className="work-main">
-        <nav className="work-tabs">
-          <button
-            type="button"
-            className="work-tab-arrow"
-            aria-label="Previous tab"
-            disabled={pos <= 0}
-            onClick={() => go(pos - 1)}
-          >
-            ←
-          </button>
-          <div role="tablist" aria-label="Open work" onKeyDown={onTablistKeyDown}>
+        {!phone && (
+          <nav className="work-tabs">
             <button
               type="button"
-              role="tab"
-              id="tab-inbox"
-              aria-selected={focused === null}
-              aria-controls="panel-inbox"
-              onClick={() => setFocusedId(null)}
+              className="work-tab-arrow"
+              aria-label="Previous tab"
+              disabled={pos <= 0}
+              onClick={() => go(pos - 1)}
             >
-              Inbox{offers.length > 0 ? ` (${offers.length})` : ''}
+              ←
             </button>
-            <button
-              type="button"
-              role="tab"
-              id="tab-workflows"
-              aria-selected={focused === WORKFLOWS_TAB_ID}
-              aria-controls="panel-workflows"
-              onClick={() => setFocusedId(WORKFLOWS_TAB_ID)}
-            >
-              Workflows{wfCount > 0 ? ` (${wfCount})` : ''}
-            </button>
-            {panes.map((t) => (
+            <div role="tablist" aria-label="Open work" onKeyDown={onTablistKeyDown}>
               <button
                 type="button"
                 role="tab"
-                key={t.assignmentId}
-                id={`tab-${t.assignmentId}`}
-                className="claim-tab"
-                aria-label={claimTabName(t)}
-                aria-selected={focused === t.assignmentId}
-                aria-controls={`panel-${t.assignmentId}`}
-                // Spec §5.2: one of six stripe colours per runtime, so two batches of the
-                // same step read as different tabs at a glance.
-                style={{ '--tab-stripe': `var(--pilot-instance-${instanceStripe(t.runtimeLabel)})` } as CSSProperties}
-                onClick={() => setFocusedId(t.assignmentId)}
+                id="tab-inbox"
+                aria-selected={focused === null}
+                aria-controls="panel-inbox"
+                onClick={() => setFocusedId(null)}
               >
-                <ClaimTabContent task={t} />
+                Inbox{offers.length > 0 ? ` (${offers.length})` : ''}
               </button>
-            ))}
-          </div>
-          {panes.length > 0 && (
+              <button
+                type="button"
+                role="tab"
+                id="tab-workflows"
+                aria-selected={focused === WORKFLOWS_TAB_ID}
+                aria-controls="panel-workflows"
+                onClick={() => setFocusedId(WORKFLOWS_TAB_ID)}
+              >
+                Workflows{wfCount > 0 ? ` (${wfCount})` : ''}
+              </button>
+              {panes.map((t) => (
+                <button
+                  type="button"
+                  role="tab"
+                  key={t.assignmentId}
+                  id={`tab-${t.assignmentId}`}
+                  className="claim-tab"
+                  aria-label={claimTabName(t)}
+                  aria-selected={focused === t.assignmentId}
+                  aria-controls={`panel-${t.assignmentId}`}
+                  // Spec §5.2: one of six stripe colours per runtime, so two batches of the
+                  // same step read as different tabs at a glance.
+                  style={{ '--tab-stripe': `var(--pilot-instance-${instanceStripe(t.runtimeLabel)})` } as CSSProperties}
+                  onClick={() => setFocusedId(t.assignmentId)}
+                >
+                  <ClaimTabContent task={t} />
+                </button>
+              ))}
+            </div>
+            {panes.length > 0 && (
+              <button
+                type="button"
+                className="claims-open-btn"
+                aria-haspopup="dialog"
+                aria-expanded={sheetOpen}
+                onClick={() => setSheetOpen(true)}
+              >
+                {panes.length} open
+              </button>
+            )}
             <button
               type="button"
-              className="claims-open-btn"
-              aria-haspopup="dialog"
-              aria-expanded={sheetOpen}
-              onClick={() => setSheetOpen(true)}
+              className="work-tab-arrow"
+              aria-label="Next tab"
+              disabled={pos >= order.length - 1}
+              onClick={() => go(pos + 1)}
             >
-              {panes.length} open
+              →
             </button>
-          )}
-          <button
-            type="button"
-            className="work-tab-arrow"
-            aria-label="Next tab"
-            disabled={pos >= order.length - 1}
-            onClick={() => go(pos + 1)}
-          >
-            →
-          </button>
-        </nav>
+          </nav>
+        )}
 
-        {/* Keyed per pane so a "Copied" from one task never shows on the next. */}
-        {focusedPane && (
+        {/* Keyed per pane so a "Copied" from one task never shows on the next. On a phone
+            the task's app bar and ⋮ menu carry this instead. */}
+        {!phone && focusedPane && (
           <ContextBar
             key={focusedPane.assignmentId}
             task={focusedPane}
@@ -498,6 +558,16 @@ export function WorkView({ wcId, wcName, snapshot: incoming, stale, inboxOffline
           </div>
 
           <div id="panel-workflows" role="tabpanel" aria-labelledby="tab-workflows" hidden={focused !== WORKFLOWS_TAB_ID}>
+            {phone && diagramPane && (
+              <button
+                type="button"
+                id="wf-back-to-task"
+                className="wf-back-to-task"
+                onClick={() => phoneGo(diagramPane.assignmentId)}
+              >
+                {`‹ Back to ${diagramPane.stepName ?? diagramPane.stepOid}`}
+              </button>
+            )}
             <WorkflowsScreen
               wcId={wcId}
               active={focused === WORKFLOWS_TAB_ID}
@@ -516,7 +586,9 @@ export function WorkView({ wcId, wcName, snapshot: incoming, stale, inboxOffline
               key={t.assignmentId}
               id={`panel-${t.assignmentId}`}
               role="tabpanel"
-              aria-labelledby={`tab-${t.assignmentId}`}
+              // A phone has no claim tab to name the panel.
+              aria-labelledby={phone ? undefined : `tab-${t.assignmentId}`}
+              aria-label={phone ? claimTabName(t) : undefined}
               hidden={focused !== t.assignmentId}
             >
               <TaskErrorBoundary onReset={() => setFocusedId(null)}>
@@ -538,6 +610,13 @@ export function WorkView({ wcId, wcName, snapshot: incoming, stale, inboxOffline
                     if (kind === 'race') closePane(t.assignmentId)
                   }}
                   offline={offline}
+                  phone={phone}
+                  onHome={() => phoneGo(null)}
+                  connection={connection}
+                  onDiagram={phone ? () => openDiagram(t.assignmentId) : undefined}
+                  switcher={
+                    phone ? <TaskSwitcher tasks={panes} focusedId={t.assignmentId} onPick={phoneGo} /> : undefined
+                  }
                   onReleased={() => {
                     show(`Released ${taskLabel(t)}`)
                     closePane(t.assignmentId)
@@ -547,9 +626,19 @@ export function WorkView({ wcId, wcName, snapshot: incoming, stale, inboxOffline
             </div>
           ))}
         </div>
+
+        {phone && !taskOpen && (
+          <BottomNav
+            selected={focused === WORKFLOWS_TAB_ID ? 'workflows' : 'inbox'}
+            inboxCount={offers.length}
+            workflowsCount={wfCount}
+            onInbox={() => setFocusedId(null)}
+            onWorkflows={() => setFocusedId(WORKFLOWS_TAB_ID)}
+          />
+        )}
       </div>
 
-      {sheetOpen && panes.length > 0 && (
+      {!phone && sheetOpen && panes.length > 0 && (
         <OpenClaimsSheet
           tasks={panes}
           focusedId={focused}

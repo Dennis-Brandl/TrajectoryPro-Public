@@ -11,13 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import { useState as useMockState } from 'react'
+import { useState as useMockState, type ReactElement } from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach, onTestFinished } from 'vitest'
 import { render, screen, cleanup, fireEvent, waitFor, act, within } from '@testing-library/react'
 import type { FormDocumentViewProps, StepButtonBarProps } from '@mission/form-renderer'
 import { withStepButtons } from '@mission/form-schema'
 import type { FormDocument } from '@mission/form-schema'
 import { TaskScreen } from '../TaskScreen'
+import { Toasts } from '../../toast'
 import { api, ApiError } from '../../api/client'
 import type { InboxTask } from '../../api/types'
 
@@ -31,10 +32,11 @@ let rendererMountCount = 0
 let lastBarProps: StepButtonBarProps | undefined
 
 vi.mock('@mission/form-renderer', () => ({
+  // Like the real bar, `compact` drops Back and Stop (they are drawn elsewhere).
   StepButtonBar: (props: StepButtonBarProps) => (
     (lastBarProps = props),
-    <div data-testid="step-bar">
-      {props.back && (
+    <div data-testid="step-bar" className="tfk-step-bar">
+      {props.back && !props.compact && (
         <button type="button" disabled={props.back.disabled} onClick={props.back.onBack}>
           Back
         </button>
@@ -44,7 +46,7 @@ vi.mock('@mission/form-renderer', () => ({
           {props.jobs[job].label}
         </button>
       ))}
-      {props.stop && (
+      {props.stop && !props.compact && (
         <button type="button" disabled={props.stop.disabled} onClick={props.stop.onStop}>
           Stop
         </button>
@@ -1441,6 +1443,36 @@ describe('user rulings 2026-11-14 (FormKit spec Appendix X)', () => {
       expect(lastBarProps!.compact).toBe(false)
     })
 
+    it('a pane first drawn on a phone measures the topline once it crosses to a wider layout', () => {
+      withToplineWidth(560)
+      const props = { task: task({ buttonBar: {}, backAvailable: true, allowStop: true }), onDone: vi.fn(), onError: vi.fn() }
+      const view = render(<TaskScreen {...props} phone />)
+      expect(lastBarProps!.compact).toBe(true)
+      view.rerender(<TaskScreen {...props} phone={false} />)
+      expect(view.container.querySelector('.task-topline')).not.toBeNull()
+      expect(lastBarProps!.compact).toBe(true)
+    })
+
+    it('a phone round trip re-measures the new topline, not the one it detached', () => {
+      let width = 900
+      Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+        configurable: true,
+        get() {
+          return (this as HTMLElement).classList.contains('task-topline') ? width : 0
+        },
+      })
+      onTestFinished(() => {
+        delete (HTMLElement.prototype as { clientWidth?: number }).clientWidth
+      })
+      const props = { task: task({ buttonBar: {}, backAvailable: true, allowStop: true }), onDone: vi.fn(), onError: vi.fn() }
+      const view = render(<TaskScreen {...props} />)
+      expect(lastBarProps!.compact).toBe(false)
+      view.rerender(<TaskScreen {...props} phone />)
+      width = 560
+      view.rerender(<TaskScreen {...props} phone={false} />)
+      expect(lastBarProps!.compact).toBe(true)
+    })
+
     it('unmeasured (no layout engine): the bar falls back to its own rule', () => {
       render(<TaskScreen task={task({ buttonBar: {}, backAvailable: true })} onDone={vi.fn()} onError={vi.fn()} />)
       expect(lastBarProps!.compact).toBeUndefined()
@@ -1453,5 +1485,412 @@ describe('user rulings 2026-11-14 (FormKit spec Appendix X)', () => {
     unmount()
     const legacy = render(<TaskScreen task={task({ buttonBar: null })} onDone={vi.fn()} onError={vi.fn()} />)
     expect(legacy.container.querySelector('main.task-screen')!.classList.contains('task-screen-fixed-bar')).toBe(false)
+  })
+})
+
+describe('TaskScreen phone', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    lastRendererProps = undefined
+    lastBarProps = undefined
+    localStorage.clear()
+  })
+  afterEach(cleanup)
+
+  const menuItems = () => {
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    return screen.getAllByRole('menuitem').map((b) => b.textContent)
+  }
+  const pick = (label: string) => {
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: label }))
+  }
+  const typeName = () =>
+    act(() => {
+      lastRendererProps!.onEvent!({ kind: 'fieldChange', fieldName: 'name', value: 'Ada' })
+      lastRendererProps!.onEvent!({ kind: 'validation', ok: true, missing: [] })
+    })
+  function stubWhereApi() {
+    const a = api as unknown as Record<string, unknown>
+    a.runtimeDiagram = vi.fn(() => new Promise(() => {}))
+    a.runtimeLiveStates = vi.fn(() => new Promise(() => {}))
+    onTestFinished(() => {
+      delete a.runtimeDiagram
+      delete a.runtimeLiveStates
+    })
+  }
+  const stepBar = (container: HTMLElement) => within(container.querySelector('.tfk-step-bar') as HTMLElement)
+
+  it('draws the app bar instead of the task line; Where you are and Release live in the menu', () => {
+    const { container } = render(<TaskScreen task={task()} onDone={vi.fn()} onError={vi.fn()} phone />)
+    expect(container.querySelector('.task-phone-header .task-app-bar')).not.toBeNull()
+    expect(container.querySelector('.task-topline')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Where you are' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Release' })).toBeNull()
+    expect(menuItems()).toEqual(['Where you are', 'Release', 'Copy runtime ID'])
+  })
+
+  it('lists Stop workflow… only for a step that allows Stop, and it asks first', () => {
+    render(<TaskScreen task={task({ buttonBar: {}, allowStop: true })} onDone={vi.fn()} onError={vi.fn()} phone />)
+    expect(menuItems()).toEqual(['Where you are', 'Release', 'Stop workflow…', 'Copy runtime ID'])
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Stop workflow…' }))
+    expect(screen.getByRole('alertdialog', { name: 'Stop workflow' })).toBeTruthy()
+  })
+
+  it('Diagram sits after Where you are and calls onDiagram (user 2026-11-25)', () => {
+    const onDiagram = vi.fn()
+    render(<TaskScreen task={task()} onDone={vi.fn()} onError={vi.fn()} phone onDiagram={onDiagram} />)
+    expect(menuItems()).toEqual(['Where you are', 'Diagram', 'Release', 'Copy runtime ID'])
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Diagram' }))
+    expect(onDiagram).toHaveBeenCalledTimes(1)
+  })
+
+  it('Release is disabled offline', () => {
+    render(<TaskScreen task={task()} onDone={vi.fn()} onError={vi.fn()} phone offline />)
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    expect((screen.getByRole('menuitem', { name: 'Release' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('draws the switcher under the app bar, in the same header block', () => {
+    const { container } = render(
+      <TaskScreen task={task()} onDone={vi.fn()} onError={vi.fn()} phone switcher={<div data-testid="sw" />} />,
+    )
+    const header = container.querySelector('.task-phone-header')!
+    expect(header.firstElementChild!.classList.contains('task-app-bar')).toBe(true)
+    expect(header.lastElementChild).toBe(screen.getByTestId('sw'))
+  })
+
+  it('Where you are opens the sheet', () => {
+    render(<TaskScreen task={task()} onDone={vi.fn()} onError={vi.fn()} phone />)
+    pick('Where you are')
+    expect(screen.getByRole('dialog', { name: 'Where you are in MIX-20261007-001' })).toBeTruthy()
+  })
+
+  it('Back once on a fixed-bar step with backAvailable', async () => {
+    vi.mocked(api.back).mockResolvedValue(undefined)
+    const { container } = render(
+      <TaskScreen task={task({ buttonBar: {}, backAvailable: true, allowStop: true })} onDone={vi.fn()} onError={vi.fn()} phone />,
+    )
+    expect(container.querySelector('.task-topline')).toBeNull()
+    // The topline's "‹ Back" counts too: Back is drawn exactly once, as the app bar's ←.
+    expect(screen.getAllByRole('button', { name: /Back/ })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'Back' })).toHaveLength(1)
+    expect(stepBar(container).queryByRole('button', { name: 'Back' })).toBeNull()
+    expect(stepBar(container).queryByRole('button', { name: 'Stop' })).toBeNull()
+    expect(lastBarProps!.compact).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+    await waitFor(() => expect(api.back).toHaveBeenCalledWith('a1'))
+  })
+
+  it('no Back on a step without backAvailable', () => {
+    render(<TaskScreen task={task({ buttonBar: {} })} onDone={vi.fn()} onError={vi.fn()} phone />)
+    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
+  })
+
+  it('Release with a typed draft asks first; Release there releases', async () => {
+    vi.mocked(api.release).mockResolvedValue(undefined)
+    const onReleased = vi.fn()
+    render(
+      <TaskScreen task={task({ formDocument: REQUIRED_NAME_DOC })} onDone={vi.fn()} onError={vi.fn()} onReleased={onReleased} phone />,
+    )
+    typeName()
+    pick('Release')
+    const dialog = screen.getByRole('alertdialog', { name: 'Confirm release' })
+    expect(api.release).not.toHaveBeenCalled()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Release' }))
+    await waitFor(() => expect(api.release).toHaveBeenCalledWith('a1'))
+    await waitFor(() => expect(onReleased).toHaveBeenCalled())
+    expect(screen.queryByRole('alertdialog', { name: 'Confirm release' })).toBeNull()
+  })
+
+  it('Keep closes the Release question without releasing', () => {
+    render(<TaskScreen task={task({ formDocument: REQUIRED_NAME_DOC })} onDone={vi.fn()} onError={vi.fn()} phone />)
+    typeName()
+    pick('Release')
+    fireEvent.click(screen.getByRole('button', { name: 'Keep' }))
+    expect(screen.queryByRole('alertdialog', { name: 'Confirm release' })).toBeNull()
+    expect(api.release).not.toHaveBeenCalled()
+  })
+
+  it('going offline while the Release question is open disables its Release', () => {
+    const props = { task: task({ formDocument: REQUIRED_NAME_DOC }), onDone: vi.fn(), onError: vi.fn(), phone: true }
+    const view = render(<TaskScreen {...props} />)
+    typeName()
+    pick('Release')
+    view.rerender(<TaskScreen {...props} offline />)
+    const dialog = screen.getByRole('alertdialog', { name: 'Confirm release' })
+    const release = within(dialog).getByRole('button', { name: 'Release' }) as HTMLButtonElement
+    expect(release.disabled).toBe(true)
+    fireEvent.click(release)
+    expect(api.release).not.toHaveBeenCalled()
+  })
+
+  it('Release with nothing typed releases directly', async () => {
+    vi.mocked(api.release).mockResolvedValue(undefined)
+    render(<TaskScreen task={task({ formDocument: REQUIRED_NAME_DOC })} onDone={vi.fn()} onError={vi.fn()} phone />)
+    pick('Release')
+    expect(screen.queryByRole('alertdialog', { name: 'Confirm release' })).toBeNull()
+    await waitFor(() => expect(api.release).toHaveBeenCalledWith('a1'))
+  })
+
+  it('Ctrl+Enter never submits under the Release dialog', () => {
+    stubWhereApi()
+    render(<TaskScreen task={task({ formDocument: REQUIRED_NAME_DOC })} onDone={vi.fn()} onError={vi.fn()} active phone />)
+    typeName()
+    pick('Release')
+    expect(screen.getByRole('alertdialog', { name: 'Confirm release' })).toBeTruthy()
+    fireEvent.keyDown(document.body, { key: 'Enter', code: 'Enter', ctrlKey: true })
+    expect(api.submit).not.toHaveBeenCalled()
+  })
+
+  it('Copy runtime ID copies and says Copied', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    onTestFinished(() => {
+      Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true })
+    })
+    render(
+      <>
+        <TaskScreen task={task()} onDone={vi.fn()} onError={vi.fn()} phone />
+        <Toasts />
+      </>,
+    )
+    pick('Copy runtime ID')
+    await waitFor(() => expect(screen.getByText('Copied')).toBeTruthy())
+    expect(writeText).toHaveBeenCalledWith('MIX-20261007-001')
+  })
+
+  const copyKey = () => fireEvent.keyDown(document.body, { key: 'C', code: 'KeyC', ctrlKey: true, shiftKey: true })
+
+  it('the copy shortcut copies the runtime ID on a phone, only on the pane on screen (spec §5.4)', async () => {
+    stubWhereApi()
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    onTestFinished(() => {
+      Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true })
+    })
+    const props = { task: task(), onDone: vi.fn(), onError: vi.fn(), phone: true }
+    const view = render(
+      <>
+        <TaskScreen {...props} />
+        <Toasts />
+      </>,
+    )
+    copyKey()
+    expect(writeText).not.toHaveBeenCalled()
+    view.rerender(
+      <>
+        <TaskScreen {...props} active />
+        <Toasts />
+      </>,
+    )
+    copyKey()
+    expect(writeText).toHaveBeenCalledWith('MIX-20261007-001')
+    await waitFor(() => expect(screen.getByText('Copied')).toBeTruthy())
+  })
+
+  it('a copy that fails says so instead of claiming success', async () => {
+    stubWhereApi()
+    const writeText = vi.fn().mockRejectedValue(new Error('denied'))
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    const doc = document as unknown as { execCommand?: unknown }
+    const hadExec = Object.prototype.hasOwnProperty.call(document, 'execCommand')
+    const prevExec = doc.execCommand
+    const execCommand = vi.fn(() => false)
+    Object.defineProperty(document, 'execCommand', { value: execCommand, configurable: true, writable: true })
+    onTestFinished(() => {
+      Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true })
+      if (hadExec) doc.execCommand = prevExec
+      else delete doc.execCommand
+    })
+    render(
+      <>
+        <TaskScreen task={task()} onDone={vi.fn()} onError={vi.fn()} active phone />
+        <Toasts />
+      </>,
+    )
+    pick('Copy runtime ID')
+    await waitFor(() => expect(screen.getByText('Copy failed — select the ID')).toBeTruthy())
+    expect(execCommand).toHaveBeenCalledWith('copy')
+    expect(screen.queryByText('Copied')).toBeNull()
+  })
+
+  it('Ctrl+Enter never submits while the ⋮ menu is open', async () => {
+    stubWhereApi()
+    vi.mocked(api.submit).mockResolvedValue(undefined)
+    render(<TaskScreen task={task({ formDocument: REQUIRED_NAME_DOC })} onDone={vi.fn()} onError={vi.fn()} active phone />)
+    typeName()
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    expect(screen.getByRole('menu')).toBeTruthy()
+    fireEvent.keyDown(document.body, { key: 'Enter', code: 'Enter', ctrlKey: true })
+    expect(api.submit).not.toHaveBeenCalled()
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' })
+    fireEvent.keyDown(document.body, { key: 'Enter', code: 'Enter', ctrlKey: true })
+    await waitFor(() => expect(api.submit).toHaveBeenCalled())
+  })
+
+  it('closing Where you are returns focus to ⋮', () => {
+    render(<TaskScreen task={task()} onDone={vi.fn()} onError={vi.fn()} phone />)
+    pick('Where you are')
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'More actions' }))
+  })
+
+  it('phone false still draws the task line', () => {
+    const { container } = render(<TaskScreen task={task()} onDone={vi.fn()} onError={vi.fn()} phone={false} />)
+    expect(container.querySelector('.task-topline')).not.toBeNull()
+    expect(container.querySelector('.task-phone-header')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Where you are' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'More actions' })).toBeNull()
+  })
+})
+
+describe('TaskScreen phone collapsing header', () => {
+  const HEADER_PX = 92
+  let viewport: (EventTarget & { height: number }) | null = null
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+    const a = api as unknown as Record<string, unknown>
+    a.runtimeDiagram = vi.fn(() => new Promise(() => {}))
+    a.runtimeLiveStates = vi.fn(() => new Promise(() => {}))
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('task-phone-header') ? HEADER_PX : 0
+    })
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => (cb(0), 1))
+    vi.stubGlobal('cancelAnimationFrame', () => {})
+    viewport = Object.assign(new EventTarget(), { height: window.innerHeight })
+    Object.defineProperty(window, 'visualViewport', { value: viewport, configurable: true })
+  })
+  afterEach(() => {
+    cleanup()
+    const a = api as unknown as Record<string, unknown>
+    delete a.runtimeDiagram
+    delete a.runtimeLiveStates
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+    delete (window as { visualViewport?: unknown }).visualViewport
+    viewport = null
+  })
+
+  const inPanes = (ui: ReactElement) => render(<div className="work-panes">{ui}</div>)
+  const header = (container: HTMLElement) => container.querySelector('.task-phone-header') as HTMLElement
+  const scrollTo = (container: HTMLElement, top: number) => {
+    const panes = container.querySelector('.work-panes') as HTMLElement
+    Object.defineProperty(panes, 'scrollTop', { value: top, configurable: true })
+    fireEvent.scroll(panes)
+  }
+  const keyboard = (height: number) =>
+    act(() => {
+      viewport!.height = height
+      viewport!.dispatchEvent(new Event('resize'))
+    })
+
+  it('starts fully shown', () => {
+    const { container } = inPanes(<TaskScreen task={task()} onDone={vi.fn()} onError={vi.fn()} active phone />)
+    expect(header(container).style.transform).toBe('translateY(0px)')
+  })
+
+  it('slides out as the form scrolls up and comes back on a scroll down', () => {
+    const { container } = inPanes(<TaskScreen task={task()} onDone={vi.fn()} onError={vi.fn()} active phone />)
+    scrollTo(container, 40)
+    expect(header(container).style.transform).toBe('translateY(-40px)')
+    scrollTo(container, 300)
+    expect(header(container).style.transform).toBe(`translateY(-${HEADER_PX}px)`)
+    scrollTo(container, 280)
+    expect(header(container).style.transform).toBe(`translateY(-${HEADER_PX - 20}px)`)
+    scrollTo(container, 0)
+    expect(header(container).style.transform).toBe('translateY(0px)')
+  })
+
+  it('is fully out while the keyboard is up, and back when it closes', () => {
+    const { container } = inPanes(<TaskScreen task={task()} onDone={vi.fn()} onError={vi.fn()} active phone />)
+    keyboard(300)
+    expect(header(container).style.transform).toBe(`translateY(-${HEADER_PX}px)`)
+    keyboard(window.innerHeight)
+    expect(header(container).style.transform).toBe('translateY(0px)')
+  })
+
+  it('pinned beats keyboard: offline keeps it shown', () => {
+    const { container } = inPanes(<TaskScreen task={task()} onDone={vi.fn()} onError={vi.fn()} active phone offline />)
+    keyboard(300)
+    scrollTo(container, 60)
+    expect(header(container).style.transform).toBe('translateY(0px)')
+  })
+
+  it('an unhealthy connection keeps it shown', () => {
+    const connection = { online: true, stale: true, unreachable: false, syncedAt: null }
+    const { container } = inPanes(
+      <TaskScreen task={task()} onDone={vi.fn()} onError={vi.fn()} active phone connection={connection} />,
+    )
+    scrollTo(container, 60)
+    expect(header(container).style.transform).toBe('translateY(0px)')
+  })
+
+  it('a paused step keeps it shown', () => {
+    const { container } = inPanes(<TaskScreen task={task({ paused: true })} onDone={vi.fn()} onError={vi.fn()} active phone />)
+    scrollTo(container, 60)
+    expect(header(container).style.transform).toBe('translateY(0px)')
+  })
+
+  it('focus moving into the header shows it', () => {
+    const { container } = inPanes(<TaskScreen task={task()} onDone={vi.fn()} onError={vi.fn()} active phone />)
+    scrollTo(container, 60)
+    expect(header(container).style.transform).toBe('translateY(-60px)')
+    act(() => screen.getByRole('button', { name: 'More actions' }).focus())
+    expect(header(container).style.transform).toBe('translateY(0px)')
+  })
+
+  it('focus that is not keyboard focus (a tap, a programmatic return) does not pin it', () => {
+    const matches = Element.prototype.matches
+    vi.spyOn(Element.prototype, 'matches').mockImplementation(function (this: Element, sel: string) {
+      return sel === ':focus-visible' ? false : matches.call(this, sel)
+    })
+    const { container } = inPanes(<TaskScreen task={task()} onDone={vi.fn()} onError={vi.fn()} active phone />)
+    act(() => screen.getByRole('button', { name: 'More actions' }).focus())
+    scrollTo(container, 60)
+    expect(header(container).style.transform).toBe('translateY(-60px)')
+  })
+
+  it('a pane leaving the screen drops the header focus pin', () => {
+    const props = { task: task(), onDone: vi.fn(), onError: vi.fn(), phone: true }
+    const view = inPanes(<TaskScreen {...props} active />)
+    act(() => screen.getByRole('button', { name: 'More actions' }).focus())
+    scrollTo(view.container, 60)
+    expect(header(view.container).style.transform).toBe('translateY(0px)')
+    // Hidden with focus still inside (no blur), then back on screen.
+    view.rerender(
+      <div className="work-panes">
+        <TaskScreen {...props} active={false} />
+      </div>,
+    )
+    view.rerender(
+      <div className="work-panes">
+        <TaskScreen {...props} active />
+      </div>,
+    )
+    scrollTo(view.container, 120)
+    expect(header(view.container).style.transform).not.toBe('translateY(0px)')
+  })
+
+  it('a new task shows it again', () => {
+    const props = { onDone: vi.fn(), onError: vi.fn(), active: true, phone: true }
+    const view = inPanes(<TaskScreen task={task()} {...props} />)
+    scrollTo(view.container, 60)
+    expect(header(view.container).style.transform).toBe('translateY(-60px)')
+    view.rerender(
+      <div className="work-panes">
+        <TaskScreen task={task({ assignmentId: 'a2', stepInstanceId: 'si2' })} {...props} />
+      </div>,
+    )
+    expect(header(view.container).style.transform).toBe('translateY(0px)')
+  })
+
+  it('does nothing on a pane that is not on screen', () => {
+    const { container } = inPanes(<TaskScreen task={task()} onDone={vi.fn()} onError={vi.fn()} phone />)
+    scrollTo(container, 60)
+    keyboard(300)
+    expect(header(container).style.transform).toBe('translateY(0px)')
   })
 })

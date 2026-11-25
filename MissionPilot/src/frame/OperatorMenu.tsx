@@ -14,6 +14,7 @@
 
 import { useState } from 'react'
 import { Sheet } from './Sheet'
+import { initials } from './initials'
 import { DEFAULT_MODE, TEXT_SCALES, type PilotMode, type PilotLayout, type PilotPrefs, type TextScale } from '../theme/prefs'
 
 export interface OperatorMenuProps {
@@ -38,6 +39,9 @@ export function OperatorMenu({ name, away, onToggleAway, onSignOut, signingOut =
     <>
       <button type="button" className="op-btn" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}>
         <span className="op-name">{name}</span>
+        <span className="op-initials" aria-hidden="true">
+          {initials(name)}
+        </span>
         {away && (
           <>
             {' '}

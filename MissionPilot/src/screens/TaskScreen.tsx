@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { FormDocumentView, StepButtonBar } from '@mission/form-renderer'
 import type { ButtonJobs } from '@mission/form-renderer'
 import { computeValidation, findESignatureBlock, stripButtonBlocks, withStepButtons } from '@mission/form-schema'
@@ -20,12 +20,18 @@ import { api, ApiError } from '../api/client'
 import type { InboxTask, Me, SubmitBody } from '../api/types'
 import { seedDefaults, EMPTY_TIMERS } from '../host/gate'
 import { ReleaseButton } from '../task/ReleaseButton'
+import { ReleaseConfirm } from '../task/ReleaseConfirm'
+import type { TaskMenuItem } from '../task/TaskMenu'
 import { StopConfirm, StopMenu } from '../task/StopMenu'
 import { Sheet } from '../frame/Sheet'
+import { TaskAppBar } from '../frame/TaskAppBar'
+import { copyText } from '../frame/copy-text'
+import { useToast } from '../toast'
 import { useShortcut } from '../frame/shortcuts'
 import { useWhereYouAre } from '../task/useWhereYouAre'
 import { WhereYouAre } from '../task/WhereYouAre'
 import { clearDraft, readDraft, typedValues, writeDraft } from '../task/drafts'
+import { useCollapsingHeader } from '../task/collapsing-header'
 
 // `kind` lets the caller (App) tell a lost race from a transient failure apart:
 // - 'race' (403/409 — someone else already claimed/submitted this step): the task is
@@ -56,6 +62,27 @@ export interface TaskScreenProps {
   active?: boolean
   /** The resolved form surface (spec §14): FormKit drops authored colours unreadable on it. */
   surfaceColor?: string
+  /** Phone layout (spec 2026-11-24 §5.2): one app bar replaces the task line; App decides. */
+  phone?: boolean
+  /** Phone: the app bar's Home (Inbox) button. */
+  onHome?(): void
+  /** Phone: connection state for the app bar's status icon. */
+  connection?: { online: boolean; stale: boolean; unreachable: boolean; syncedAt: Date | null }
+  /** Phone: drawn under the app bar, in the same header block (WorkView passes a TaskSwitcher). */
+  switcher?: ReactNode
+  /** Phone: the ⋮ menu's Diagram item opens the Workflows diagram for this task (user 2026-11-25). */
+  onDiagram?(): void
+}
+
+const NO_HOME = () => {}
+
+/** `:focus-visible` where the engine knows it; an engine that throws on it shows the header. */
+function isFocusVisible(el: Element): boolean {
+  try {
+    return el.matches(':focus-visible')
+  } catch {
+    return true
+  }
 }
 
 interface Gate {
@@ -114,13 +141,18 @@ const TOPLINE_NARROW_PX = 600
 /**
  * Whether the topline is narrower than TOPLINE_NARROW_PX, measured the same way as pilot.css's
  * container query (the topline's content box). Undefined until measured, or without a layout
- * engine — the button row then falls back to its own width rule.
+ * engine — the button row then falls back to its own width rule. `attached` names whether the
+ * topline is drawn (it is not on a phone): crossing the phone query mounts or unmounts it, so the
+ * measurement re-attaches to the element actually on screen instead of a stale or missing one.
  */
-function useNarrowTopline(ref: RefObject<HTMLDivElement | null>): boolean | undefined {
+function useNarrowTopline(ref: RefObject<HTMLDivElement | null>, attached: boolean): boolean | undefined {
   const [narrow, setNarrow] = useState<boolean | undefined>(undefined)
   useLayoutEffect(() => {
     const el = ref.current
-    if (!el) return
+    if (!attached || !el) {
+      setNarrow(undefined)
+      return
+    }
     const apply = (width: number) => {
       if (width > 0) setNarrow(width < TOPLINE_NARROW_PX)
     }
@@ -131,7 +163,7 @@ function useNarrowTopline(ref: RefObject<HTMLDivElement | null>): boolean | unde
     })
     ro.observe(el)
     return () => ro.disconnect()
-  }, [ref])
+  }, [ref, attached])
   return narrow
 }
 
@@ -165,6 +197,11 @@ export function TaskScreen({
   onArrivalSeen,
   active = false,
   surfaceColor,
+  phone = false,
+  onHome = NO_HOME,
+  connection,
+  switcher,
+  onDiagram,
 }: TaskScreenProps) {
   const doc = asFormDocument(task.formDocument)
   const isYesNo = task.stepType === YES_NO
@@ -205,6 +242,10 @@ export function TaskScreen({
     stopOpener.current = opener
     setStopAsking(true)
   }
+  // Phone: the Release question is a dialog opened from the ⋮ menu (the task line is gone).
+  const [releaseAsking, setReleaseAsking] = useState(false)
+  const releaseOpener = useRef<HTMLElement | null>(null)
+  const toast = useToast()
 
   // A paused step stays open — typed values are kept — but can't be acted on. The
   // work view feeds this component the LIVE task object, so `paused` clearing on
@@ -424,7 +465,48 @@ export function TaskScreen({
 
   const rootRef = useRef<HTMLElement>(null)
   const toplineRef = useRef<HTMLDivElement>(null)
-  const narrow = useNarrowTopline(toplineRef)
+  const narrow = useNarrowTopline(toplineRef, !phone)
+
+  // Phone (spec §5.3): the header slides away as the form scrolls up. Anything the operator must
+  // read — offline or an unhealthy connection, a paused step, a signature error, focus in the header —
+  // keeps it shown, and beats the keyboard rule.
+  const phoneHeaderRef = useRef<HTMLDivElement>(null)
+  const [headerFocused, setHeaderFocused] = useState(false)
+  // A pane that leaves the screen takes no focus with it — and a focused header control removed
+  // without a blur (the pane hidden under it) must not leave the header pinned for next time.
+  if (!active && headerFocused) setHeaderFocused(false)
+  const unhealthy = connection ? !connection.online || connection.stale || connection.unreachable : false
+  const headerOffset = useCollapsingHeader({
+    header: phoneHeaderRef,
+    enabled: phone && active,
+    pinned: offline || unhealthy || task.paused || signatureError !== null || headerFocused,
+    resetKey: `${active}|${arrived ? 'arrived' : ''}|${task.assignmentId}`,
+  })
+
+  // Phone (spec §5.2/§5.4): the ⋮ item and the copy shortcut share this — the context bar that
+  // owns the shortcut on wider screens is not drawn on a phone.
+  const copyRuntimeId = () => {
+    void copyText(task.runtimeLabel).then((ok) => toast.show(ok ? 'Copied' : 'Copy failed — select the ID'))
+  }
+  useShortcut('copy', phone && active ? copyRuntimeId : null)
+
+  // Phone (spec §5.2): the ⋮ menu carries what the task line carries on wider screens.
+  const phoneMenu: TaskMenuItem[] = [
+    { label: 'Where you are', onSelect: () => setWhereOpen(true) },
+    ...(onDiagram ? [{ label: 'Diagram', onSelect: () => onDiagram() }] : []),
+    {
+      label: 'Release',
+      disabled: submitting || offline,
+      onSelect: (opener) => {
+        if (typedCount > 0) {
+          releaseOpener.current = opener
+          setReleaseAsking(true)
+        } else void release()
+      },
+    },
+    ...(showStop ? [{ label: 'Stop workflow…', disabled: locked, onSelect: askStop }] : []),
+    { label: 'Copy runtime ID', onSelect: copyRuntimeId },
+  ]
 
   // P4-R2: Ctrl+Enter presses the one primary button, only on the pane on screen and only
   // when that button is enabled. Never a Yes/No answer (two choices), never under the
@@ -437,6 +519,9 @@ export function TaskScreen({
           if (rootRef.current?.querySelector('.release-confirm')) return
           // The Stop question is portaled to document.body, so it is not under rootRef.
           if (stopAsking) return
+          if (releaseAsking) return
+          // Phone: the ⋮ menu is portalled to document.body too; an open menu owns the keys.
+          if (document.querySelector('.task-menu-list')) return
           // Workstation: the operator is working in the inbox column — typing in its filter,
           // or answering a Release question there — not on this task. Focus merely left on a
           // row's button (the task was just opened from it) still means this task.
@@ -459,6 +544,30 @@ export function TaskScreen({
       onClickCapture={arrived ? onArrivalSeen : undefined}
       onKeyDownCapture={arrived ? onArrivalSeen : undefined}
     >
+      {phone && (
+        <div
+          className="task-phone-header"
+          ref={phoneHeaderRef}
+          style={{ transform: headerOffset ? `translateY(-${headerOffset}px)` : 'translateY(0px)' }}
+          // Spec §5.3: KEYBOARD focus shows the header. A tap focuses the button too (Android
+          // Chrome), and focus returned to ⋮ after a menu or dialog is programmatic — neither is
+          // :focus-visible, and pinning on them kept the header up until the operator typed.
+          onFocus={(e) => setHeaderFocused(isFocusVisible(e.target))}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setHeaderFocused(false)
+          }}
+        >
+          <TaskAppBar
+            task={task}
+            back={showBack ? { onBack: goBack, disabled: locked } : null}
+            onHome={onHome}
+            connection={connection ?? { online: !offline, stale: false, unreachable: false, syncedAt: null }}
+            menu={phoneMenu}
+          />
+          {switcher}
+        </div>
+      )}
+
       {/* P1b Ruling 11 / P1c Ruling 4: the context bar shows step, workflow and runtime ID.
           The heading stays for screen readers and is where focus lands after a Submit. */}
       <h2 className="task-heading" id={`task-heading-${task.assignmentId}`} tabIndex={-1}>
@@ -469,18 +578,20 @@ export function TaskScreen({
 
       {/* Below 1280 px the side panel is hidden and "Where you are" opens it as a sheet (Ruling 5).
           Release sits at the right of the same line (user ruling 2026-11-10). */}
-      <div className="task-topline" ref={toplineRef}>
-        {showBack && (
-          <button type="button" className="task-topline-back" disabled={locked} onClick={goBack}>
-            ‹ Back
+      {!phone && (
+        <div className="task-topline" ref={toplineRef}>
+          {showBack && (
+            <button type="button" className="task-topline-back" disabled={locked} onClick={goBack}>
+              ‹ Back
+            </button>
+          )}
+          <button type="button" className="where-toggle" aria-haspopup="dialog" onClick={() => setWhereOpen(true)}>
+            Where you are
           </button>
-        )}
-        <button type="button" className="where-toggle" aria-haspopup="dialog" onClick={() => setWhereOpen(true)}>
-          Where you are
-        </button>
-        <ReleaseButton typedCount={typedCount} disabled={submitting || offline} onRelease={release} />
-        {showStop && <StopMenu disabled={locked} onStop={askStop} />}
-      </div>
+          <ReleaseButton typedCount={typedCount} disabled={submitting || offline} onRelease={release} />
+          {showStop && <StopMenu disabled={locked} onStop={askStop} />}
+        </div>
+      )}
 
       <div className="task-body">
         <div className="task-form">
@@ -509,7 +620,8 @@ export function TaskScreen({
               }}
               back={showBack ? { onBack: goBack, disabled: locked } : null}
               stop={showStop ? { onStop: () => askStop(document.activeElement as HTMLElement | null), disabled: locked } : null}
-              compact={narrow}
+              // Back/Stop exactly once (ruling 2026-11-14): on a phone they are the app bar's ← and ⋮.
+              compact={phone || narrow}
               surfaceColor={surfaceColor}
             />
           )}
@@ -525,6 +637,19 @@ export function TaskScreen({
           onConfirm={stopWorkflow}
           onCancel={() => setStopAsking(false)}
           returnFocusTo={stopOpener.current}
+        />
+      )}
+
+      {releaseAsking && (
+        <ReleaseConfirm
+          typedCount={typedCount}
+          disabled={submitting || offline}
+          onConfirm={() => {
+            setReleaseAsking(false)
+            void release()
+          }}
+          onCancel={() => setReleaseAsking(false)}
+          returnFocusTo={releaseOpener.current}
         />
       )}
 

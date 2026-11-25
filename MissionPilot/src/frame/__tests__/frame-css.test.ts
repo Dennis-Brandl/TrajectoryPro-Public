@@ -25,12 +25,15 @@ const CLASSES = [
   'top-bar', 'top-brand', 'top-logo', 'top-title', 'brand-when-light', 'brand-when-dark',
   'wc-switch', 'wc-switch-label', 'wc-switch-name',
   'conn', 'conn-ok', 'conn-warn', 'conn-wait', 'conn-icon', 'conn-word', 'conn-time',
-  'op-btn', 'op-name', 'op-away', 'op-who', 'op-hint',
+  'op-btn', 'op-name', 'op-initials', 'op-away', 'op-who', 'op-hint',
   'sheet-scrim', 'sheet', 'sheet-head', 'sheet-title', 'sheet-close',
   'claim-tab', 'claim-tab-step', 'claim-tab-meta', 'claim-tab-wf', 'sep', 'claims-open-btn', 'claims-sheet-item',
   'elide', 'elide-head', 'elide-tail', 'rid',
   'context-bar', 'ctx-field', 'ctx-step', 'ctx-workflow', 'ctx-runtime', 'ctx-wc', 'ctx-copy', 'ctx-copy-status',
   'shortcuts-sheet', 'shortcuts-table',
+  'task-app-bar', 'task-app-back', 'task-app-title', 'task-app-line1', 'task-app-line2', 'task-app-home',
+  'task-phone-header', 'task-switcher', 'task-menu-btn', 'task-menu-list', 'task-menu-item', 'bottom-nav',
+  'wf-back-to-task',
 ]
 
 describe('frame.css', () => {
@@ -40,6 +43,14 @@ describe('frame.css', () => {
     expect(css.trim().startsWith('@layer pilot.components {')).toBe(true)
     const missing = CLASSES.filter((c) => !new RegExp(`\\.${c}(?![\\w-])`).test(css))
     expect(missing).toEqual([])
+  })
+
+  it('the Elide head keeps its trailing space ("Prepare › Weighing", not "Prepare ›Weighing")', () => {
+    expect(css).toMatch(/\.elide-head\s*\{[^}]*white-space:\s*pre;/)
+  })
+
+  it('has the phone rules, keyed off .app-shell.phone', () => {
+    expect(css).toContain('.app-shell.phone')
   })
 
   it('has the tablet rules (§4: below 1024 px) and is loaded after pilot.css', () => {

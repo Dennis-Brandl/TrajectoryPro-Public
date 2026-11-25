@@ -14,6 +14,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { InboxTask } from '../api/types'
+import { copyText } from './copy-text'
 import { Elide } from './Elide'
 import { RuntimeId } from './RuntimeId'
 import { useShortcut } from './shortcuts'
@@ -34,32 +35,6 @@ export function workflowParts(t: InboxTask): [head: string, tail: string] {
   const path = t.workflowPath ?? []
   if (path.length === 0) return [name, '']
   return [[name, ...path.slice(0, -1)].join(' › ') + ' › ', path[path.length - 1]!]
-}
-
-async function copyText(text: string): Promise<boolean> {
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text)
-      return true
-    }
-  } catch {
-    // fall through to the selection-based copy
-  }
-  // Plain http on a LAN address is not a secure context, so navigator.clipboard is absent.
-  const area = document.createElement('textarea')
-  area.value = text
-  area.setAttribute('readonly', '')
-  area.style.position = 'fixed'
-  area.style.opacity = '0'
-  document.body.appendChild(area)
-  try {
-    area.select()
-    return document.execCommand('copy')
-  } catch {
-    return false
-  } finally {
-    area.remove()
-  }
 }
 
 // Spec §5.3: the four facts an operator must never lose, labelled, above the task.

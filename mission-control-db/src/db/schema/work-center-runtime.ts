@@ -85,6 +85,10 @@ export const wcResource = pgTable('wc_resource', {
   definedFromName: text('defined_from_name'),
   definedFromVersion: text('defined_from_version'),
   definedFromState: text('defined_from_state'),
+  // Who last set use_limit / the named roster in Commander (spec 2026-11-26). A load never
+  // changes either on an existing row, so these stay until the next Commander edit or a type change.
+  capacitySetBy: uuid('capacity_set_by').references(() => appUser.id, { onDelete: 'set null' }),
+  capacitySetAt: timestamp('capacity_set_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [

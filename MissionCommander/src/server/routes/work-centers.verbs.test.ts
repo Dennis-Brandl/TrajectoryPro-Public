@@ -16,7 +16,7 @@ import { db } from '../lib/db';
 import { migrateTestDb, resetDb } from '../test/fixture';
 import { mockSessionAs, seedUser, req } from '../test/harness';
 import { createWorkCenter, assignUserToWorkCenter } from 'mission-control-db/src/dao/work-centers';
-import { engineWorkCenterResourceVerb, engineSetWorkCenterValue, EngineUnavailableError } from '../lib/engine-client';
+import { engineWorkCenterResourceVerb, engineSetWorkCenterValue, engineSetResourceCapacity, EngineUnavailableError } from '../lib/engine-client';
 import { app } from '../app';
 
 // Phase 4b (spec §7.2): the routes are thin commander-gated proxies. The engine's own behaviour
@@ -26,7 +26,7 @@ vi.mock('../lib/engine-client', () => ({
   EngineUnavailableError: class EngineUnavailableError extends Error {},
   engineControl: vi.fn(), engineSkipCleanup: vi.fn(), engineForceRelease: vi.fn(), engineAssign: vi.fn(),
   engineWorkCenterResourceVerb: vi.fn(), engineInstanceResourceVerb: vi.fn(),
-  engineSetWorkCenterValue: vi.fn(), engineSetInstanceValue: vi.fn(),
+  engineSetWorkCenterValue: vi.fn(), engineSetInstanceValue: vi.fn(), engineSetResourceCapacity: vi.fn(),
 }));
 const mockVerb = vi.mocked(engineWorkCenterResourceVerb);
 const mockSetValue = vi.mocked(engineSetWorkCenterValue);
@@ -136,5 +136,33 @@ describe('work-center value write', () => {
 
     mockSetValue.mockResolvedValueOnce({ ok: false, status: 404, message: 'value "Batch.Nope" not found' });
     expect((await req(app, 'POST', path, { json: { propertyName: 'Batch', entryName: 'Nope', value: '1' } })).status).toBe(404);
+  });
+});
+
+describe('set-capacity (spec 2026-11-26)', () => {
+  it('401, 403 for a viewer, 200 forwarding a count or names with the commander as actor, 400 on a bad body', async () => {
+    const { wc, commander, viewer } = await seedCommanderAndViewer();
+    const mockCap = vi.mocked(engineSetResourceCapacity);
+    const path = `/api/work-centers/${wc.id}/resources/set-capacity`;
+    expect((await req(app, 'POST', path, { json: { name: 'Scales', useLimit: 3 } })).status).toBe(401);
+    mockSessionAs(viewer);
+    expect((await req(app, 'POST', path, { json: { name: 'Scales', useLimit: 3 } })).status).toBe(403);
+    expect(mockCap).not.toHaveBeenCalled();
+
+    mockSessionAs(commander);
+    mockCap.mockResolvedValue({ ok: true, summary: 'set-capacity "Scales" to limit 3' });
+    const ok = await req(app, 'POST', path, { json: { name: 'Scales', useLimit: 3 } });
+    expect(ok.status).toBe(200);
+    expect(mockCap).toHaveBeenCalledWith(wc.id, { name: 'Scales', useLimit: 3, actorUserId: commander });
+    expect((await req(app, 'POST', path, { json: { name: 'Docks', names: ['North', 'South'] } })).status).toBe(200);
+    expect(mockCap).toHaveBeenLastCalledWith(wc.id, { name: 'Docks', names: ['North', 'South'], actorUserId: commander });
+
+    mockCap.mockClear();
+    for (const bad of [
+      { name: 'Scales' }, { name: 'Scales', useLimit: 0 }, { name: 'Scales', useLimit: 1.5 },
+      { name: 'Scales', useLimit: 2, names: ['A'] }, { name: 'Docks', names: [] }, { name: 'Docks', names: [1] },
+      { name: 'Scales', useLimit: 2, actorUserId: viewer },
+    ]) expect((await req(app, 'POST', path, { json: bad })).status, JSON.stringify(bad)).toBe(400);
+    expect(mockCap).not.toHaveBeenCalled();
   });
 });

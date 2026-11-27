@@ -329,6 +329,12 @@ export interface ResourceCommandSpecification {
    *  input parameter's `default_value` with `value_type: 'property'`). Only meaningful on
    *  'Acquire Pool Amount' / 'Release Pool Amount'; when present it wins over `amount`. */
   amount_property?: string;
+  /** Spec 2026-11-27, Synchronize only: how many partners must arrive before all continue
+   *  (a whole number of at least 2). Omitted = 2. */
+  partners?: number;
+  /** Synchronize only: a property key the partner count is read from when the step first
+   *  reaches the SYNC. When present it wins over `partners`. */
+  partners_property?: string;
   target?: string;
   source?: string;
 }

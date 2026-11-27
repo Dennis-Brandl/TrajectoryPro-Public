@@ -17,7 +17,7 @@
 // "adapting imports" instruction. The toJSON/fromJSON round-trip tests (including the
 // mid-contention round-trip) are new, per the brief's Step 1 required-coverage list —
 // the reference InMemoryResourceManager has no serialization.
-import { expect, test, describe } from 'vitest';
+import { expect, test, describe, beforeEach } from 'vitest';
 import { InMemoryResourceManager, splitResourceCommands, sortActivationCommands } from '../src/core/resources.js';
 import type { ResourceCommandSpecification } from '../src/spec/types.js';
 
@@ -303,6 +303,66 @@ describe('InMemoryResourceManager — sync', () => {
     const granted = mgr.flushGranted();
     expect(granted.some(g => g.stepOid === 's1')).toBe(true);
     expect(granted.some(g => g.stepOid === 's2')).toBe(true);
+  });
+});
+
+describe('InMemoryResourceManager — Synchronize with N partners', () => {
+  let mgr: InMemoryResourceManager;
+  beforeEach(() => {
+    mgr = new InMemoryResourceManager();
+    mgr.registerResource('wf1:Chan', { name: 'Chan', resource_type: 'sync' }, 'wf1');
+  });
+
+  test('synchronize with 3 partners releases all three only on the third arrival', () => {
+    expect(mgr.synchronize('wf1:Chan', 's1', 3)).toEqual({ ready: false });
+    expect(mgr.synchronize('wf1:Chan', 's2', 3)).toEqual({ ready: false });
+    expect(mgr.synchronize('wf1:Chan', 's3', 3)).toEqual({ ready: true });
+    expect(mgr.flushGranted().map((g) => g.stepOid).sort()).toEqual(['s1', 's2', 's3']);
+    expect(mgr.syncGroupPartners('wf1:Chan')).toBeNull();
+  });
+
+  test('a fourth arrival (even a token that already went through) starts a new group with its own N', () => {
+    for (const s of ['s1', 's2', 's3']) mgr.synchronize('wf1:Chan', s, 3);
+    mgr.flushGranted();
+    expect(mgr.synchronize('wf1:Chan', 's1', 4)).toEqual({ ready: false });
+    expect(mgr.syncGroupPartners('wf1:Chan')).toBe(4);
+  });
+
+  test('omitted partners still pairs two', () => {
+    expect(mgr.synchronize('wf1:Chan', 's1')).toEqual({ ready: false });
+    expect(mgr.syncGroupPartners('wf1:Chan')).toBe(2);
+    expect(mgr.synchronize('wf1:Chan', 's2')).toEqual({ ready: true });
+  });
+
+  test('a cancelled partner leaves the group; the others keep waiting', () => {
+    mgr.synchronize('wf1:Chan', 's1', 3);
+    mgr.synchronize('wf1:Chan', 's2', 3);
+    mgr.cancelQueuedWaiters(new Set(['s1']));
+    expect(mgr.synchronize('wf1:Chan', 's3', 3)).toEqual({ ready: false });
+    expect(mgr.synchronize('wf1:Chan', 's4', 3)).toEqual({ ready: true });
+    expect(mgr.flushGranted().map((g) => g.stepOid).sort()).toEqual(['s2', 's3', 's4']);
+  });
+
+  test('after a reset (Clear sync) the next arrival sets a fresh N', () => {
+    mgr.synchronize('wf1:Chan', 's1', 3);
+    mgr.resetResources(new Set(['wf1:Chan']));
+    expect(mgr.syncGroupPartners('wf1:Chan')).toBeNull();
+    mgr.synchronize('wf1:Chan', 's2', 5);
+    expect(mgr.syncGroupPartners('wf1:Chan')).toBe(5);
+  });
+
+  test('partner counts survive toJSON/fromJSON', () => {
+    mgr.synchronize('wf1:Chan', 's1', 3);
+    const restored = InMemoryResourceManager.fromJSON(JSON.parse(JSON.stringify(mgr.toJSON())));
+    expect(restored.syncGroupPartners('wf1:Chan')).toBe(3);
+  });
+
+  test('fromJSON of a pre-partners state pairs at 2', () => {
+    mgr.synchronize('wf1:Chan', 's1');
+    const json = JSON.parse(JSON.stringify(mgr.toJSON()));
+    for (const [, st] of json.resources) delete st.partners;
+    const restored = InMemoryResourceManager.fromJSON(json);
+    expect(restored.synchronize('wf1:Chan', 's2')).toEqual({ ready: true });
   });
 });
 

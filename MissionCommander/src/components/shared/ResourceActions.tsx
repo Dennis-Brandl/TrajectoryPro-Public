@@ -85,7 +85,7 @@ export function verbFailText(verb: ResourceVerb): string {
 
 const WC_NOTE = ' This acts on the whole work center, every runtime workflow included.';
 
-function GatedButton({ reason, disabled, label, aria, onClick }: { reason: string | undefined; disabled: boolean; label: string; aria: string; onClick: () => void }) {
+export function GatedButton({ reason, disabled, label, aria, onClick }: { reason: string | undefined; disabled: boolean; label: string; aria: string; onClick: () => void }) {
   return (
     <RequiresTooltip reason={reason}>
       <Button type="button" variant="ghost" size="sm" aria-label={aria} disabled={disabled} title={reason} onClick={onClick}>{label}</Button>

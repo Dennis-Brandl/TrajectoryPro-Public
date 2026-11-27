@@ -47,6 +47,7 @@ import { useNotationStore } from '@/stores/notationStore'
 import type { Edge } from '@xyflow/react'
 import type { WorkflowNode } from '@/types/nodes'
 import { validateWorkflowWithChildren } from '@/lib/export/workflow-validation'
+import { collectSyncPartnerWarningsWithChildren, formatSyncPartnerWarnings } from '@/lib/export/sync-partner-warnings'
 import type { ValidationError } from '@/lib/export/workflow-validation'
 import { collectFixedBarWarningsWithChildren } from '@/lib/export/fixed-bar-checks'
 import { collectOperatorCleanupWarnings, formatOperatorCleanupWarnings } from '@/lib/export/operator-cleanup-warnings'
@@ -70,6 +71,12 @@ function toastGateWarnings(warnings: string[]): void {
 function toastOperatorCleanupWarnings(warnings: string[]): void {
   if (warnings.length === 0) return
   toast.warning(formatOperatorCleanupWarnings(warnings), { duration: 10_000 })
+}
+
+/** Sync partner advisories (spec 2026-11-27); never blocks export. */
+function toastSyncPartnerWarnings(warnings: string[]): void {
+  if (warnings.length === 0) return
+  toast.warning(formatSyncPartnerWarnings(warnings), { duration: 10_000 })
 }
 
 /** Fixed button row advisories (spec 2026-11-11): Back with nothing before it, Back over a resource step. */
@@ -203,6 +210,7 @@ export function CanvasToolbar() {
     toastOperatorCleanupWarnings(
       collectOperatorCleanupWarnings(nodes, edges, useFlowStore.getState().workflowTrySpecifications),
     )
+    toastSyncPartnerWarnings(collectSyncPartnerWarningsWithChildren(nodes, selectedSpecificationId || '', allSpecs))
     toastFixedBarWarnings(collectFixedBarWarningsWithChildren(nodes, edges, selectedSpecificationId || '', allSpecs))
     await handleCreateRuntimePackage()
   }

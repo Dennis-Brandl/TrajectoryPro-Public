@@ -345,6 +345,7 @@ A level that was renamed, moved or removed, or whose path is ambiguous, cannot b
 A **work-center package** copies a work center and everything beneath it to another Mission Commander installation. It contains:
 - the work-center tree and each work center's settings, including its ISA 88 **Type**;
 - the workflows and environments loaded into each work center, and the links between them;
+- each work center's own shares, counts and names for its resources (see [The Work Center's Own Count and Names](#the-work-centers-own-count-and-names));
 - the roles and the allowed-role grants.
 
 It contains **no user accounts**, and no runtime workflows, history or operator presence.
@@ -375,6 +376,9 @@ It contains **no user accounts**, and no runtime workflows, history or operator 
 - **The package's settings win.** Where a work center or workflow entry already exists, the package's settings, such as its dispatch policy, replace the target's. The preview lists each such change under **Config changes**.
 - **The target's extra grants stay.** Grants that exist only on the target are listed as kept.
 - **Work center types follow the package.** A typed work center in the package sets the target's type, and an untyped one clears it. A package saved before types existed leaves the target's types unchanged.
+- **Resource counts and names follow the package.** Each change is listed under **Config changes**, for example `Resource "Scales" count 2 → 4`. A name that a running workflow holds stays held until it is released. A raised count or a new name reaches workflows already waiting for that resource the next time it is released; if nothing holds it, use **Change count…** or **Change names…** on the Resources tab after the merge, which hands it out at once. A package saved before this was added leaves the target's values unchanged.
+
+When a package is imported, either way, a resource it names that the work center does not have (or has as a different type) is skipped and listed in the warnings. A value that differs from what loading the environments gave shows **Set in Commander by** the person importing.
 
 ---
 
@@ -486,7 +490,7 @@ The environment detail panel has a **Delete** button, which is blocked while run
 - **Overview** -- version, state, owning work center, OID, and Mission Designer provenance
 - **Actions** -- the actions this environment provides, with library, version, inputs and outputs
 - **Workflows** -- the workflows that use this environment spec
-- **Resources** -- live state of the shared resources this environment declares
+- **Resources** -- live state of the shared resources this environment declares. Commanders can change a resource's shares, count or names here (see [The Work Center's Own Count and Names](#the-work-centers-own-count-and-names))
 - **Value Properties** -- live values of the shared value properties this environment declares, plus any it registered in the work center. Commanders can edit a value here
 - **Action Properties** -- the action properties this environment hands its actions: one row per entry, with its value. These come from the loaded spec and are read-only; change them in Mission Designer and load the environment again
 
@@ -714,6 +718,36 @@ Every resource action requires Mission System Commander. An action on a shared r
 | **Cancel** (on a waiter) | Cancel that run's wait. The step fails (a TRY rule can catch it), and any capacity already reserved for it is returned                                  |
 
 **Reset**, **Clear** and **Cancel** ask for confirmation first.
+
+A **Synchronize** can wait for more than two partners: its workflow says how many (set in Mission Designer). The waiting steps continue together once that many have arrived. If a partner is stopped or aborted, the rest keep waiting; **Clear** ends their wait.
+
+### The Work Center's Own Count and Names
+
+A resource's shares, count and names describe the work center's real equipment: how many weigh scales it has, or which loading docks. The values in Mission Designer are only defaults.
+
+- The **first** load of an environment creates its resources with Mission Designer's values.
+- After that, loading the environment again (on its own, inside a workflow package, or in a work-center package) **never** changes a resource's shares, count or names, even when a newer version has different ones. Its description still follows the newest version.
+- If a newer version changes a resource's **type** (for example from Count Limited to Named), the old count or names mean nothing for the new type, so the resource takes Mission Designer's whole definition. The load warning says so.
+
+To change them, open the environment, choose the **Resources** tab and use the button on the resource's row. It needs Mission System Commander, like the other resource actions:
+
+| Button              | Resource type                          | What you enter                                                           |
+| ------------------- | -------------------------------------- | ------------------------------------------------------------------------ |
+| **Change shares…**  | **binary shared use with pool limits** | How many runs may share it at once (1 or more)                           |
+| **Change count…**   | **countable use with pool limits**     | How many units it has (1 or more)                                        |
+| **Change names…**   | **named pool**                         | One name per line. Add, remove or edit lines; at least one, no duplicates |
+
+Single Use and Sync resources have nothing to change. The dialog shows what is in use now and Mission Designer's value for reference.
+
+- **Raising** a count or **adding** a name hands the new room to the runs waiting for it straight away, in order.
+- **Lowering** a count below what is in use lets the current holders finish; nothing new is handed out until there is room. The row shows **over-committed** until then.
+- **Removing** a name that is in use lets that run finish with it; the name is then not handed out again. Editing a name works the same way: the old name is removed and the new one is added.
+
+After a change, the resource's name shows **Set in Commander by** the person and the date.
+
+For example, Mission Designer may define a named resource **Loading Docks** with the names Dock 1, Dock 2 and Dock 3. In a work center with four docks called North, South, East and West, use **Change names…** to enter those four. A later version of the environment from Mission Designer keeps them.
+
+A work-center package carries these values, so a work center made from the package gets them too (see [Work-Center Packages](#6-work-center-packages-wfcenterx)).
 
 ### When a Run Ends Holding a Shared Resource
 

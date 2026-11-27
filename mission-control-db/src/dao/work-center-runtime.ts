@@ -162,10 +162,12 @@ function definitionOf(r: EnvResourceSpec): Definition {
 
 /** A short, human-readable rendering of a definition, used to make a conflict warning say
  *  what actually differs without anyone needing to open Designer. */
-function describeDefinition(d: Definition): string {
+function describeDefinition(d: Definition, withCapacity = true): string {
   const parts = [d.resourceType];
-  if (d.useLimit !== null) parts.push(`use_limit ${d.useLimit}`);
-  if (d.poolNames.length > 0) parts.push(`names [${d.poolNames.join(', ')}]`);
+  // Spec 2026-11-26: on the same type the count and names are the work center's own and never
+  // part of a conflict, so a warning about a description change leaves them out.
+  if (withCapacity && d.useLimit !== null) parts.push(`use_limit ${d.useLimit}`);
+  if (withCapacity && d.poolNames.length > 0) parts.push(`names [${d.poolNames.join(', ')}]`);
   if (d.description) parts.push(`"${d.description}"`);
   return parts.join(', ');
 }
@@ -174,11 +176,11 @@ function sameArray(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((v, i) => v === b[i]);
 }
 
-function definitionDiffers(row: { resourceType: string; useLimit: number | null; poolNames: string[]; description: string | null }, next: Definition): boolean {
-  return row.resourceType !== next.resourceType
-    || row.useLimit !== next.useLimit
-    || row.description !== next.description
-    || !sameArray(row.poolNames, next.poolNames);
+/** Spec 2026-11-26: a resource's count, shares and names belong to the work center — Designer's
+ *  are only the first load's defaults. So a re-load compares type and description only; a
+ *  different use_limit or roster on the same type is expected, not a conflict. */
+function definitionDiffers(row: { resourceType: string; description: string | null }, next: Definition): boolean {
+  return row.resourceType !== next.resourceType || row.description !== next.description;
 }
 
 /**
@@ -281,7 +283,25 @@ export async function materializeEnvironmentRegistry(
     }));
     if (!incomingWins) continue;
 
+    if (existing.resourceType === next.resourceType) {
+      // Same type: only the description and provenance follow the winning spec; the work
+      // center's count and roster stand (spec 2026-11-26).
+      await tx.update(wcResource).set({
+        description: next.description,
+        definedByEnvSpecId: input.envSpecId,
+        definedFromName: input.envSpecName,
+        definedFromVersion: input.version,
+        definedFromState: input.state,
+        updatedAt: new Date(),
+      }).where(and(eq(wcResource.workCenterId, input.workCenterId), eq(wcResource.name, r.name)));
+      continue;
+    }
+
+    // A type change: the old count or roster means nothing for the new type, so the whole
+    // Designer definition replaces it and the Commander stamp clears.
     await tx.update(wcResource).set({
+      capacitySetBy: null,
+      capacitySetAt: null,
       resourceType: next.resourceType,
       useLimit: next.useLimit,
       poolNames: next.poolNames,
@@ -386,17 +406,21 @@ function conflictWarning(c: {
    *  Draft re-load with edited declarations. Naming it on both sides reads as nonsense. */
   sameSpec: boolean;
 }): string {
-  const incoming = `"${c.incomingName}" v${c.incomingVersion} ${c.incomingState} (${describeDefinition(c.incomingDef)})`;
+  const typed = c.incomingDef.resourceType !== c.incumbentDef.resourceType;
+  const incoming = `"${c.incomingName}" v${c.incomingVersion} ${c.incomingState} (${describeDefinition(c.incomingDef, typed)})`;
   if (c.sameSpec) {
     return `Resource "${c.resourceName}" is already registered by this same spec identity with a different definition `
-      + `(${describeDefinition(c.incumbentDef)}); the incoming declaration is ${incoming}. `
-      + `The registry keeps the existing definition — bump the version to change a live declaration.`;
+      + `(${describeDefinition(c.incumbentDef, typed)}); the incoming declaration is ${incoming}. `
+      + `The registry keeps the existing definition — bump the version to change a live type or description.`;
   }
   const incumbentLabel = c.incumbentName ? `"${c.incumbentName}"` : 'an unnamed deleted spec';
-  const incumbent = `${incumbentLabel} v${c.incumbentVersion ?? '?'} ${c.incumbentState ?? '?'} (${describeDefinition(c.incumbentDef)})`;
+  const incumbent = `${incumbentLabel} v${c.incumbentVersion ?? '?'} ${c.incumbentState ?? '?'} (${describeDefinition(c.incumbentDef, typed)})`;
   return c.winner === 'incoming'
     ? `Resource "${c.resourceName}" is declared differently by ${incoming} than by ${incumbent}. `
       + `The work center shares one resource name space, so the newer Effective declaration now owns it.`
+      + (typed
+        ? ` Its type changed, so its count, shares and names were reset to the values in Designer.`
+        : '')
     : `Resource "${c.resourceName}" is declared differently by ${incoming} than by ${incumbent}. `
       + `${incumbentLabel} outranks it, so the existing definition was kept.`;
 }

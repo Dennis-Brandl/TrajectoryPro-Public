@@ -177,7 +177,7 @@ test('a conflicting redeclaration from a lower-ranked spec warns but does not di
   } finally { await close(); }
 });
 
-test('shrinking use_limit below in_use leaves the pool over-committed rather than truncating', async () => {
+test('a newer version with a different use_limit keeps the work center count (spec 2026-11-26)', async () => {
   const { db, close } = await makeTestDb();
   try {
     const [wc] = await db.insert(workCenter).values({ name: 'Line 1' }).returning();
@@ -201,12 +201,13 @@ test('shrinking use_limit below in_use leaves the pool over-committed rather tha
     });
 
     const [row] = await db.select().from(wcResource);
-    expect(row.useLimit).toBe(4);
-    expect(row.inUse).toBe(8); // over-committed, surfaced by the UI rather than silently fixed
+    expect(row.useLimit).toBe(10); // the work center's count stands; Designer's is only a default
+    expect(row.inUse).toBe(8);
+    expect(row.definedFromVersion).toBe('2.0.0'); // provenance still follows the newer version
   } finally { await close(); }
 });
 
-test('a shrunk pool roster keeps held names out of both arrays so release discards them', async () => {
+test('a newer version with a different roster keeps the work center names (spec 2026-11-26)', async () => {
   const { db, close } = await makeTestDb();
   try {
     const [wc] = await db.insert(workCenter).values({ name: 'Line 1' }).returning();
@@ -232,10 +233,8 @@ test('a shrunk pool roster keeps held names out of both arrays so release discar
     });
 
     const [row] = await db.select().from(wcResource);
-    expect(row.poolNames).toEqual(['B1', 'B3', 'B4']);
-    // B4 joins as free; B1/B3 stay free; B2 is in NEITHER array -> releaseNamed discards it.
-    expect([...row.availableNames].sort()).toEqual(['B1', 'B3', 'B4']);
-    expect(row.poolNames).not.toContain('B2');
+    expect(row.poolNames).toEqual(['B1', 'B2', 'B3']);
+    expect([...row.availableNames].sort()).toEqual(['B1', 'B3']); // B2 still held
   } finally { await close(); }
 });
 
@@ -519,5 +518,63 @@ test('a same-identity re-load with an edited declaration says so instead of nami
     expect(warnings[0].match(/"EnvA"/g)).toHaveLength(1); // named once, not "EnvA ... than by EnvA"
     const [row] = await db.select().from(wcResource);
     expect(row.resourceType).toBe('binary exclusive use'); // the existing definition stands
+  } finally { await close(); }
+});
+
+const scaleSpec = (useLimit: number, description = 'weigh scales') => ({ resource_property_specifications: [
+  { name: 'Scales', resource_type: 'countable use with pool limits', use_limit: useLimit, description },
+] });
+
+test('a Commander-set count survives a re-load of the same environment with no warning', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    const [wc] = await db.insert(workCenter).values({ name: 'Line 1' }).returning();
+    const env = await makeEnv(db, { wcId: wc.id, state: 'Effective', spec: scaleSpec(3) });
+    const input = { workCenterId: wc.id, envSpecId: env.id, envSpecName: 'DemoLine', version: '1.0.0', state: 'Effective', downloadedAt: new Date('2026-08-01') };
+    await materializeEnvironmentRegistry(db, { ...input, specJsonb: scaleSpec(3) });
+    await db.update(wcResource).set({ useLimit: 5, capacitySetAt: new Date() }).where(eq(wcResource.name, 'Scales'));
+    const { warnings } = await materializeEnvironmentRegistry(db, { ...input, specJsonb: scaleSpec(3) });
+    expect(warnings).toEqual([]);
+    const [row] = await db.select().from(wcResource);
+    expect(row.useLimit).toBe(5);
+    expect(row.capacitySetAt).not.toBeNull();
+  } finally { await close(); }
+});
+
+test('a winning description change updates the description but not the count', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    const [wc] = await db.insert(workCenter).values({ name: 'Line 1' }).returning();
+    const v1 = await makeEnv(db, { wcId: wc.id, state: 'Effective', spec: scaleSpec(3) });
+    await materializeEnvironmentRegistry(db, { workCenterId: wc.id, envSpecId: v1.id, envSpecName: 'DemoLine', version: '1.0.0', state: 'Effective', downloadedAt: new Date('2026-08-01'), specJsonb: scaleSpec(3) });
+    const v2 = await makeEnv(db, { wcId: wc.id, version: '2.0.0', state: 'Effective', spec: scaleSpec(7, 'floor scales') });
+    const { warnings } = await materializeEnvironmentRegistry(db, { workCenterId: wc.id, envSpecId: v2.id, envSpecName: 'DemoLine', version: '2.0.0', state: 'Effective', downloadedAt: new Date('2026-08-02'), specJsonb: scaleSpec(7, 'floor scales') });
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('floor scales');
+    expect(warnings[0]).not.toContain('use_limit'); // the count is not part of the conflict
+    const [row] = await db.select().from(wcResource);
+    expect(row.description).toBe('floor scales');
+    expect(row.useLimit).toBe(3);
+  } finally { await close(); }
+});
+
+test('a winning type change takes the Designer definition, clears the Commander stamp, and says the count was reset', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    const [wc] = await db.insert(workCenter).values({ name: 'Line 1' }).returning();
+    const v1 = await makeEnv(db, { wcId: wc.id, state: 'Effective', spec: scaleSpec(3) });
+    await materializeEnvironmentRegistry(db, { workCenterId: wc.id, envSpecId: v1.id, envSpecName: 'DemoLine', version: '1.0.0', state: 'Effective', downloadedAt: new Date('2026-08-01'), specJsonb: scaleSpec(3) });
+    await db.update(wcResource).set({ useLimit: 5, capacitySetAt: new Date() }).where(eq(wcResource.name, 'Scales'));
+    const named = { resource_property_specifications: [{ name: 'Scales', resource_type: 'named pool', names: ['S1', 'S2'] }] };
+    const v2 = await makeEnv(db, { wcId: wc.id, version: '2.0.0', state: 'Effective', spec: named });
+    const { warnings } = await materializeEnvironmentRegistry(db, { workCenterId: wc.id, envSpecId: v2.id, envSpecName: 'DemoLine', version: '2.0.0', state: 'Effective', downloadedAt: new Date('2026-08-02'), specJsonb: named });
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('reset to the values in Designer');
+    const [row] = await db.select().from(wcResource);
+    expect(row.resourceType).toBe('named pool');
+    expect(row.poolNames).toEqual(['S1', 'S2']);
+    expect(row.useLimit).toBeNull();
+    expect(row.capacitySetAt).toBeNull();
+    expect(row.capacitySetBy).toBeNull();
   } finally { await close(); }
 });

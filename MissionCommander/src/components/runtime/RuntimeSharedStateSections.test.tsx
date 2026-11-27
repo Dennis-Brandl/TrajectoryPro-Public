@@ -37,7 +37,7 @@ const RESOURCES: InstanceResourcesView = {
     unaccounted: 0, ledgerMismatch: false, overCommitted: false,
     holders: [{ id: 1, instanceId: 'rw1', runtimeNumber: 12, runtimeLabel: 'MIX-20261007-001', masterName: 'Mix', stepOid: 's-mix', stepName: 'Mix Step', amount: 1, heldName: null, acquiredAt: '2026-09-01T00:00:00Z' }],
     waiters: [],
-    definedBy: { envSpecId: 'e1', name: 'Kitchen', version: '1.0.0', state: 'Effective' }, orphaned: false, updatedAt: '2026-09-01T00:00:00Z',
+    definedBy: { envSpecId: 'e1', name: 'Kitchen', version: '1.0.0', state: 'Effective' }, orphaned: false, updatedAt: '2026-09-01T00:00:00Z', designerDefault: null, capacitySetBy: null, capacitySetAt: null,
   }],
 };
 const VALUES: InstanceValuePropertiesView = {

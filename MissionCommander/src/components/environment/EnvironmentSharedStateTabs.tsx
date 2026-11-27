@@ -19,6 +19,7 @@ import { useMissionSystemCommander } from '@/stores/principalStore';
 import { ResourceTable, toSharedResourceRow, type ResourceTableRow } from '@/components/shared/ResourceTable';
 import { resourceVerbCall, verbFailText, verbSuccessText, type ResourceVerbArgs } from '@/components/shared/ResourceActions';
 import { ValuePropertyTable } from '@/components/shared/ValuePropertyTable';
+import type { CapacityBody } from '@/components/shared/CapacityDialog';
 import { useActionRunner } from '@/components/shared/useActionRunner';
 import { SHARED_STATE_POLL_MS } from '@/components/shared/shared-state-poll';
 import type { ResourceVerb, SharedValuePropertyView } from '@/lib/api/types';
@@ -57,13 +58,16 @@ export function EnvironmentResourcesTab({ envId }: { envId: string }) {
   const unregistered = view.unregistered.length > 0;
   const onVerb = (row: ResourceTableRow, verb: ResourceVerb, args: ResourceVerbArgs) =>
     void run(resourceVerbCall(row, verb, args), verbSuccessText(verb, row.name), verbFailText(verb));
+  // Spec 2026-11-26: the count, shares or names are the work center's own.
+  const onSetCapacity = (row: ResourceTableRow, body: CapacityBody) =>
+    void run(() => workCenters.setResourceCapacity(view.workCenterId, body), `Changed “${row.name}”`, 'Change failed');
   return (
     <div className="space-y-2">
       {stale && <StaleNotice />}
       {unregistered && <UnregisteredNotice names={view.unregistered} />}
       <ResourceTable rows={view.resources.map(toSharedResourceRow)}
         emptyText={unregistered ? 'No registered resources yet' : 'This environment declares no resources'}
-        actions={{ canCommand, busy, onVerb }} />
+        actions={{ canCommand, busy, onVerb, onSetCapacity }} />
     </div>
   );
 }

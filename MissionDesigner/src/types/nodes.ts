@@ -322,6 +322,14 @@ export interface StepResourceCommand {
   /** Property key the count is read from when `countValueType` is 'property'
    *  (same key format an input parameter's Source value uses). */
   countProperty?: string
+  /** Synchronize only (spec 2026-11-27): where the number of partners comes from. Absent =
+   *  'literal' (the Text value in `partners`); 'property' = read at runtime from `partnersProperty`. */
+  partnersValueType?: 'literal' | 'property'
+  /** Synchronize only: the Text value for the number of partners (absent = '2'). Kept as text so
+   *  export can refuse a value that is not a number 2 or greater; kept while in Source mode. */
+  partners?: string
+  /** Synchronize only: property key the number of partners is read from in Source mode. */
+  partnersProperty?: string
   /** Value property ref for storing the acquired named resource (Named type only) */
   target?: string
   /** Value property ref or literal for the data to send (Sync Send only) */

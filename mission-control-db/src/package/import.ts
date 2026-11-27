@@ -12,14 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import { readZipEntries } from '../ingest/zip.js';
 import { DaoError } from '../dao/errors.js';
 import { lenientTypeName } from '../dao/type-name.js';
 import {
   workCenter, workflow, environmentSpec, workflowEnvironment, role, workflowNode, workflowAllowedRole,
-  appUser, masterSchedule,
+  appUser, masterSchedule, wcResource,
 } from '../db/schema/index.js';
+import {
+  checkPoolNames, freeNamesAfter, isCountedType, readHeldNames, validUseLimit, NAMED_TYPE,
+} from '../runtime/resource-capacity.js';
 import { createWorkCenter } from '../dao/work-centers.js';
 import { materializeEnvironmentRegistry } from '../dao/work-center-runtime.js';
 import { insertWorkflowEntry } from '../ingest/insert-workflow-entry.js';
@@ -32,7 +35,7 @@ import {
 } from './wfcenter-format.js';
 import type {
   WfcenterManifest, WfcenterRole, WfcenterGrant, WfcenterRolesFile, WfcenterGrantsFile,
-  WfcenterWorkCenter,
+  WfcenterWorkCenter, WfcenterResource,
 } from './wfcenter-format.js';
 import type { Schema } from '../db/client.js';
 import type { PgDatabase } from 'drizzle-orm/pg-core';
@@ -105,6 +108,10 @@ export function readWfcenterx(buf: Buffer): ReadPackage {
     // so one bad Master is skipped rather than failing the package; only the shape of the list is checked here.
     if (wc.masterSchedules !== undefined && !Array.isArray(wc.masterSchedules)) {
       throw bad(`WFcenterX: work center "${wc.path}" has a masterSchedules that is not a list`);
+    }
+    // Spec 2026-11-26. Each entry is checked at import (a bad one is a warning); only the list shape here.
+    if (wc.resources !== undefined && !Array.isArray(wc.resources)) {
+      throw bad(`WFcenterX: work center "${wc.path}" has a resources that is not a list`);
     }
   }
 
@@ -289,6 +296,76 @@ async function applyWorkCenterConfig(
 }
 
 /**
+ * Spec 2026-11-26: set each resource's shares, count or names from the package. The package wins,
+ * like the rest of a work center's settings; on a work center that existed before the import each
+ * real change is listed in `configChanges`. A resource the work center lacks, or has as another
+ * type, is a warning and is skipped. A name a run holds stays held even when the package adds it
+ * back. The table is written directly (no engine grant pass): a raised count reaches the runs
+ * waiting for it at the next release.
+ */
+async function applyPackageResources(
+  tx: Db, workCenterId: string, wc: WfcenterWorkCenter, preexisting: Set<string>, actor: string | null, report: ImportReport,
+): Promise<void> {
+  // The package is untrusted: keep well-formed entries, the first of each name.
+  const entries: WfcenterResource[] = [];
+  const seen = new Set<string>();
+  for (const r of (wc.resources ?? []) as unknown[]) {
+    const e = r as Partial<WfcenterResource> | null;
+    if (e === null || typeof e !== 'object' || typeof e.name !== 'string' || typeof e.resourceType !== 'string') {
+      report.warnings.push(`A resource entry in "${wc.path}" was skipped: it has no name or type.`);
+      continue;
+    }
+    if (seen.has(e.name)) {
+      report.warnings.push(`Resource "${e.name}" in "${wc.path}" is listed more than once; the first entry was used.`);
+      continue;
+    }
+    seen.add(e.name);
+    entries.push(e as WfcenterResource);
+  }
+  if (entries.length === 0) return;
+
+  // One lock for every row, in name order — the order a workflow transition locks registry rows
+  // in (lockRegistry), so a merge into a live work center cannot deadlock with one.
+  const rows = await tx.select().from(wcResource)
+    .where(and(eq(wcResource.workCenterId, workCenterId), inArray(wcResource.name, entries.map((e) => e.name))))
+    .orderBy(asc(wcResource.name)).for('update');
+  const byName = new Map(rows.map((r) => [r.name, r]));
+
+  for (const r of [...entries].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
+    const label = `Resource "${r.name}" in "${wc.path}"`;
+    const row = byName.get(r.name);
+    if (!row) { report.warnings.push(`${label} was not set: no environment in the package declares it.`); continue; }
+    if (row.resourceType !== r.resourceType) {
+      report.warnings.push(`${label} was not set: the package has it as ${r.resourceType}, this work center as ${row.resourceType}.`);
+      continue;
+    }
+    let patch: Partial<typeof wcResource.$inferInsert>;
+    let change: { field: string; from: string | number; to: string | number };
+    if (isCountedType(r.resourceType)) {
+      if (!validUseLimit(r.useLimit)) { report.warnings.push(`${label} was not set: its number is not a whole number of at least 1.`); continue; }
+      const from = row.useLimit ?? 1;
+      if (from === r.useLimit) continue;
+      patch = { useLimit: r.useLimit };
+      change = { field: `Resource "${r.name}" ${r.resourceType === 'countable use with pool limits' ? 'count' : 'shares'}`, from, to: r.useLimit };
+    } else if (r.resourceType === NAMED_TYPE) {
+      const list = checkPoolNames(r.names);
+      if (typeof list === 'string') { report.warnings.push(`${label} was not set: ${list}.`); continue; }
+      if (list.length === row.poolNames.length && list.every((n, i) => n === row.poolNames[i])) continue;
+      const held = await readHeldNames(tx, workCenterId, r.name);
+      patch = { poolNames: list, availableNames: freeNamesAfter(row.availableNames, row.poolNames, list, held) };
+      change = { field: `Resource "${r.name}" names`, from: row.poolNames.join(', '), to: list.join(', ') };
+    } else {
+      continue; // binary exclusive and sync carry no capacity
+    }
+    const now = new Date();
+    await tx.update(wcResource).set({ ...patch, capacitySetBy: actor, capacitySetAt: now, updatedAt: now })
+      .where(and(eq(wcResource.workCenterId, workCenterId), eq(wcResource.name, r.name)));
+    // A row this import created has no earlier value to overwrite.
+    if (preexisting.has(r.name)) report.configChanges.push({ workCenterPath: wc.path, workflow: null, ...change });
+  }
+}
+
+/**
  * Replay a .WFcenterX into this instance as a NEW work-center subtree.
  *
  * ONE transaction (spec §8.3): work_center.parent_work_center_id is RESTRICT, so a partial
@@ -328,6 +405,8 @@ export async function importWfcenterx(
     // uses. readWfcenterx guarantees parent-before-child, so the parent id is always known —
     // the identical property create mode already depends on.
     const idByPath = new Map<string, string>();
+    // Matched work centers → the resource names they had before this import (spec 2026-11-26).
+    const preexistingResources = new Map<string, Set<string>>();
     for (const wc of pkg.manifest.workCenters) {
       let parentId: string | null;
       if (wc.parentPath === null) {
@@ -358,6 +437,9 @@ export async function importWfcenterx(
       }
 
       if (existingId !== null) {
+        // Resource rows the target already had: only a change to one of these is an overwrite.
+        preexistingResources.set(wc.path, new Set((await tx.select({ name: wcResource.name }).from(wcResource)
+          .where(eq(wcResource.workCenterId, existingId))).map((r) => r.name)));
         await applyWorkCenterConfig(tx, existingId, wc, report);
         idByPath.set(wc.path, existingId);
         report.workCenters.matched++;
@@ -507,6 +589,12 @@ export async function importWfcenterx(
           else report.links.alreadyPresent++;
         }
       }
+    }
+
+    // 4b. Spec 2026-11-26: the work centers' own counts and names, after every environment has
+    //     loaded (directly or inside a workflow), so each resource row exists to receive them.
+    for (const wc of pkg.manifest.workCenters) {
+      await applyPackageResources(tx, idByPath.get(wc.path)!, wc, preexistingResources.get(wc.path) ?? new Set(), opts.downloadedBy ?? null, report);
     }
 
     // 5. Missing role definitions, by name. role.name is globally UNIQUE, which is what makes

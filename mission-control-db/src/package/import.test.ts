@@ -14,11 +14,13 @@
 
 import { expect, test } from 'vitest';
 import AdmZip from 'adm-zip';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { makeTestDb } from '../../test/helpers/db.js';
 import {
   workCenter, workflow, environmentSpec, workflowEnvironment, workflowNode, role, workflowAllowedRole, wcResource,
+  wcResourceHolder, workflowInstance,
 } from '../db/schema/index.js';
+import { materializeEnvironmentRegistry } from '../dao/work-center-runtime.js';
 import { buildWfcenterx } from './export.js';
 import { appUser, masterSchedule, runtimeSchedule } from '../db/schema/index.js';
 import { createMasterSchedule, upsertMasterScheduleByKey, listMasterSchedules, definitionOf } from '../scheduling/master-dao.js';
@@ -1590,4 +1592,184 @@ test('merge import: a Master whose name exists on the target keeps the target\'s
     expect(list.find((m) => m.name === 'Nightly')!.description).toBe('Hand made');
     expect(list.find((m) => m.name === 'Nightly')!.revision).toBe(1);
   } finally { await close(); }
+});
+
+// ── Spec 2026-11-26 addendum: a work-center package carries the work center's own counts and names.
+const CAP_ENV = { local_id: 'Plant', oid: 'e-cap', resource_property_specifications: [
+  { name: 'Scales', resource_type: 'countable use with pool limits', use_limit: 2 },
+  { name: 'Docks', resource_type: 'named pool', names: ['D1', 'D2'] },
+  { name: 'Printer', resource_type: 'binary exclusive use' },
+] };
+async function loadCapEnv(db: any, wcId: string) {
+  const [env] = await db.insert(environmentSpec).values({
+    oid: 'e-cap', name: 'Plant', workCenterId: wcId, version: '1.0.0', state: 'Effective', specJsonb: CAP_ENV,
+  }).returning();
+  await materializeEnvironmentRegistry(db, {
+    workCenterId: wcId, envSpecId: env.id, envSpecName: 'Plant', version: '1.0.0', state: 'Effective',
+    downloadedAt: env.downloadedAt, specJsonb: CAP_ENV,
+  });
+}
+const capRow = async (db: any, wcId: string, name: string) =>
+  (await db.select().from(wcResource).where(and(eq(wcResource.workCenterId, wcId), eq(wcResource.name, name))))[0];
+const capPackage = () => exportFrom(async (db) => {
+  const [root] = await db.insert(workCenter).values({ name: 'Line' }).returning();
+  await loadCapEnv(db, root.id);
+  await db.update(wcResource).set({ useLimit: 5 }).where(eq(wcResource.name, 'Scales'));
+  await db.update(wcResource).set({ poolNames: ['North', 'South'], availableNames: ['North', 'South'] }).where(eq(wcResource.name, 'Docks'));
+  // A row no environment declares any more: it travels, and the importer has nothing to put it on.
+  await db.insert(wcResource).values({ workCenterId: root.id, name: 'Old carts', resourceType: 'countable use with pool limits', useLimit: 9 });
+  return root.id;
+});
+
+test('export lists the shared, counted and named resources of each work center with their current values', async () => {
+  const pkg = readWfcenterx(await capPackage());
+  expect(pkg.manifest.workCenters[0].resources).toEqual([
+    { name: 'Docks', resourceType: 'named pool', names: ['North', 'South'] },
+    { name: 'Old carts', resourceType: 'countable use with pool limits', useLimit: 9 },
+    { name: 'Scales', resourceType: 'countable use with pool limits', useLimit: 5 },
+  ]);
+});
+
+test('create mode: the new work center gets the package values, stamped by the importer; a resource with no row is a warning', async () => {
+  const buf = await capPackage();
+  const { db, close } = await makeTestDb();
+  try {
+    const [u] = await db.insert(appUser).values({ email: 'imp@x.io', displayName: 'Imp', loginName: 'imp' }).returning();
+    const report = await importWfcenterx(db, buf, { mode: 'create', parentWorkCenterId: null, downloadedBy: u.id });
+    const wcId = report.rootWorkCenterId;
+    const scales = await capRow(db, wcId, 'Scales');
+    expect([scales.useLimit, scales.capacitySetBy]).toEqual([5, u.id]);
+    expect(scales.capacitySetAt).not.toBeNull();
+    const docks = await capRow(db, wcId, 'Docks');
+    expect(docks.poolNames).toEqual(['North', 'South']);
+    expect([...docks.availableNames].sort()).toEqual(['North', 'South']);
+    expect(report.warnings.some((w) => w.includes('Old carts'))).toBe(true);
+    expect(report.configChanges).toEqual([]); // a new work center has nothing to overwrite
+  } finally { await close(); }
+});
+
+test('merge: the package values win and are listed as config changes', async () => {
+  const buf = await capPackage();
+  const { db, close } = await makeTestDb();
+  try {
+    const [target] = await db.insert(workCenter).values({ name: 'Live Line' }).returning();
+    await loadCapEnv(db, target.id);
+    await db.update(wcResource).set({ poolNames: ['D1', 'North'], availableNames: ['D1', 'North'] }).where(eq(wcResource.name, 'Docks'));
+    const report = await importWfcenterx(db, buf, { mode: 'merge', targetWorkCenterId: target.id, confirmed: true });
+    expect((await capRow(db, target.id, 'Scales')).useLimit).toBe(5);
+    const docks = await capRow(db, target.id, 'Docks');
+    expect(docks.poolNames).toEqual(['North', 'South']);
+    expect([...docks.availableNames].sort()).toEqual(['North', 'South']);
+    const changes = report.configChanges.filter((c) => c.field.startsWith('Resource'));
+    expect(changes).toEqual([
+      { workCenterPath: 'Line', workflow: null, field: 'Resource "Docks" names', from: 'D1, North', to: 'North, South' },
+      { workCenterPath: 'Line', workflow: null, field: 'Resource "Scales" count', from: 2, to: 5 },
+    ]);
+  } finally { await close(); }
+});
+
+test('merge: a name in use that the package adds back stays held', async () => {
+  const buf = await exportFrom(async (db) => {
+    const [root] = await db.insert(workCenter).values({ name: 'Line' }).returning();
+    await loadCapEnv(db, root.id); // Docks D1, D2
+    return root.id;
+  });
+  const { db, close } = await makeTestDb();
+  try {
+    const [target] = await db.insert(workCenter).values({ name: 'Live Line' }).returning();
+    await loadCapEnv(db, target.id);
+    // On the target D1 was retired while held: off the roster, still held by a run.
+    await db.update(wcResource).set({ poolNames: ['D2'], availableNames: ['D2'] }).where(eq(wcResource.name, 'Docks'));
+    const [wf] = await db.insert(workflow).values({ oid: 'wx', name: 'X', workCenterId: target.id, version: '1.0.0', state: 'Effective', specJsonb: { local_id: 'X', oid: 'wx' } }).returning();
+    const [inst] = await db.insert(workflowInstance).values({
+      workflowId: wf.id, workCenterId: target.id, triggeredBy: 'manual', status: 'running', specJsonb: {}, runtimeNumber: 1, runtimeLabel: 'RW-1',
+      masterName: 'X', masterOid: 'wx', masterVersion: '1.0.0', masterState: 'Effective',
+    }).returning();
+    await db.insert(wcResourceHolder).values({ workCenterId: target.id, name: 'Docks', instanceId: inst.id, stepOid: 's', amount: 1, heldName: 'D1' });
+    await importWfcenterx(db, buf, { mode: 'merge', targetWorkCenterId: target.id, confirmed: true });
+    const docks = await capRow(db, target.id, 'Docks');
+    expect(docks.poolNames).toEqual(['D1', 'D2']);
+    expect(docks.availableNames).toEqual(['D2']);
+  } finally { await close(); }
+});
+
+test('a package saved before resources travelled leaves the target values alone', async () => {
+  const buf = await capPackage();
+  const zip = new AdmZip(buf);
+  const entry = zip.getEntries().find((e) => e.entryName.endsWith('.WFcenter'))!;
+  const manifest = JSON.parse(entry.getData().toString('utf8'));
+  for (const wc of manifest.workCenters) delete wc.resources;
+  zip.updateFile(entry.entryName, Buffer.from(JSON.stringify(manifest)));
+  const { db, close } = await makeTestDb();
+  try {
+    const [target] = await db.insert(workCenter).values({ name: 'Live Line' }).returning();
+    await loadCapEnv(db, target.id);
+    await db.update(wcResource).set({ useLimit: 7 }).where(eq(wcResource.name, 'Scales'));
+    await importWfcenterx(db, zip.toBuffer(), { mode: 'merge', targetWorkCenterId: target.id, confirmed: true });
+    expect((await capRow(db, target.id, 'Scales')).useLimit).toBe(7);
+  } finally { await close(); }
+});
+
+// ── Review fixes for the resource addendum.
+test('readWfcenterx rejects a resources field that is not a list', async () => {
+  const buf = rewriteManifest(await capPackage(), (wc) => { wc.resources = {}; });
+  expect(() => readWfcenterx(buf)).toThrowError(expect.objectContaining({ code: 'INVALID_PACKAGE' }));
+});
+
+test('malformed and duplicate resource entries are skipped with a warning; the rest still apply', async () => {
+  const buf = rewriteManifest(await capPackage(), (wc) => {
+    wc.resources = [null, { name: 3, resourceType: 'named pool' }, 'x',
+      { name: 'Scales', resourceType: 'countable use with pool limits', useLimit: 5 },
+      { name: 'Scales', resourceType: 'countable use with pool limits', useLimit: 8 }];
+  });
+  const { db, close } = await makeTestDb();
+  try {
+    const report = await importWfcenterx(db, buf, { mode: 'create', parentWorkCenterId: null });
+    expect((await capRow(db, report.rootWorkCenterId, 'Scales')).useLimit).toBe(5);
+    expect(report.warnings.filter((w) => w.includes('resource entry')).length).toBe(3);
+    expect(report.warnings.some((w) => w.includes('"Scales"') && w.includes('more than once'))).toBe(true);
+  } finally { await close(); }
+});
+
+test('a resource name containing " in " keeps its whole name in the config change', async () => {
+  const env = { local_id: 'Plant', oid: 'e-cap', resource_property_specifications: [
+    { name: 'Bin in Bay', resource_type: 'countable use with pool limits', use_limit: 2 },
+  ] };
+  const buf = await exportFrom(async (db) => {
+    const [root] = await db.insert(workCenter).values({ name: 'Line' }).returning();
+    const [e] = await db.insert(environmentSpec).values({ oid: 'e-cap', name: 'Plant', workCenterId: root.id, version: '1.0.0', state: 'Effective', specJsonb: env }).returning();
+    await materializeEnvironmentRegistry(db, { workCenterId: root.id, envSpecId: e.id, envSpecName: 'Plant', version: '1.0.0', state: 'Effective', downloadedAt: e.downloadedAt, specJsonb: env });
+    await db.update(wcResource).set({ useLimit: 6 });
+    return root.id;
+  });
+  const { db, close } = await makeTestDb();
+  try {
+    const [target] = await db.insert(workCenter).values({ name: 'Live Line' }).returning();
+    const [e] = await db.insert(environmentSpec).values({ oid: 'e-cap', name: 'Plant', workCenterId: target.id, version: '1.0.0', state: 'Effective', specJsonb: env }).returning();
+    await materializeEnvironmentRegistry(db, { workCenterId: target.id, envSpecId: e.id, envSpecName: 'Plant', version: '1.0.0', state: 'Effective', downloadedAt: e.downloadedAt, specJsonb: env });
+    const report = await importWfcenterx(db, buf, { mode: 'merge', targetWorkCenterId: target.id, confirmed: true });
+    expect(report.configChanges.map((c) => c.field)).toContain('Resource "Bin in Bay" count');
+  } finally { await close(); }
+});
+
+test('merge: a resource the import itself just created is not listed as an overwrite', async () => {
+  const buf = await capPackage();
+  const { db, close } = await makeTestDb();
+  try {
+    const [target] = await db.insert(workCenter).values({ name: 'Live Line' }).returning(); // no environment yet
+    const report = await importWfcenterx(db, buf, { mode: 'merge', targetWorkCenterId: target.id, confirmed: true });
+    expect((await capRow(db, target.id, 'Scales')).useLimit).toBe(5);
+    expect(report.configChanges.filter((c) => c.field.startsWith('Resource'))).toEqual([]);
+  } finally { await close(); }
+});
+
+test('an Effective-only export carries only the resources its Effective environments declare', async () => {
+  const buf = await exportFrom(async (db) => {
+    const [root] = await db.insert(workCenter).values({ name: 'Line' }).returning();
+    await loadCapEnv(db, root.id); // Effective: Scales, Docks
+    await db.insert(wcResource).values({ workCenterId: root.id, name: 'Draft carts', resourceType: 'countable use with pool limits', useLimit: 4 });
+    return root.id;
+  }, 'effective');
+  const names = readWfcenterx(buf).manifest.workCenters[0].resources!.map((r) => r.name);
+  expect(names).toEqual(['Docks', 'Scales']);
 });

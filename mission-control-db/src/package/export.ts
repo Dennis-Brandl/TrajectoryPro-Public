@@ -16,8 +16,9 @@ import AdmZip from 'adm-zip';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import {
   workCenter, workflow, environmentSpec, workflowEnvironment,
-  role, workflowNode, workflowAllowedRole,
+  role, workflowNode, workflowAllowedRole, wcResource,
 } from '../db/schema/index.js';
+import { COUNTED_TYPES, NAMED_TYPE } from '../runtime/resource-capacity.js';
 import { subtree } from '../dao/work-centers.js';
 import { DaoError } from '../dao/errors.js';
 import { buildNodePaths } from '../ingest/carry-over.js';
@@ -149,6 +150,21 @@ export async function collectWorkCenters(
 
     const masterSchedules = (await listMasterSchedules(db, n.id)).map(definitionOf);
 
+    // Spec 2026-11-26: the work center's own counts and names travel with it.
+    const resources = (await db.select({
+      name: wcResource.name, resourceType: wcResource.resourceType, useLimit: wcResource.useLimit, poolNames: wcResource.poolNames,
+      definedBy: wcResource.definedByEnvSpecId,
+    }).from(wcResource).where(and(
+      eq(wcResource.workCenterId, n.id), inArray(wcResource.resourceType, [...COUNTED_TYPES, NAMED_TYPE]),
+    )).orderBy(asc(wcResource.name)))
+      // An Effective-only package carries only what its environments declare; 'all' carries every
+      // row, orphans included (the importer warns about any it has nowhere to put).
+      .filter((r) => scope !== 'effective' || (r.definedBy !== null && envs.some((e) => e.id === r.definedBy)))
+      .map((r) => (r.resourceType === NAMED_TYPE
+      ? { name: r.name, resourceType: r.resourceType, names: r.poolNames }
+      // A NULL use_limit is a count of 1 (Designer omits it then; the engine reads `?? 1`).
+      : { name: r.name, resourceType: r.resourceType, useLimit: r.useLimit ?? 1 }));
+
     out.push({
       manifest: {
         path, parentPath,
@@ -157,6 +173,7 @@ export async function collectWorkCenters(
         autoClaim: cfg.autoClaim,
         typeName: cfg.typeName,
         masterSchedules,
+        resources,
         workflows, environments,
       },
       workflowRows: wfs.map((w, i) => ({

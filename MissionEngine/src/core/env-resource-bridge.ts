@@ -100,6 +100,10 @@ export function snapshotToSerialized(snap: WcRegistrySnapshot, workCenterId: str
             .map((w) => ({ stepOid: envToken(w.instanceId, w.stepOid), data: w.payload ?? '' })),
           receiveQueue: queued.filter((w) => w.kind === 'receive').map((w) => envToken(w.instanceId, w.stepOid)),
           pendingSync: queued.filter((w) => w.kind === 'sync').map((w) => envToken(w.instanceId, w.stepOid)),
+          // Spec 2026-11-27: a Synchronize waiter's partner count lives in its row's `amount`.
+          partners: Object.fromEntries(queued
+            .filter((w) => w.kind === 'sync' && w.amount !== null)
+            .map((w) => [envToken(w.instanceId, w.stepOid), w.amount as number])),
           ...common }]);
         break;
       default:
@@ -162,7 +166,7 @@ export function queuedTokens(manager: InMemoryResourceManager, name: string): { 
       return [
         ...raw.sendQueue.map((s: { stepOid: string; data: string }) => ({ token: s.stepOid, kind: 'send', amount: null, payload: s.data })),
         ...raw.receiveQueue.map((t: string) => ({ token: t, kind: 'receive', amount: null, payload: null })),
-        ...raw.pendingSync.map((t: string) => ({ token: t, kind: 'sync', amount: null, payload: null })),
+        ...raw.pendingSync.map((t: string) => ({ token: t, kind: 'sync', amount: raw.partners?.[t] ?? null, payload: null })),
       ];
     default:
       return [];

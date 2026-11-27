@@ -1009,6 +1009,10 @@ export function foldOutLegacyEnvResources(context: WorkflowContext, snap: WcRegi
         for (const s of state.sendQueue) target.sendQueue.push({ stepOid: envToken(context.id, s.stepOid), data: s.data });
         for (const stepOid of state.receiveQueue) target.receiveQueue.push(envToken(context.id, stepOid));
         for (const stepOid of state.pendingSync) target.pendingSync.push(envToken(context.id, stepOid));
+        // Spec 2026-11-27: carry each waiter's partner count with its token (absent = 2).
+        for (const [stepOid, n] of Object.entries(state.partners ?? {})) {
+          target.partners = { ...(target.partners ?? {}), [envToken(context.id, stepOid)]: n };
+        }
         break;
     }
 

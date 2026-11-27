@@ -40,9 +40,9 @@ import { readSiteTheme, bumpThemeRev } from 'mission-control-db/src/dao/pilot-th
 import {
   readThemeChain, writeWorkCenterTheme, brokenWorkCenterThemes, missingBrandAssets,
 } from 'mission-control-db/src/dao/pilot-theme-chain';
-import { engineWorkCenterResourceVerb, engineSetWorkCenterValue } from '../lib/engine-client';
+import { engineWorkCenterResourceVerb, engineSetWorkCenterValue, engineSetResourceCapacity } from '../lib/engine-client';
 import { proxyEngine } from '../lib/engine-proxy';
-import { RESOURCE_VERBS, workCenterResourceVerbBody, workCenterValueBody } from '../lib/shared-state-bodies';
+import { RESOURCE_VERBS, workCenterResourceVerbBody, workCenterValueBody, setCapacityBody } from '../lib/shared-state-bodies';
 import { readJsonObject } from '../lib/json-body';
 
 export const workCenterRoutes = new Hono<{ Variables: Vars }>();
@@ -356,6 +356,20 @@ for (const verb of RESOURCE_VERBS) {
     },
   );
 }
+
+// Spec 2026-11-26: change a resource's shares, count or names for this work center.
+workCenterRoutes.post(
+  '/work-centers/:id/resources/set-capacity',
+  requireUuidParams('id'),
+  requireMissionSystemCommander((c) => workCenterIdIfExists(c.req.param('id')!)),
+  async (c) => {
+    const parsed = setCapacityBody.safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) return httpError(c, 400, 'validation', 'Send { name, useLimit } or { name, names }');
+    const id = c.req.param('id');
+    const actorUserId = c.get('principal').userId;
+    return proxyEngine(c, () => engineSetResourceCapacity(id, { ...parsed.data, actorUserId }), 'Change failed');
+  },
+);
 
 workCenterRoutes.post(
   '/work-centers/:id/value-properties',

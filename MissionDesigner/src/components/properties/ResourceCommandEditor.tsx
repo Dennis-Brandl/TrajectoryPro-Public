@@ -215,6 +215,7 @@ function ResourceCommandEditorComponent({
           onUpdate={updateCommand}
           onRemove={removeCommand}
           readOnly={readOnly}
+          sourceGroups={countSourceGroups}
         />
       )}
     </div>
@@ -421,6 +422,55 @@ function CountField({
   )
 }
 
+/** Synchronize partner count (spec 2026-11-27): the Input Parameters Text/Source model. The Text
+ *  value is free text so export can refuse one that is not a number 2 or greater. */
+function PartnersField({
+  cmd,
+  onUpdate,
+  readOnly,
+  sourceGroups,
+}: {
+  cmd: StepResourceCommand
+  onUpdate: (id: string, updates: Partial<StepResourceCommand>) => void
+  readOnly: boolean
+  sourceGroups: ExtraPickerGroup[]
+}) {
+  const isProperty = cmd.partnersValueType === 'property'
+  return (
+    <div className="space-y-0.5">
+      <div className="flex items-center gap-2">
+        <Label className="text-xs text-muted-foreground whitespace-nowrap">Partners:</Label>
+        <ValueTypeRadios
+          name={`partnersValueType-${cmd.id}`}
+          isProperty={isProperty}
+          // `partners` is never touched here, so switching back to Text restores the last value.
+          onChange={(partnersValueType) => onUpdate(cmd.id, { partnersValueType })}
+          disabled={readOnly}
+        />
+      </div>
+      {isProperty ? (
+        <ValuePropertyInput
+          value={cmd.partnersProperty ?? ''}
+          onChange={(value) => onUpdate(cmd.id, { partnersProperty: value })}
+          placeholder="Select workflow or property source..."
+          className="w-full"
+          extraGroups={sourceGroups}
+          readOnly={readOnly}
+        />
+      ) : (
+        <Input
+          type="text"
+          aria-label="Partners"
+          value={cmd.partners ?? '2'}
+          onChange={(e) => onUpdate(cmd.id, { partners: e.target.value })}
+          className="w-20 h-7 text-xs"
+          disabled={readOnly}
+        />
+      )}
+    </div>
+  )
+}
+
 /** Section for Sync resource commands */
 function SyncSection({
   commands,
@@ -431,6 +481,7 @@ function SyncSection({
   onUpdate,
   onRemove,
   readOnly,
+  sourceGroups,
 }: {
   commands: StepResourceCommand[]
   groups: ReturnType<typeof useAvailableResources>['groups']
@@ -440,6 +491,7 @@ function SyncSection({
   onUpdate: (id: string, updates: Partial<StepResourceCommand>) => void
   onRemove: (id: string) => void
   readOnly: boolean
+  sourceGroups: ExtraPickerGroup[]
 }) {
   return (
     <div className="space-y-1.5">
@@ -538,6 +590,10 @@ function SyncSection({
                       readOnly={readOnly}
                     />
                   </div>
+                )}
+                {/* Synchronize: how many partners must arrive (spec 2026-11-27) */}
+                {cmd.commandType === 'Synchronize' && (
+                  <PartnersField cmd={cmd} onUpdate={onUpdate} readOnly={readOnly} sourceGroups={sourceGroups} />
                 )}
                 {/* Sync Receive: store received value */}
                 {cmd.commandType === 'Receive' && (

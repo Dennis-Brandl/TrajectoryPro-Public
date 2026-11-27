@@ -258,6 +258,8 @@ export type SharedResourceView = {
   summary: ResourceSummary; unaccounted: number | null; ledgerMismatch: boolean; overCommitted: boolean;
   holders: SharedResourceHolder[]; waiters: SharedResourceWaiter[];
   definedBy: ResourceProvenance; orphaned: boolean; updatedAt: string;
+  designerDefault: { useLimit: number | null; names: string[] } | null;
+  capacitySetBy: { userId: string; displayName: string } | null; capacitySetAt: string | null;
 };
 export type EnvironmentResourcesView = { workCenterId: string; resources: SharedResourceView[]; unregistered: string[] };
 export type SharedValuePropertyView = { workCenterId: string; propertyName: string; entryName: string; value: string; annotation: boolean; definedByEnvSpecId: string | null; orphaned: boolean; updatedAt: string; updatedByName: string | null };

@@ -1243,11 +1243,23 @@ Release a previously acquired resource after the step completes.
 
 Coordinate data exchange between parallel branches. Only one sync command is allowed per step.
 
-| Command Type    | Description                                     | Additional Fields                                                    |
-| --------------- | ----------------------------------------------- | -------------------------------------------------------------------- |
-| **Send**        | Send a value through the sync resource          | **Parameter to send** -- input parameter or value property reference |
-| **Receive**     | Receive a value from the sync resource          | **Store received value to** -- output parameter or value property    |
-| **Synchronize** | Synchronize execution without transferring data | None                                                                 |
+| Command Type    | Description                                     | Additional Fields                                                          |
+| --------------- | ----------------------------------------------- | -------------------------------------------------------------------------- |
+| **Send**        | Send a value through the sync resource          | **Parameter to send** -- input parameter or value property reference       |
+| **Receive**     | Receive a value from the sync resource          | **Store received value to** -- output parameter or value property          |
+| **Synchronize** | Synchronize execution without transferring data | **Partners** -- how many steps must arrive before all continue (default 2) |
+
+#### Waiting for More Than Two Partners
+
+A **Synchronize** waits until its number of **Partners** have reached the sync resource, then all of them continue together. Like an Input Parameter, Partners is either **Text** (a number) or **Source** (a workflow input parameter or value property, read when the step reaches the SYNC).
+
+- Text must be a whole number 2 or greater. Otherwise export stops with _The number of sync partners must be a number 2 or greater._
+- The first step to wait sets the count for its group. A step that arrives expecting a different count fails, and a TRY rule can catch it; the steps already waiting keep waiting.
+- Once the group has continued, the next step to arrive starts a new group.
+- If a partner is stopped or aborted, the others keep waiting until an operator uses **Clear** on the resource in Mission Commander.
+- For separate workflows to synchronize, declare the Sync resource in the **environment**. A Sync resource declared in the workflow is only shared by the parallel branches of one run; export warns when such a Synchronize has more than 2 partners.
+
+**Example -- weigh and dispense across batches.** Each batch workflow repeats the same steps for every material: acquire the Single Use weigh scale, weigh, release the scale, then a step with a Synchronize on the environment's Sync resource. Give the workflow an input parameter for the number of batches and use it as the Synchronize's Partners source. Every batch takes its turn on the scale, and none moves to the next material until all of them have finished the current one.
 
 ### Execution Order
 

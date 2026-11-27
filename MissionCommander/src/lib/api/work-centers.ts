@@ -41,6 +41,9 @@ export const workCenters = {
   // writer of its own (an environment row IS a filtered view of work-center state).
   resourceVerb: (id: string, verb: ResourceVerb, body: ResourceVerbBody) =>
     post(`/api/work-centers/${id}/resources/${verb}`, body) as Promise<VerbResponse>,
+  // Spec 2026-11-26: a resource's shares or count (useLimit), or a named pool's names.
+  setResourceCapacity: (id: string, body: { name: string; useLimit: number } | { name: string; names: string[] }) =>
+    post(`/api/work-centers/${id}/resources/set-capacity`, body) as Promise<VerbResponse>,
   setValue: (id: string, body: { propertyName: string; entryName: string; value: string }) =>
     post(`/api/work-centers/${id}/value-properties`, body) as Promise<VerbResponse>,
   // Spec 2026-10-09 §8: the work center's Pilot theme override and the layers beneath it.

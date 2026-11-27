@@ -538,6 +538,16 @@
           "minLength": 1,
           "description": "Property key the count is read from when the command runs (Acquire Pool Amount / Release Pool Amount). Wins over amount."
         },
+        "partners": {
+          "type": "integer",
+          "minimum": 2,
+          "description": "Synchronize only: number of partners that must arrive before all continue. Omitted = 2."
+        },
+        "partners_property": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Synchronize only: property key the partner count is read from when the step first reaches the SYNC. Wins over partners."
+        },
         "target": { "type": "string" },
         "source": { "type": "string" }
       },

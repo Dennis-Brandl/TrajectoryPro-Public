@@ -29,7 +29,7 @@ const ORPHAN: SharedResourceView = {
   useLimit: null, poolNames: ['A'], availableNames: ['A'], inUse: 0,
   summary: { total: 1, inUse: 0, available: 1, queued: 0, state: '1 available, 0 in use' },
   unaccounted: 0, ledgerMismatch: false, overCommitted: false, holders: [], waiters: [],
-  definedBy: { envSpecId: null, name: 'Gone', version: '1.0.0', state: 'Effective' }, orphaned: true, updatedAt: '2026-09-01T00:00:00Z',
+  definedBy: { envSpecId: null, name: 'Gone', version: '1.0.0', state: 'Effective' }, orphaned: true, updatedAt: '2026-09-01T00:00:00Z', designerDefault: null, capacitySetBy: null, capacitySetAt: null,
 };
 const TEMP: SharedValuePropertyView = {
   workCenterId: 'w1', propertyName: 'Env', entryName: 'Temp', value: '70', annotation: false,

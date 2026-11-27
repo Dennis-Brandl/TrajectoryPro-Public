@@ -433,6 +433,28 @@ test('work-center release on a wedged row → 200 and in_use 0; unknown resource
   await close();
 });
 
+test('set-capacity: 200 sets the count; names list accepted; wrong shapes 400; unknown resource 404; sync 409', async () => {
+  const { db, close } = await makeTestDb();
+  const wc = await seedWc(db);
+  const [u] = await db.insert(appUser).values({ email: `c${Math.random()}@x.io`, displayName: 'Cap', loginName: `cap${Math.random()}` }).returning();
+  await db.insert(wcResource).values({ workCenterId: wc, name: 'Scales', resourceType: 'countable use with pool limits', useLimit: 2 });
+  await db.insert(wcResource).values({ workCenterId: wc, name: 'Docks', resourceType: 'named pool', poolNames: ['D1'], availableNames: ['D1'] });
+  await db.insert(wcResource).values({ workCenterId: wc, name: 'Bell', resourceType: 'sync' });
+  const app = makeApp(db, 'secret-1');
+  const post = (body: unknown) => postJson(app, `/internal/work-centers/${wc}/resources/set-capacity`, body, 'secret-1');
+  const ok = await post({ name: 'Scales', useLimit: 4, actorUserId: u.id });
+  expect(ok.status).toBe(200);
+  expect(((await ok.json()) as any).summary).toContain('limit 4');
+  expect((await post({ name: 'Docks', names: ['North'], actorUserId: u.id })).status).toBe(200);
+  expect((await post({ name: 'Scales', useLimit: '4', actorUserId: u.id })).status).toBe(400);
+  expect((await post({ name: 'Scales', useLimit: 4, names: ['A'], actorUserId: u.id })).status).toBe(400);
+  expect((await post({ name: 'Scales', useLimit: 4 })).status).toBe(400);
+  expect((await post({ name: 'Nope', useLimit: 4, actorUserId: u.id })).status).toBe(404);
+  const sync = await post({ name: 'Bell', useLimit: 4, actorUserId: u.id });
+  expect([sync.status, ((await sync.json()) as any).error.code]).toEqual([409, 'NOT_SUPPORTED']);
+  await close();
+});
+
 test('value properties: work-center edit stamps updated_by; unknown pair 404; instance route 404 on an unknown id', async () => {
   const { db, close } = await makeTestDb();
   const wc = await seedWc(db);

@@ -44,6 +44,13 @@ export const instanceResourceVerbBody = z.object({
   poolName: name.optional(),
 }).strict();
 
+// Spec 2026-11-26: a resource's shares/count (a number) or a named pool's roster (a list). Shape
+// only; the engine checks the type, trims, and refuses blanks and duplicates.
+export const setCapacityBody = z.union([
+  z.object({ name, useLimit: z.number().int().min(1).max(2147483647) }).strict(),
+  z.object({ name, names: z.array(z.string().max(200)).min(1).max(500) }).strict(),
+]);
+
 export const workCenterValueBody = z.object({
   propertyName: name, entryName: name, value: z.string().max(MAX_VALUE_LENGTH),
 }).strict();

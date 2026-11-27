@@ -676,6 +676,8 @@ Designer exports every embedded-environment resource with `scope: "environment"`
 | `resource_source_type` | `"workflow"`,`"environment"` | no | Advisory (see above). |
 | `amount` | number | Pool Amount: > 0 unless `amount_property` | Count. Undefined = 1. [src: MissionEngine/src/core/transition.ts:118-127] |
 | `amount_property` | non-empty string | no | Pool Amount only: property key whose value (decimal whole number ≥ 1) is the count; wins over `amount`. Acquire reads it once at the fresh attempt; Release reads it when run. A bad value fails the Acquire step (`ERROR`) / records an `ERRORED` trace and releases nothing for the Release. [src: MissionEngine/src/core/transition.ts:94-116,368-394,424-435] |
+| `partners` | integer ≥ 2 | no | Synchronize only: partners that must arrive before all continue. Undefined = 2. See D.4.2b. |
+| `partners_property` | non-empty string | no | Synchronize only: property key whose value (decimal whole number ≥ 2) is the partner count; wins over `partners`. Read once at the step's fresh attempt. See D.4.2b. |
 | `target` | string | no | Acquire on named pool: property receiving the granted name; Release on named pool: property holding the name; Receive: property receiving the data (also exploded if a group list). [src: MissionEngine/src/core/transition.ts:304-327,444] |
 | `source` | string | no | Send: property key whose `resolveKey` value is sent. [src: MissionEngine/src/core/transition.ts:316-318] |
 | `oid` | string | no | Only a bookkeeping key. [src: MissionEngine/src/core/transition.ts:102-104] |
@@ -868,6 +870,8 @@ A `null` root makes the validator throw (TypeError), not return a result. [src: 
 | A3 | `INVALID_RESOURCE_COMMAND` | type mismatch | `<command> not compatible with resource type "<type>"` [validator.ts:624-648] |
 | A3 | `INVALID_RESOURCE_COMMAND` | blank amount_property | `<command> amount_property must be a non-empty property key` [validator.ts:634-639] |
 | A3 | `INVALID_RESOURCE_COMMAND` | amount missing/≤0 | `<command> requires amount > 0` [validator.ts:641-644] |
+| A3 | `INVALID_RESOURCE_COMMAND` | Synchronize partners not an integer ≥ 2 | `Synchronize partners must be a whole number of at least 2` [validator.ts Synchronize branch] |
+| A3 | `INVALID_RESOURCE_COMMAND` | blank partners_property | `Synchronize partners_property must be a non-empty property key` [validator.ts Synchronize branch] |
 | A3 | `INVALID_RESOURCE_COMMAND` | >1 sync cmd on a step | `Step "<oid>" has <n> sync commands (max 1)` [validator.ts:653-655] |
 | A3 | `INVALID_RESOURCE_SPEC` | workflow-level (root/child) named pool w/o names | `Named pool "<name>" must have a non-empty names array` [validator.ts:676-681] |
 | A3 | `INVALID_RESOURCE_SPEC` | workflow-level (root/child) pool-limit type w/o use_limit>0 | `Resource "<name>" requires use_limit > 0` [validator.ts:682-687] |
@@ -3981,7 +3985,7 @@ The engine compiles `Function(...inputIds, 'output', source)` and calls it with 
 - Sync:
   - `Send` matches the head receiver (the sender proceeds at once, and grants are recorded for both sender and receiver; the data is stored for the receiver) or queues the sender with its data.
   - `Receive` matches the head sender (the receiver gets the data at once; the sender is granted) or queues.
-  - `Synchronize` appends the caller; as soon as two are waiting, the first two are paired and both granted (the caller proceeds at once if it was the second).
+  - `Synchronize` appends the caller with its partner count N (default 2); as soon as the group count is waiting (the HEAD waiter's N), that many are taken from the front and all granted (the caller proceeds at once if it was the last). See D.4.2b.
   - Sync has no capacity and no FIFO "queue empty" rule: matching happens only at enqueue time.
   - Received data is written by `setSyncTarget(cmd.target, data)`. `Send` data = `props.resolveKey(cmd.source)` or `''`.
 
@@ -3997,6 +4001,15 @@ The engine compiles `Function(...inputIds, 'output', source)` and calls it with 
 - Release: the count is read when the release runs and released in full (the pool floors at 0). An invalid count releases nothing for that command and records an **instance-level** `ERRORED` trace row (step oid NULL, so it cannot end a re-run of the step) with the detail `Step "<step local_id ?? oid>": Release of "<name>" could not use "<raw>" from <key> as a count: it must be a whole number of at least 1 — nothing was released`, plus a `console.warn`; the step is not failed. [src: transition.ts:396-435, 555-565]
 - `resolveKey` returns the property's string value (`''` when unset). `parseCount` accepts only ASCII decimal digits after trimming (no sign, no decimal point, no exponent: `"3"`, `" 3 "`, `"007"` → valid; `"3.0"`, `"+3"`, `"1e3"`, `"0"` → invalid) and a value ≤ 2^53 − 1. [src: transition.ts:106-112]
 - A literal `amount` that is undefined counts as 1.
+
+### D.4.2b Sync partner counts (`partners`, `partners_property`) — 2026-11-27
+
+- Only on `Synchronize`. `partners_property` (non-blank) wins over `partners`; both absent = 2. [src: transition.ts partnersOf]
+- Parse for `partners_property`: the same `parseCount` rule as D.4.2, then ≥ 2. Else the step fails `ERROR` with `Synchronize on "<name>" could not use "<raw>" from <key> as a partner count: it must be a whole number of at least 2`, holding and queueing nothing.
+- Mismatch: at the step's fresh attempt, before any command, if the resource already has waiters and the head waiter's N ≠ this step's N, the step fails `ERROR` with `Sync "<name>" is waiting for <groupN> partners; this step expects <N>`. It does not join the queue; the waiting group is untouched.
+- Manager state: `SyncState.partners: Record<token, number>` beside `pendingSync` (an absent entry = 2, so pre-2026-11-27 saved state still pairs at 2). Released, cancelled and reset tokens drop their entry. The resume path never re-runs a Synchronize (it sorts first), so N is needed only at enqueue.
+- Environment tier: a `kind = 'sync'` `wc_resource_waiter` row stores N in `amount` (NULL = 2). [src: env-resource-bridge.ts]
+- Group: arrivals after a release start a new group with their own N. A cancelled/aborted partner leaves; recovery is `clear-sync`.
 
 ### D.4.3 Scoping: workflow tier vs environment tier
 

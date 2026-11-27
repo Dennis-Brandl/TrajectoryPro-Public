@@ -229,7 +229,7 @@ function buildNestedChildExport(
 // Resource Source Resolution
 // =============================================================================
 
-interface ResourceSource {
+export interface ResourceSource {
   type: 'workflow' | 'environment'
   oid: string
   /** The declaring resource's UI type — drives the Count Limited → pool-command
@@ -242,7 +242,7 @@ interface ResourceSource {
  * by walking the spec hierarchy: current workflow, its environments,
  * parent workflows, and parent environments.
  */
-function buildResourceSourceMap(spec: Specification, allSpecs: Specification[]): Map<string, ResourceSource> {
+export function buildResourceSourceMap(spec: Specification, allSpecs: Specification[]): Map<string, ResourceSource> {
   const map = new Map<string, ResourceSource>()
   const specData = spec.data as Record<string, unknown> | null
 
@@ -332,6 +332,11 @@ function resolveResourceSources(steps: MasterWorkflowStep[], sourceMap: Map<stri
           command_type,
           resource_source_type: source?.type ?? cmd.resource_source_type ?? 'workflow',
           resource_source_oid: source?.oid ?? cmd.resource_source_oid ?? '',
+        }
+        if (command_type !== 'Synchronize') {
+          // The number of partners only means something on a Synchronize.
+          delete resolved.partners
+          delete resolved.partners_property
         }
         if (isPool && cmd.amount_property) {
           // Source-mode count: the engine reads the amount from this key at runtime.

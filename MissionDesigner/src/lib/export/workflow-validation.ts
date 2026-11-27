@@ -703,6 +703,17 @@ function validateReferences(
         ) {
           errors.push(makeError(`Pick where the ${cmd.commandType} count for "${cmd.resourceName}" comes from`))
         }
+        // 4b. Synchronize number of partners (spec 2026-11-27): Text must be a whole number of at
+        // least 2 (absent = the default 2); Source must name its key.
+        if (resSpec?.resourceType === 'Sync' && cmd.commandType === 'Synchronize') {
+          if (cmd.partnersValueType === 'property') {
+            if (!cmd.partnersProperty?.trim()) {
+              errors.push(makeError(`Pick where the number of sync partners for "${cmd.resourceName}" comes from`))
+            }
+          } else if (cmd.partners !== undefined && !isPartnerCount(cmd.partners)) {
+            errors.push(makeError('The number of sync partners must be a number 2 or greater.'))
+          }
+        }
         if (resSpec?.resourceType === 'Named') {
           if (cmd.commandType === 'Acquire') {
             if (!cmd.target) {
@@ -738,6 +749,12 @@ function validateReferences(
   }
 
   return errors
+}
+
+/** A Synchronize Text partner count: a whole number of at least 2 (surrounding spaces allowed). */
+export function isPartnerCount(text: string): boolean {
+  const t = text.trim()
+  return /^\d+$/.test(t) && Number(t) >= 2
 }
 
 /**

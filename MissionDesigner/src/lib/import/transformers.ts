@@ -141,6 +141,14 @@ export function transformResourceCommands(
     ...(typeof cmd.amount_property === 'string' && cmd.amount_property.trim()
       ? { countValueType: 'property' as const, countProperty: cmd.amount_property }
       : {}),
+    // Spec 2026-11-27: a Synchronize's number of partners, Source or Text.
+    ...(cmd.command_type === 'Synchronize' &&
+    typeof cmd.partners_property === 'string' &&
+    cmd.partners_property.trim()
+      ? { partnersValueType: 'property' as const, partnersProperty: cmd.partners_property }
+      : cmd.command_type === 'Synchronize' && cmd.partners !== undefined
+        ? { partners: String(cmd.partners) }
+        : {}),
     ...(cmd.target ? { target: cmd.target } : {}),
     ...(cmd.source ? { source: cmd.source } : {}),
   }))

@@ -17,7 +17,7 @@ import { eq } from 'drizzle-orm';
 import { makeTestDb } from '../../test/helpers/db.js';
 import { runtimeCols } from '../../test/helpers/instances.js';
 import {
-  workCenter, workflow, workflowInstance, environmentSpec, wcResource, wcResourceHolder, wcResourceWaiter,
+  workCenter, workflow, workflowInstance, environmentSpec, wcResource, wcResourceHolder, wcResourceWaiter, appUser,
 } from '../db/schema/index.js';
 import { listWorkCenterResources, listEnvironmentResources } from './shared-state.js';
 
@@ -169,5 +169,33 @@ test('a missing work center is undefined; an empty registry is []', async () => 
     const { wc } = await seed(db);
     expect(await listWorkCenterResources(db, '00000000-0000-0000-0000-000000000000')).toBeUndefined();
     expect(await listWorkCenterResources(db, wc.id)).toEqual([]);
+  } finally { await close(); }
+});
+
+test('each resource carries the declaring spec\'s value as Designer\'s default, and who set it in Commander', async () => {
+  const { db, close } = await makeTestDb();
+  try {
+    const [wc] = await db.insert(workCenter).values({ name: 'Line 1' }).returning();
+    const [env] = await db.insert(environmentSpec).values({
+      oid: 'env-1', name: 'Kitchen', workCenterId: wc.id, version: '1.0.0', state: 'Effective',
+      specJsonb: { resource_property_specifications: [
+        { name: 'Scales', resource_type: 'countable use with pool limits', use_limit: 2 },
+        { name: 'Docks', resource_type: 'named pool', names: ['D1', 'D2'] },
+      ] },
+    }).returning();
+    const [u] = await db.insert(appUser).values({ email: 'una@example.com', displayName: 'Una', loginName: 'una' }).returning();
+    const at = new Date('2026-11-26T15:00:00Z');
+    const base = { workCenterId: wc.id, definedByEnvSpecId: env.id, definedFromName: 'Kitchen', definedFromVersion: '1.0.0', definedFromState: 'Effective' };
+    await db.insert(wcResource).values({ ...base, name: 'Scales', resourceType: 'countable use with pool limits', useLimit: 5, capacitySetBy: u.id, capacitySetAt: at });
+    await db.insert(wcResource).values({ ...base, name: 'Docks', resourceType: 'named pool', poolNames: ['North'], availableNames: ['North'] });
+    await db.insert(wcResource).values({ workCenterId: wc.id, name: 'Orphan', resourceType: 'countable use with pool limits', useLimit: 1 });
+    const views = (await listWorkCenterResources(db, wc.id))!;
+    const by = (n: string) => views.find((v) => v.name === n)!;
+    expect(by('Scales').designerDefault).toEqual({ useLimit: 2, names: [] });
+    expect(by('Scales').capacitySetBy).toEqual({ userId: u.id, displayName: 'Una' });
+    expect(by('Scales').capacitySetAt).toEqual(at);
+    expect(by('Docks').designerDefault).toEqual({ useLimit: null, names: ['D1', 'D2'] });
+    expect(by('Docks').capacitySetBy).toBeNull();
+    expect(by('Orphan').designerDefault).toBeNull();
   } finally { await close(); }
 });

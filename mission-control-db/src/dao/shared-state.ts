@@ -75,6 +75,12 @@ export type SharedResourceView = {
   definedBy: ResourceProvenance;
   orphaned: boolean;
   updatedAt: Date;
+  /** Spec 2026-11-26: the declaring spec's own use_limit / names for this resource — shown for
+   *  reference when Commander changes it. null when orphaned or the spec no longer declares it. */
+  designerDefault: { useLimit: number | null; names: string[] } | null;
+  /** Who last set the count, shares or names in Commander, and when. */
+  capacitySetBy: { userId: string; displayName: string } | null;
+  capacitySetAt: Date | null;
 };
 
 /** Spec §6.2: the work-center rows FILTERED to the names this spec declares. `unregistered`
@@ -117,9 +123,13 @@ export async function loadResourceViews(db: Db, workCenterId: string, names: str
   const scope = names === null
     ? eq(wcResource.workCenterId, workCenterId)
     : and(eq(wcResource.workCenterId, workCenterId), inArray(wcResource.name, names));
-  const rows = await db.select({ ...getTableColumns(wcResource), liveSpecName: environmentSpec.name })
+  const rows = await db.select({
+    ...getTableColumns(wcResource), liveSpecName: environmentSpec.name, liveSpecJsonb: environmentSpec.specJsonb,
+    capacitySetByName: appUser.displayName,
+  })
     .from(wcResource)
     .leftJoin(environmentSpec, eq(environmentSpec.id, wcResource.definedByEnvSpecId))
+    .leftJoin(appUser, eq(appUser.id, wcResource.capacitySetBy))
     .where(scope)
     .orderBy(asc(wcResource.name));
   if (rows.length === 0) return [];
@@ -187,8 +197,22 @@ export async function loadResourceViews(db: Db, workCenterId: string, names: str
       },
       orphaned: row.definedByEnvSpecId === null,
       updatedAt: row.updatedAt,
+      designerDefault: designerDefaultOf(row.liveSpecJsonb, row.name),
+      capacitySetBy: row.capacitySetBy ? { userId: row.capacitySetBy, displayName: row.capacitySetByName ?? 'a deleted user' } : null,
+      capacitySetAt: row.capacitySetAt,
     };
   });
+}
+
+/** The declaring spec's own count or roster for `name` (Designer's default). */
+function designerDefaultOf(specJsonb: unknown, name: string): SharedResourceView['designerDefault'] {
+  if (specJsonb === null || specJsonb === undefined) return null;
+  const r = readRegistrySource(specJsonb).resources.find((d) => d.name === name);
+  if (!r) return null;
+  return {
+    useLimit: typeof r.use_limit === 'number' ? r.use_limit : null,
+    names: Array.isArray(r.names) ? r.names.filter((n): n is string => typeof n === 'string') : [],
+  };
 }
 
 /** Spec §4.1's per-type "unaccounted" figure, plus §12.1 item 7's clamp-and-badge. */

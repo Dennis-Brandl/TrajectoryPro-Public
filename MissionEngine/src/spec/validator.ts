@@ -647,6 +647,20 @@ function resourceValidation(workflow: Record<string, unknown>): ValidationResult
               return { valid: false, error_code: 'INVALID_RESOURCE_COMMAND', error_message: `${commandType} not compatible with resource type "${resType}"` };
             }
             syncCount++;
+            if (commandType === 'Synchronize') {
+              // Spec 2026-11-27: the partner count (omitted = 2), or the key it is read from.
+              const partnersProperty = cmd['partners_property'];
+              if (partnersProperty !== undefined) {
+                if (typeof partnersProperty !== 'string' || partnersProperty.trim() === '') {
+                  return { valid: false, error_code: 'INVALID_RESOURCE_COMMAND', error_message: 'Synchronize partners_property must be a non-empty property key' };
+                }
+              } else if (cmd['partners'] !== undefined) {
+                const partners = cmd['partners'];
+                if (typeof partners !== 'number' || !Number.isSafeInteger(partners) || partners < 2) {
+                  return { valid: false, error_code: 'INVALID_RESOURCE_COMMAND', error_message: 'Synchronize partners must be a whole number of at least 2' };
+                }
+              }
+            }
           }
         }
 

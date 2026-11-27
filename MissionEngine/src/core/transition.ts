@@ -116,6 +116,26 @@ function badCountMessage(verb: 'Acquire' | 'Release', cmd: ResourceCommandSpecif
   return `${verb} of "${cmd.resource_name}" could not use "${raw}" from ${key} as a count: it must be a whole number of at least 1`;
 }
 
+// ── Sync partner counts (spec 2026-11-27) ──
+
+/** A property value as a partner count: a decimal whole number of at least 2, else null. */
+function parsePartners(raw: string): number | null {
+  const n = parseCount(raw);
+  return n !== null && n >= 2 ? n : null;
+}
+
+/** How many partners a Synchronize waits for: `partners_property` read now, else `partners`, else 2. */
+function partnersOf(context: WorkflowContext, cmd: ResourceCommandSpecification): { n: number } | { error: string } {
+  const key = typeof cmd.partners_property === 'string' && cmd.partners_property.trim() !== '' ? cmd.partners_property : undefined;
+  if (!key) return { n: cmd.partners ?? 2 };
+  const raw = context.props.resolveKey(key);
+  const n = parsePartners(raw);
+  if (n === null) {
+    return { error: `Synchronize on "${cmd.resource_name}" could not use "${raw}" from ${key} as a partner count: it must be a whole number of at least 2` };
+  }
+  return { n };
+}
+
 /** The amount an activation command acquires: the count frozen at the step's fresh attempt for
  *  a property-sourced 'Acquire Pool Amount', else the literal `amount` (undefined = 1, as
  *  today). The fallback re-read only covers a frozen entry that is somehow missing. */
@@ -275,6 +295,9 @@ function attemptResourceCommands(
   stepOid: string,
   remaining: ResourceCommandSpecification[],
   completionCommands: ResourceCommandSpecification[],
+  /** The step's Synchronize partner count, resolved by tryActivateResources. A resumed attempt
+   *  never re-runs a Synchronize (it sorts first and is granted or still parked), so omits it. */
+  syncPartners?: number,
 ): boolean {
   for (let i = 0; i < remaining.length; i++) {
     const cmd = remaining[i];
@@ -327,7 +350,7 @@ function attemptResourceCommands(
         break;
       }
       case 'Synchronize': {
-        const r = mgr.synchronize(key, token);
+        const r = mgr.synchronize(key, token, syncPartners ?? 2);
         if (!r.ready) blocked = true;
         break;
       }
@@ -389,9 +412,24 @@ function tryActivateResources(
     if (n === null) return { error: badCountMessage('Acquire', cmd, key, raw) };
     frozen[amountCommandKey(cmd)] = n;
   }
+  // Spec 2026-11-27: the Synchronize partner count (the validator allows one sync command per
+  // step). A bad count, or one that differs from the group already waiting, fails the step
+  // before anything is attempted, so it never joins (or disturbs) the waiting group.
+  let syncPartners: number | undefined;
+  const syncCmd = activation.find((c) => c.command_type === 'Synchronize');
+  if (syncCmd) {
+    const resolved = partnersOf(context, syncCmd);
+    if ('error' in resolved) return { error: resolved.error };
+    const { mgr, key } = resolveResourceTier(context, stepOid, syncCmd);
+    const groupN = mgr ? mgr.syncGroupPartners(key) : null;
+    if (groupN !== null && groupN !== resolved.n) {
+      return { error: `Sync "${syncCmd.resource_name}" is waiting for ${groupN} partners; this step expects ${resolved.n}` };
+    }
+    syncPartners = resolved.n;
+  }
   if (Object.keys(frozen).length > 0) context.state.resolvedAmounts[stepOid] = frozen;
   const sorted = sortActivationCommands(activation);
-  return attemptResourceCommands(context, stepOid, sorted, completion);
+  return attemptResourceCommands(context, stepOid, sorted, completion, syncPartners);
 }
 
 /** Run a completing step's Release / Release Pool Amount commands (reference
@@ -630,8 +668,10 @@ export async function resumeGrantedSteps(tx: Db, context: WorkflowContext, deps:
       // wedges this one dying instance, while for the ENVIRONMENT tier the manager has already
       // decremented shared capacity (a release's tryGrantXXX already ran) with nothing left to
       // ever consume that grant, wedging the resource for the WHOLE work center. A trace beats
-      // a silent vanish if this ever does fire.
-      if (grant.env) {
+      // a silent vanish if this ever does fire. A sync resource has no capacity to strand, and
+      // the step that completes a Send or Synchronize match leaves its own grant behind as it
+      // proceeds at once (spec 2026-11-27 review), so no warning there.
+      if (grant.env && !grant.mgr.isSyncResource(grant.resourceKey)) {
         console.warn(`[mission-engine] instance ${context.root.id}: dropped an environment grant for resource "${grant.resourceKey}" (token "${grant.queueKey}") — no blockedOnResources record for step "${grant.stepOid}"`);
       }
       continue; // defensive — every real grant traces back to a block we recorded

@@ -51,6 +51,9 @@ export type WfcenterEnvironmentEntry = {
   sourceLibraryOid: string | null;
 };
 
+/** Spec 2026-11-26: a work center's own shares/count (useLimit) or names for one resource. */
+export type WfcenterResource = { name: string; resourceType: string; useLimit?: number; names?: string[] };
+
 export type WfcenterWorkCenter = {
   path: string;
   parentPath: string | null;
@@ -68,6 +71,11 @@ export type WfcenterWorkCenter = {
    * Absent in a pre-scheduling package = none. Optional, so formatVersion stays '1.0'.
    */
   masterSchedules?: ScheduleDefinition[];
+  /**
+   * Spec 2026-11-26: the current shares, count or names of each shared-use, countable and named
+   * resource. Absent in an older package = leave the importing work center's values alone.
+   */
+  resources?: WfcenterResource[];
   workflows: WfcenterWorkflowEntry[];
   environments: WfcenterEnvironmentEntry[];
 };

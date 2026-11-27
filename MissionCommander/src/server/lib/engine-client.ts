@@ -92,6 +92,10 @@ export const engineWorkCenterResourceVerb = (workCenterId: string, verb: Resourc
 export const engineInstanceResourceVerb = (instanceId: string, verb: ResourceVerb, body: InstanceResourceVerbBody): Promise<EngineVerbResult> =>
   engineVerb(`/internal/instances/${instanceId}/resources/${verb}`, body);
 
+export type SetCapacityBody = ({ name: string; useLimit: number } | { name: string; names: string[] }) & { actorUserId: string };
+export const engineSetResourceCapacity = (workCenterId: string, body: SetCapacityBody): Promise<EngineVerbResult> =>
+  engineVerb(`/internal/work-centers/${workCenterId}/resources/set-capacity`, body);
+
 export const engineSetWorkCenterValue = (workCenterId: string, body: WorkCenterValueBody): Promise<EngineVerbResult> =>
   engineVerb(`/internal/work-centers/${workCenterId}/value-properties`, body);
 

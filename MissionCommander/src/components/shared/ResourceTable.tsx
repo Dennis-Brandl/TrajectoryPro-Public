@@ -15,7 +15,8 @@ import { Fragment, useState } from 'react';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { ResourceVerb, SharedResourceView, WorkflowResourceView } from '@/lib/api/types';
-import { ConfirmStrip, ReleaseResourceDialog, RowActionButtons, WaiterCancelButton, type PendingConfirm, type ResourceVerbArgs } from './ResourceActions';
+import { ConfirmStrip, ReleaseResourceDialog, RowActionButtons, WaiterCancelButton, GatedButton, SYSTEM_COMMANDER_REASON, type PendingConfirm, type ResourceVerbArgs } from './ResourceActions';
+import { CapacityDialog, capacityLabel, type CapacityBody } from './CapacityDialog';
 
 // One table for all three panes (spec §6.3-6.5): Name · Type · State · Held by · Waiting ·
 // Defined by · Actions (Phase 4b, spec §12.4 item 3 — a column, not a second table). Rows are a
@@ -46,10 +47,19 @@ export type ResourceTableRow = {
   ledgerMismatch: boolean; overCommitted: boolean;
   definedBy: { envSpecId: string | null; label: string } | null; orphaned: boolean;
   target: ResourceTarget;
+  /** Spec 2026-11-26: a work-center resource's own count or names, for Change count…/names…;
+   *  absent on workflow-scoped rows. `heldNames` are roster names in use now. */
+  capacity?: {
+    useLimit: number | null; poolNames: string[]; heldNames: string[];
+    designerDefault: { useLimit: number | null; names: string[] } | null;
+    setBy: string | null; setAt: string | null;
+  };
 };
 export type ResourceActionHandlers = {
   canCommand: boolean; busy: boolean;
   onVerb: (row: ResourceTableRow, verb: ResourceVerb, args: ResourceVerbArgs) => void;
+  /** Only the Environment pane passes this (spec 2026-11-26): Change shares/count/names. */
+  onSetCapacity?: (row: ResourceTableRow, body: CapacityBody) => void;
 };
 
 const join = (parts: Array<string | null | undefined | false>) => parts.filter(Boolean).join(' · ');
@@ -79,6 +89,12 @@ export function toSharedResourceRow(v: SharedResourceView): ResourceTableRow {
     definedBy: { envSpecId: v.orphaned ? null : v.definedBy.envSpecId, label: `${v.definedBy.name ?? 'unknown spec'} v${v.definedBy.version ?? '?'} (${v.definedBy.state ?? '?'})` },
     orphaned: v.orphaned,
     target: { tier: 'environment', workCenterId: v.workCenterId, name: v.name },
+    capacity: {
+      useLimit: v.useLimit, poolNames: v.poolNames,
+      heldNames: v.resourceType === 'named pool' ? v.poolNames.filter((n) => !v.availableNames.includes(n)) : [],
+      designerDefault: v.designerDefault,
+      setBy: v.capacitySetBy?.displayName ?? null, setAt: v.capacitySetAt,
+    },
   };
 }
 
@@ -129,6 +145,8 @@ type RowViewProps = {
 function ResourceRowView({ row: r, showScope, showProvenance, columns, actions, openInstance, openEnvironment }: RowViewProps) {
   const [confirm, setConfirm] = useState<PendingConfirm | null>(null);
   const [releaseOpen, setReleaseOpen] = useState(false);
+  const [capacityOpen, setCapacityOpen] = useState(false);
+  const capLabel = actions?.onSetCapacity && r.capacity ? capacityLabel(r.resourceType) : null;
   const fire = (verb: ResourceVerb, args: ResourceVerbArgs) => {
     setConfirm(null); setReleaseOpen(false);
     actions?.onVerb(r, verb, args);
@@ -139,6 +157,11 @@ function ResourceRowView({ row: r, showScope, showProvenance, columns, actions, 
         <TableCell>
           <span className="font-medium">{r.name}</span>
           {showScope && <span className={`ml-2 ${MUTED}`}>{r.scope}</span>}
+          {r.capacity?.setBy && r.capacity.setAt && (
+            <span className="block text-xs text-muted-foreground">
+              Set in Commander by {r.capacity.setBy}, {new Date(r.capacity.setAt).toLocaleDateString()}
+            </span>
+          )}
         </TableCell>
         <TableCell className="text-muted-foreground">{r.resourceType}</TableCell>
         <TableCell>
@@ -199,6 +222,10 @@ function ResourceRowView({ row: r, showScope, showProvenance, columns, actions, 
           <TableCell>
             <RowActionButtons row={r} canCommand={actions.canCommand} busy={actions.busy}
               onRelease={() => setReleaseOpen(true)} onConfirm={setConfirm} />
+            {capLabel && (
+              <GatedButton reason={actions.canCommand ? undefined : SYSTEM_COMMANDER_REASON} disabled={!actions.canCommand || actions.busy}
+                label={capLabel} aria={`${capLabel.replace('…', '')} ${r.name}`} onClick={() => setCapacityOpen(true)} />
+            )}
           </TableCell>
         )}
       </TableRow>
@@ -210,6 +237,10 @@ function ResourceRowView({ row: r, showScope, showProvenance, columns, actions, 
               onCancel={() => setConfirm(null)} />
           </TableCell>
         </TableRow>
+      )}
+      {actions?.onSetCapacity && capacityOpen && (
+        <CapacityDialog row={r} busy={actions.busy} onClose={() => setCapacityOpen(false)}
+          onSave={(body) => { setCapacityOpen(false); actions.onSetCapacity!(r, body); }} />
       )}
       {actions && releaseOpen && (
         <ReleaseResourceDialog row={r} busy={actions.busy}

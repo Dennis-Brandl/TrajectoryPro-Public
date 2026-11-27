@@ -136,6 +136,11 @@ export interface ResourceCommandSpecification {
    *  present the command carries NO `amount` (an older engine must refuse it rather
    *  than silently use a default). */
   amount_property?: string
+  /** Synchronize only (spec 2026-11-27): number of partners. A number when valid; an invalid
+   *  Text value is passed through raw so the engine refuses the workflow at load. */
+  partners?: number | string
+  /** Synchronize only: property key the number of partners is read from. Wins over partners. */
+  partners_property?: string
   target?: string
   source?: string
 }

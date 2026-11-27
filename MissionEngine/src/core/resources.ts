@@ -62,7 +62,9 @@ export interface ResourceManager {
 
   send(resourceKey: string, stepOid: string, data: string): SyncResult;
   receive(resourceKey: string, stepOid: string): ReceiveResult;
-  synchronize(resourceKey: string, stepOid: string): SyncResult;
+  synchronize(resourceKey: string, stepOid: string, partners?: number): SyncResult;
+  syncGroupPartners(resourceKey: string): number | null;
+  isSyncResource(resourceKey: string): boolean;
 
   getSyncData(stepOid: string): string | undefined;
   clearSyncData(stepOid: string): void;
@@ -139,6 +141,9 @@ interface SyncState {
   sendQueue: { stepOid: string; data: string }[];
   receiveQueue: string[];
   pendingSync: string[];
+  /** Spec 2026-11-27: each waiting Synchronize token's partner count (absent = 2). The group's
+   *  count is the head waiter's; a mismatched arrival is refused before it gets here. */
+  partners: Record<string, number>;
   ownerId: string;
   scope: 'workflow' | 'environment';
   resourceKey: string;
@@ -157,7 +162,7 @@ type SerializedResourceState =
   | BinarySharedState
   | CountableState
   | (Omit<NamedPoolState, 'originalNames'> & { originalNames: string[] })
-  | SyncState;
+  | (Omit<SyncState, 'partners'> & { partners?: Record<string, number> }); // absent in pre-2026-11-27 state
 
 export interface SerializedResources {
   resources: [string, SerializedResourceState][];
@@ -181,6 +186,7 @@ function stateToJSON(state: ResourceState): SerializedResourceState {
         sendQueue: state.sendQueue.map(s => ({ ...s })),
         receiveQueue: [...state.receiveQueue],
         pendingSync: [...state.pendingSync],
+        partners: { ...state.partners },
       };
   }
 }
@@ -200,6 +206,7 @@ function stateFromJSON(state: SerializedResourceState): ResourceState {
         sendQueue: state.sendQueue.map(s => ({ ...s })),
         receiveQueue: [...state.receiveQueue],
         pendingSync: [...state.pendingSync],
+        partners: { ...(state.partners ?? {}) },
       };
   }
 }
@@ -249,7 +256,7 @@ export class InMemoryResourceManager implements ResourceManager {
         break;
       }
       case 'sync':
-        this.resources.set(resourceKey, { type: 'sync', sendQueue: [], receiveQueue: [], pendingSync: [], ownerId, scope: resolvedScope, resourceKey });
+        this.resources.set(resourceKey, { type: 'sync', sendQueue: [], receiveQueue: [], pendingSync: [], partners: {}, ownerId, scope: resolvedScope, resourceKey });
         break;
       default:
         throw new Error(`Unknown resource type: "${spec.resource_type}"`);
@@ -457,18 +464,37 @@ export class InMemoryResourceManager implements ResourceManager {
     return { available: false };
   }
 
-  synchronize(resourceKey: string, stepOid: string): SyncResult {
+  /** Spec 2026-11-27: waits until the group (the head waiter's partner count, default 2) is
+   *  full, then grants all of it, in arrival order. The caller checks the count matches the
+   *  group first (syncGroupPartners); the next arrival after a release opens a new group. */
+  synchronize(resourceKey: string, stepOid: string, partners = 2): SyncResult {
     const r = this.getResource(resourceKey);
     if (r.type !== 'sync') throw new Error(`synchronize() not supported for "${r.type}"`);
     r.pendingSync.push(stepOid);
-    if (r.pendingSync.length >= 2) {
-      const first = r.pendingSync.shift()!;
-      const second = r.pendingSync.shift()!;
-      this.addGrant(first, r.resourceKey);
-      this.addGrant(second, r.resourceKey);
+    r.partners[stepOid] = partners;
+    const groupN = r.partners[r.pendingSync[0]] ?? 2;
+    if (r.pendingSync.length >= groupN) {
+      for (const token of r.pendingSync.splice(0, groupN)) {
+        delete r.partners[token];
+        this.addGrant(token, r.resourceKey);
+      }
       return { ready: true };
     }
     return { ready: false };
+  }
+
+  /** The partner count of the group now waiting on a sync resource, or null when nobody waits. */
+  syncGroupPartners(resourceKey: string): number | null {
+    const r = this.getResource(resourceKey);
+    if (r.type !== 'sync') throw new Error(`syncGroupPartners() not supported for "${r.type}"`);
+    if (r.pendingSync.length === 0) return null;
+    return r.partners[r.pendingSync[0]] ?? 2;
+  }
+
+  /** True when the key is a registered sync resource (no capacity, so a grant left unconsumed
+   *  on it cannot strand anything for the work center). */
+  isSyncResource(resourceKey: string): boolean {
+    return this.resources.get(resourceKey)?.type === 'sync';
   }
 
   getSyncData(stepOid: string): string | undefined {
@@ -510,6 +536,7 @@ export class InMemoryResourceManager implements ResourceManager {
         state.sendQueue = state.sendQueue.filter(s => !stepOids.has(s.stepOid));
         state.receiveQueue = state.receiveQueue.filter(s => !stepOids.has(s));
         state.pendingSync = state.pendingSync.filter(s => !stepOids.has(s));
+        for (const s of stepOids) delete state.partners[s];
       }
     }
     // Clear pending grants and named-pool assignments for cancelled steps; if any names
@@ -618,6 +645,7 @@ export class InMemoryResourceManager implements ResourceManager {
           state.sendQueue = [];
           state.receiveQueue = [];
           state.pendingSync = [];
+          state.partners = {};
           break;
       }
     }

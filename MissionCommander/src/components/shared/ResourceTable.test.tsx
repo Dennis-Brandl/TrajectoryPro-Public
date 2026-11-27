@@ -29,7 +29,7 @@ const PRINTER: SharedResourceView = {
   unaccounted: 0, ledgerMismatch: false, overCommitted: false,
   holders: [{ id: 1, instanceId: 'rw7', runtimeNumber: 7, runtimeLabel: 'MIX-20261007-001', masterName: 'Fill', stepOid: 's-mix', stepName: 'Mix Step', amount: 1, heldName: null, acquiredAt: '2026-09-01T00:00:00Z' }],
   waiters: [{ id: 1, instanceId: 'rw8', runtimeNumber: 8, runtimeLabel: 'BLEND-20261007-002', masterName: 'Fill', stepOid: 's-pack', stepName: 'Pack', kind: 'acquire', amount: null, granted: false, enqueuedAt: '2026-09-01T00:00:01Z' }],
-  definedBy: { envSpecId: 'e1', name: 'Kitchen', version: '1.2.0', state: 'Effective' }, orphaned: false, updatedAt: '2026-09-01T00:00:00Z',
+  definedBy: { envSpecId: 'e1', name: 'Kitchen', version: '1.2.0', state: 'Effective' }, orphaned: false, updatedAt: '2026-09-01T00:00:00Z', designerDefault: null, capacitySetBy: null, capacitySetAt: null,
 };
 
 beforeEach(() => { useSelectionStore.setState({ activeHierarchy: 'environment', selectedRuntimeWorkflowId: null, selectedEnvironmentId: null }); });

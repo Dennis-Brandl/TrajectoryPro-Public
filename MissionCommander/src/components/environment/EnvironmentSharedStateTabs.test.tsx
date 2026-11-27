@@ -31,7 +31,7 @@ const PRINTER: SharedResourceView = {
   useLimit: null, poolNames: [], availableNames: [], inUse: 0,
   summary: { total: 1, inUse: 0, available: 1, queued: 0, state: 'Free' },
   unaccounted: 0, ledgerMismatch: false, overCommitted: false, holders: [], waiters: [],
-  definedBy: { envSpecId: 'e1', name: 'Kitchen', version: '1.0.0', state: 'Effective' }, orphaned: false, updatedAt: '2026-09-01T00:00:00Z',
+  definedBy: { envSpecId: 'e1', name: 'Kitchen', version: '1.0.0', state: 'Effective' }, orphaned: false, updatedAt: '2026-09-01T00:00:00Z', designerDefault: null, capacitySetBy: null, capacitySetAt: null,
 };
 const SIZE: SharedValuePropertyView = {
   workCenterId: 'wc1', propertyName: 'Batch', entryName: 'Size', value: '5', annotation: false,
@@ -148,5 +148,39 @@ describe('Environment pane actions (Phase 4b)', () => {
     await waitFor(() => expect(setValue).toHaveBeenCalledWith('wc1', { propertyName: 'Batch', entryName: 'Size', value: '7' }));
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Updated Batch.Size'));
     setValue.mockRestore();
+  });
+});
+
+const SCALES: SharedResourceView = {
+  ...PRINTER, name: 'Scales', resourceType: 'countable use with pool limits', useLimit: 2,
+  summary: { total: 2, inUse: 0, available: 2, queued: 0, state: 'Free' },
+  designerDefault: { useLimit: 3, names: [] },
+  capacitySetBy: { userId: 'u1', displayName: 'Una' }, capacitySetAt: '2026-11-26T15:00:00Z',
+};
+
+describe('Environment pane capacity (spec 2026-11-26)', () => {
+  it('a commander changes a count through the work-center route; the row says who set it', async () => {
+    setPrincipal(['wc1']);
+    vi.mocked(environments.resources).mockResolvedValue({ workCenterId: 'wc1', resources: [SCALES, PRINTER], unregistered: [] });
+    const set = vi.spyOn(wcApi.workCenters, 'setResourceCapacity').mockResolvedValue({ ok: true, summary: 'ok' });
+    render(<EnvironmentResourcesTab envId="e1" />);
+    expect(await screen.findByText(/Set in Commander by Una, /)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Change .* Printer/ })).toBeNull(); // binary exclusive has no capacity
+    await userEvent.click(screen.getByRole('button', { name: 'Change count Scales' }));
+    const dialog = screen.getByRole('dialog');
+    const box = within(dialog).getByLabelText('Count');
+    await userEvent.clear(box);
+    await userEvent.type(box, '5');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(set).toHaveBeenCalledWith('wc1', { name: 'Scales', useLimit: 5 }));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Changed “Scales”'));
+    set.mockRestore();
+  });
+
+  it('a non-commander sees Change count disabled', async () => {
+    setPrincipal([]);
+    vi.mocked(environments.resources).mockResolvedValue({ workCenterId: 'wc1', resources: [SCALES], unregistered: [] });
+    render(<EnvironmentResourcesTab envId="e1" />);
+    expect(await screen.findByRole('button', { name: 'Change count Scales' })).toBeDisabled();
   });
 });

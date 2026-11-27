@@ -35,6 +35,9 @@ export function extractResourceCommands(data: Record<string, unknown>): Resource
         count?: number
         countValueType?: 'literal' | 'property'
         countProperty?: string
+        partnersValueType?: 'literal' | 'property'
+        partners?: string
+        partnersProperty?: string
         target?: string
         source?: string
       }>
@@ -54,9 +57,27 @@ export function extractResourceCommands(data: Record<string, unknown>): Resource
     ...(cmd.countValueType === 'property' && cmd.countProperty?.trim()
       ? { amount_property: cmd.countProperty.trim() }
       : {}),
+    // Spec 2026-11-27: a Synchronize's number of partners (resolveResourceSources drops both
+    // fields from every other command). A whole number ≥ 2 exports as a number; anything else
+    // in Text mode is passed through raw, so the engine refuses it rather than running at 2.
+    // Source mode with no key picked exports a blank key, which the engine refuses at load,
+    // rather than quietly falling back to the Text value on paths that skip the export check.
+    ...(cmd.commandType === 'Synchronize'
+      ? cmd.partnersValueType === 'property'
+        ? { partners_property: cmd.partnersProperty?.trim() ?? '' }
+        : { partners: partnersForExport(cmd.partners) }
+      : {}),
     ...(cmd.target ? { target: cmd.target } : {}),
     ...(cmd.source ? { source: cmd.source } : {}),
   }))
+}
+
+/** A Text partner count as the wire value: the number when it is a whole number of at least 2
+ *  (absent or blank-as-default = 2), else the raw text. */
+function partnersForExport(text: string | undefined): number | string {
+  if (text === undefined) return 2
+  const t = text.trim()
+  return /^\d+$/.test(t) && Number(t) >= 2 ? Number(t) : text
 }
 
 /**

@@ -39,6 +39,7 @@ import { RESOURCE_VERBS, VerbError, type ResourceVerb } from '../core/registry-v
 import {
   runWorkCenterResourceVerb, runInstanceResourceVerb, setWorkCenterValueProperty, setInstanceValueProperty,
 } from '../core/operator-verbs.js';
+import { setResourceCapacity } from '../core/set-capacity.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -246,6 +247,27 @@ export function createInternalApp(db: Db, deps: EngineDeps, hub: OperatorEventHu
   const actorOf = (b: Record<string, unknown>): string | null => (typeof b.actorUserId === 'string' && UUID_RE.test(b.actorUserId) ? b.actorUserId : null);
   const posInt = (v: unknown): number | undefined | null => (v === undefined ? undefined : Number.isInteger(v) && (v as number) > 0 ? (v as number) : null);
   const validation = (c: any, message: string) => c.json({ error: { code: 'VALIDATION', message } }, 400);
+
+  // Spec 2026-11-26: a commander changes a resource's shares, count or names. A number for the
+  // counted types, a list for a named pool; the type check and the limits are the verb's own.
+  app.post('/internal/work-centers/:wcId/resources/set-capacity', async (c) => {
+    const wcId = c.req.param('wcId');
+    if (!UUID_RE.test(wcId)) return c.json({ error: { code: 'WORK_CENTER_NOT_FOUND', message: 'not found' } }, 404);
+    const b = await readBody(c);
+    const name = str(b.name); const actorUserId = actorOf(b);
+    if (!name || !actorUserId) return validation(c, 'name and actorUserId (uuid) are required');
+    const hasLimit = b.useLimit !== undefined; const hasNames = b.names !== undefined;
+    if (hasLimit === hasNames) return validation(c, 'send exactly one of useLimit or names');
+    if (hasLimit && typeof b.useLimit !== 'number') return validation(c, 'useLimit must be a number');
+    if (hasNames && !(Array.isArray(b.names) && b.names.every((n) => typeof n === 'string'))) return validation(c, 'names must be a list of text');
+    try {
+      const r = await setResourceCapacity(db, deps, hub, {
+        workCenterId: wcId, name, actorUserId,
+        ...(hasLimit ? { useLimit: b.useLimit as number } : { names: b.names as string[] }),
+      });
+      return c.json({ ok: true, summary: r.summary, affectedInstanceIds: r.affectedInstanceIds });
+    } catch (err) { return verbErrorResponse(c, err); }
+  });
 
   for (const verb of RESOURCE_VERBS as readonly ResourceVerb[]) {
     app.post(`/internal/work-centers/:wcId/resources/${verb}`, async (c) => {
